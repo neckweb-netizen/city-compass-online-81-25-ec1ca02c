@@ -1,0 +1,140 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Saj Tem - Santo Antônio de Jesus</title>
+    <meta name="description" content="Guia completo de Santo Antônio de Jesus - BA" />
+    <meta name="author" content="Saj Tem" />
+    <meta name="keywords" content="Santo Antônio de Jesus, Bahia, empresas, eventos, rádio, guia local" />
+    
+    <!-- PWA Meta Tags -->
+    <meta name="application-name" content="Saj Tem" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Saj Tem" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#3b82f6" />
+    <meta name="msapplication-TileColor" content="#3b82f6" />
+    <meta name="msapplication-tap-highlight" content="no" />
+
+    <!-- Icons -->
+    <link rel="icon" href="/lovable-uploads/e4435ab0-198f-4ab7-b4d2-83024c9490fc.png" type="image/png">
+    <link rel="apple-touch-icon" href="/lovable-uploads/e4435ab0-198f-4ab7-b4d2-83024c9490fc.png" />
+    <link rel="mask-icon" href="/lovable-uploads/e4435ab0-198f-4ab7-b4d2-83024c9490fc.png" color="#3b82f6" />
+    
+    <!-- Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Performance optimizations -->
+    <link rel="preconnect" href="https://uyleozhwzngnvyddfvni.supabase.co" crossorigin>
+    <link rel="dns-prefetch" href="https://uyleozhwzngnvyddfvni.supabase.co">
+    <link rel="modulepreload" href="/src/main.tsx">
+    
+    <!-- Critical inline CSS for first paint -->
+    <style>
+      /* Critical styles for initial render - prevents FOUC */
+      html,body{margin:0;padding:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.5}
+      #root{min-height:100vh;background-color:#ffffff;color:#0a0a0a}
+      .bg-background{background-color:#ffffff}
+      .min-h-screen{min-height:100vh}
+      .container{max-width:1200px;margin:0 auto;padding:0 1rem}
+      .tiktok-glass{backdrop-filter:blur(20px);background-color:rgba(255,255,255,0.8)}
+      @media (prefers-color-scheme: dark) {
+        #root{background-color:#0a0a0a;color:#ffffff}
+        .bg-background{background-color:#0a0a0a}
+        .tiktok-glass{background-color:rgba(10,10,10,0.8)}
+      }
+      /* Force dark theme for canal informativo */
+      .dark{color-scheme:dark}
+      .dark #root{background-color:#0a0a0a;color:#ffffff}
+      .dark .bg-background{background-color:#0a0a0a}
+    </style>
+    
+    <link rel="preload" href="https://fonts.googleapis.com" as="connect" crossorigin>
+    
+    <!-- Critical Resource Hints -->
+    <link rel="prefetch" href="/src/components/layout/MainLayout.tsx">
+    <link rel="prefetch" href="/src/components/layout/PublicLayout.tsx">
+
+    <meta property="og:title" content="Saj Tem - Santo Antônio de Jesus" />
+    <meta property="og:description" content="Guia completo de Santo Antônio de Jesus - BA" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/lovable-uploads/e4435ab0-198f-4ab7-b4d2-83024c9490fc.png" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@sajtem" />
+    <meta name="twitter:image" content="/lovable-uploads/e4435ab0-198f-4ab7-b4d2-83024c9490fc.png" />
+    
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Make CSS non-blocking by loading it asynchronously
+      const loadCSS = function(href, before, media) {
+        const doc = window.document;
+        const ss = doc.createElement("link");
+        let ref;
+        if (before) {
+          ref = before;
+        } else {
+          const refs = (doc.body || doc.getElementsByTagName("head")[0]).childNodes;
+          ref = refs[refs.length - 1];
+        }
+        const sheets = doc.styleSheets;
+        ss.rel = "stylesheet";
+        ss.href = href;
+        ss.media = "only x";
+        function ready(cb) {
+          if (doc.body) return cb();
+          setTimeout(function() {
+            ready(cb);
+          });
+        }
+        ready(function() {
+          ref.parentNode.insertBefore(ss, (before ? ref : ref.nextSibling));
+        });
+        const onloadcssdefined = function(cb) {
+          let resolvedHref = ss.href;
+          let i = sheets.length;
+          while (i--) {
+            if (sheets[i].href === resolvedHref) {
+              return cb();
+            }
+          }
+          setTimeout(function() {
+            onloadcssdefined(cb);
+          });
+        };
+        function loadCB() {
+          if (ss.addEventListener) {
+            ss.removeEventListener("load", loadCB);
+          }
+          ss.media = media || "all";
+        }
+        if (ss.addEventListener) {
+          ss.addEventListener("load", loadCB);
+        }
+        ss.onloadcssdefined = onloadcssdefined;
+        onloadcssdefined(loadCB);
+        return ss;
+      };
+    </script>
+    
+    <!-- Register optimized service worker -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw-optimized.js')
+            .catch(() => {
+              // Silently fail - don't block functionality
+            });
+        });
+      }
+    </script>
+  </body>
+</html>

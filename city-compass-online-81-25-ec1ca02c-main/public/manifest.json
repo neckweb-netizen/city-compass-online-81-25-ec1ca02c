@@ -1,0 +1,51 @@
+{
+  "name": "Saj Tem - Santo Antônio de Jesus",
+  "short_name": "Saj Tem",
+  "description": "Guia completo de Santo Antônio de Jesus - BA. Encontre empresas, eventos, notícias e muito mais.",
+  "start_url": "/?utm_source=pwa",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3b82f6",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "pt-BR",
+  "categories": ["business", "lifestyle", "utilities", "travel", "news"],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/lovable-uploads/e4435ab0-198f-4ab7-b4d2-83024c9490fc.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/lovable-uploads/e4435ab0-198f-4ab7-b4d2-83024c9490fc.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Empresas",
+      "short_name": "Empresas",
+      "description": "Ver empresas locais",
+      "url": "/empresas",
+      "icons": [{ "src": "/lovable-uploads/e4435ab0-198f-4ab7-b4d2-83024c9490fc.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Eventos",
+      "short_name": "Eventos",
+      "description": "Ver eventos da cidade",
+      "url": "/eventos",
+      "icons": [{ "src": "/lovable-uploads/e4435ab0-198f-4ab7-b4d2-83024c9490fc.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Rádios",
+      "short_name": "Rádios",
+      "description": "Ouvir rádios locais",
+      "url": "/radios",
+      "icons": [{ "src": "/lovable-uploads/e4435ab0-198f-4ab7-b4d2-83024c9490fc.png", "sizes": "96x96" }]
+    }
+  ]
+}

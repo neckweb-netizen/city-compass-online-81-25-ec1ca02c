@@ -1,0 +1,418 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 260 31% 20%;
+    --card: 0 0% 100%;
+    --card-foreground: 260 31% 20%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 260 31% 20%;
+    --primary: 260 31% 27%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 269 36% 92%;
+    --secondary-foreground: 260 31% 20%;
+    --muted: 269 36% 92%;
+    --muted-foreground: 260 15% 40%;
+    --accent: 269 36% 79%;
+    --accent-foreground: 260 31% 20%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 269 20% 88%;
+    --input: 269 20% 88%;
+    --ring: 260 31% 27%;
+    --radius: 0.75rem;
+    
+    /* Social media style colors */
+    --success: 142 71% 45%;
+    --warning: 38 92% 50%;
+    --info: 269 36% 79%;
+    
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(260 31% 27%) 0%, hsl(269 36% 79%) 100%);
+    --gradient-secondary: linear-gradient(135deg, hsl(269 36% 92%) 0%, hsl(0 0% 72%) 100%);
+    
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+    --sidebar-background: 269 36% 98%;
+    --sidebar-foreground: 260 31% 20%;
+    --sidebar-primary: 260 31% 27%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 269 36% 92%;
+    --sidebar-accent-foreground: 260 31% 20%;
+    --sidebar-border: 269 20% 88%;
+    --sidebar-ring: 260 31% 27%;
+
+    /* Neon colors */
+    --neon-purple: 260 40% 50%;
+    --neon-lilac: 269 36% 79%;
+    
+    /* Cores para enquete */
+    --enquete-primary: 260 31% 27%;
+    --enquete-secondary: 269 36% 79%;
+    --enquete-accent: 0 0% 72%;
+    --enquete-text: 0 0% 98%;
+    --enquete-muted: 269 20% 85%;
+  }
+
+  .dark {
+    --background: 260 31% 11%;
+    --foreground: 269 36% 98%;
+    --card: 260 31% 15%;
+    --card-foreground: 269 36% 98%;
+    --popover: 260 31% 11%;
+    --popover-foreground: 269 36% 98%;
+    --primary: 269 36% 79%;
+    --primary-foreground: 260 31% 11%;
+    --secondary: 260 25% 20%;
+    --secondary-foreground: 269 36% 98%;
+    --muted: 260 31% 15%;
+    --muted-foreground: 0 0% 72%;
+    --accent: 260 25% 20%;
+    --accent-foreground: 269 36% 98%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 269 36% 98%;
+    --border: 260 25% 20%;
+    --input: 260 25% 20%;
+    --ring: 269 36% 79%;
+    
+    /* Social media style colors */
+    --success: 142 71% 45%;
+    --warning: 38 92% 50%;
+    --info: 269 36% 79%;
+    
+    --sidebar-background: 260 31% 10%;
+    --sidebar-foreground: 269 36% 95%;
+    --sidebar-primary: 269 36% 79%;
+    --sidebar-primary-foreground: 260 31% 10%;
+    --sidebar-accent: 260 25% 18%;
+    --sidebar-accent-foreground: 269 36% 95%;
+    --sidebar-border: 260 25% 18%;
+    --sidebar-ring: 269 36% 79%;
+    
+    /* Neon colors for dark mode */
+    --neon-purple: 260 50% 65%;
+    --neon-lilac: 269 40% 85%;
+    
+    /* Cores para enquete no modo escuro */
+    --enquete-primary: 269 36% 79%;
+    --enquete-secondary: 260 31% 27%;
+    --enquete-accent: 0 0% 72%;
+    --enquete-text: 0 0% 95%;
+    --enquete-muted: 269 20% 70%;
+  }
+}
+
+/* Performance optimizations */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+/* Optimize scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Optimize animations */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Instant visual feedback for buttons and links */
+button, a, [role="button"] {
+  transition: transform 0.1s ease-out;
+  will-change: transform;
+}
+
+button:active, a:active, [role="button"]:active {
+  transform: scale(0.95);
+}
+
+/* Optimize rendering */
+.optimize-rendering {
+  contain: layout style paint;
+}
+
+/* Fast loading states */
+.loading-shimmer {
+  background: linear-gradient(90deg, 
+    hsl(var(--muted)) 25%, 
+    hsl(var(--muted-foreground) / 0.1) 50%, 
+    hsl(var(--muted)) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  /* Ensure proper text contrast in dark mode */
+  .dark {
+    color-scheme: dark;
+  }
+
+  /* Fix gradient backgrounds for dark mode compatibility */
+  .dark .from-yellow-50 {
+    @apply from-yellow-900/20;
+  }
+  .dark .to-orange-50 {
+    @apply to-orange-900/20;
+  }
+  .dark .from-yellow-100 {
+    @apply from-yellow-800/30;
+  }
+  .dark .to-orange-100 {
+    @apply to-orange-800/30;
+  }
+  .dark .bg-red-50 {
+    @apply bg-red-900/20;
+  }
+  .dark .hover\\:bg-red-100:hover {
+    @apply hover:bg-red-800/30;
+  }
+}
+
+/* Custom utilities for mobile app experience */
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .line-clamp-1 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+  
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  /* Efeito neon suave - roxo/lilás */
+  .neon-border-blue {
+    border: 1px solid hsl(var(--neon-purple) / 0.4);
+    box-shadow: 0 0 3px hsl(var(--neon-purple) / 0.2), 
+                0 0 6px hsl(var(--neon-purple) / 0.15);
+    animation: neon-pulse-purple 4s ease-in-out infinite alternate;
+  }
+
+  .neon-border-mixed {
+    border: 1px solid hsl(var(--neon-purple) / 0.4);
+    box-shadow: 0 0 3px hsl(var(--neon-purple) / 0.25), 
+                0 0 2px hsl(var(--neon-lilac) / 0.15),
+                0 0 6px hsl(var(--neon-purple) / 0.15);
+    animation: neon-pulse-mixed 5s ease-in-out infinite alternate;
+  }
+
+  @keyframes neon-pulse-purple {
+    from {
+      box-shadow: 0 0 3px hsl(var(--neon-purple) / 0.2), 
+                  0 0 6px hsl(var(--neon-purple) / 0.15);
+    }
+    to {
+      box-shadow: 0 0 4px hsl(var(--neon-purple) / 0.3), 
+                  0 0 8px hsl(var(--neon-purple) / 0.2);
+    }
+  }
+
+  @keyframes neon-pulse-mixed {
+    0% {
+      box-shadow: 0 0 3px hsl(var(--neon-purple) / 0.25), 
+                  0 0 2px hsl(var(--neon-lilac) / 0.15),
+                  0 0 6px hsl(var(--neon-purple) / 0.15);
+    }
+    50% {
+      box-shadow: 0 0 4px hsl(var(--neon-purple) / 0.3), 
+                  0 0 2px hsl(var(--neon-lilac) / 0.1),
+                  0 0 7px hsl(var(--neon-purple) / 0.2);
+    }
+    100% {
+      box-shadow: 0 0 3px hsl(var(--neon-purple) / 0.25), 
+                  0 0 3px hsl(var(--neon-lilac) / 0.15),
+                  0 0 6px hsl(var(--neon-purple) / 0.15);
+    }
+  }
+
+  /* Efeitos especiais para enquete */
+  .enquete-gradient {
+    background: linear-gradient(135deg, 
+      hsl(var(--enquete-primary)) 0%, 
+      hsl(var(--enquete-secondary)) 50%, 
+      hsl(var(--enquete-accent)) 100%);
+  }
+
+  .enquete-gradient-subtle {
+    background: linear-gradient(135deg, 
+      hsl(var(--enquete-primary) / 0.9) 0%, 
+      hsl(var(--enquete-secondary) / 0.8) 50%, 
+      hsl(var(--enquete-accent) / 0.9) 100%);
+  }
+
+  .enquete-border-glow {
+    border: 1px solid hsl(var(--enquete-primary) / 0.4);
+    box-shadow: 0 0 8px hsl(var(--enquete-primary) / 0.3), 
+                0 0 16px hsl(var(--enquete-accent) / 0.2),
+                inset 0 1px 0 hsl(0 0% 100% / 0.1);
+    animation: enquete-pulse 3s ease-in-out infinite alternate;
+  }
+
+  @keyframes enquete-pulse {
+    from {
+      box-shadow: 0 0 8px hsl(var(--enquete-primary) / 0.3), 
+                  0 0 16px hsl(var(--enquete-accent) / 0.2),
+                  inset 0 1px 0 hsl(0 0% 100% / 0.1);
+    }
+    to {
+      box-shadow: 0 0 12px hsl(var(--enquete-primary) / 0.4), 
+                  0 0 20px hsl(var(--enquete-accent) / 0.3),
+                  inset 0 1px 0 hsl(0 0% 100% / 0.15);
+    }
+  }
+
+  .enquete-glass {
+    backdrop-filter: blur(10px);
+    background: linear-gradient(135deg, 
+      hsl(var(--enquete-primary) / 0.1) 0%, 
+      hsl(var(--enquete-secondary) / 0.05) 50%, 
+      hsl(var(--enquete-accent) / 0.1) 100%);
+  }
+
+  /* TikTok-inspired modern design utilities */
+  .tiktok-card {
+    background: linear-gradient(145deg, 
+      hsl(var(--card)) 0%, 
+      hsl(var(--card) / 0.95) 100%);
+    backdrop-filter: blur(20px);
+    border: 1px solid hsl(var(--border) / 0.2);
+    box-shadow: 0 8px 32px hsl(var(--foreground) / 0.1),
+                0 1px 0 hsl(0 0% 100% / 0.05) inset;
+  }
+
+  .tiktok-glass {
+    backdrop-filter: blur(12px) saturate(180%);
+    background: linear-gradient(145deg, 
+      hsl(var(--background) / 0.8) 0%, 
+      hsl(var(--background) / 0.6) 100%);
+    border: 1px solid hsl(var(--border) / 0.3);
+  }
+
+  .tiktok-gradient {
+    background: linear-gradient(135deg,
+      hsl(var(--primary)) 0%,
+      hsl(var(--primary) / 0.8) 50%,
+      hsl(var(--accent)) 100%);
+  }
+
+  .tiktok-shadow {
+    box-shadow: 0 20px 25px -5px hsl(var(--foreground) / 0.1),
+                0 10px 10px -5px hsl(var(--foreground) / 0.04);
+  }
+
+  .tiktok-hover {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .tiktok-hover:hover {
+    transform: translateY(-2px) scale(1.01);
+    box-shadow: 0 25px 50px -12px hsl(var(--foreground) / 0.15);
+  }
+
+  .action-button {
+    background: linear-gradient(145deg, 
+      hsl(var(--background)) 0%, 
+      hsl(var(--muted)) 100%);
+    backdrop-filter: blur(10px);
+    border: 1px solid hsl(var(--border) / 0.5);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    z-index: 9999;
+  }
+
+  .action-button:hover {
+    background: linear-gradient(145deg, 
+      hsl(var(--primary) / 0.1) 0%, 
+      hsl(var(--primary) / 0.05) 100%);
+    border-color: hsl(var(--primary) / 0.3);
+    transform: scale(1.1);
+  }
+
+  .floating-actions {
+    position: fixed;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    z-index: 50;
+  }
+
+  @media (max-width: 768px) {
+    .floating-actions {
+      right: 12px;
+      gap: 8px;
+    }
+  }
+
+  .modern-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--primary) / 0.3) transparent;
+  }
+
+  .modern-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .modern-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .modern-scroll::-webkit-scrollbar-thumb {
+    background: linear-gradient(145deg,
+      hsl(var(--primary) / 0.3),
+      hsl(var(--primary) / 0.5));
+    border-radius: 10px;
+  }
+
+  .content-fade {
+    mask-image: linear-gradient(to bottom, black 0%, black 90%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, black 0%, black 90%, transparent 100%);
+  }
+}
