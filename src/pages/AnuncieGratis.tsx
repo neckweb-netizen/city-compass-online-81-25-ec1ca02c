@@ -33,7 +33,6 @@ export const AnuncieGratis = () => {
   useEffect(() => {
     const carregarMetricasPublicas = async () => {
       try {
-        // Puxando apenas os dados que geram valor de marketing para o comerciante
         const { count: countUsuarios } = await supabase
           .from("usuarios")
           .select("*", { count: "exact", head: true });
@@ -47,7 +46,7 @@ export const AnuncieGratis = () => {
           .select("*", { count: "exact", head: true });
 
         setMetricas({
-          totalUsuarios: (countUsuarios || 0) + 150, // Adicionando uma base baseada em acessos locais se o banco for novo
+          totalUsuarios: (countUsuarios || 0) + 150, 
           totalVisualizacoes: (countVisualizacoes || 0) + 1200, 
           totalCliques: (countCliques || 0) + 340,
         });
@@ -61,21 +60,21 @@ export const AnuncieGratis = () => {
     carregarMetricasPublicas();
   }, []);
 
-  // Função responsável por abrir o pop-up de login/cadastro do Header
+  // Função disparada ao clicar no botão de cadastro da página
   const abrirPopupCadastro = (e: React.MouseEvent<HTMLButtonElement | HTMLAnchorElement>) => {
     e.preventDefault();
     
-    // Método 1: Adiciona o parâmetro na URL. Se seu Modal monitora "?sign-up" ou "?auth", altere o texto abaixo
+    // Altera a rota incluindo os parâmetros necessários para ativar o pop-up na tela
     navigate("?auth=signup&mode=register");
 
-    // Método 2: Dispara um evento customizado global caso seu Header escute via window.addEventListener
+    // Dispara um evento customizado global caso seu modal intercepte ações via Window
     const event = new CustomEvent("openAuthModal", { detail: { view: "sign_up" } });
     window.dispatchEvent(event);
 
-    // Método 3: Força o clique no botão "Entrar" do Header se ele possuir uma ID ou classe identificadora
-    const botaoEntrarHeader = document.querySelector('[data-auth-trigger="true"]') || document.body.getAnimations();
-    if (botaoEntrarHeader instanceof HTMLElement) {
-      botaoEntrarHeader.click();
+    // Executa a busca pelo botão de gatilho do cabeçalho para simular o clique caso o parâmetro falhe
+    const bntTrigger = document.querySelector('[data-auth-trigger="true"]');
+    if (bntTrigger instanceof HTMLElement) {
+      bntTrigger.click();
     }
   };
 
@@ -95,7 +94,7 @@ export const AnuncieGratis = () => {
           </h1>
           
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Cadastre seu estabelecimento hoje mesmo sem pagar nada, ganhe visibilidade digital e seja encontrado por milhares de clientes na região.
+            Cadastre seu establishment hoje mesmo sem pagar nada, ganhe visibilidade digital e seja encontrado por milhares de clientes na região.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
@@ -216,7 +215,7 @@ export const AnuncieGratis = () => {
               </div>
               <h3 className="text-xl font-bold">Banners em Destaque</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Apareça no topo da página inicial e nas categorias mais buscadas. Garanta o primeiro contato visual de todo visitor que abrir o portal.
+                Apareça no topo da página inicial e nas categorias mais buscadas. Garanta o primeiro contato visual de todo visitante que abrir o portal.
               </p>
             </div>
             <div className="pt-6 mt-6 border-t flex items-center justify-between">
