@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   CheckCircle2, 
@@ -21,6 +22,7 @@ interface MetricasPublicas {
 }
 
 export const AnuncieGratis = () => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState<boolean>(true);
   const [metricas, setMetricas] = useState<MetricasPublicas>({
     totalUsuarios: 0,
@@ -59,6 +61,24 @@ export const AnuncieGratis = () => {
     carregarMetricasPublicas();
   }, []);
 
+  // Função responsável por abrir o pop-up de login/cadastro do Header
+  const abrirPopupCadastro = (e: React.MouseEvent<HTMLButtonElement | HTMLAnchorElement>) => {
+    e.preventDefault();
+    
+    // Método 1: Adiciona o parâmetro na URL. Se seu Modal monitora "?sign-up" ou "?auth", altere o texto abaixo
+    navigate("?auth=signup&mode=register");
+
+    // Método 2: Dispara um evento customizado global caso seu Header escute via window.addEventListener
+    const event = new CustomEvent("openAuthModal", { detail: { view: "sign_up" } });
+    window.dispatchEvent(event);
+
+    // Método 3: Força o clique no botão "Entrar" do Header se ele possuir uma ID ou classe identificadora
+    const botaoEntrarHeader = document.querySelector('[data-auth-trigger="true"]') || document.body.getAnimations();
+    if (botaoEntrarHeader instanceof HTMLElement) {
+      botaoEntrarHeader.click();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground antialiased selection:bg-blue-500/30">
       
@@ -79,13 +99,13 @@ export const AnuncieGratis = () => {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-            <a 
-              href="/cadastro-empresa" 
+            <button 
+              onClick={abrirPopupCadastro}
               className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-600/20 transition-all hover:-translate-y-0.5 group"
             >
               Cadastrar Minha Empresa Grátis
               <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
-            </a>
+            </button>
             <a 
               href="#conhecer-planos" 
               className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-muted hover:bg-muted/80 font-semibold rounded-xl border transition-all"
@@ -196,7 +216,7 @@ export const AnuncieGratis = () => {
               </div>
               <h3 className="text-xl font-bold">Banners em Destaque</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Apareça no topo da página inicial e nas categorias mais buscadas. Garanta o primeiro contato visual de todo visitante que abrir o portal.
+                Apareça no topo da página inicial e nas categorias mais buscadas. Garanta o primeiro contato visual de todo visitor que abrir o portal.
               </p>
             </div>
             <div className="pt-6 mt-6 border-t flex items-center justify-between">
@@ -253,12 +273,12 @@ export const AnuncieGratis = () => {
             Seus concorrentes podem já estar recebendo cliques neste exato momento. Comece de graça e decida se quer impulsionar depois.
           </p>
           <div className="pt-2">
-            <a 
-              href="/cadastro-empresa" 
+            <button 
+              onClick={abrirPopupCadastro}
               className="inline-flex items-center gap-2 px-8 py-4 bg-foreground text-background font-bold rounded-xl hover:bg-foreground/90 transition-all shadow-md"
             >
               Criar Meu Cadastro Comercial Agora
-            </a>
+            </button>
           </div>
         </div>
       </section>
