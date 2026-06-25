@@ -34,6 +34,7 @@ const CadastroLocal = lazy(() => import("./pages/CadastroLocal"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Configuracoes = lazy(() => import("./pages/Configuracoes"));
 const ContactPage = lazy(() => import("./pages/ContactPage").then(m => ({ default: m.ContactPage })));
+const AnuncieGratis = lazy(() => import("./pages/AnuncieGratis").then(m => ({ default: m.AnuncieGratis })));
 
 // Lazy load all admin pages
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
@@ -119,6 +120,7 @@ const App = () => {
               <Route path="help" element={<HelpCenter />} />
               <Route path="contact" element={<ContactPage />} />
               <Route path="privacy" element={<PrivacyPolicy />} />
+              <Route path="anuncie-gratis" element={<AnuncieGratis />} />
               <Route path="reclamacoes" element={<Reclamacoes />} />
               <Route path="reclamacoes/:id" element={<ReclamacaoDetalhes />} />
               <Route path="unauthorized" element={<UnauthorizedPage />} />
