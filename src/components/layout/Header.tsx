@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,6 +32,14 @@ export const Header = () => {
     markAsRead, 
     markAllAsRead 
   } = useNotifications();
+
+  // Monitora a URL para abrir o Modal automaticamente via link/parâmetros
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.get('auth') === 'signup' || searchParams.get('mode') === 'register') {
+      setAuthDialogOpen(true);
+    }
+  }, [location.search]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -262,6 +269,7 @@ export const Header = () => {
                   size="sm"
                   className="h-10 sm:h-12 lg:h-14 rounded-full px-3 sm:px-4 lg:px-6 bg-primary hover:bg-primary/90 shadow-md text-xs sm:text-sm lg:text-base flex-shrink-0"
                   data-tutorial="auth-button"
+                  data-auth-trigger="true"
                 >
                   Entrar
                 </Button>
