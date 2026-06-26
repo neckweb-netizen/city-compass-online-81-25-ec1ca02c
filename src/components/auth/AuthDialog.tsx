@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,9 +13,10 @@ import { Separator } from '@/components/ui/separator';
 interface AuthDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  defaultTab?: 'login' | 'register';
 }
 
-export const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
+export const AuthDialog = ({ open, onOpenChange, defaultTab = 'login' }: AuthDialogProps) => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -24,9 +24,20 @@ export const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  // Sincroniza o estado de login/cadastro com a aba solicitada ao abrir
+  useEffect(() => {
+    if (open) {
+      if (defaultTab === 'register') {
+        setIsLogin(false);
+      } else {
+        setIsLogin(true);
+      }
+    }
+  }, [open, defaultTab]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    loading(true);
 
     try {
       if (isLogin) {
