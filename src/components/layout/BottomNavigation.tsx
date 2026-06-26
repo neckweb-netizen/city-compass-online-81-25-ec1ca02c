@@ -108,7 +108,7 @@ export const BottomNavigation = () => {
   return (
     <>
       <div 
-        className="fixed bottom-0 left-0 right-0 bg-[#191325] border-t border-border/20 shadow-lg z-50 md:hidden"
+        className="fixed bottom-0 left-0 right-0 bg-[#191325] border-t border-border/20 shadow-lg z-50"
         data-tutorial="bottom-nav"
       >
         {/* Menu de ações flutuante */}
