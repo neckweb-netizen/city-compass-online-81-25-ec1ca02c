@@ -29,15 +29,30 @@ export const AuthDialog = ({ open, onOpenChange, defaultTab = 'login' }: AuthDia
     if (open) {
       if (defaultTab === 'register') {
         setIsLogin(false);
+
+        // Aguarda o modal renderizar na tela e força o clique no botão roxo "+ Cadastrar Agora"
+        setTimeout(() => {
+          const botoes = Array.from(document.querySelectorAll("button"));
+          const botaoCadastrarEmpresa = botoes.find(btn => 
+            btn.textContent?.trim().includes("Cadastrar Agora")
+          );
+          
+          if (botaoCadastrarEmpresa) {
+            botaoCadastrarEmpresa.click();
+            // Opcional: fecha este modal principal se o de empresas abrir por cima
+            onOpenChange(false);
+          }
+        }, 150);
+
       } else {
         setIsLogin(true);
       }
     }
-  }, [open, defaultTab]);
+  }, [open, defaultTab, onOpenChange]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    loading(true);
+    setLoading(true);
 
     try {
       if (isLogin) {
