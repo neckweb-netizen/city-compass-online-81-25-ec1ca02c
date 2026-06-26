@@ -22,6 +22,7 @@ export const Header = () => {
   const { user, profile, signOut } = useAuth();
   const { theme, setTheme } = useTheme();
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
+  const [authDialogDefaultTab, setAuthDialogDefaultTab] = useState<'login' | 'register'>('login');
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
@@ -33,10 +34,11 @@ export const Header = () => {
     markAllAsRead 
   } = useNotifications();
 
-  // Monitora a URL para abrir o Modal automaticamente via link/parâmetros
+  // Monitora a URL para abrir o Modal automaticamente na aba correta
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     if (searchParams.get('auth') === 'signup' || searchParams.get('mode') === 'register') {
+      setAuthDialogDefaultTab('register');
       setAuthDialogOpen(true);
     }
   }, [location.search]);
@@ -265,7 +267,10 @@ export const Header = () => {
                 </DropdownMenu>
               ) : (
                 <Button 
-                  onClick={() => setAuthDialogOpen(true)}
+                  onClick={() => {
+                    setAuthDialogDefaultTab('login');
+                    setAuthDialogOpen(true);
+                  }}
                   size="sm"
                   className="h-10 sm:h-12 lg:h-14 rounded-full px-3 sm:px-4 lg:px-6 bg-primary hover:bg-primary/90 shadow-md text-xs sm:text-sm lg:text-base flex-shrink-0"
                   data-tutorial="auth-button"
@@ -281,6 +286,7 @@ export const Header = () => {
         <AuthDialog 
           open={authDialogOpen} 
           onOpenChange={setAuthDialogOpen}
+          defaultTab={authDialogDefaultTab}
         />
       </header>
     </div>
