@@ -28,7 +28,7 @@ export default function App() {
     const verificarManutencao = async () => {
       try {
         const { data, error } = await supabase
-          .from('configuracoes_sistema' as any)
+          .from('configuracoes_sistema')
           .select('manutencao, mensagem_manutencao')
           .limit(1)
           .maybeSingle();
