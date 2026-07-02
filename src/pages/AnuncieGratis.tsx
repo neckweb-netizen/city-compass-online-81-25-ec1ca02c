@@ -94,7 +94,7 @@ export const AnuncieGratis = () => {
           </h1>
           
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Cadastre seu establishment hoje mesmo sem pagar nada, ganhe visibilidade digital e seja encontrado por milhares de clientes na região.
+            Cadastre seu estabelecimento hoje mesmo sem pagar nada, ganhe visibilidade digital e seja encontrado por milhares de clientes na região.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
