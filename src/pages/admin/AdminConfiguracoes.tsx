@@ -67,7 +67,11 @@ export const AdminConfiguracoes = () => {
             .single();
 
           if (insertError) throw insertError;
-          if (newData) setConfigId(newData.id);
+          if (newData) {
+            setConfigId(newData.id);
+            setManutencao(newData.manutencao ?? false);
+            setMensagemManutencao(newData.mensagem_manutencao ?? "O portal está passando por atualizações e voltará em breve.");
+          }
           return;
         }
 
@@ -115,14 +119,14 @@ export const AdminConfiguracoes = () => {
         updated_at: new Date().toISOString()
       };
 
-      // Se já temos o ID UUID salvo, inclui no payload para atualizar a mesma linha
+      // Se temos o ID UUID salvo do banco, passamos ele obrigatoriamente para forçar a substituição da mesma linha
       if (configId) {
         payload.id = configId;
       }
 
       const { error } = await supabase
         .from("configuracoes_sistema")
-        .upsert(payload);
+        .upsert(payload, { onConflict: 'id' }); // Força explicitamente a resolução de conflito no ID
 
       if (error) throw error;
       toast.success("Painel de configurações salvo e publicado com sucesso!");
