@@ -32,20 +32,33 @@ const Index = () => {
   useEffect(() => {
     const verificarManutencao = async () => {
       try {
-        const { data, error } = await supabase
+        // timeout de segurança de 3 segundos para não prender o usuário se o supabase falhar
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Timeout Supabase')), 3000)
+        );
+
+        const fetchPromise = supabase
           .from('configuracoes_sistema' as any)
           .select('manutencao, mensagem_manutencao')
           .limit(1)
           .maybeSingle();
+
+        // Executa a busca ou falha caso demore demais
+        const { data, error }: any = await Promise.race([fetchPromise, timeoutPromise]).catch(() => ({ data: null, error: null }));
 
         if (error) throw error;
 
         if (data) {
           setIsMaintenance(data.manutencao ?? false);
           setMaintenanceMessage(data.mensagem_manutencao ?? 'O portal está passando por atualizações e voltará em breve.');
+        } else {
+          // Se não houver dados, o site padrão precisa rodar livremente
+          setIsMaintenance(false);
         }
       } catch (error) {
         console.error('Erro ao buscar status de manutenção:', error);
+        // Fallback de segurança: Se der erro na tabela, deixa o site aberto
+        setIsMaintenance(false);
       } finally {
         setLoadingConfig(false);
       }
@@ -60,7 +73,7 @@ const Index = () => {
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'configuracoes_sistema' },
         (payload) => {
-          if (payload.new) {
+          if (payload && payload.new) {
             setIsMaintenance(payload.new.manutencao ?? false);
             setMaintenanceMessage(payload.new.mensagem_manutencao ?? 'O portal está passando por atualizações.');
           }
@@ -77,6 +90,7 @@ const Index = () => {
     setActiveTab(tabFromUrl);
   }, [tabFromUrl]);
 
+  // Se estiver carregando as configurações da tabela, mostra o loading rápido
   if (loadingConfig) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0F0A19] text-white">
