@@ -1,174 +1,110 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { ThemeProvider } from "@/components/ui/theme-provider";
-import { PWAInstallPrompt } from "@/components/pwa/PWAInstallPrompt";
-import { SecurityHeaders } from "@/components/security/SecurityHeaders";
-import { lazy, Suspense } from "react";
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { AlertTriangle, Hammer } from 'lucide-react';
 
-// Import critical pages immediately
-import Index from "./pages/Index";
+// Importações das suas páginas (mantenha as suas importações originais aqui)
+import Index from './pages/Index';
+import { AdminLayout } from './components/admin/AdminLayout';
+import { AdminConfiguracoes } from './pages/admin/AdminConfiguracoes';
 
-// Lazy load non-critical pages
-const Search = lazy(() => import("./pages/Search"));
-const Locais = lazy(() => import("./pages/Locais"));
-const LocalProfile = lazy(() => import("./pages/LocalProfile"));
-const Eventos = lazy(() => import("./pages/Eventos"));
-const EventoPage = lazy(() => import("./pages/EventoPage"));
-const CanalInformativo = lazy(() => import("./pages/CanalInformativo"));
-const Oportunidades = lazy(() => import("./pages/Oportunidades"));
-const VagasEmprego = lazy(() => import("./pages/VagasEmprego"));
-const ServicosAutonomos = lazy(() => import("./pages/ServicosAutonomos"));
-const AnunciarServico = lazy(() => import("./pages/AnunciarServico"));
-const Radios = lazy(() => import("./pages/Radios"));
-const Categorias = lazy(() => import("./pages/Categorias"));
-const CategoriaLocais = lazy(() => import("./pages/CategoriaLocais"));
-const HelpCenter = lazy(() => import("./pages/HelpCenter"));
-const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
-const LocalDashboard = lazy(() => import("./pages/LocalDashboard"));
-const NotFound = lazy(() => import("./pages/NotFound"));
-const UnauthorizedPage = lazy(() => import("./pages/UnauthorizedPage"));
-const Busca = lazy(() => import("./pages/Busca"));
-const CadastroLocal = lazy(() => import("./pages/CadastroLocal"));
-const Profile = lazy(() => import("./pages/Profile"));
-const Configuracoes = lazy(() => import("./pages/Configuracoes"));
-const ContactPage = lazy(() => import("./pages/ContactPage").then(m => ({ default: m.ContactPage })));
-const AnuncieGratis = lazy(() => import("./pages/AnuncieGratis").then(m => ({ default: m.AnuncieGratis })));
+export default function App() {
+  const [isMaintenance, setIsMaintenance] = useState(false);
+  const [maintenanceMessage, setMaintenanceMessage] = useState('');
+  const [loadingConfig, setLoadingConfig] = useState(true);
 
-// Lazy load all admin pages
-const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
-const AdminLocais = lazy(() => import("./pages/admin/AdminLocais"));
-const AdminLocaisPendentes = lazy(() => import("./pages/admin/AdminLocaisPendentes"));
-const AdminLocalAdmins = lazy(() => import("./pages/admin/AdminLocalAdmins"));
-const AdminEventos = lazy(() => import("./pages/admin/AdminEventos").then(m => ({ default: m.AdminEventos })));
-const AdminCidades = lazy(() => import("./pages/admin/AdminCidades").then(m => ({ default: m.AdminCidades })));
-const AdminCategorias = lazy(() => import("./pages/admin/AdminCategorias").then(m => ({ default: m.AdminCategorias })));
-const AdminUsuarios = lazy(() => import("./pages/admin/AdminUsuarios").then(m => ({ default: m.AdminUsuarios })));
-const AdminBanners = lazy(() => import("./pages/admin/AdminBanners").then(m => ({ default: m.AdminBanners })));
-const AdminCanalInformativo = lazy(() => import("./pages/admin/AdminCanalInformativo").then(m => ({ default: m.AdminCanalInformativo })));
-const AdminStories = lazy(() => import("./pages/admin/AdminStories").then(m => ({ default: m.AdminStories })));
-const AdminCupons = lazy(() => import("./pages/admin/AdminCupons").then(m => ({ default: m.AdminCupons })));
-const AdminPlanos = lazy(() => import("./pages/admin/AdminPlanos").then(m => ({ default: m.AdminPlanos })));
-const AdminAvaliacoes = lazy(() => import("./pages/admin/AdminAvaliacoes").then(m => ({ default: m.AdminAvaliacoes })));
-const AdminEstatisticas = lazy(() => import("./pages/admin/AdminEstatisticas").then(m => ({ default: m.AdminEstatisticas })));
-const AdminConfiguracoes = lazy(() => import("./pages/admin/AdminConfiguracoes").then(m => ({ default: m.AdminConfiguracoes })));
-const AdminHomeSections = lazy(() => import("./pages/admin/AdminHomeSections").then(m => ({ default: m.AdminHomeSections })));
-const AdminMenu = lazy(() => import("./pages/admin/AdminMenu").then(m => ({ default: m.AdminMenu })));
-const AdminAvisos = lazy(() => import("./pages/admin/AdminAvisos").then(m => ({ default: m.AdminAvisos })));
-const AdminLogs = lazy(() => import("./pages/admin/AdminLogs").then(m => ({ default: m.AdminLogs })));
-const AdminSecurity = lazy(() => import("./pages/admin/AdminSecurity").then(m => ({ default: m.AdminSecurity })));
-const AdminDiagnostic = lazy(() => import("./pages/AdminDiagnostic"));
-const AdminVagas = lazy(() => import("./pages/admin/AdminVagas").then(m => ({ default: m.AdminVagas })));
-const AdminServicos = lazy(() => import("./pages/admin/AdminServicos").then(m => ({ default: m.AdminServicos })));
-const AdminLugaresPublicos = lazy(() => import("./pages/admin/AdminLugaresPublicos"));
-const AdminEnquetes = lazy(() => import("./pages/admin/AdminEnquetes"));
-const Reclamacoes = lazy(() => import("./pages/ProblemasCidade"));
-const ReclamacaoDetalhes = lazy(() => import("./pages/ProblemaDetalhes"));
-const AdminReclamacoes = lazy(() => import("./pages/admin/AdminProblemasCidade"));
-const AdminComentariosProblema = lazy(() => import("./pages/admin/AdminComentariosProblema"));
-const ShortUrlRedirect = lazy(() => import("./pages/ShortUrlRedirect"));
+  // Verifica o status de manutenção no Supabase ao carregar o app
+  useEffect(() => {
+    const verificarManutencao = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('configuracoes_sistema')
+          .select('manutencao, mensagem_manutencao')
+          .limit(1)
+          .maybeSingle();
 
-import { MainLayout } from "./components/layout/MainLayout";
-import { PublicLayout } from "./components/layout/PublicLayout";
-import { AdminLayout } from "./components/admin/AdminLayout";
-import { RoutePreloader } from "./components/layout/RoutePreloader";
+        if (error) throw error;
 
-// Optimized loading component with minimal DOM and skeleton
-const LoadingFallback = () => (
-  <div className="min-h-screen bg-background flex items-center justify-center">
-    <div className="flex flex-col items-center gap-4">
-      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      <div className="text-sm text-muted-foreground">Carregando...</div>
-    </div>
-  </div>
-);
+        if (data) {
+          setIsMaintenance(data.manutencao ?? false);
+          setMaintenanceMessage(data.mensagem_manutencao ?? 'O portal está passando por atualizações e voltará em breve.');
+        }
+      } catch (error) {
+        console.error('Erro ao verificar status de manutenção:', error);
+      } finally {
+        setLoadingConfig(false);
+      }
+    };
 
-const App = () => {
+    verificarManutencao();
+
+    // Opcional: Escuta mudanças em tempo real no banco de dados
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'configuracoes_sistema' },
+        (payload) => {
+          if (payload.new) {
+            setIsMaintenance(payload.new.manutencao ?? false);
+            setMaintenanceMessage(payload.new.mensagem_manutencao ?? 'O portal está passando por atualizações.');
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  if (loadingConfig) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#191325] text-white">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-500"></div>
+      </div>
+    );
+  }
+
+  // Se o modo manutenção estiver ativo, renderiza a tela de bloqueio
+  // ATENÇÃO: Permitimos o acesso às rotas que começam com "/admin" para você conseguir entrar e desativar!
+  if (isMaintenance && window.location.pathname.startsWith('/admin') === false) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#191325] text-white p-6 text-center">
+        <div className="bg-[#231b34] p-8 rounded-2xl border border-purple-900/40 shadow-2xl max-w-md space-y-6">
+          <div className="w-16 h-16 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center mx-auto border border-amber-500/20">
+            <Hammer className="h-8 w-8 animate-bounce" />
+          </div>
+          
+          <div className="space-y-2">
+            <h1 className="text-2xl font-black tracking-tight">Portal em Manutenção</h1>
+            <p className="text-gray-400 text-sm">
+              {maintenanceMessage}
+            </p>
+          </div>
+
+          <div className="pt-2 text-xs text-purple-400/60 font-medium">
+            Saj Tem • Santo Antônio de Jesus
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <ThemeProvider defaultTheme="light">
-      <TooltipProvider>
-        <SecurityHeaders />
-        <PWAInstallPrompt />
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <RoutePreloader />
-          <Suspense fallback={<LoadingFallback />}>
-          <Routes>
-            <Route path="/" element={<PublicLayout />}>
-              <Route index element={<Index />} />
-              <Route path="profile" element={<Profile />} />
-              <Route path="configuracoes" element={<Configuracoes />} />
-              <Route path="busca" element={<Busca />} />
-              <Route path="search" element={<Search />} />
-              <Route path="locais" element={<Locais />} />
-              <Route path="categorias" element={<Categorias />} />
-              <Route path="locais/:slug" element={<LocalProfile />} />
-              <Route path="local/:slug" element={<LocalProfile />} />
-              <Route path="cadastro-local" element={<CadastroLocal />} />
-              <Route path="eventos" element={<Eventos />} />
-              <Route path="eventos/:id" element={<EventoPage />} />
-              <Route path="evento/:id" element={<EventoPage />} />
-              <Route path="canal-informativo" element={<CanalInformativo />} />
-              <Route path="oportunidades" element={<Oportunidades />} />
-              <Route path="oportunidades/vagas" element={<VagasEmprego />} />
-              <Route path="oportunidades/servicos" element={<ServicosAutonomos />} />
-              <Route path="oportunidades/anunciar-servico" element={<AnunciarServico />} />
-              <Route path="radios" element={<Radios />} />
-              <Route path="categoria/:slug" element={<CategoriaLocais />} />
-              <Route path="help" element={<HelpCenter />} />
-              <Route path="contact" element={<ContactPage />} />
-              <Route path="privacy" element={<PrivacyPolicy />} />
-              <Route path="anuncie-gratis" element={<AnuncieGratis />} />
-              <Route path="reclamacoes" element={<Reclamacoes />} />
-              <Route path="reclamacoes/:id" element={<ReclamacaoDetalhes />} />
-              <Route path="unauthorized" element={<UnauthorizedPage />} />
-              <Route path=":shortCode" element={<ShortUrlRedirect />} />
-            </Route>
-            
-            <Route path="/empresa-dashboard" element={<MainLayout />}>
-              <Route index element={<LocalDashboard />} />
-            </Route>
+    <BrowserRouter>
+      <Routes>
+        {/* Rotas Públicas do seu Site */}
+        <Route path="/" element={<Index />} />
+        
+        {/* Exemplo de Rota do Painel Admin */}
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route path="configuracoes" element={<AdminConfiguracoes />} />
+        </Route>
 
-            <Route path="/admin" element={<AdminLayout />}>
-              <Route index element={<AdminDashboard />} />
-              <Route path="locais" element={<AdminLocais />} />
-              <Route path="locais-pendentes" element={<AdminLocaisPendentes />} />
-              <Route path="local-admins" element={<AdminLocalAdmins />} />
-              <Route path="eventos" element={<AdminEventos />} />
-              <Route path="cidades" element={<AdminCidades />} />
-              <Route path="categorias" element={<AdminCategorias />} />
-              <Route path="usuarios" element={<AdminUsuarios />} />
-              <Route path="banners" element={<AdminBanners />} />
-              <Route path="canal-informativo" element={<AdminCanalInformativo />} />
-              <Route path="stories" element={<AdminStories />} />
-              <Route path="cupons" element={<AdminCupons />} />
-              <Route path="planos" element={<AdminPlanos />} />
-              <Route path="avaliacoes" element={<AdminAvaliacoes />} />
-              <Route path="estatisticas" element={<AdminEstatisticas />} />
-              <Route path="configuracoes" element={<AdminConfiguracoes />} />
-              <Route path="home-sections" element={<AdminHomeSections />} />
-              <Route path="menu" element={<AdminMenu />} />
-              <Route path="avisos" element={<AdminAvisos />} />
-              <Route path="logs" element={<AdminLogs />} />
-              <Route path="security" element={<AdminSecurity />} />
-              <Route path="diagnostic" element={<AdminDiagnostic />} />
-              <Route path="vagas" element={<AdminVagas />} />
-              <Route path="servicos" element={<AdminServicos />} />
-              <Route path="lugares-publicos" element={<AdminLugaresPublicos />} />
-              <Route path="enquetes" element={<AdminEnquetes />} />
-              <Route path="reclamacoes" element={<AdminReclamacoes />} />
-              <Route path="comentarios-problema" element={<AdminComentariosProblema />} />
-            </Route>
-
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-          </Suspense>
-        </BrowserRouter>
-      </TooltipProvider>
-    </ThemeProvider>
+        {/* Fallback de rota não encontrada */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
-};
-
-export default App;
+}
