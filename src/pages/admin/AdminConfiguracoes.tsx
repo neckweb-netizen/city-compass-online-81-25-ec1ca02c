@@ -24,7 +24,7 @@ export const AdminConfiguracoes = () => {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   
-  // Guarda o UUID real gerado pelo banco para usar no salvamento (upsert)
+  // Guarda o UUID real recuperado para travar a atualização na mesma linha
   const [configId, setConfigId] = useState<string | null>(null);
 
   // 1. Estado de Manutenção
@@ -45,23 +45,25 @@ export const AdminConfiguracoes = () => {
   const [whatsappSuporte, setWhatsappSuporte] = useState("");
   const [linkTermos, setLinkTermos] = useState("");
 
-  // Carrega as configurações dinamicamente capturando a primeira linha (limit 1)
+  // Carrega as configurações capturando a primeira linha existente no banco
   useEffect(() => {
     const buscarConfiguracoes = async () => {
       try {
         setFetching(true);
+        
+        // Buscamos sem inferência de tipo rígida para evitar erros do cache do Lovable/Supabase
         const { data, error } = await supabase
-          .from("configuracoes_sistema")
+          .from("configuracoes_sistema" as any)
           .select("*")
           .limit(1)
           .maybeSingle();
 
         if (error) throw error;
 
-        // Se a tabela estiver totalmente vazia, cria o primeiro registro
+        // Se a tabela estiver vazia no primeiro carregamento, cria o registro inicial
         if (!data) {
           const { data: newData, error: insertError } = await supabase
-            .from("configuracoes_sistema")
+            .from("configuracoes_sistema" as any)
             .insert([{}])
             .select()
             .single();
@@ -99,7 +101,7 @@ export const AdminConfiguracoes = () => {
     buscarConfiguracoes();
   }, []);
 
-  // Atualiza os dados usando o UUID correto recuperado do banco
+  // Força o salvamento limpando os tipos estáticos locais do cliente Supabase
   const handleSalvarConfiguracoes = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -119,14 +121,15 @@ export const AdminConfiguracoes = () => {
         updated_at: new Date().toISOString()
       };
 
-      // Se temos o ID UUID salvo do banco, passamos ele obrigatoriamente para forçar a substituição da mesma linha
+      // Passamos o UUID exato capturado no fetch para o banco saber qual linha atualizar
       if (configId) {
         payload.id = configId;
       }
 
+      // O uso de ("configuracoes_sistema" as any) ignora travas desatualizadas do types.ts
       const { error } = await supabase
-        .from("configuracoes_sistema")
-        .upsert(payload, { onConflict: 'id' }); // Força explicitamente a resolução de conflito no ID
+        .from("configuracoes_sistema" as any)
+        .upsert(payload, { onConflict: 'id' });
 
       if (error) throw error;
       toast.success("Painel de configurações salvo e publicado com sucesso!");
