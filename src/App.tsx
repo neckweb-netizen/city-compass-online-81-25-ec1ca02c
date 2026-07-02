@@ -248,4 +248,77 @@ const App = () => {
           <Routes>
             <Route path="/" element={<PublicLayout />}>
               <Route index element={<Index />} />
-              <Route
+              <Route path="profile" element={<Profile />} />
+              <Route path="configuracoes" element={<Configuracoes />} />
+              <Route path="busca" element={<Busca />} />
+              <Route path="search" element={<Search />} />
+              <Route path="locais" element={<Locais />} />
+              <Route path="categorias" element={<Categorias />} />
+              <Route path="locais/:slug" element={<LocalProfile />} />
+              <Route path="local/:slug" element={<LocalProfile />} />
+              <Route path="cadastro-local" element={<CadastroLocal />} />
+              <Route path="eventos" element={<Eventos />} />
+              <Route path="eventos/:id" element={<EventoPage />} />
+              <Route path="evento/:id" element={<EventoPage />} />
+              <Route path="canal-informativo" element={<CanalInformativo />} />
+              <Route path="oportunidades" element={<Oportunidades />} />
+              <Route path="oportunidades/vagas" element={<VagasEmprego />} />
+              <Route path="oportunidades/servicos" element={<ServicosAutonomos />} />
+              <Route path="oportunidades/anunciar-servico" element={<AnunciarServico />} />
+              <Route path="radios" element={<Radios />} />
+              <Route path="categoria/:slug" element={<CategoriaLocais />} />
+              <Route path="help" element={<HelpCenter />} />
+              <Route path="contact" element={<ContactPage />} />
+              <Route path="privacy" element={<PrivacyPolicy />} />
+              <Route path="anuncie-gratis" element={<AnuncieGratis />} />
+              <Route path="reclamacoes" element={<Reclamacoes />} />
+              <Route path="reclamacoes/:id" element={<ReclamacaoDetalhes />} />
+              <Route path="unauthorized" element={<UnauthorizedPage />} />
+              <Route path=":shortCode" element={<ShortUrlRedirect />} />
+            </Route>
+            
+            <Route path="/empresa-dashboard" element={<MainLayout />}>
+              <Route index element={<LocalDashboard />} />
+            </Route>
+
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<AdminDashboard />} />
+              <Route path="locais" element={<AdminLocais />} />
+              <Route path="locais-pendentes" element={<AdminLocaisPendentes />} />
+              <Route path="local-admins" element={<AdminLocalAdmins />} />
+              <Route path="eventos" element={<AdminEventos />} />
+              <Route path="cidades" element={<AdminCidades />} />
+              <Route path="categorias" element={<AdminCategorias />} />
+              <Route path="usuarios" element={<AdminUsuarios />} />
+              <Route path="banners" element={<AdminBanners />} />
+              <Route path="canal-informativo" element={<AdminCanalInformativo />} />
+              <Route path="stories" element={<AdminStories />} />
+              <Route path="cupons" element={<AdminCupons />} />
+              <Route path="planos" element={<AdminPlanos />} />
+              <Route path="avaliacoes" element={<AdminAvaliacoes />} />
+              <Route path="estatisticas" element={<AdminEstatisticas />} />
+              <Route path="configuracoes" element={<AdminConfiguracoes />} />
+              <Route path="home-sections" element={<AdminHomeSections />} />
+              <Route path="menu" element={<AdminMenu />} />
+              <Route path="avisos" element={<AdminAvisos />} />
+              <Route path="logs" element={<AdminLogs />} />
+              <Route path="security" element={<AdminSecurity />} />
+              <Route path="diagnostic" element={<AdminDiagnostic />} />
+              <Route path="vagas" element={<AdminVagas />} />
+              <Route path="servicos" element={<AdminServicos />} />
+              <Route path="lugares-publicos" element={<AdminLugaresPublicos />} />
+              <Route path="enquetes" element={<AdminEnquetes />} />
+              <Route path="reclamacoes" element={<AdminReclamacoes />} />
+              <Route path="comentarios-problema" element={<AdminComentariosProblema />} />
+            </Route>
+
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+          </Suspense>
+        </BrowserRouter>
+      </TooltipProvider>
+    </ThemeProvider>
+  );
+};
+
+export default App;
