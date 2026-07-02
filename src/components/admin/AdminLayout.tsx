@@ -1,26 +1,19 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLocation, Navigate, Outlet } from 'react-router-dom';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AdminSidebar } from './AdminSidebar';
 import { Button } from '@/components/ui/button';
-import { LogOut, User } from 'lucide-react';
+import { LogOut, User, Sun, Moon } from 'lucide-react';
 import { useTheme } from '@/components/ui/theme-provider';
 
 export const AdminLayout = () => {
   const { user, profile, loading, signOut } = useAuth();
   const location = useLocation();
   const [activeSection, setActiveSection] = useState('dashboard');
-  const { setTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
 
-  // Force light mode in admin section and disable dark mode
-  useEffect(() => {
-    setTheme('light');
-    // Remove dark class from document root to ensure light mode
-    document.documentElement.classList.remove('dark');
-    document.documentElement.classList.add('light');
-  }, [setTheme]);
+  // Removido o efeito antigo que forçava o light mode e limpava a classe dark
 
   useEffect(() => {
     console.log('📍 Admin route changed:', location.pathname);
@@ -48,7 +41,7 @@ export const AdminLayout = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
           <p className="text-lg font-medium">Carregando painel administrativo...</p>
@@ -75,16 +68,31 @@ export const AdminLayout = () => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-white">
+      <div className="min-h-screen flex w-full bg-background text-foreground transition-colors duration-200">
         <AdminSidebar activeSection={activeSection} onSectionChange={setActiveSection} />
-        <main className="flex-1 bg-white">
-          <header className="h-16 border-b flex items-center px-6 bg-white">
+        <main className="flex-1 bg-background text-foreground">
+          <header className="h-16 border-b flex items-center px-6 bg-card text-card-foreground border-border shadow-sm">
             <div className="flex items-center gap-4">
               <SidebarTrigger />
               <h1 className="text-xl font-semibold text-foreground">Painel Administrativo</h1>
             </div>
             
             <div className="ml-auto flex items-center gap-4">
+              {/* Botão Seletor de Modo Escuro / Modo Claro integrado ao Header Administrativo */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+                className="h-10 w-10 rounded-full p-0 text-muted-foreground hover:text-foreground"
+                title={theme === 'dark' ? 'Ativar Modo Claro' : 'Ativar Modo Escuro'}
+              >
+                {theme === 'light' ? (
+                  <Moon className="h-5 w-5" />
+                ) : (
+                  <Sun className="h-5 w-5 text-amber-400" />
+                )}
+              </Button>
+
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <User className="w-4 h-4" />
                 <div className="text-right">
@@ -104,7 +112,7 @@ export const AdminLayout = () => {
             </div>
           </header>
           
-          <div className="p-6">
+          <div className="p-6 bg-background text-foreground">
             <Outlet />
           </div>
         </main>
