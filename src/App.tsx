@@ -148,7 +148,7 @@ export default function App() {
                 A nossa equipa comercial continua a registar novas empresas localmente sem interrupções.
               </p>
               <a 
-                href="https://wa.me/5575999999999" 
+                href="https://wa.me/5575981229904" 
                 target="_blank" 
                 rel="noreferrer" 
                 className="inline-flex items-center gap-1 text-xs font-bold text-purple-400 hover:text-purple-300 transition-colors group"
