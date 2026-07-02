@@ -1,221 +1,282 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Sliders, 
-  Coins, 
-  ShieldCheck, 
-  Map, 
-  Smartphone, 
-  BellRing, 
+  Search, 
+  ShieldAlert, 
+  Code, 
   Save, 
-  Percent, 
-  Layers, 
-  Image, 
+  Globe, 
   FileText,
-  HelpCircle
+  HelpCircle,
+  AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export const AdminConfiguracoes = () => {
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
+  
+  // Guarda o UUID real gerado pelo banco para usar no salvamento (upsert)
+  const [configId, setConfigId] = useState<string | null>(null);
 
-  // Estados Simulados para controle das Configurações do Sistema
-  const [nomeSistema, setNomeSistema] = useState("Saj Tem");
-  const [cidadeBase, setCidadeBase] = useState("Santo Antônio de Jesus");
-  const [estadoBase, setEstadoBase] = useState("BA");
+  // 1. Estado de Manutenção
   const [manutencao, setManutencao] = useState(false);
-  const [aprovacaoAutomatica, setAprovacaoAutomatica] = useState(false);
+  const [mensagemManutencao, setMensagemManutencao] = useState("");
 
-  // Estados Simulados de Monetização e Valores
-  const [valorPlanoPremium, setValorPlanoPremium] = useState("49.90");
-  const [valorBannerTopo, setValorBannerTopo] = useState("89.90");
-  const [valorCupomDestaque, setValorCupomDestaque] = useState("19.90");
-  const [comissaoProdutos, setComissaoProdutos] = useState("10");
+  // 2. Estados de SEO Avançado
+  const [seoTitulo, setSeoTitulo] = useState("");
+  const [seoDescricao, setSeoDescricao] = useState("");
+  const [seoTags, setSeoTags] = useState("");
 
-  // Estados de Integrações e APIs
-  const [whatsappSuporte, setWhatsappSuporte] = useState("75999999999");
-  const [linkTermos, setLinkTermos] = useState("https://sajtem.vercel.app/privacy");
+  // 3. Estados de Rastreamento & Scripts
+  const [googleAnalyticsId, setGoogleAnalyticsId] = useState("");
+  const [metaPixelId, setMetaPixelId] = useState("");
 
-  const handleSalvarConfiguracoes = (e: React.FormEvent) => {
+  // 4. Estados de Rodapé & Links
+  const [textoRodape, setTextoRodape] = useState("");
+  const [whatsappSuporte, setWhatsappSuporte] = useState("");
+  const [linkTermos, setLinkTermos] = useState("");
+
+  // Carrega as configurações dinamicamente capturando a primeira linha (limit 1)
+  useEffect(() => {
+    const buscarConfiguracoes = async () => {
+      try {
+        setFetching(true);
+        const { data, error } = await supabase
+          .from("configuracoes_sistema")
+          .select("*")
+          .limit(1)
+          .maybeSingle();
+
+        if (error) throw error;
+
+        // Se a tabela estiver totalmente vazia, cria o primeiro registro
+        if (!data) {
+          const { data: newData, error: insertError } = await supabase
+            .from("configuracoes_sistema")
+            .insert([{}])
+            .select()
+            .single();
+
+          if (insertError) throw insertError;
+          if (newData) setConfigId(newData.id);
+          return;
+        }
+
+        if (data) {
+          setConfigId(data.id);
+          setManutencao(data.manutencao ?? false);
+          setMensagemManutencao(data.mensagem_manutencao ?? "O portal está passando por atualizações e voltará em breve.");
+          setSeoTitulo(data.seo_titulo ?? "Saj Tem - O Maior Guia Comercial de Santo Antônio de Jesus");
+          setSeoDescricao(data.seo_descricao ?? "Encontre lojas, prestadores de serviço e utilidades em Santo Antônio de Jesus.");
+          setSeoTags(data.seo_tags ?? "guia comercial, santo antonio de jesus");
+          setGoogleAnalyticsId(data.google_analytics_id ?? "");
+          setMetaPixelId(data.meta_pixel_id ?? "");
+          setTextoRodape(data.texto_rodape ?? "© 2026 Saj Tem. Todos os direitos reservados.");
+          setWhatsappSuporte(data.whatsapp_suporte ?? "75999999999");
+          setLinkTermos(data.link_termos ?? "https://sajtem.vercel.app/privacy");
+        }
+      } catch (error: any) {
+        console.error("Erro ao carregar configurações do Supabase:", error);
+        toast.error("Não foi possível sincronizar as configurações com o servidor.");
+      } finally {
+        setFetching(false);
+      }
+    };
+
+    buscarConfiguracoes();
+  }, []);
+
+  // Atualiza os dados usando o UUID correto recuperado do banco
+  const handleSalvarConfiguracoes = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     
-    setTimeout(() => {
+    try {
+      const payload: any = {
+        manutencao: manutencao,
+        mensagem_manutencao: mensagemManutencao,
+        seo_titulo: seoTitulo,
+        seo_descricao: seoDescricao,
+        seo_tags: seoTags,
+        google_analytics_id: googleAnalyticsId,
+        meta_pixel_id: metaPixelId,
+        texto_rodape: textoRodape,
+        whatsapp_suporte: whatsappSuporte,
+        link_termos: linkTermos,
+        updated_at: new Date().toISOString()
+      };
+
+      // Se já temos o ID UUID salvo, inclui no payload para atualizar a mesma linha
+      if (configId) {
+        payload.id = configId;
+      }
+
+      const { error } = await supabase
+        .from("configuracoes_sistema")
+        .upsert(payload);
+
+      if (error) throw error;
+      toast.success("Painel de configurações salvo e publicado com sucesso!");
+    } catch (error: any) {
+      console.error("Erro ao salvar dados no Supabase:", error);
+      toast.error(error.message || "Ocorreu um erro ao atualizar os registros.");
+    } finally {
       setLoading(false);
-      toast.success("Todas as configurações foram sincronizadas com sucesso!");
-    }, 800);
+    }
   };
+
+  if (fetching) {
+    return (
+      <div className="h-96 flex items-center justify-center text-foreground bg-background">
+        <div className="text-center space-y-3">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mx-auto"></div>
+          <p className="text-sm text-muted-foreground">Buscando variáveis operacionais no Supabase...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-12 text-foreground">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight">Configurações Avançadas</h1>
-          <p className="text-muted-foreground">Gerencie o comportamento do portal, valores de planos, taxas de anúncios e chaves operacionais.</p>
+          <h1 className="text-3xl font-extrabold tracking-tight">Configurações Gerais do Sistema</h1>
+          <p className="text-muted-foreground">Mapeamento de metadados de indexação SEO, controle de tráfego, scripts de pixel e travas de manutenção.</p>
         </div>
         <Button onClick={handleSalvarConfiguracoes} disabled={loading} className="gap-2 shadow-lg shadow-primary/10">
           <Save className="h-4 w-4" />
-          {loading ? "Salvando..." : "Salvar Alterações"}
+          {loading ? "Salvando..." : "Salvar Configurações"}
         </Button>
       </div>
 
       <Separator />
 
-      <Tabs defaultValue="geral" className="w-full space-y-6">
+      <Tabs defaultValue="seo" className="w-full space-y-6">
         <TabsList className="bg-card border w-full justify-start h-12 p-1 rounded-xl overflow-x-auto gap-1">
-          <TabsTrigger value="geral" className="gap-2 h-10 rounded-lg"><Sliders className="h-4 w-4" /> Geral do App</TabsTrigger>
-          <TabsTrigger value="monetizacao" className="gap-2 h-10 rounded-lg"><Coins className="h-4 w-4" /> Financeiro & Anúncios</TabsTrigger>
-          <TabsTrigger value="localizacao" className="gap-2 h-10 rounded-lg"><Map className="h-4 w-4" /> Município & Filtros</TabsTrigger>
-          <TabsTrigger value="notificacoes" className="gap-2 h-10 rounded-lg"><BellRing className="h-4 w-4" /> Alertas & Gateways</TabsTrigger>
+          <TabsTrigger value="seo" className="gap-2 h-10 rounded-lg"><Search className="h-4 w-4" /> SEO & Indexação</TabsTrigger>
+          <TabsTrigger value="manutencao" className="gap-2 h-10 rounded-lg"><ShieldAlert className="h-4 w-4" /> Modo Manutenção</TabsTrigger>
+          <TabsTrigger value="scripts" className="gap-2 h-10 rounded-lg"><Code className="h-4 w-4" /> Scripts & Analytics</TabsTrigger>
+          <TabsTrigger value="layout" className="gap-2 h-10 rounded-lg"><Globe className="h-4 w-4" /> Rodapé & Suporte</TabsTrigger>
         </TabsList>
 
-        {/* ABA 1: CONFIGURAÇÕES GERAIS */}
-        <TabsContent value="geral" className="space-y-6 focus-visible:outline-none focus-visible:ring-0">
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="bg-card border rounded-2xl p-6 space-y-4 shadow-sm">
-              <h3 className="font-bold text-lg flex items-center gap-2 border-b pb-3"><Smartphone className="h-5 w-5 text-primary" /> Identidade do Portal</h3>
-              
-              <div className="space-y-2">
-                <Label htmlFor="nomeApp">Nome da Plataforma</Label>
-                <Input id="nomeApp" value={nomeSistema} onChange={(e) => setNomeSistema(e.target.value)} />
+        {/* ABA 1: SEO E METADADOS DO GOOGLE */}
+        <TabsContent value="seo" className="space-y-6 focus-visible:outline-none focus-visible:ring-0">
+          <div className="bg-card border rounded-2xl p-6 space-y-4 shadow-sm">
+            <div className="flex items-center gap-2 border-b pb-3">
+              <Search className="h-5 w-5 text-primary" />
+              <div>
+                <h3 className="font-bold text-lg">Otimização de Motores de Busca (SEO)</h3>
+                <p className="text-xs text-muted-foreground">Controle as meta-tags injetadas no cabeçalho do site para melhorar o ranqueamento orgânico no Google.</p>
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="whatsapp">WhatsApp de Suporte Técnico</Label>
-                <Input id="whatsapp" value={whatsappSuporte} onChange={(e) => setWhatsappSuporte(e.target.value)} placeholder="DDD + Número" />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="urlTermos">Link dos Termos de Uso e Privacidade</Label>
-                <Input id="urlTermos" value={linkTermos} onChange={(e) => setLinkTermos(e.target.value)} />
-              </div>
-            </div>
-
-            <div className="bg-card border rounded-2xl p-6 space-y-6 shadow-sm">
-              <h3 className="font-bold text-lg flex items-center gap-2 border-b pb-3"><ShieldCheck className="h-5 w-5 text-amber-500" /> Moderação & Regras de Negócio</h3>
-              
-              <div className="flex items-center justify-between rounded-xl border p-4 bg-muted/30">
-                <div className="space-y-0.5">
-                  <Label className="text-base">Moderação Prévia de Empresas</Label>
-                  <p className="text-xs text-muted-foreground">Novos cadastros entram direto no ar ou passam pela aprovação do admin?</p>
-                </div>
-                <Switch checked={aprovacaoAutomatica} onCheckedChange={setAprovacaoAutomatica} />
-              </div>
-
-              <div className="flex items-center justify-between rounded-xl border p-4 bg-muted/30">
-                <div className="space-y-0.5">
-                  <Label className="text-base text-destructive font-semibold">Modo Manutenção Geral</Label>
-                  <p className="text-xs text-muted-foreground">Bloqueia o aplicativo público exibindo uma tela de ajustes internos.</p>
-                </div>
-                <Switch checked={manutencao} onCheckedChange={setManutencao} />
-              </div>
-            </div>
-          </div>
-        </TabsContent>
-
-        {/* ABA 2: FINANCEIRO E VALORES DE MONETIZAÇÃO */}
-        <TabsContent value="monetizacao" className="space-y-6 focus-visible:outline-none focus-visible:ring-0">
-          <div className="bg-card border rounded-2xl p-6 shadow-sm space-y-6">
-            <div>
-              <h3 className="font-bold text-lg flex items-center gap-2"><Coins className="h-5 w-5 text-emerald-500" /> Tabela de Preços e Cobranças Automáticas</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">Defina os valores padrão que serão cobrados via link de checkout ou PIX para ativação de planos avançados.</p>
             </div>
             
-            <Separator />
+            <div className="space-y-2">
+              <Label htmlFor="seoTitulo">Meta Title Padrão (Título da Aba)</Label>
+              <Input id="seoTitulo" value={seoTitulo} onChange={(e) => setSeoTitulo(e.target.value)} placeholder="Ex: Saj Tem - Guia Comercial Completo" />
+            </div>
 
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="space-y-2 p-4 border rounded-xl bg-muted/20">
-                <Label className="font-semibold flex items-center gap-1.5"><Layers className="h-4 w-4 text-amber-500" /> Assinatura Premium (Mês)</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
-                  <Input type="number" className="pl-9" value={valorPlanoPremium} onChange={(e) => setValorPlanoPremium(e.target.value)} />
-                </div>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="seoDescricao">Meta Description (Resumo exibido no Google)</Label>
+              <Textarea id="seoDescricao" value={seoDescricao} onChange={(e) => setSeoDescricao(e.target.value)} rows={3} placeholder="Descreva o resumo do seu portal de buscas de forma comercial..." />
+            </div>
 
-              <div className="space-y-2 p-4 border rounded-xl bg-muted/20">
-                <Label className="font-semibold flex items-center gap-1.5"><Image className="h-4 w-4 text-blue-500" /> Aluguel de Banner (Mês)</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
-                  <Input type="number" className="pl-9" value={valorBannerTopo} onChange={(e) => setValorBannerTopo(e.target.value)} />
-                </div>
-              </div>
-
-              <div className="space-y-2 p-4 border rounded-xl bg-muted/20">
-                <Label className="font-semibold flex items-center gap-1.5"><Percent className="h-4 w-4 text-violet-500" /> Impulsionar Cupom (7 dias)</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
-                  <Input type="number" className="pl-9" value={valorCupomDestaque} onChange={(e) => setValorCupomDestaque(e.target.value)} />
-                </div>
-              </div>
-
-              <div className="space-y-2 p-4 border rounded-xl bg-muted/20">
-                <Label className="font-semibold flex items-center gap-1.5"><FileText className="h-4 w-4 text-emerald-500" /> Taxa de Venda de Catálogo</Label>
-                <div className="relative">
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
-                  <Input type="number" className="pr-8" value={comissaoProdutos} onChange={(e) => setComissaoProdutos(e.target.value)} />
-                </div>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="seoTags">Meta Keywords (Palavras-chave separadas por vírgula)</Label>
+              <Input id="seoTags" value={seoTags} onChange={(e) => setSeoTags(e.target.value)} placeholder="saj tem, empresas saj, guia santo antonio de jesus" />
             </div>
           </div>
         </TabsContent>
 
-        {/* ABA 3: LOCALIZAÇÃO E FILTROS GEOGRÁFICOS */}
-        <TabsContent value="localizacao" className="space-y-6 focus-visible:outline-none focus-visible:ring-0">
-          <div className="bg-card border rounded-2xl p-6 shadow-sm space-y-4">
-            <h3 className="font-bold text-lg flex items-center gap-2 border-b pb-3"><Map className="h-5 w-5 text-sky-500" /> Abrangência e Município de Atuação</h3>
-            
-            <div className="grid gap-6 sm:grid-cols-3">
-              <div className="space-y-2">
-                <Label htmlFor="cidadeFiltro">Cidade Polo Principal</Label>
-                <Input id="cidadeFiltro" value={cidadeBase} onChange={(e) => setCidadeBase(e.target.value)} />
+        {/* ABA 2: MODO MANUTENÇÃO GLOBAL */}
+        <TabsContent value="manutencao" className="space-y-6 focus-visible:outline-none focus-visible:ring-0">
+          <div className="bg-card border rounded-2xl p-6 space-y-6 shadow-sm">
+            <div className="flex items-center gap-2 border-b pb-3">
+              <ShieldAlert className="h-5 w-5 text-destructive" />
+              <div>
+                <h3 className="font-bold text-lg">Controle de Disponibilidade</h3>
+                <p className="text-xs text-muted-foreground">Trave temporariamente o acesso do público à área pública para realizar migrações de dados ou deploys estruturais.</p>
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="estadoFiltro">Estado (UF)</Label>
-                <Input id="estadoFiltro" value={estadoBase} maxLength={2} onChange={(e) => setEstadoBase(e.target.value)} />
-              </div>
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="limiteDistancia">Raio Máximo de Busca Local</Label>
-                <div className="relative">
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">KM</span>
-                  <Input id="limiteDistancia" type="number" defaultValue="45" />
-                </div>
+            <div className="flex items-center justify-between rounded-xl border-2 border-destructive/20 p-4 bg-destructive/5">
+              <div className="space-y-0.5">
+                <Label className="text-base text-destructive font-bold flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-destructive" /> Activar Modo Manutenção
+                </Label>
+                <p className="text-xs text-muted-foreground">Quando ativado, os visitantes normais verão apenas a tela de manutenção personalizada.</p>
               </div>
+              <Switch checked={manutencao} onCheckedChange={setManutencao} />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="msgManutencao">Mensagem Customizada de Bloqueio</Label>
+              <Textarea id="msgManutencao" value={mensagemManutencao} onChange={(e) => setMensagemManutencao(e.target.value)} rows={3} placeholder="Estamos em manutenção para melhorias..." />
             </div>
           </div>
         </TabsContent>
 
-        {/* ABA 4: INTEGRAÇÃO DE SINAIS E GATEWAYS */}
-        <TabsContent value="notificacoes" className="space-y-6 focus-visible:outline-none focus-visible:ring-0">
+        {/* ABA 3: SCRIPTS EXTERNOS, MARKETING E TRACKING */}
+        <TabsContent value="scripts" className="space-y-6 focus-visible:outline-none focus-visible:ring-0">
+          <div className="bg-card border rounded-2xl p-6 space-y-4 shadow-sm">
+            <div className="flex items-center gap-2 border-b pb-3">
+              <Code className="h-5 w-5 text-amber-500" />
+              <div>
+                <h3 className="font-bold text-lg">Integrações de Tráfego e Rastreamento</h3>
+                <p className="text-xs text-muted-foreground">Injete IDs de monitoramento global de campanhas e métricas sem precisar recompilar a Vercel.</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="analyticsId">Google Analytics ID (G-XXXXXXX)</Label>
+              <Input id="analyticsId" value={googleAnalyticsId} onChange={(e) => setGoogleAnalyticsId(e.target.value)} placeholder="G-A1B2C3D4E5" />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="pixelId">Meta Pixel ID (Facebook Ads)</Label>
+              <Input id="pixelId" value={metaPixelId} onChange={(e) => setMetaPixelId(e.target.value)} placeholder="123456789012345" />
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* ABA 4: LAYOUT DE FOOTER E INFORMAÇÕES AUXILIARES */}
+        <TabsContent value="layout" className="space-y-6 focus-visible:outline-none focus-visible:ring-0">
           <div className="grid gap-6 md:grid-cols-2">
             <div className="bg-card border rounded-2xl p-6 space-y-4 shadow-sm">
-              <h3 className="font-bold text-lg flex items-center gap-2 border-b pb-3"><BellRing className="h-5 w-5 text-rose-500" /> Provedores de Gateways (API)</h3>
+              <h3 className="font-bold text-lg flex items-center gap-2 border-b pb-3"><Globe className="h-5 w-5 text-sky-500" /> Propriedades Fixas do Rodapé</h3>
               
               <div className="space-y-2">
-                <Label>Token de Integração do Asaas / Mercado Pago (PIX)</Label>
-                <Input type="password" value="****************************************" disabled />
+                <Label htmlFor="textoFooter">Texto de Direitos Autorais (Copyright)</Label>
+                <Input id="textoFooter" value={textoRodape} onChange={(e) => setTextoRodape(e.target.value)} />
               </div>
 
               <div className="space-y-2">
-                <Label>API Key do Disparo de Notificações Push (OneSignal)</Label>
-                <Input type="password" value="****************************************" disabled />
+                <Label htmlFor="linkPrivacidade">URL Oficial da Política de Privacidade</Label>
+                <Input id="linkPrivacidade" value={linkTermos} onChange={(e) => setLinkTermos(e.target.value)} />
               </div>
             </div>
 
             <div className="bg-card border rounded-2xl p-6 flex flex-col justify-between shadow-sm">
-              <div className="space-y-3">
-                <h3 className="font-bold text-lg flex items-center gap-2 border-b pb-3"><HelpCircle className="h-5 w-5 text-muted-foreground" /> Links Rápidos do Desenvolvedor</h3>
-                <p className="text-sm text-muted-foreground">Essas chaves de API ocultas são gerenciadas de forma criptografada diretamente pelo painel do Supabase nas variáveis de ambiente (`process.env`).</p>
+              <div className="space-y-4">
+                <h3 className="font-bold text-lg flex items-center gap-2 border-b pb-3"><FileText className="h-5 w-5 text-emerald-500" /> Atendimento de Suporte</h3>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="whatsappAdmin">WhatsApp Oficial de Atendimento Geral</Label>
+                  <Input id="whatsappAdmin" value={whatsappSuporte} onChange={(e) => setWhatsappSuporte(e.target.value)} placeholder="Ex: 75999999999" />
+                </div>
               </div>
-              <div className="pt-4 flex gap-2">
-                <a href="https://supabase.com" target="_blank" rel="noreferrer" className="w-full text-center text-xs py-2 border rounded-lg bg-muted/40 hover:bg-muted font-medium transition-colors">Acessar Banco Supabase</a>
-                <a href="https://vercel.com" target="_blank" rel="noreferrer" className="w-full text-center text-xs py-2 border rounded-lg bg-muted/40 hover:bg-muted font-medium transition-colors">Servidor Vercel</a>
+              
+              <div className="pt-4 border-t mt-4 flex gap-2 items-center text-xs text-muted-foreground">
+                <HelpCircle className="h-5 w-5 text-muted-foreground shrink-0" />
+                <span>As chaves de cabeçalho injetam automaticamente dados estruturados e de rastreio em tempo real na raiz do documento indexado.</span>
               </div>
             </div>
           </div>
