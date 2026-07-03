@@ -1,109 +1,52 @@
-import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { X, Download, Plus, Zap, Bell, Wifi, Gauge } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-
-interface BeforeInstallPromptEvent extends Event {
-  readonly platforms: string[];
-  readonly userChoice: Promise<{
-    outcome: 'accepted' | 'dismissed';
-    platform: string;
-  }>;
-  prompt(): Promise<void>;
-}
-
-export const PWAInstallPrompt: React.FC = () => {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [showBanner, setShowBanner] = useState(false);
-  const [showFullPrompt, setShowFullPrompt] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
-  const [isStandalone, setIsStandalone] = useState(false);
-
-  // Função interna para registrar métricas anonimamente no Supabase
-  const logPWAEvent = async (evento: string) => {
-    try {
-      let plataforma = 'Android/PC';
-      if (/iPad|iPhone|iPod/.test(navigator.userAgent)) plataforma = 'iOS';
-      else if (/Macintosh/.test(navigator.userAgent)) plataforma = 'MacOS';
-      else if (/Windows/.test(navigator.userAgent)) plataforma = 'Windows';
-
-      await supabase
-        .from('estatisticas_pwa' as any)
-        .insert([{ evento, plataforma }]);
-    } catch (err) {
-      console.error('Erro silencioso ao computar métrica do PWA:', err);
-    }
-  };
-
-  useEffect(() => {
-    // Detectar iOS
-    const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    setIsIOS(iOS);
-    
-    // Verificar se já está instalado e rodando em modo nativo
-    const standalone = window.matchMedia('(display-mode: standalone)').matches;
-    setIsStandalone(standalone);
-
-    // Se o usuário entrou no site usando o PWA já instalado, computa um acesso standalone diário
-    if (standalone) {
-      const lastSessionLog = sessionStorage.getItem('pwa-session-logged');
-      if (!lastSessionLog) {
-        logPWAEvent('acesso_standalone');
-        sessionStorage.setItem('pwa-session-logged', 'true');
-      }
-    }
-
-    // Verificar se o banner já foi dispensado nas últimas 24 horas
-    const lastDismissed = localStorage.getItem('pwa-banner-dismissed');
-    const isDismissed = lastDismissed && Date.now() - parseInt(lastDismissed) < 24 * 60 * 60 * 1000;
-
-    // Listener nativo do navegador para interceptar se o app é elegível para instalação
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
-      
-      // Mostrar banner após 1 minuto se não estiver instalado e não foi dispensado
-      if (!standalone && !isDismissed) {
-        setTimeout(() => {
-          setShowBanner(true);
-          logPWAEvent('banner_exibido');
-        }, 60000); // 1 minuto
-      }
-    };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    // Listener para capturar o exato momento em que a instalação é finalizada no Chromium/Android
-    const handleAppInstalled = () => {
-      logPWAEvent('instalado_com_sucesso');
-      setDeferredPrompt(null);
-      setShowBanner(false);
-      setShowFullPrompt(false);
-    };
-
-    window.addEventListener('appinstalled', handleAppInstalled);
-
-    // Para iOS, mostrar banner após 1 minuto devido a falta de suporte do evento beforeinstallprompt
-    if (iOS && !standalone && !isDismissed) {
-      setTimeout(() => {
-        setShowBanner(true);
-        logPWAEvent('banner_exibido');
-      }, 60000); // 1 minuto
-    }
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      window.removeEventListener('appinstalled', handleAppInstalled);
-    };
-  }, []);
-
-  const handleInstallClick = async () => {
-    if (deferredPrompt) {
-      logPWAEvent('clique_instalar');
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt Choice;
-      
+12:29:50.178 Running build in Washington, D.C., USA (East) – iad1
+12:29:50.179 Build machine configuration: 2 cores, 8 GB
+12:29:50.287 Cloning github.com/neckweb-netizen/city-compass-online-81-25-ec1ca02c (Branch: main, Commit: 138b0df)
+12:29:50.879 Cloning completed: 591.000ms
+12:29:51.086 Restored build cache from previous deployment (DvKFJsHW2SDUgAarKkuUCb9nf11y)
+12:29:51.352 Running "vercel build"
+12:29:51.372 Vercel CLI 54.19.0
+12:29:52.054 Installing dependencies...
+12:29:53.502 
+12:29:53.502 up to date in 1s
+12:29:53.502 
+12:29:53.503 74 packages are looking for funding
+12:29:53.503   run `npm fund` for details
+12:29:53.540 Running "npm run build"
+12:29:53.642 
+12:29:53.642 > vite_react_shadcn_ts@0.0.0 build
+12:29:53.642 > vite build
+12:29:53.643 
+12:29:53.913 vite v5.4.10 building for production...
+12:29:53.988 transforming...
+12:29:54.246 Browserslist: browsers data (caniuse-lite) is 21 months old. Please run:
+12:29:54.247   npx update-browserslist-db@latest
+12:29:54.247   Why you should do it regularly: https://github.com/browserslist/update-db#readme
+12:29:56.418 ✓ 108 modules transformed.
+12:29:56.419 x Build failed in 2.48s
+12:29:56.420 error during build:
+12:29:56.420 [vite:esbuild] Transform failed with 1 error:
+12:29:56.420 /vercel/path0/src/components/pwa/PWAInstallPrompt.tsx:105:47: ERROR: Expected ";" but found "Choice"
+12:29:56.420 file: /vercel/path0/src/components/pwa/PWAInstallPrompt.tsx:105:47
+12:29:56.420 
+12:29:56.420 Expected ";" but found "Choice"
+12:29:56.420 103|        logPWAEvent('clique_instalar');
+12:29:56.420 104|        deferredPrompt.prompt();
+12:29:56.420 105|        const { outcome } = await deferredPrompt Choice;
+12:29:56.420    |                                                 ^
+12:29:56.420 106|        
+12:29:56.420 107|        if (outcome === 'accepted') {
+12:29:56.420 
+12:29:56.420     at failureErrorWithLog (/vercel/path0/node_modules/esbuild/lib/main.js:1472:15)
+12:29:56.421     at /vercel/path0/node_modules/esbuild/lib/main.js:755:50
+12:29:56.421     at responseCallbacks.<computed> (/vercel/path0/node_modules/esbuild/lib/main.js:622:9)
+12:29:56.421     at handleIncomingPacket (/vercel/path0/node_modules/esbuild/lib/main.js:677:12)
+12:29:56.421     at Socket.readFromStdout (/vercel/path0/node_modules/esbuild/lib/main.js:600:7)
+12:29:56.421     at Socket.emit (node:events:509:28)
+12:29:56.421     at addChunk (node:internal/streams/readable:563:12)
+12:29:56.421     at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+12:29:56.421     at Readable.push (node:internal/streams/readable:394:5)
+12:29:56.421     at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)
+12:29:56.452 Error: Command "npm run build" exited with 1      
       if (outcome === 'accepted') {
         setDeferredPrompt(null);
         setShowFullPrompt(false);
