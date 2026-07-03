@@ -89,8 +89,9 @@ export const Header = () => {
               <MobileHamburger />
               <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
                 <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-lg overflow-hidden flex-shrink-0">
+                  {/* Caminho atualizado apontando para o arquivo renomeado da pasta public */}
                   <img 
-                    src="/lovable-uploads/e4435ab0-198f-4ab7-b4d2-83024c9490fc.png" 
+                    src="/Logo.png" 
                     alt="Saj Tem Logo" 
                     className="w-full h-full object-contain"
                     loading="eager"
@@ -98,6 +99,10 @@ export const Header = () => {
                     width="40"
                     height="40"
                     sizes="40px"
+                    onError={(e) => {
+                      // Fallback automático caso sofra com cache antigo do Service Worker
+                      e.currentTarget.src = "/favicon.png";
+                    }}
                   />
                 </div>
                 <div className="min-w-0">
