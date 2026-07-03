@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { X, Download, Smartphone, Plus, Zap, Bell, Wifi, Gauge } from 'lucide-react';
+import { X, Download, Plus, Zap, Bell, Wifi, Gauge } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -19,20 +20,45 @@ export const PWAInstallPrompt: React.FC = () => {
   const [isIOS, setIsIOS] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
 
+  // Função interna para registrar métricas anonimamente no Supabase
+  const logPWAEvent = async (evento: string) => {
+    try {
+      let plataforma = 'Android/PC';
+      if (/iPad|iPhone|iPod/.test(navigator.userAgent)) plataforma = 'iOS';
+      else if (/Macintosh/.test(navigator.userAgent)) plataforma = 'MacOS';
+      else if (/Windows/.test(navigator.userAgent)) plataforma = 'Windows';
+
+      await supabase
+        .from('estatisticas_pwa' as any)
+        .insert([{ evento, plataforma }]);
+    } catch (err) {
+      console.error('Erro silencioso ao computar métrica do PWA:', err);
+    }
+  };
+
   useEffect(() => {
     // Detectar iOS
     const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     setIsIOS(iOS);
     
-    // Verificar se já está instalado
+    // Verificar se já está instalado e rodando em modo nativo
     const standalone = window.matchMedia('(display-mode: standalone)').matches;
     setIsStandalone(standalone);
 
-    // Verificar se já foi dispensado
+    // Se o usuário entrou no site usando o PWA já instalado, computa um acesso standalone diário
+    if (standalone) {
+      const lastSessionLog = sessionStorage.getItem('pwa-session-logged');
+      if (!lastSessionLog) {
+        logPWAEvent('acesso_standalone');
+        sessionStorage.setItem('pwa-session-logged', 'true');
+      }
+    }
+
+    // Verificar se o banner já foi dispensado nas últimas 24 horas
     const lastDismissed = localStorage.getItem('pwa-banner-dismissed');
     const isDismissed = lastDismissed && Date.now() - parseInt(lastDismissed) < 24 * 60 * 60 * 1000;
 
-    // Listener para o evento beforeinstallprompt
+    // Listener nativo do navegador para interceptar se o app é elegível para instalação
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
@@ -41,28 +67,42 @@ export const PWAInstallPrompt: React.FC = () => {
       if (!standalone && !isDismissed) {
         setTimeout(() => {
           setShowBanner(true);
+          logPWAEvent('banner_exibido');
         }, 60000); // 1 minuto
       }
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
-    // Para iOS, mostrar banner após 1 minuto
+    // Listener para capturar o exato momento em que a instalação é finalizada no Chromium/Android
+    const handleAppInstalled = () => {
+      logPWAEvent('instalado_com_sucesso');
+      setDeferredPrompt(null);
+      setShowBanner(false);
+      setShowFullPrompt(false);
+    };
+
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    // Para iOS, mostrar banner após 1 minuto devido a falta de suporte do evento beforeinstallprompt
     if (iOS && !standalone && !isDismissed) {
       setTimeout(() => {
         setShowBanner(true);
+        logPWAEvent('banner_exibido');
       }, 60000); // 1 minuto
     }
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
     };
   }, []);
 
   const handleInstallClick = async () => {
     if (deferredPrompt) {
+      logPWAEvent('clique_instalar');
       deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
+      const { outcome } = await deferredPrompt Choice;
       
       if (outcome === 'accepted') {
         setDeferredPrompt(null);
@@ -87,19 +127,26 @@ export const PWAInstallPrompt: React.FC = () => {
     localStorage.setItem('pwa-banner-dismissed', Date.now().toString());
   };
 
-  // Não mostrar se já está instalado
+  // Não mostrar se já estiver rodando em modo de app isolado
   if (isStandalone) {
     return null;
   }
 
-  // Banner no topo - design mais elegante
+  // Banner no topo
   if (showBanner && !showFullPrompt) {
     return (
       <div className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-primary via-primary to-primary/95 text-primary-foreground shadow-xl border-b border-primary-foreground/10 animate-in slide-in-from-top duration-500">
         <div className="flex items-center justify-between p-4 max-w-7xl mx-auto">
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-gradient-to-br from-primary-foreground/20 to-primary-foreground/30 rounded-xl flex items-center justify-center shadow-inner">
-              <Smartphone className="h-5 w-5" />
+            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-md overflow-hidden flex-shrink-0 p-1">
+              <img 
+                src="/Logo.png" 
+                alt="Saj Tem Logo" 
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  e.currentTarget.src = "/favicon.png";
+                }}
+              />
             </div>
             <div>
               <p className="text-base font-semibold tracking-tight">Instale o Saj Tem</p>
@@ -148,11 +195,17 @@ export const PWAInstallPrompt: React.FC = () => {
 
           <Card className="border-0 shadow-2xl bg-background/95 backdrop-blur-sm overflow-hidden">
             <CardContent className="p-0">
-              {/* Header com ícone e título */}
               <div className="bg-gradient-to-br from-primary/5 to-primary/10 p-8 text-center">
                 <div className="mb-4">
-                  <div className="w-16 h-16 mx-auto bg-gradient-to-br from-primary to-primary/80 rounded-2xl flex items-center justify-center shadow-xl">
-                    <Smartphone className="h-8 w-8 text-primary-foreground" />
+                  <div className="w-16 h-16 mx-auto bg-white rounded-2xl flex items-center justify-center shadow-xl overflow-hidden p-2">
+                    <img 
+                      src="/Logo.png" 
+                      alt="Saj Tem Logo" 
+                      className="w-full h-full object-contain"
+                      onError={(e) => {
+                        e.currentTarget.src = "/favicon.png";
+                      }}
+                    />
                   </div>
                 </div>
                 <h2 className="text-xl font-bold mb-2 text-foreground">
@@ -163,7 +216,6 @@ export const PWAInstallPrompt: React.FC = () => {
                 </p>
               </div>
 
-              {/* Benefícios com ícones modernos */}
               <div className="p-6 space-y-4">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center">
@@ -194,10 +246,9 @@ export const PWAInstallPrompt: React.FC = () => {
                 </div>
               </div>
               
-              {/* Botão de instalação ou instruções iOS */}
               <div className="p-6 pt-0">
                 {isIOS ? (
-                  <div className="bg-muted/50 rounded-xl p-5 space-y-4">
+                  <div className="bg-muted/50 rounded-xl p-5 space-y-4" onClick={() => logPWAEvent('clique_instalar_ios')}>
                     <div className="flex items-center gap-3">
                       <div className="w-7 h-7 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-bold shadow-md">1</div>
                       <span className="text-sm font-medium">Toque no ícone de compartilhar</span>
