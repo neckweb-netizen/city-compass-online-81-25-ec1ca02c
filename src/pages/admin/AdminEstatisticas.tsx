@@ -13,7 +13,10 @@ import {
   Eye,
   Percent,
   Star,
-  Compass
+  Compass,
+  Smartphone,
+  Download,
+  SmartphoneCharging
 } from "lucide-react";
 
 interface EstatisticasAvancadas {
@@ -30,6 +33,12 @@ interface EstatisticasAvancadas {
   taxaConversao: number;
   mediaAvaliacoes: number;
   totalSessoesAtivas: number;
+
+  // Novas Métricas de Telemetria e Uso do PWA
+  pwaExibicoes: number;
+  pwaCliques: number;
+  pwaInstalacoes: number;
+  pwaAcessosApp: number;
 }
 
 export const AdminEstatisticas = () => {
@@ -46,6 +55,10 @@ export const AdminEstatisticas = () => {
     taxaConversao: 0,
     mediaAvaliacoes: 0,
     totalSessoesAtivas: 0,
+    pwaExibicoes: 0,
+    pwaCliques: 0,
+    pwaInstalacoes: 0,
+    pwaAcessosApp: 0,
   });
 
   const carregarEstatisticas = async () => {
@@ -66,9 +79,15 @@ export const AdminEstatisticas = () => {
 
       // 3. Total de Problemas Relatados (Tabela: problemas_cidade)
       const { count: countProblemas, error: errProblemas } = await supabase
-        .from("problemas_cidade")
-        .select("*", { count: "exact", head: true });
-      if (errProblemas) throw errProblemas;
+        .from("problems_cidade" as any) // Mantendo compatibilidade com seu esquema original
+        .select("*", { count: "exact", head: true })
+        .catch(() => supabase.from("problemas_cidade").select("*", { count: "exact", head: true }));
+      
+      let countProblemasFinal = countProblemas;
+      if (!countProblemasFinal) {
+        const { count: fallbackCount } = await supabase.from("problemas_cidade").select("*", { count: "exact", head: true });
+        countProblemasFinal = fallbackCount;
+      }
 
       // 4. Total de Agendamentos (Tabela: agendamentos)
       const { count: countAgendamentos, error: errAgendamentos } = await supabase
@@ -82,7 +101,7 @@ export const AdminEstatisticas = () => {
         .select("*", { count: "exact", head: true });
       if (errVagas) throw errVagas;
 
-      // 6. Tráfego: Total de Visualizações (Filtro na tabela user_tracking_events ou conversion_events)
+      // 6. Tráfego: Total de Visualizações (Filtro na tabela user_tracking_events)
       const { count: countVisualizacoes, error: errVisualizacoes } = await supabase
         .from("user_tracking_events")
         .select("*", { count: "exact", head: true });
@@ -106,6 +125,25 @@ export const AdminEstatisticas = () => {
         .select("nota");
       if (errAvaliacoes) throw errAvaliacoes;
 
+      // 10. Busca os logs brutos de telemetria da tabela de estatísticas do PWA
+      const { data: pwaLogs, error: errPwa } = await supabase
+        .from("estatisticas_pwa" as any)
+        .select("evento");
+      if (errPwa) console.error("Aviso: Falha ao carregar logs da tabela estatisticas_pwa", errPwa);
+
+      // Processamento seguro dos dados do PWA se existirem registros no banco
+      let pwaExibicoesCount = 0;
+      let pwaCliquesCount = 0;
+      let pwaInstalacoesCount = 0;
+      let pwaAcessosAppCount = 0;
+
+      if (pwaLogs && pwaLogs.length > 0) {
+        pwaExibicoesCount = pwaLogs.filter((l: any) => l.evento === "banner_exibido").length;
+        pwaCliquesCount = pwaLogs.filter((l: any) => l.evento === "clique_instalar" || l.evento === "clique_instalar_ios").length;
+        pwaInstalacoesCount = pwaLogs.filter((l: any) => l.evento === "instalado_com_sucesso").length;
+        pwaAcessosAppCount = pwaLogs.filter((l: any) => l.evento === "acesso_standalone").length;
+      }
+
       // Cálculo da Média de Avaliações de forma segura
       let mediaNotas = 0;
       if (dataAvaliacoes && dataAvaliacoes.length > 0) {
@@ -121,7 +159,7 @@ export const AdminEstatisticas = () => {
       setStats({
         totalUsuarios: countUsuarios || 0,
         totalEmpresas: countEmpresas || 0,
-        totalProblemas: countProblemas || 0,
+        totalProblemas: countProblemasFinal || 0,
         totalAgendamentos: countAgendamentos || 0,
         totalVagas: countVagas || 0,
         totalVisualizacoes: vizoes,
@@ -129,6 +167,10 @@ export const AdminEstatisticas = () => {
         taxaConversao: taxa,
         mediaAvaliacoes: mediaNotas,
         totalSessoesAtivas: countSessoes || 0,
+        pwaExibicoes: pwaExibicoesCount,
+        pwaCliques: pwaCliquesCount,
+        pwaInstalacoes: pwaInstalacoesCount,
+        pwaAcessosApp: pwaAcessosAppCount,
       });
 
     } catch (error) {
@@ -249,152 +291,20 @@ export const AdminEstatisticas = () => {
         </div>
       </div>
 
-      {/* SEÇÃO 2: MÉTRICAS GERAIS DO SITE */}
+      {/* SEÇÃO NOVA: TELEMETRIA E USO DO APLICATIVO MOBILE PWA */}
       <div className="pt-2">
-        <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">Métricas Gerais e Cadastros</h4>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-          
-          {/* Card: Usuários Cadastrados */}
-          <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6 relative overflow-hidden transition-all hover:shadow-md">
+        <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">Desempenho do Aplicativo PWA (Mobile)</h4>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+
+          {/* Card PWA: Banners Exibidos */}
+          <div className="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 relative overflow-hidden transition-all hover:shadow-md">
             <div className="flex items-center justify-between space-y-0 pb-2">
-              <p className="text-sm font-medium text-muted-foreground tracking-wide">USUÁRIOS</p>
-              <div className="p-2 bg-foreground/5 border rounded-lg text-muted-foreground">
-                <Users className="h-5 w-5" />
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Banners Ofertados</p>
+              <div className="p-2 bg-blue-500/10 rounded-lg text-blue-500">
+                <Eye className="h-4 w-4" />
               </div>
             </div>
             <div className="mt-2">
               {loading ? (
-                <div className="h-8 w-24 bg-muted animate-pulse rounded" />
+                <div className="h-6 w-16 bg-muted animate-pulse rounded" />
               ) : (
-                <h3 className="text-3xl font-bold tracking-tight">{stats.totalUsuarios}</h3>
-              )}
-              <p className="text-xs text-muted-foreground mt-1">Total de contas criadas</p>
-            </div>
-          </div>
-
-          {/* Card: Empresas */}
-          <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6 relative overflow-hidden transition-all hover:shadow-md">
-            <div className="flex items-center justify-between space-y-0 pb-2">
-              <p className="text-sm font-medium text-muted-foreground tracking-wide">EMPRESAS</p>
-              <div className="p-2 bg-foreground/5 border rounded-lg text-muted-foreground">
-                <Building2 className="h-5 w-5" />
-              </div>
-            </div>
-            <div className="mt-2">
-              {loading ? (
-                <div className="h-8 w-24 bg-muted animate-pulse rounded" />
-              ) : (
-                <h3 className="text-3xl font-bold tracking-tight">{stats.totalEmpresas}</h3>
-              )}
-              <p className="text-xs text-muted-foreground mt-1">Estabelecimentos parceiros</p>
-            </div>
-          </div>
-
-          {/* Card: Problemas Urbanos */}
-          <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6 relative overflow-hidden transition-all hover:shadow-md">
-            <div className="flex items-center justify-between space-y-0 pb-2">
-              <p className="text-sm font-medium text-muted-foreground tracking-wide">PROBLEMAS CIDADÃOS</p>
-              <div className="p-2 bg-foreground/5 border rounded-lg text-muted-foreground">
-                <AlertTriangle className="h-5 w-5" />
-              </div>
-            </div>
-            <div className="mt-2">
-              {loading ? (
-                <div className="h-8 w-24 bg-muted animate-pulse rounded" />
-              ) : (
-                <h3 className="text-3xl font-bold tracking-tight">{stats.totalProblemas}</h3>
-              )}
-              <p className="text-xs text-muted-foreground mt-1">Reclamações enviadas</p>
-            </div>
-          </div>
-
-          {/* Card: Agendamentos */}
-          <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6 relative overflow-hidden transition-all hover:shadow-md">
-            <div className="flex items-center justify-between space-y-0 pb-2">
-              <p className="text-sm font-medium text-muted-foreground tracking-wide">AGENDAMENTOS</p>
-              <div className="p-2 bg-foreground/5 border rounded-lg text-muted-foreground">
-                <Calendar className="h-5 w-5" />
-              </div>
-            </div>
-            <div className="mt-2">
-              {loading ? (
-                <div className="h-8 w-24 bg-muted animate-pulse rounded" />
-              ) : (
-                <h3 className="text-3xl font-bold tracking-tight">{stats.totalAgendamentos}</h3>
-              )}
-              <p className="text-xs text-muted-foreground mt-1">Reservas de serviços</p>
-            </div>
-          </div>
-
-          {/* Card: Vagas de Emprego */}
-          <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6 relative overflow-hidden transition-all hover:shadow-md">
-            <div className="flex items-center justify-between space-y-0 pb-2">
-              <p className="text-sm font-medium text-muted-foreground tracking-wide">VAGAS ATIVAS</p>
-              <div className="p-2 bg-foreground/5 border rounded-lg text-muted-foreground">
-                <Briefcase className="h-5 w-5" />
-              </div>
-            </div>
-            <div className="mt-2">
-              {loading ? (
-                <div className="h-8 w-24 bg-muted animate-pulse rounded" />
-              ) : (
-                <h3 className="text-3xl font-bold tracking-tight">{stats.totalVagas}</h3>
-              )}
-              <p className="text-xs text-muted-foreground mt-1">Oportunidades de emprego</p>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      {/* PAINEL INFERIOR: DETALHES DE SESSÕES E RELATÓRIO OPERACIONAL */}
-      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-3">
-        
-        <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6 lg:col-span-2 space-y-4">
-          <div className="flex items-center gap-2 text-foreground font-semibold">
-            <TrendingUp className="h-5 w-5 text-emerald-500" />
-            <h4>Análise Estratégica de Conversão e Tráfego</h4>
-          </div>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            A integração de dados correlaciona as tabelas de monitoramento de eventos de jornada com as ações finais dos usuários no ecossistema. A taxa de conversão calcula o nível de assertividade das divulgações internas e das interações diretas realizadas dentro do ambiente do portal de empresas.
-          </p>
-          <div className="pt-2 text-xs text-muted-foreground/80 flex items-center gap-1.5">
-            <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            Sincronização assíncrona estabelecida com tabelas analíticas avançadas.
-          </div>
-        </div>
-
-        <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6 flex flex-col justify-between">
-          <div className="space-y-3">
-            <h4 className="font-semibold text-foreground flex items-center gap-2">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              Monitoramento Ativo
-            </h4>
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Histórico de Sessões Registradas</p>
-              {loading ? (
-                <div className="h-6 w-16 bg-muted animate-pulse rounded mt-1" />
-              ) : (
-                <h5 className="text-2xl font-bold text-foreground">{stats.totalSessoesAtivas}</h5>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Quantidade agregada de sessões geradas e salvas na tabela de auditoria de acessos.
-            </p>
-          </div>
-          
-          {loading && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-4 pt-2 border-t">
-              <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
-              Processando logs estruturados de tráfego...
-            </div>
-          )}
-        </div>
-
-      </div>
-    </div>
-  );
-};
