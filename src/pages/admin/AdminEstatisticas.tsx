@@ -169,7 +169,7 @@ export const AdminEstatisticas = () => {
 
     } catch (error) {
       console.error("Erro ao carregar métricas analíticas e de tráfego:", error);
-    } {
+    } finally {
       setLoading(false);
       setRefreshing(false);
     }
