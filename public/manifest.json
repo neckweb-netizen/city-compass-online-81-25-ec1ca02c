@@ -13,13 +13,13 @@
   "prefer_related_applications": false,
   "icons": [
     {
-      "src": "/lovable-uploads/e4435ab0-198f-4ab7-b4d2-83024c9490fc.png",
+      "src": "/Logo.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable any"
     },
     {
-      "src": "/lovable-uploads/e4435ab0-198f-4ab7-b4d2-83024c9490fc.png",
+      "src": "/Logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable any"
@@ -31,21 +31,21 @@
       "short_name": "Empresas",
       "description": "Ver empresas locais",
       "url": "/empresas",
-      "icons": [{ "src": "/lovable-uploads/e4435ab0-198f-4ab7-b4d2-83024c9490fc.png", "sizes": "96x96" }]
+      "icons": [{ "src": "/Logo.png", "sizes": "96x96" }]
     },
     {
       "name": "Eventos",
       "short_name": "Eventos",
       "description": "Ver eventos da cidade",
       "url": "/eventos",
-      "icons": [{ "src": "/lovable-uploads/e4435ab0-198f-4ab7-b4d2-83024c9490fc.png", "sizes": "96x96" }]
+      "icons": [{ "src": "/Logo.png", "sizes": "96x96" }]
     },
     {
       "name": "Rádios",
       "short_name": "Rádios",
       "description": "Ouvir rádios locais",
       "url": "/radios",
-      "icons": [{ "src": "/lovable-uploads/e4435ab0-198f-4ab7-b4d2-83024c9490fc.png", "sizes": "96x96" }]
+      "icons": [{ "src": "/Logo.png", "sizes": "96x96" }]
     }
   ]
 }
