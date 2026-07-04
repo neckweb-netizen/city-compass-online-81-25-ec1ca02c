@@ -41,6 +41,7 @@ const AnuncieGratis = lazy(() => import("./pages/AnuncieGratis").then(m => ({ de
 
 // Lazy load all admin pages
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const AchadosPerdidos = lazy(() => import("./pages/AchadosPerdidos"));
 const AdminLocais = lazy(() => import("./pages/admin/AdminLocais"));
 const AdminLocaisPendentes = lazy(() => import("./pages/admin/AdminLocaisPendentes"));
 const AdminLocalAdmins = lazy(() => import("./pages/admin/AdminLocalAdmins"));
@@ -271,6 +272,7 @@ const App = () => {
             <Routes>
               <Route path="/" element={<PublicLayout />}>
                 <Route index element={<Index />} />
+                <Route path="achados-e-perdidos" element={<AchadosPerdidos />} />
                 <Route path="profile" element={<Profile />} />
                 <Route path="configuracoes" element={<Configuracoes />} />
                 <Route path="busca" element={<Busca />} />
