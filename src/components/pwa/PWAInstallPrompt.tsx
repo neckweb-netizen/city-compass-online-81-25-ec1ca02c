@@ -54,22 +54,16 @@ export const PWAInstallPrompt: React.FC = () => {
       }
     }
 
-    // Verificar se o banner já foi dispensado nas últimas 24 horas
-    const lastDismissed = localStorage.getItem('pwa-banner-dismissed');
-    const isDismissed = lastDismissed && Date.now() - parseInt(lastDismissed) < 24 * 60 * 60 * 1000;
+    // REMOVIDO: A checagem de "isDismissed" foi removida para forçar o banner a aparecer sempre nos testes
 
     // Listener nativo do navegador para interceptar se o app é elegível para instalação
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       
-      // Mostrar banner após 1 minuto se não estiver instalado e não foi dispensado
-      if (!standalone && !isDismissed) {
-        setTimeout(() => {
-          setShowBanner(true);
-          logPWAEvent('banner_exibido');
-        }, 60000); // 1 minuto
-      }
+      // MODIFICADO: Agora exibe o banner IMEDIATAMENTE (sem o delay de 1 minuto) para facilitar seu teste
+      setShowBanner(true);
+      logPWAEvent('banner_exibido');
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -84,12 +78,10 @@ export const PWAInstallPrompt: React.FC = () => {
 
     window.addEventListener('appinstalled', handleAppInstalled);
 
-    // Para iOS, mostrar banner após 1 minuto devido a falta de suporte do evento beforeinstallprompt
-    if (iOS && !standalone && !isDismissed) {
-      setTimeout(() => {
-        setShowBanner(true);
-        logPWAEvent('banner_exibido');
-      }, 60000); // 1 minuto
+    // Para iOS, mostrar banner imediatamente também para testes
+    if (iOS && !standalone) {
+      setShowBanner(true);
+      logPWAEvent('banner_exibido');
     }
 
     return () => {
@@ -119,12 +111,12 @@ export const PWAInstallPrompt: React.FC = () => {
 
   const handleCloseBanner = () => {
     setShowBanner(false);
-    localStorage.setItem('pwa-banner-dismissed', Date.now().toString());
+    // REMOVIDO: Não salva mais no localStorage o bloqueio para permitir que você teste várias vezes seguidas
   };
 
   const handleCloseFullPrompt = () => {
     setShowFullPrompt(false);
-    localStorage.setItem('pwa-banner-dismissed', Date.now().toString());
+    // REMOVIDO: Não salva mais no localStorage o bloqueio para permitir que você teste várias vezes seguidas
   };
 
   // Não mostrar se já estiver rodando em modo de app isolado
