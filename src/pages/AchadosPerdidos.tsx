@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, MapPin, Phone, Plus, AlertCircle, CheckCircle2, Filter, Tag, Calendar } from "lucide-react";
+import { Search, MapPin, Phone, Plus, AlertCircle, CheckCircle2, Filter, Tag, Calendar, Sparkles, X, ChevronRight } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 interface ItemItem {
@@ -69,7 +69,7 @@ const AchadosPerdidos = () => {
     }
 
     try {
-      setEnviando(false);
+      setEnviando(true);
       const { error } = await supabase.from("achados_perdidos" as any).insert([
         {
           tipo,
@@ -79,18 +79,17 @@ const AchadosPerdidos = () => {
           local_fato: localFato,
           contato_nome: contatoNome,
           contato_telefone: contatoTelefone,
-          status: "pendente", // Entra como pendente para moderação da equipe Saj Tem
+          status: "pendente",
         },
       ]);
 
       if (error) throw error;
 
       toast({
-        title: "Cadastro realizado!",
-        description: "Obrigado! O item passará por uma rápida moderação antes de ser listado no portal.",
+        title: "Enviado com sucesso!",
+        description: "O item foi enviado para a moderação da equipe Saj Tem e será publicado em breve.",
       });
 
-      // Reseta o formulário e fecha o modal
       setTitulo("");
       setDescricao("");
       setLocalFato("");
@@ -118,67 +117,77 @@ const AchadosPerdidos = () => {
   });
 
   return (
-    <div className="w-full min-h-screen bg-gray-50/50 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="w-full min-h-screen bg-[#0F0A19] text-white py-8 px-4 sm:px-6 lg:px-8 relative overflow-hidden font-sans">
+      {/* Luzes de Fundo de Estilo Tech Glow */}
+      <div className="absolute top-[-5%] left-[-5%] w-[400px] h-[400px] bg-purple-900/10 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-[20%] right-[-5%] w-[450px] h-[450px] bg-indigo-900/10 rounded-full blur-[120px] pointer-events-none" />
+
+      <div className="max-w-7xl mx-auto relative z-10">
         
-        {/* Banner de cabeçalho */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-3xl p-6 sm:p-10 shadow-xl shadow-blue-900/10 mb-8 relative overflow-hidden">
-          <div className="relative z-10 max-w-2xl">
-            <span className="bg-white/20 text-white text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full backdrop-blur-sm">
-              Utilidade Pública • SAJ
+        {/* Banner de cabeçalho premium */}
+        <div className="bg-[#150F22]/80 border border-purple-900/40 rounded-3xl p-6 sm:p-10 shadow-2xl backdrop-blur-md mb-8 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-[300px] h-[100%] bg-gradient-to-l from-purple-500/10 to-transparent pointer-events-none" />
+          
+          <div className="max-w-2xl">
+            <span className="inline-flex items-center gap-1.5 bg-purple-500/10 border border-purple-500/30 text-purple-300 text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-full backdrop-blur-sm">
+              <Sparkles className="h-3 w-3 text-purple-400" /> Utilidade Pública • SAJ
             </span>
-            <h1 className="text-3xl sm:text-4xl font-black tracking-tight mt-3 mb-2">
+            <h1 className="text-3xl sm:text-5xl font-black tracking-tight mt-4 mb-3 bg-gradient-to-r from-white via-gray-200 to-gray-400 bg-clip-text text-transparent">
               Achados e Perdidos
             </h1>
-            <p className="text-blue-100 text-sm sm:text-base leading-relaxed">
-              Perdeu ou encontrou algo em Santo Antônio de Jesus? Cadastre os dados no nosso painel de utilidade pública para ajudar a comunidade a localizar.
+            <p className="text-gray-400 text-sm sm:text-base leading-relaxed">
+              Perdeu ou encontrou algo em Santo Antônio de Jesus? Use a força do portal para espalhar o aviso! Registre os detalhes abaixo e ajude a nossa comunidade local.
             </p>
+            
             <button
               onClick={() => setIsModalAberto(true)}
-              className="mt-6 inline-flex items-center gap-2 bg-white text-blue-600 font-bold px-5 py-3 rounded-xl hover:bg-blue-50 transition-all text-sm shadow-md"
+              className="mt-6 inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 via-purple-500 to-indigo-500 text-white font-extrabold px-6 py-3.5 rounded-xl hover:opacity-95 shadow-lg shadow-purple-600/20 active:scale-[0.98] transition-all text-sm group"
             >
-              <Plus className="h-4 w-4" /> Cadastrar um Item
+              <Plus className="h-4 w-4 group-hover:rotate-90 transition-transform duration-200" /> Notificar Objeto / Pet
             </button>
-          </div>
-          <div className="absolute right-[-5%] bottom-[-20%] text-white/5 font-black text-9xl pointer-events-none hidden lg:block">
-            SAJ
           </div>
         </div>
 
-        {/* Barra de filtros e pesquisa */}
-        <div className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-sm mb-6 flex flex-col md:flex-row gap-4 items-center justify-between">
+        {/* Painel de busca e filtros */}
+        <div className="bg-[#150F22]/60 border border-purple-900/30 rounded-2xl p-4 backdrop-blur-sm shadow-xl mb-8 flex flex-col md:flex-row gap-4 items-center justify-between">
           <div className="relative w-full md:max-w-md">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-purple-400/80" />
             <input
               type="text"
-              placeholder="Pesquisar por documentos, chaves, pet, locais..."
+              placeholder="Buscar documentos, chaves, bolsas, animais..."
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
+              className="w-full pl-10 pr-4 py-2.5 bg-[#0F0A19]/80 border border-purple-900/40 rounded-xl text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/20 transition-all"
             />
           </div>
 
           <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
             <button
               onClick={() => setFiltroTipo("todos")}
-              className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-                filtroTipo === "todos" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              className={`px-4 py-2 rounded-xl text-xs font-black tracking-wider uppercase transition-all ${
+                filtroTipo === "todos"
+                  ? "bg-purple-600 text-white shadow-md shadow-purple-600/10"
+                  : "bg-[#0F0A19] text-gray-400 border border-purple-900/30 hover:text-white hover:border-purple-800"
               }`}
             >
-              Ver Todos
+              Todos os Itens
             </button>
             <button
               onClick={() => setFiltroTipo("perdido")}
-              className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-                filtroTipo === "perdido" ? "bg-red-500 text-white" : "bg-red-50 text-red-600 hover:bg-red-100"
+              className={`px-4 py-2 rounded-xl text-xs font-black tracking-wider uppercase transition-all border ${
+                filtroTipo === "perdido"
+                  ? "bg-red-500/20 text-red-400 border-red-500/40 shadow-sm"
+                  : "bg-[#0F0A19] text-gray-400 border-purple-900/30 hover:text-red-400 hover:border-red-900/40"
               }`}
             >
-              Perdidos 🔍
+              Objetos Perdidos 🔍
             </button>
             <button
               onClick={() => setFiltroTipo("encontrado")}
-              className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-                filtroTipo === "encontrado" ? "bg-green-600 text-white" : "bg-green-50 text-green-600 hover:bg-green-100"
+              className={`px-4 py-2 rounded-xl text-xs font-black tracking-wider uppercase transition-all border ${
+                filtroTipo === "encontrado"
+                  ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-sm"
+                  : "bg-[#0F0A19] text-gray-400 border-purple-900/30 hover:text-emerald-400 hover:border-emerald-900/40"
               }`}
             >
               Encontrados 🎉
@@ -186,18 +195,18 @@ const AchadosPerdidos = () => {
           </div>
         </div>
 
-        {/* Listagem de itens em grid */}
+        {/* Listagem principal */}
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-12 gap-3">
-            <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-            <span className="text-xs text-gray-500">Sincronizando registros da região...</span>
+          <div className="flex flex-col items-center justify-center py-20 gap-3">
+            <div className="w-9 h-9 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+            <span className="text-xs text-purple-300 font-medium tracking-wide">Sincronizando com os servidores de SAJ...</span>
           </div>
         ) : itensFiltrados.length === 0 ? (
-          <div className="bg-white border border-gray-200 rounded-2xl p-12 text-center max-w-xl mx-auto">
-            <AlertCircle className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-            <h3 className="font-bold text-gray-700 text-base mb-1">Nenhum registro encontrado</h3>
+          <div className="bg-[#150F22]/40 border border-purple-900/20 rounded-2xl p-16 text-center max-w-xl mx-auto backdrop-blur-sm">
+            <AlertCircle className="h-12 w-12 text-purple-900 mx-auto mb-4" />
+            <h3 className="font-bold text-gray-200 text-base mb-1">Nenhum registro ativo</h3>
             <p className="text-xs text-gray-400 leading-relaxed">
-              Não existem itens que coincidam com os seus filtros ou busca neste momento em Santo Antônio de Jesus.
+              Nenhum item pendente ou publicado se enquadra nos termos pesquisados em Santo Antônio de Jesus no momento.
             </p>
           </div>
         ) : (
@@ -205,51 +214,54 @@ const AchadosPerdidos = () => {
             {itensFiltrados.map((item) => (
               <div
                 key={item.id}
-                className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all relative flex flex-col justify-between"
+                className="bg-[#150F22]/50 border border-purple-900/30 rounded-2xl p-5 shadow-lg hover:border-purple-800/60 hover:bg-[#150F22]/70 transition-all relative flex flex-col justify-between group"
               >
                 <div>
-                  <div className="flex items-center justify-between gap-2 mb-3">
+                  <div className="flex items-center justify-between gap-2 mb-3.5">
                     <span
-                      className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full ${
-                        item.tipo === "perdido" ? "bg-red-50 text-red-600 border border-red-100" : "bg-green-50 text-green-600 border border-green-100"
+                      className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border ${
+                        item.tipo === "perdido" 
+                          ? "bg-red-500/10 text-red-400 border-red-500/20" 
+                          : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
                       }`}
                     >
                       {item.tipo === "perdido" ? "Perdido" : "Encontrado"}
                     </span>
-                    <span className="text-[11px] font-medium text-gray-400 flex items-center gap-1">
-                      <Tag className="h-3 w-3" /> {item.categoria}
+                    <span className="text-[11px] font-bold text-purple-300 flex items-center gap-1 bg-purple-950/40 border border-purple-900/40 px-2 py-0.5 rounded-lg">
+                      <Tag className="h-3 w-3 text-purple-400" /> {item.categoria}
                     </span>
                   </div>
 
-                  <h3 className="font-bold text-gray-800 text-base leading-tight mb-2">
+                  <h3 className="font-extrabold text-white text-base leading-tight mb-2 group-hover:text-purple-300 transition-colors">
                     {item.titulo}
                   </h3>
-                  <p className="text-xs text-gray-500 leading-relaxed mb-4 whitespace-pre-line">
+                  <p className="text-xs text-gray-400 leading-relaxed mb-5 whitespace-pre-line">
                     {item.descricao}
                   </p>
                 </div>
 
-                <div className="border-t border-gray-100 pt-4 mt-2 space-y-2">
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <MapPin className="h-3.5 w-3.5 text-gray-400 shrink-0" />
-                    <span className="truncate">Local: <strong>{item.local_fato}</strong></span>
+                <div className="border-t border-purple-950/80 pt-4 mt-2 space-y-2.5">
+                  <div className="flex items-center gap-2.5 text-xs text-gray-400">
+                    <MapPin className="h-4 w-4 text-purple-500 shrink-0" />
+                    <span className="truncate">Visto em: <strong className="text-gray-200">{item.local_fato}</strong></span>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-gray-400">
-                    <Calendar className="h-3.5 w-3.5 text-gray-400 shrink-0" />
-                    <span>Postado em: {new Date(item.created_at).toLocaleDateString("pt-BR")}</span>
+                  <div className="flex items-center gap-2.5 text-xs text-gray-500">
+                    <Calendar className="h-4 w-4 text-purple-900 shrink-0" />
+                    <span>Publicação: {new Date(item.created_at).toLocaleDateString("pt-BR")}</span>
                   </div>
+
                   {item.status === "resolvido" ? (
-                    <div className="bg-gray-50 text-gray-500 font-bold text-xs p-2 rounded-xl flex items-center justify-center gap-1.5 border border-gray-100 mt-2">
-                      <CheckCircle2 className="h-4 w-4 text-gray-400" /> Item Devolvido ao Dono
+                    <div className="w-full bg-[#0F0A19] text-gray-500 border border-purple-950/80 font-black text-xs p-3 rounded-xl flex items-center justify-center gap-1.5 text-center uppercase tracking-wider">
+                      <CheckCircle2 className="h-4 w-4 text-purple-900" /> Item Devolvido / Resolvido
                     </div>
                   ) : (
                     <a
                       href={`https://wa.me/55${item.contato_telefone.replace(/\D/g, "")}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="w-full bg-gray-900 text-white font-bold text-xs p-2.5 rounded-xl flex items-center justify-center gap-1.5 hover:bg-gray-800 transition-colors mt-2"
+                      className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-extrabold text-xs p-3 rounded-xl flex items-center justify-center gap-1.5 hover:shadow-md hover:shadow-purple-600/10 hover:opacity-95 active:scale-[0.99] transition-all text-center uppercase tracking-wider mt-2"
                     >
-                      <Phone className="h-3.5 w-3.5" /> Contatar ({item.contato_nome})
+                      <Phone className="h-3.5 w-3.5" /> Entrar em Contato ({item.contato_nome})
                     </a>
                   )}
                 </div>
@@ -258,108 +270,123 @@ const AchadosPerdidos = () => {
           </div>
         )}
 
-        {/* Modal de Cadastro de Novo Item */}
+        {/* Modal de cadastro premium */}
         {isModalAberto && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-              <div className="bg-gray-900 text-white px-5 py-4 flex justify-between items-center">
-                <h2 className="font-bold text-base">Notificar Achado ou Perdido</h2>
-                <button onClick={() => setIsModalAberto(false)} className="text-gray-400 hover:text-white text-xs font-bold">
-                  Fechar ✕
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+            <div className="bg-[#150F22] border border-purple-900/50 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl shadow-purple-950/50 animate-in fade-in zoom-in-95 duration-150 text-white">
+              <div className="bg-[#0F0A19] border-b border-purple-950/80 px-5 py-4 flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-purple-400" />
+                  <h2 className="font-black text-sm uppercase tracking-wider">Notificar Nova Ocorrência</h2>
+                </div>
+                <button
+                  onClick={() => setIsModalAberto(false)}
+                  className="p-1 rounded-lg bg-purple-950/40 text-gray-400 hover:text-white hover:bg-purple-900/40 transition-colors"
+                >
+                  <X className="h-4 w-4" />
                 </button>
               </div>
 
-              <form onSubmit={handleCadastrarItem} className="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
-                <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 rounded-xl">
+              <form onSubmit={handleCadastrarItem} className="p-5 space-y-4 max-h-[75vh] overflow-y-auto custom-scrollbar">
+                <div className="grid grid-cols-2 gap-2 p-1 bg-[#0F0A19] border border-purple-950/60 rounded-xl">
                   <button
                     type="button"
                     onClick={() => setTipo("perdido")}
-                    className={`py-2 text-xs font-bold rounded-lg transition-all ${
-                      tipo === "perdido" ? "bg-white text-red-600 shadow-sm" : "text-gray-500 hover:text-gray-800"
+                    className={`py-2.5 text-xs font-black uppercase tracking-wider rounded-lg transition-all ${
+                      tipo === "perdido"
+                        ? "bg-gradient-to-r from-red-600/20 to-red-500/10 text-red-400 border border-red-500/30 shadow-inner"
+                        : "text-gray-500 hover:text-gray-300"
                     }`}
                   >
-                    Eu Perdi Algo 🔍
+                    Perdi um Item 🔍
                   </button>
                   <button
                     type="button"
                     onClick={() => setTipo("encontrado")}
-                    className={`py-2 text-xs font-bold rounded-lg transition-all ${
-                      tipo === "encontrado" ? "bg-white text-green-600 shadow-sm" : "text-gray-500 hover:text-gray-800"
+                    className={`py-2.5 text-xs font-black uppercase tracking-wider rounded-lg transition-all ${
+                      tipo === "encontrado"
+                        ? "bg-gradient-to-r from-emerald-600/20 to-emerald-500/10 text-emerald-400 border border-emerald-500/30 shadow-inner"
+                        : "text-gray-500 hover:text-gray-300"
                     }`}
                   >
-                    Eu Encontrei Algo 🎉
+                    Achei um Item 🎉
                   </button>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Título Resumido</label>
+                  <label className="block text-xs font-black uppercase tracking-widest text-purple-300 mb-1.5">O que foi?</label>
                   <input
                     type="text"
-                    placeholder="Ex: Chave de moto Honda com chaveiro azul, RG de Fulano..."
+                    required
+                    placeholder="Ex: Chave de carro Fiat, Cachorro Poodle branco..."
                     value={titulo}
                     onChange={(e) => setTitulo(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 bg-gray-50"
+                    className="w-full px-3 py-2.5 bg-[#0F0A19] border border-purple-900/40 rounded-xl text-sm focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/20 text-gray-200"
                   />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">Categoria</label>
+                    <label className="block text-xs font-black uppercase tracking-widest text-purple-300 mb-1.5">Categoria</label>
                     <select
                       value={categoria}
                       onChange={(e) => setCategoria(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 bg-gray-50"
+                      className="w-full px-3 py-2.5 bg-[#0F0A19] border border-purple-900/40 rounded-xl text-sm focus:outline-none focus:border-purple-500 text-gray-300"
                     >
                       <option value="Documentos">Documentos</option>
                       <option value="Animais de Estimação">Animais de Estimação</option>
                       <option value="Chaves">Chaves</option>
                       <option value="Carteiras / Bolsas">Carteiras / Bolsas</option>
-                      <option value="Eletrônicos (Celular, Fone)">Eletrônicos (Celular, Fone)</option>
-                      <option value="Outros">Outros</option>
+                      <option value="Eletrônicos (Celular, Fone)">Eletrônicos</option>
+                      <option value="Outros">Outros Objetos</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">Onde (Bairro ou Ponto em SAJ)</label>
+                    <label className="block text-xs font-black uppercase tracking-widest text-purple-300 mb-1.5">Onde em SAJ?</label>
                     <input
                       type="text"
-                      placeholder="Ex: Próximo à Praça Padre Mateus"
+                      required
+                      placeholder="Ex: No São Benedito / Centro"
                       value={localFato}
                       onChange={(e) => setLocalFato(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 bg-gray-50"
+                      className="w-full px-3 py-2.5 bg-[#0F0A19] border border-purple-900/40 rounded-xl text-sm focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/20 text-gray-200"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Descrição Detalhada</label>
+                  <label className="block text-xs font-black uppercase tracking-widest text-purple-300 mb-1.5">Descrição/Detalhes</label>
                   <textarea
                     rows={3}
-                    placeholder="Dê mais detalhes para ajudar na identificação (características particulares, marcas, cor)..."
+                    required
+                    placeholder="Descreva características marcantes, cores ou marcas do objeto ou animal encontrado..."
                     value={descricao}
                     onChange={(e) => setDescricao(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 bg-gray-50 resize-none"
+                    className="w-full px-3 py-2.5 bg-[#0F0A19] border border-purple-900/40 rounded-xl text-sm focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/20 text-gray-200 resize-none"
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-gray-100 pt-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-purple-950/80 pt-4">
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">Seu Nome</label>
+                    <label className="block text-xs font-black uppercase tracking-widest text-purple-300 mb-1.5">Seu Nome</label>
                     <input
                       type="text"
-                      placeholder="Nome do contato"
+                      required
+                      placeholder="Quem responderá"
                       value={contatoNome}
                       onChange={(e) => setContatoNome(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 bg-gray-50"
+                      className="w-full px-3 py-2.5 bg-[#0F0A19] border border-purple-900/40 rounded-xl text-sm focus:outline-none focus:border-purple-500 text-gray-200"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">WhatsApp de Contato</label>
+                    <label className="block text-xs font-black uppercase tracking-widest text-purple-300 mb-1.5">WhatsApp para Contato</label>
                     <input
                       type="text"
+                      required
                       placeholder="Ex: 75999999999"
                       value={contatoTelefone}
                       onChange={(e) => setContatoTelefone(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 bg-gray-50"
+                      className="w-full px-3 py-2.5 bg-[#0F0A19] border border-purple-900/40 rounded-xl text-sm focus:outline-none focus:border-purple-500 text-gray-200"
                     />
                   </div>
                 </div>
@@ -367,9 +394,9 @@ const AchadosPerdidos = () => {
                 <button
                   type="submit"
                   disabled={enviando}
-                  className="w-full bg-blue-600 text-white font-bold text-sm py-3 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 mt-2 shadow-md"
+                  className="w-full bg-gradient-to-r from-purple-600 via-purple-500 to-indigo-500 text-white font-black text-xs uppercase tracking-wider py-3.5 rounded-xl hover:opacity-95 shadow-lg shadow-purple-600/20 disabled:opacity-50 mt-2 transition-all"
                 >
-                  {enviando ? "Enviando para Moderação..." : "Publicar Registro"}
+                  {enviando ? "Processando Registro..." : "Enviar para Moderação"}
                 </button>
               </form>
             </div>
