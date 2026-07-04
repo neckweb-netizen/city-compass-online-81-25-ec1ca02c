@@ -1,13 +1,14 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { PWAInstallPrompt } from "@/components/pwa/PWAInstallPrompt";
 import { SecurityHeaders } from "@/components/security/SecurityHeaders";
 import { lazy, Suspense, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Hammer, Clock, MapPin, Mail, MessageSquare, Instagram, Facebook, ArrowRight } from "lucide-react";
+import { initGA, logPageView } from "@/utils/analytics";
 
 // Import critical pages immediately
 import Index from "./pages/Index";
@@ -86,10 +87,26 @@ const LoadingFallback = () => (
   </div>
 );
 
+// Componente interno responsável por mapear as trocas de tela do roteador e enviar ao GA4
+const AnalyticsTracker = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    logPageView(location.pathname + location.search);
+  }, [location]);
+
+  return null;
+};
+
 const App = () => {
   const [isMaintenance, setIsMaintenance] = useState(false);
   const [maintenanceMessage, setMaintenanceMessage] = useState("");
   const [loadingConfig, setLoadingConfig] = useState(true);
+
+  // Inicialização única do Google Analytics 4
+  useEffect(() => {
+    initGA();
+  }, []);
 
   // Monitoramento ativo e assíncrono do status de manutenção global
   useEffect(() => {
@@ -105,7 +122,7 @@ const App = () => {
 
         if (data) {
           setIsMaintenance(data.manutencao ?? false);
-          setMaintenanceMessage(data.mensagem_manutencao ?? "O portal está passando por atualizações e voltará em breve.");
+          setMaintenanceMessage(data.mensagem_manutencao ?? "O portal está passando por updates e voltará em breve.");
         }
       } catch (error) {
         console.error("Erro ao sincronizar chaves de manutenção no App:", error);
@@ -145,7 +162,6 @@ const App = () => {
 
         <header className="w-full max-w-7xl mx-auto px-6 py-6 flex items-center justify-between relative z-10">
           <div className="flex items-center gap-2.5">
-            {/* Tag img corrigida apontando exatamente para /Logo.png na raiz da pasta public */}
             <img 
               src="/Logo.png" 
               alt="Saj Tem Logo" 
@@ -230,10 +246,10 @@ const App = () => {
           
           <div className="flex items-center gap-4">
             <a href="https://instagram.com" target="_blank" rel="noreferrer" className="p-2 bg-purple-950/30 border border-purple-900/40 rounded-xl text-gray-400 hover:text-white hover:bg-purple-900/40 transition-all">
-              <Instagram className="h-4 w-4" />
+              <img src="" alt="" className="hidden" /><Instagram className="h-4 w-4" />
             </a>
             <a href="https://facebook.com" target="_blank" rel="noreferrer" className="p-2 bg-purple-950/30 border border-purple-900/40 rounded-xl text-gray-400 hover:text-white hover:bg-purple-900/40 transition-all">
-              <Facebook className="h-4 w-4" />
+              <img src="" alt="" className="hidden" /><Facebook className="h-4 w-4" />
             </a>
           </div>
         </footer>
@@ -249,77 +265,78 @@ const App = () => {
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <AnalyticsTracker />
           <RoutePreloader />
           <Suspense fallback={<LoadingFallback />}>
-          <Routes>
-            <Route path="/" element={<PublicLayout />}>
-              <Route index element={<Index />} />
-              <Route path="profile" element={<Profile />} />
-              <Route path="configuracoes" element={<Configuracoes />} />
-              <Route path="busca" element={<Busca />} />
-              <Route path="search" element={<Search />} />
-              <Route path="locais" element={<Locais />} />
-              <Route path="categorias" element={<Categorias />} />
-              <Route path="locais/:slug" element={<LocalProfile />} />
-              <Route path="local/:slug" element={<LocalProfile />} />
-              <Route path="cadastro-local" element={<CadastroLocal />} />
-              <Route path="eventos" element={<Eventos />} />
-              <Route path="eventos/:id" element={<EventoPage />} />
-              <Route path="evento/:id" element={<EventoPage />} />
-              <Route path="canal-informativo" element={<CanalInformativo />} />
-              <Route path="oportunidades" element={<Oportunidades />} />
-              <Route path="oportunidades/vagas" element={<VagasEmprego />} />
-              <Route path="oportunidades/servicos" element={<ServicosAutonomos />} />
-              <Route path="oportunidades/anunciar-servico" element={<AnunciarServico />} />
-              <Route path="radios" element={<Radios />} />
-              <Route path="categoria/:slug" element={<CategoriaLocais />} />
-              <Route path="help" element={<HelpCenter />} />
-              <Route path="contact" content={<ContactPage />} />
-              <Route path="privacy" element={<PrivacyPolicy />} />
-              <Route path="anuncie-gratis" element={<AnuncieGratis />} />
-              <Route path="reclamacoes" element={<Reclamacoes />} />
-              <Route path="reclamacoes/:id" element={<ReclamacaoDetalhes />} />
-              <Route path="unauthorized" element={<UnauthorizedPage />} />
-              <Route path=":shortCode" element={<ShortUrlRedirect />} />
-            </Route>
-            
-            <Route path="/empresa-dashboard" element={<MainLayout />}>
-              <Route index element={<LocalDashboard />} />
-            </Route>
+            <Routes>
+              <Route path="/" element={<PublicLayout />}>
+                <Route index element={<Index />} />
+                <Route path="profile" element={<Profile />} />
+                <Route path="configuracoes" element={<Configuracoes />} />
+                <Route path="busca" element={<Busca />} />
+                <Route path="search" element={<Search />} />
+                <Route path="locais" element={<Locais />} />
+                <Route path="categorias" element={<Categorias />} />
+                <Route path="locais/:slug" element={<LocalProfile />} />
+                <Route path="local/:slug" element={<LocalProfile />} />
+                <Route path="cadastro-local" element={<CadastroLocal />} />
+                <Route path="eventos" element={<Eventos />} />
+                <Route path="eventos/:id" element={<EventoPage />} />
+                <Route path="evento/:id" element={<EventoPage />} />
+                <Route path="canal-informativo" element={<CanalInformativo />} />
+                <Route path="oportunidades" element={<Oportunidades />} />
+                <Route path="oportunidades/vagas" element={<VagasEmprego />} />
+                <Route path="oportunidades/servicos" element={<ServicosAutonomos />} />
+                <Route path="oportunidades/anunciar-servico" element={<AnunciarServico />} />
+                <Route path="radios" element={<Radios />} />
+                <Route path="categoria/:slug" element={<CategoriaLocais />} />
+                <Route path="help" element={<HelpCenter />} />
+                <Route path="contact" element={<ContactPage />} />
+                <Route path="privacy" element={<PrivacyPolicy />} />
+                <Route path="anuncie-gratis" element={<AnuncieGratis />} />
+                <Route path="reclamacoes" element={<Reclamacoes />} />
+                <Route path="reclamacoes/:id" element={<ReclamacaoDetalhes />} />
+                <Route path="unauthorized" element={<UnauthorizedPage />} />
+                <Route path=":shortCode" element={<ShortUrlRedirect />} />
+              </Route>
+              
+              <Route path="/empresa-dashboard" element={<MainLayout />}>
+                <Route index element={<LocalDashboard />} />
+              </Route>
 
-            <Route path="/admin" element={<AdminLayout />}>
-              <Route index element={<AdminDashboard />} />
-              <Route path="locais" element={<AdminLocais />} />
-              <Route path="locais-pendentes" element={<AdminLocaisPendentes />} />
-              <Route path="local-admins" element={<AdminLocalAdmins />} />
-              <Route path="eventos" element={<AdminEventos />} />
-              <Route path="cidades" element={<AdminCidades />} />
-              <Route path="categorias" element={<AdminCategorias />} />
-              <Route path="usuarios" element={<AdminUsuarios />} />
-              <Route path="banners" element={<AdminBanners />} />
-              <Route path="canal-informativo" element={<AdminCanalInformativo />} />
-              <Route path="stories" element={<AdminStories />} />
-              <Route path="cupons" element={<AdminCupons />} />
-              <Route path="planos" element={<AdminPlanos />} />
-              <Route path="avaliacoes" element={<AdminAvaliacoes />} />
-              <Route path="estatisticas" element={<AdminEstatisticas />} />
-              <Route path="configuracoes" element={<AdminConfiguracoes />} />
-              <Route path="home-sections" element={<AdminHomeSections />} />
-              <Route path="menu" element={<AdminMenu />} />
-              <Route path="avisos" element={<AdminAvisos />} />
-              <Route path="logs" element={<AdminLogs />} />
-              <Route path="security" element={<AdminSecurity />} />
-              <Route path="diagnostic" element={<AdminDiagnostic />} />
-              <Route path="vagas" element={<AdminVagas />} />
-              <Route path="servicos" element={<AdminServicos />} />
-              <Route path="lugares-publicos" element={<AdminLugaresPublicos />} />
-              <Route path="enquetes" element={<AdminEnquetes />} />
-              <Route path="reclamacoes" element={<AdminReclamacoes />} />
-              <Route path="comentarios-problema" element={<AdminComentariosProblema />} />
-            </Route>
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<AdminDashboard />} />
+                <Route path="locais" element={<AdminLocais />} />
+                <Route path="locais-pendentes" element={<AdminLocaisPendentes />} />
+                <Route path="local-admins" element={<AdminLocalAdmins />} />
+                <Route path="eventos" element={<AdminEventos />} />
+                <Route path="cidades" element={<AdminCidades />} />
+                <Route path="categorias" element={<AdminCategorias />} />
+                <Route path="usuarios" element={<AdminUsuarios />} />
+                <Route path="banners" element={<AdminBanners />} />
+                <Route path="canal-informativo" element={<AdminCanalInformativo />} />
+                <Route path="stories" element={<AdminStories />} />
+                <Route path="cupons" element={<AdminCupons />} />
+                <Route path="planos" element={<AdminPlanos />} />
+                <Route path="avaliacoes" element={<AdminAvaliacoes />} />
+                <Route path="estatisticas" element={<AdminEstatisticas />} />
+                <Route path="configuracoes" element={<AdminConfiguracoes />} />
+                <Route path="home-sections" element={<AdminHomeSections />} />
+                <Route path="menu" element={<AdminMenu />} />
+                <Route path="avisos" element={<AdminAvisos />} />
+                <Route path="logs" element={<AdminLogs />} />
+                <Route path="security" element={<AdminSecurity />} />
+                <Route path="diagnostic" element={<AdminDiagnostic />} />
+                <Route path="vagas" element={<AdminVagas />} />
+                <Route path="servicos" element={<AdminServicos />} />
+                <Route path="lugares-publicos" element={<AdminLugaresPublicos />} />
+                <Route path="enquetes" element={<AdminEnquetes />} />
+                <Route path="reclamacoes" element={<AdminReclamacoes />} />
+                <Route path="comentarios-problema" element={<AdminComentariosProblema />} />
+              </Route>
 
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
           </Suspense>
         </BrowserRouter>
       </TooltipProvider>
