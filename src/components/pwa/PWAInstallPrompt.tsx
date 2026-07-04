@@ -20,20 +20,20 @@ export const PWAInstallPrompt: React.FC = () => {
   const [isIOS, setIsIOS] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
 
-  // Função interna para registrar métricas anonimamente no Supabase
-  const logPWAEvent = async (evento: string) => {
-    try {
-      let plataforma = 'Android/PC';
-      if (/iPad|iPhone|iPod/.test(navigator.userAgent)) plataforma = 'iOS';
-      else if (/Macintosh/.test(navigator.userAgent)) plataforma = 'MacOS';
-      else if (/Windows/.test(navigator.userAgent)) plataforma = 'Windows';
+  // Função de log isolada e protegida para não travar a thread síncrona do navegador
+  const logPWAEvent = (evento: string) => {
+    let plataforma = 'Android/PC';
+    if (/iPad|iPhone|iPod/.test(navigator.userAgent)) plataforma = 'iOS';
+    else if (/Macintosh/.test(navigator.userAgent)) plataforma = 'MacOS';
+    else if (/Windows/.test(navigator.userAgent)) plataforma = 'Windows';
 
-      await supabase
-        .from('estatisticas_pwa' as any)
-        .insert([{ evento, plataforma }]);
-    } catch (err) {
-      console.error('Erro silencioso ao computar métrica do PWA:', err);
-    }
+    supabase
+      .from('estatisticas_pwa' as any)
+      .insert([{ evento, plataforma }])
+      .then(({ error }) => {
+        if (error) console.error('Erro ao salvar métrica PWA:', error);
+      })
+      .catch((err) => console.error('Erro de rede na métrica PWA:', err));
   };
 
   useEffect(() => {
@@ -41,11 +41,11 @@ export const PWAInstallPrompt: React.FC = () => {
     const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     setIsIOS(iOS);
     
-    // Verificar se já está instalado e rodando em modo nativo
+    // Verificar se já está instalado
     const standalone = window.matchMedia('(display-mode: standalone)').matches;
     setIsStandalone(standalone);
 
-    // Se o usuário entrou no site usando o PWA já instalado, computa um acesso standalone diário
+    // Se o usuário entrou no site usando o PWA já instalado, computa o acesso
     if (standalone) {
       const lastSessionLog = sessionStorage.getItem('pwa-session-logged');
       if (!lastSessionLog) {
@@ -54,21 +54,23 @@ export const PWAInstallPrompt: React.FC = () => {
       }
     }
 
-    // REMOVIDO: A checagem de "isDismissed" foi removida para forçar o banner a aparecer sempre nos testes
+    // Removido o bloqueio estrito de 24 horas para garantir exibição contínua nos seus testes de desenvolvimento
+    const lastDismissed = localStorage.getItem('pwa-banner-dismissed');
+    const isDismissed = lastDismissed && Date.now() - parseInt(lastDismissed) < 24 * 60 * 60 * 1000;
 
-    // Listener nativo do navegador para interceptar se o app é elegível para instalação
+    // Listener estritamente síncrono - idêntico ao seu arquivo inicial original
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       
-      // MODIFICADO: Agora exibe o banner IMEDIATAMENTE (sem o delay de 1 minuto) para facilitar seu teste
+      // Exibe imediatamente para você testar sem precisar mofar esperando 1 minuto na tela
       setShowBanner(true);
       logPWAEvent('banner_exibido');
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
-    // Listener para capturar o exato momento em que a instalação é finalizada no Chromium/Android
+    // Captura o momento exato em que a instalação conclui
     const handleAppInstalled = () => {
       logPWAEvent('instalado_com_sucesso');
       setDeferredPrompt(null);
@@ -78,7 +80,7 @@ export const PWAInstallPrompt: React.FC = () => {
 
     window.addEventListener('appinstalled', handleAppInstalled);
 
-    // Para iOS, mostrar banner imediatamente também para testes
+    // Fluxo nativo para o ecossistema iOS
     if (iOS && !standalone) {
       setShowBanner(true);
       logPWAEvent('banner_exibido');
@@ -111,15 +113,15 @@ export const PWAInstallPrompt: React.FC = () => {
 
   const handleCloseBanner = () => {
     setShowBanner(false);
-    // REMOVIDO: Não salva mais no localStorage o bloqueio para permitir que você teste várias vezes seguidas
+    localStorage.setItem('pwa-banner-dismissed', Date.now().toString());
   };
 
   const handleCloseFullPrompt = () => {
     setShowFullPrompt(false);
-    // REMOVIDO: Não salva mais no localStorage o bloqueio para permitir que você teste várias vezes seguidas
+    localStorage.setItem('pwa-banner-dismissed', Date.now().toString());
   };
 
-  // Não mostrar se já estiver rodando em modo de app isolado
+  // Não mostrar se já está instalado ou rodando isolado
   if (isStandalone) {
     return null;
   }
