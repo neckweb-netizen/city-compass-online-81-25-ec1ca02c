@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { HomeContent } from '@/components/home/HomeContent';
 import { SearchContent } from '@/components/search/SearchContent';
 import { CategoriesContent } from '@/components/categories/CategoriesContent';
@@ -15,8 +15,22 @@ import {
   Instagram, 
   Facebook, 
   Globe, 
-  ArrowRight
+  ArrowRight,
+  Search,
+  Calendar,
+  Tag,
+  AlertCircle
 } from 'lucide-react';
+
+interface ItemAchadoPerdido {
+  id: string;
+  tipo: 'perdido' | 'encontrado';
+  titulo: string;
+  descricao: string;
+  categoria: string;
+  local_fato: string;
+  created_at: string;
+}
 
 const Index = () => {
   const [searchParams] = useSearchParams();
@@ -27,6 +41,10 @@ const Index = () => {
   const [isMaintenance, setIsMaintenance] = useState(false);
   const [maintenanceMessage, setMaintenanceMessage] = useState('');
   const [loadingConfig, setLoadingConfig] = useState(true);
+
+  // Estado para armazenar os itens recentes de achados e perdidos
+  const [itensAchados, setItensAchados] = useState<ItemAchadoPerdido[]>([]);
+  const [loadingAchados, setLoadingAchados] = useState(false);
 
   // Carrega e monitora o status de manutenção do banco de dados
   useEffect(() => {
@@ -85,6 +103,32 @@ const Index = () => {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  // Carrega os últimos 3 itens de achados e perdidos aprovados
+  useEffect(() => {
+    const buscarUltimosAchados = async () => {
+      if (activeTab !== 'home' || isMaintenance) return;
+      try {
+        setLoadingAchados(true);
+        const { data, error } = await supabase
+          .from('achados_perdidos' as any)
+          .select('id, tipo, titulo, descricao, categoria, local_fato, created_at')
+          .eq('status', 'aprovado')
+          .order('created_at', { ascending: false })
+          .limit(3);
+
+        if (!error && data) {
+          setItensAchados(data);
+        }
+      } catch (err) {
+        console.error('Erro ao buscar itens de achados e perdidos na home:', err);
+      } finally {
+        setLoadingAchados(false);
+      }
+    };
+
+    buscarUltimosAchados();
+  }, [activeTab, isMaintenance]);
 
   useEffect(() => {
     setActiveTab(tabFromUrl);
@@ -216,7 +260,79 @@ const Index = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'home':
-        return <HomeContent />;
+        return (
+          <div className="space-y-12">
+            <HomeContent />
+            
+            {/* Seção dinâmica de Achados e Perdidos inserida na Home pública */}
+            <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-purple-950/60 pb-4 mb-6 gap-4">
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
+                    <Search className="h-5 w-5 text-purple-400" /> Achados e Perdidos Recentes
+                  </h2>
+                  <p className="text-xs text-gray-400 mt-0.5">Utilidade pública em Santo Antônio de Jesus</p>
+                </div>
+                <Link
+                  to="/achados-e-perdidos"
+                  className="inline-flex items-center gap-1 text-xs font-black uppercase tracking-wider text-purple-400 hover:text-purple-300 transition-colors group"
+                >
+                  Ver Painel Completo <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
+                </Link>
+              </div>
+
+              {loadingAchados ? (
+                <div className="flex items-center justify-center py-10 gap-2">
+                  <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                  <span className="text-xs text-gray-400">Buscando objetos...</span>
+                </div>
+              ) : itensAchados.length === 0 ? (
+                <div className="bg-[#150F22]/30 border border-purple-900/20 rounded-2xl p-8 text-center max-w-md mx-auto">
+                  <AlertCircle className="h-8 w-8 text-purple-950 mx-auto mb-2" />
+                  <p className="text-xs text-gray-400">Nenhum objeto perdido ou achado listado recentemente.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {itensAchados.map((item) => (
+                    <div
+                      key={item.id}
+                      className="bg-[#150F22]/40 border border-purple-900/20 rounded-2xl p-4 flex flex-col justify-between gap-3 hover:border-purple-800/40 transition-colors"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <span
+                            className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${
+                              item.tipo === 'perdido'
+                                ? 'bg-red-500/10 text-red-400 border-red-500/20'
+                                : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                            }`}
+                          >
+                            {item.tipo === 'perdido' ? 'Perdido' : 'Achado'}
+                          </span>
+                          <span className="text-[10px] text-purple-300 font-bold flex items-center gap-1 bg-purple-950/40 px-2 py-0.5 rounded-lg">
+                            <Tag className="h-2.5 w-2.5 text-purple-400" /> {item.categoria}
+                          </span>
+                        </div>
+                        <h3 className="font-extrabold text-white text-sm line-clamp-1 mb-1">{item.titulo}</h3>
+                        <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">{item.descricao}</p>
+                      </div>
+
+                      <div className="border-t border-purple-950/60 pt-2.5 flex items-center justify-between text-[11px] text-gray-400">
+                        <div className="flex items-center gap-1 truncate max-w-[70%]">
+                          <MapPin className="h-3 w-3 text-purple-500 shrink-0" />
+                          <span className="truncate text-gray-300 font-medium">{item.local_fato}</span>
+                        </div>
+                        <span className="text-[10px] text-gray-500 whitespace-nowrap">
+                          {new Date(item.created_at).toLocaleDateString('pt-BR')}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          </div>
+        );
       case 'search':
         return <SearchContent />;
       case 'categories':
