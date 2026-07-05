@@ -14,7 +14,7 @@ import {
   Eye,
   Verified,
   Camera
-} from 'luc-react';
+} from 'lucide-react';
 
 interface LocalCardProps {
   empresa: {
@@ -93,7 +93,6 @@ export const LocalCard = ({ empresa, onClick, showActions = true }: LocalCardPro
               }}
               onLoad={(e) => {
                 console.log('✅ Imagem carregada com sucesso:', empresa.nome);
-                // Garante a visibilidade se carregar corretamente
                 (e.currentTarget as HTMLImageElement).style.opacity = '1';
               }}
             />
