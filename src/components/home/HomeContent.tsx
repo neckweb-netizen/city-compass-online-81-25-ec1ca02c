@@ -1,4 +1,3 @@
-
 import { useAuth } from "@/hooks/useAuth";
 import { StoriesSection } from './StoriesSection';
 import { SearchBar } from './SearchBar';
@@ -31,7 +30,9 @@ const sectionComponents = {
   featured_section: (cidadeId?: string) => <FeaturedSection cidadeId={cidadeId || ''} />,
   eventos_slider: (cidadeId?: string) => <EventosSlider />,
   stats_section: (cidadeId?: string) => <StatsSection />,
-  featured_products: (cidadeId?: string) => <FeaturedProducts />
+  featured_products: (cidadeId?: string) => <FeaturedProducts />,
+  // Mapeamos a chave da seção adicionada no banco de dados para evitar o descarte de renderização
+  achados_perdidos: (cidadeId?: string) => null 
 };
 
 export const HomeContent = () => {
