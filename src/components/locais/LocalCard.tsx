@@ -1,4 +1,3 @@
-
 import { NeonCard } from '@/components/ui/neon-card';
 import { CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -111,7 +110,7 @@ export const LocalCard = ({ empresa, onClick, showActions = true }: LocalCardPro
                 img.style.display = 'none';
                 const fallbackDiv = img.nextElementSibling as HTMLElement;
                 if (fallbackDiv) {
-                  fallbackDiv.style.display = 'flex';
+                  fallbackDiv.style.style.display = 'flex';
                 }
               }}
               onLoad={() => {
