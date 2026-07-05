@@ -276,7 +276,6 @@ const App = () => {
                 <Route path="achados-e-perdidos" element={<AchadosPerdidos />} />
                 <Route path="profile" element={<Profile />} />
                 <Route path="configuracoes" element={<Configuracoes />} />
-                <Route path="achados-e-perdidos" element={<AdminAchadosPerdidos />} />
                 <Route path="busca" element={<Busca />} />
                 <Route path="search" element={<Search />} />
                 <Route path="locais" element={<Locais />} />
