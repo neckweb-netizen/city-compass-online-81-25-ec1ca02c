@@ -231,7 +231,7 @@ const AdminAchadosPerdidos = () => {
                         onClick={() => alterarStatus(item.id, "aprovado")}
                         className="flex-1 lg:w-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 uppercase tracking-wider transition-all"
                       >
-                        <Check className="h-4 w-4" /> Aprovar
+                        <Check className="h-4 w-4" />具 Aprovar
                       </button>
                       <button
                         onClick={() => alterarStatus(item.id, "rejeitado")}
@@ -271,4 +271,3 @@ const AdminAchadosPerdidos = () => {
 };
 
 export default AdminAchadosPerdidos;
-
