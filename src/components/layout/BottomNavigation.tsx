@@ -73,8 +73,8 @@ export const BottomNavigation = () => {
       icon: Search,
       label: 'Achados e Perdidos',
       action: () => {
-        // Redireciona para a página e passa o estado para abrir o modal de cadastro automaticamente
-        navigate('/achados-e-perdidos');
+        // Redireciona passando a flag específica no state do roteador
+        navigate('/achados-e-perdidos', { state: { abrirModal: true } });
         setIsMenuOpen(false);
       },
       allowedUserTypes: ['usuario', 'empresa', 'admin_cidade', 'admin_geral', 'criador_empresa']
