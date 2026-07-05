@@ -21,9 +21,11 @@ export default function GoogleImporter() {
   const [carregandoBusca, setCarregandoBusca] = useState(false);
   const [importandoId, setImportingId] = useState<string | null>(null);
 
- const executarBusca = async () => {
+  const executarBusca = async () => {
     if (!busca.trim()) return;
     setCarregandoBusca(true);
+    setLocais([]); // Limpa os resultados anteriores antes de uma nova busca
+    
     try {
       // Chama a função SQL criada diretamente pelo painel do Supabase
       const { data, error } = await supabase.rpc('buscar_locais_google', {
@@ -33,9 +35,16 @@ export default function GoogleImporter() {
 
       if (error) throw error;
       
-      // Garante a leitura do objeto caso o Postgres o retorne de formas variantes
+      // Converte o retorno caso ele venha estruturado como string pura do Postgres
       const dadosBrutos = typeof data === 'string' ? JSON.parse(data) : data;
-      const listaResultados = dadosBrutos?.results || [];
+      
+      // Rastreia e captura a lista de resultados retornada pelo payload do Google
+      const listaResultados = dadosBrutos?.results || (dadosBrutos?.content ? JSON.parse(dadosBrutos.content)?.results : []);
+
+      if (!listaResultados || listaResultados.length === 0) {
+        toast.info('Nenhum estabelecimento encontrado. Verifique os termos da busca e as restrições da sua chave no Google Cloud.');
+        return;
+      }
 
       const resultadosMapped = listaResultados.map((item: any) => ({
         place_id: item.place_id,
@@ -44,11 +53,9 @@ export default function GoogleImporter() {
       }));
 
       setLocais(resultadosMapped);
-      
-      if (resultadosMapped.length === 0) {
-        toast.info('Nenhum estabelecimento encontrado com esse termo.');
-      }
+      toast.success(`${resultadosMapped.length} locais encontrados no Google Maps!`);
     } catch (err: any) {
+      console.error('Erro na requisição RPC:', err);
       toast.error('Erro ao pesquisar no Google: ' + err.message);
     } finally {
       setCarregandoBusca(false);
@@ -66,7 +73,9 @@ export default function GoogleImporter() {
 
       if (error) throw error;
 
-      toast.success(`"${data.nome || 'Estabelecimento'}" importado e cadastrado com sucesso!`);
+      const retornoLimpo = typeof data === 'string' ? JSON.parse(data) : data;
+
+      toast.success(`"${retornoLimpo?.nome || 'Estabelecimento'}" importado e cadastrado com sucesso!`);
       
       // Remove o item importado da lista visual para você saber que deu certo
       setLocais(prev => prev.filter(item => item.place_id !== placeId));
@@ -111,7 +120,7 @@ export default function GoogleImporter() {
       </Card>
 
       {locais.length > 0 && (
-        <div className="space-y-3 animation-fade-in">
+        <div className="space-y-3">
           <p className="text-xs text-gray-400 px-1 font-medium">Resultados encontrados no mapa:</p>
           {locais.map((local) => (
             <div key={local.place_id} className="p-4 bg-[#110D1A] border border-purple-950/40 rounded-xl flex items-center justify-between gap-4 hover:border-purple-900/50 transition-all shadow-md">
