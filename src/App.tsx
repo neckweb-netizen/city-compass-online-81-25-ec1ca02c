@@ -15,7 +15,8 @@ import Index from "./pages/Index";
 
 // Lazy load non-critical pages
 const Search = lazy(() => import("./pages/Search"));
-const Locais = lazy(() => const AchadosPerdidos = lazy(() => import("./pages/AchadosPerdidos"));import("./pages/Locais"));
+const Locais = lazy(() => import("./pages/Locais"));
+const AchadosPerdidos = lazy(() => import("./pages/AchadosPerdidos"));
 const LocalProfile = lazy(() => import("./pages/LocalProfile"));
 const Eventos = lazy(() => import("./pages/Eventos"));
 const EventoPage = lazy(() => import("./pages/EventoPage"));
