@@ -1,4 +1,3 @@
-
 import { createRoot } from 'react-dom/client'
 import { Suspense } from 'react'
 import App from './App.tsx'
@@ -12,18 +11,20 @@ initPerformanceOptimizations();
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
+      // Ajustado para 0 em desenvolvimento para que você veja as alterações do banco na hora.
+      // Em produção, você pode voltar para 5 * 60 * 1000 se desejar.
+      staleTime: 0, 
       gcTime: 10 * 60 * 1000, // 10 minutes
-      refetchOnWindowFocus: false,
-      refetchOnMount: false,
+      refetchOnWindowFocus: true, // Atualiza os dados se você mudar de aba e voltar
+      refetchOnMount: true, // Força a busca de dados novos sempre que o componente renderizar
       retry: 1,
-      networkMode: 'offlineFirst',
+      networkMode: 'always', // Mudado de 'offlineFirst' para garantir que ele priorize a rede ao testar
       // Reduce initial request latency
-      refetchOnReconnect: false,
-      retryOnMount: false,
+      refetchOnReconnect: true,
+      retryOnMount: true,
     },
     mutations: {
-      networkMode: 'offlineFirst',
+      networkMode: 'always',
     },
   },
 })
