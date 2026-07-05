@@ -25,16 +25,25 @@ const AdminAchadosPerdidos = () => {
   const carregarOcorrencias = async () => {
     try {
       setLoading(true);
-      let statusFiltro = abaAtiva === "pendentes" ? ["pendente"] : ["aprovado", "resolvido"];
       
+      // Criamos uma consulta limpa trazendo todos os dados para filtrar localmente de forma segura
       const { data, error } = await supabase
         .from("achados_perdidos" as any)
         .select("*")
-        .in("status", statusFiltro)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setItens(data || []);
+      
+      const dadosFiltrados = (data || []).filter((item: any) => {
+        const statusNormalizado = String(item.status).toLowerCase().trim();
+        if (abaAtiva === "pendentes") {
+          return statusNormalizado === "pendente" || statusNormalizado === "";
+        } else {
+          return statusNormalizado === "aprovado" || statusNormalizado === "resolvido";
+        }
+      });
+
+      setItens(dadosFiltrados);
     } catch (error: any) {
       console.error("Erro ao carregar dados no admin:", error);
       toast({
@@ -65,7 +74,6 @@ const AdminAchadosPerdidos = () => {
         description: `Ocorrência movida para o estado de [${novoStatus}] com sucesso!`,
       });
 
-      // Remove localmente o item modificado da lista atual
       setItens(itens.filter((item) => item.id !== id));
     } catch (error: any) {
       toast({
@@ -225,13 +233,13 @@ const AdminAchadosPerdidos = () => {
 
                 {/* Bloco de Botões de Ações rápidas de Moderação */}
                 <div className="flex lg:flex-col justify-end items-center gap-2 shrink-0 border-t lg:border-t-0 lg:border-l border-purple-950/80 pt-4 lg:pt-0 lg:pl-5">
-                  {item.status === "pendente" && (
+                  {(String(item.status).toLowerCase().trim() === "pendente" || String(item.status).toLowerCase().trim() === "") && (
                     <>
                       <button
                         onClick={() => alterarStatus(item.id, "aprovado")}
                         className="flex-1 lg:w-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 uppercase tracking-wider transition-all"
                       >
-                        <Check className="h-4 w-4" />具 Aprovar
+                        <Check className="h-4 w-4" /> Aprovar
                       </button>
                       <button
                         onClick={() => alterarStatus(item.id, "rejeitado")}
@@ -242,7 +250,7 @@ const AdminAchadosPerdidos = () => {
                     </>
                   )}
 
-                  {item.status === "aprovado" && (
+                  {String(item.status).toLowerCase().trim() === "aprovado" && (
                     <button
                       onClick={() => alterarStatus(item.id, "resolvido")}
                       className="flex-1 lg:w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-95 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 uppercase tracking-wider transition-all"
