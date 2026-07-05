@@ -69,6 +69,13 @@ export const DesktopSidebar = ({
       categoria: 'principal'
     }, 
     {
+      id: 'achados-e-perdidos',
+      nome_item: 'Achados e Perdidos',
+      icone: 'Search',
+      rota: '/achados-e-perdidos',
+      categoria: 'principal'
+    },
+    {
       id: 'radios',
       nome_item: 'Rádios',
       icone: 'Radio',
@@ -118,7 +125,7 @@ export const DesktopSidebar = ({
       icone: 'Shield',
       rota: '/admin',
       categoria: 'admin'
-    }] : [])
+    }] : []),
   ];
 
   // Mesclar com configurações do banco se existirem
@@ -198,6 +205,7 @@ export const DesktopSidebar = ({
             {menuItems.map(item => {
               const IconComponent = Icons[item.icone as keyof typeof Icons] as React.ComponentType<{
                 className?: string;
+                setIsMenuOpen?: any;
               }>;
               return (
                 <Link 
