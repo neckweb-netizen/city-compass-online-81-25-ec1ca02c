@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
-import { Search, Download, MapPin, Loader2, Landmark } from 'lucide-react';
+import { Search, Download, MapPin, Loader2, Landmark, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 
 // INSIRA AQUI A SUA CHAVE GERADA NO GOOGLE CLOUD CONSOLE
-const GOOGLE_MAPS_KEY = "AIzaSyCLx8QE_91chIyYdbIczKAyjpi5M7exVoc";
+const GOOGLE_MAPS_KEY = "AIzaSyCOLE_SUA_CHAVE_AQUI";
 
 interface GoogleItem {
   place_id: string;
@@ -15,19 +15,43 @@ interface GoogleItem {
   formatted_address: string;
 }
 
+interface CategoriaItem {
+  id: string;
+  nome: string;
+}
+
 export default function GoogleImporter() {
   const [busca, setBusca] = useState('');
   const [locais, setLocais] = useState<GoogleItem[]>([]);
+  const [categorias, setCategorias] = useState<CategoriaItem[]>([]);
+  const [categoriasSelecionadas, setCategoriasSelecionadas] = useState<Record<string, string>>({});
   const [carregandoBusca, setCarregandoBusca] = useState(false);
   const [importandoId, setImportingId] = useState<string | null>(null);
+
+  // Busca todas as categorias existentes do banco de dados na inicialização do painel
+  useEffect(() => {
+    const buscarCategoriasSistema = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('categorias')
+          .select('id, nome')
+          .order('nome', { ascending: true });
+        
+        if (error) throw error;
+        if (data) setCategorias(data);
+      } catch (err: any) {
+        console.error('Erro ao listar categorias do sistema:', err);
+      }
+    };
+    buscarCategoriasSistema();
+  }, []);
 
   const executarBusca = async () => {
     if (!busca.trim()) return;
     setCarregandoBusca(true);
-    setLocais([]); // Limpa os resultados anteriores antes de uma nova busca
+    setLocais([]);
     
     try {
-      // Chama a função SQL criada diretamente pelo painel do Supabase
       const { data, error } = await supabase.rpc('buscar_locais_google', {
         busca_termo: busca,
         google_key: GOOGLE_MAPS_KEY
@@ -35,14 +59,20 @@ export default function GoogleImporter() {
 
       if (error) throw error;
       
-      // Converte o retorno caso ele venha estruturado como string pura do Postgres
       const dadosBrutos = typeof data === 'string' ? JSON.parse(data) : data;
       
-      // Rastreia e captura a lista de resultados retornada pelo payload do Google
+      const googleStatus = dadosBrutos?.status || (dadosBrutos?.content ? JSON.parse(dadosBrutos.content)?.status : null);
+      const googleErrorMessage = dadosBrutos?.error_message || (dadosBrutos?.content ? JSON.parse(dadosBrutos.content)?.error_message : null);
+
+      if (googleStatus && googleStatus !== 'OK' && googleStatus !== 'ZERO_RESULTS') {
+        toast.error(`Erro do Google Maps (${googleStatus}): ${googleErrorMessage || 'Verifique o faturamento ou restrições da chave.'}`);
+        return;
+      }
+
       const listaResultados = dadosBrutos?.results || (dadosBrutos?.content ? JSON.parse(dadosBrutos.content)?.results : []);
 
       if (!listaResultados || listaResultados.length === 0) {
-        toast.info('Nenhum estabelecimento encontrado. Verifique os termos da busca e as restrições da sua chave no Google Cloud.');
+        toast.info('Nenhum estabelecimento encontrado para este termo de busca.');
         return;
       }
 
@@ -53,22 +83,47 @@ export default function GoogleImporter() {
       }));
 
       setLocais(resultadosMapped);
+      
+      // Define a primeira categoria como padrão selecionada para todos os resultados listados
+      if (categorias.length > 0) {
+        const defaultMapping: Record<string, string> = {};
+        resultadosMapped.forEach((item: GoogleItem) => {
+          defaultMapping[item.place_id] = categorias[0].id;
+        });
+        setCategoriasSelecionadas(defaultMapping);
+      }
+
       toast.success(`${resultadosMapped.length} locais encontrados no Google Maps!`);
     } catch (err: any) {
       console.error('Erro na requisição RPC:', err);
-      toast.error('Erro ao pesquisar no Google: ' + err.message);
+      toast.error('Erro ao pesquisar no Guia: ' + err.message);
     } finally {
       setCarregandoBusca(false);
     }
   };
 
+  const handleMudarCategoriaCard = (placeId: string, categoriaId: string) => {
+    setCategoriasSelecionadas(prev => ({
+      ...prev,
+      [placeId]: categoriaId
+    }));
+  };
+
   const executarImportacao = async (placeId: string) => {
+    const categoriaDefinidaId = categoriasSelecionadas[placeId];
+    
+    if (!categoriaDefinidaId) {
+      toast.warning('Por favor, selecione uma categoria válida antes de importar.');
+      return;
+    }
+
     setImportingId(placeId);
     try {
-      // Dispara a rotina SQL que consulta os detalhes e já insere na tabela 'empresas'
+      // Dispara a rotina SQL enviando a chave estrangeira da categoria escolhida pelo admin
       const { data, error } = await supabase.rpc('importar_detalhes_google', {
         p_place_id: placeId,
-        google_key: GOOGLE_MAPS_KEY
+        google_key: GOOGLE_MAPS_KEY,
+        p_categoria_id: categoriaDefinidaId
       });
 
       if (error) throw error;
@@ -77,7 +132,6 @@ export default function GoogleImporter() {
 
       toast.success(`"${retornoLimpo?.nome || 'Estabelecimento'}" importado e cadastrado com sucesso!`);
       
-      // Remove o item importado da lista visual para você saber que deu certo
       setLocais(prev => prev.filter(item => item.place_id !== placeId));
     } catch (err: any) {
       toast.error('Falha ao importar dados: ' + err.message);
@@ -123,28 +177,47 @@ export default function GoogleImporter() {
         <div className="space-y-3">
           <p className="text-xs text-gray-400 px-1 font-medium">Resultados encontrados no mapa:</p>
           {locais.map((local) => (
-            <div key={local.place_id} className="p-4 bg-[#110D1A] border border-purple-950/40 rounded-xl flex items-center justify-between gap-4 hover:border-purple-900/50 transition-all shadow-md">
-              <div className="space-y-1">
+            <div key={local.place_id} className="p-4 bg-[#110D1A] border border-purple-950/40 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-purple-900/50 transition-all shadow-md">
+              <div className="space-y-1 flex-1">
                 <h4 className="font-semibold text-white text-sm leading-tight">{local.name}</h4>
                 <p className="text-gray-400 text-xs flex items-center gap-1.5">
                   <MapPin className="w-3.5 h-3.5 text-purple-400 shrink-0" />
                   {local.formatted_address}
                 </p>
               </div>
-              <Button
-                size="sm"
-                onClick={() => executarImportacao(local.place_id)}
-                disabled={importandoId === local.place_id}
-                className="bg-purple-600 hover:bg-purple-500 text-white font-medium shrink-0 shadow-sm transition-all"
-              >
-                {importandoId === local.place_id ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <>
-                    <Download className="w-4 h-4 mr-1.5" /> Importar para o Guia
-                  </>
-                )}
-              </Button>
+
+              {/* Controles de Seleção de Categoria e Importação por Item */}
+              <div className="flex flex-wrap items-center gap-3 shrink-0">
+                <div className="flex items-center gap-1.5 bg-[#0F0B15] px-2.5 py-1.5 rounded-lg border border-purple-900/40">
+                  <Tag className="w-3.5 h-3.5 text-purple-400" />
+                  <select
+                    value={categoriasSelecionadas[local.place_id] || ''}
+                    onChange={(e) => handleMudarCategoriaCard(local.place_id, e.target.value)}
+                    className="bg-transparent border-0 text-xs text-white focus:ring-0 cursor-pointer min-w-[140px] outline-none"
+                  >
+                    {categorias.map((cat) => (
+                      <option key={cat.id} value={cat.id} className="bg-[#110D1A] text-white text-xs">
+                        {cat.nome}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <Button
+                  size="sm"
+                  onClick={() => executarImportacao(local.place_id)}
+                  disabled={importandoId === local.place_id}
+                  className="bg-purple-600 hover:bg-purple-500 text-white font-medium shadow-sm transition-all text-xs h-8"
+                >
+                  {importandoId === local.place_id ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Download className="w-3.5 h-3.5 mr-1.5" /> Importar para o Guia
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           ))}
         </div>
