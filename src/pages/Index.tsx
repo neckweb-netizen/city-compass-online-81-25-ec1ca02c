@@ -264,69 +264,74 @@ const Index = () => {
           <div className="space-y-12">
             <HomeContent />
             
-            {/* Seção dinâmica de Achados e Perdidos inserida na Home pública */}
+            {/* Seção dinâmica de Achados e Perdidos inserida na Home pública com estilo nativo */}
             <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-purple-950/60 pb-4 mb-6 gap-4">
+              <div className="flex items-center justify-between border-b border-purple-950/60 pb-4 mb-6">
                 <div>
-                  <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
-                    <Search className="h-5 w-5 text-purple-400" /> Achados e Perdidos Recentes
+                  <h2 className="text-lg sm:text-xl font-bold text-foreground flex items-center gap-2">
+                    <Search className="h-5 w-5 text-primary" /> Achados e Perdidos
                   </h2>
-                  <p className="text-xs text-gray-400 mt-0.5">Utilidade pública em Santo Antônio de Jesus</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Utilidade pública em Santo Antônio de Jesus</p>
                 </div>
                 <Link
                   to="/achados-e-perdidos"
-                  className="inline-flex items-center gap-1 text-xs font-black uppercase tracking-wider text-purple-400 hover:text-purple-300 transition-colors group"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline transition-all group"
                 >
-                  Ver Painel Completo <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
+                  Ver todas <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
                 </Link>
               </div>
 
               {loadingAchados ? (
                 <div className="flex items-center justify-center py-10 gap-2">
-                  <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-                  <span className="text-xs text-gray-400">Buscando objetos...</span>
+                  <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  <span className="text-xs text-muted-foreground">Buscando itens...</span>
                 </div>
               ) : itensAchados.length === 0 ? (
-                <div className="bg-[#150F22]/30 border border-purple-900/20 rounded-2xl p-8 text-center max-w-md mx-auto">
-                  <AlertCircle className="h-8 w-8 text-purple-950 mx-auto mb-2" />
-                  <p className="text-xs text-gray-400">Nenhum objeto perdido ou achado listado recentemente.</p>
+                <div className="bg-card text-card-foreground border border-border/40 rounded-2xl p-8 text-center max-w-md mx-auto shadow-sm">
+                  <AlertCircle className="h-8 w-8 text-muted-foreground/60 mx-auto mb-2" />
+                  <p className="text-xs text-muted-foreground">Nenhum objeto perdido ou achado publicado recentemente.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                   {itensAchados.map((item) => (
-                    <div
+                    <Link
                       key={item.id}
-                      className="bg-[#150F22]/40 border border-purple-900/20 rounded-2xl p-4 flex flex-col justify-between gap-3 hover:border-purple-800/40 transition-colors"
+                      to="/achados-e-perdidos"
+                      className="bg-card text-card-foreground border border-border/40 rounded-2xl p-4 flex flex-col justify-between gap-4 shadow-sm hover:border-border/80 hover:shadow-md transition-all duration-200 group"
                     >
                       <div>
-                        <div className="flex items-center justify-between gap-2 mb-2">
+                        <div className="flex items-center justify-between gap-2 mb-2.5">
                           <span
-                            className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${
+                            className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
                               item.tipo === 'perdido'
-                                ? 'bg-red-500/10 text-red-400 border-red-500/20'
-                                : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                ? 'bg-destructive/10 text-destructive border-destructive/20'
+                                : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
                             }`}
                           >
                             {item.tipo === 'perdido' ? 'Perdido' : 'Achado'}
                           </span>
-                          <span className="text-[10px] text-purple-300 font-bold flex items-center gap-1 bg-purple-950/40 px-2 py-0.5 rounded-lg">
-                            <Tag className="h-2.5 w-2.5 text-purple-400" /> {item.categoria}
+                          <span className="text-[10px] text-muted-foreground font-medium flex items-center gap-1 bg-muted/60 px-2 py-0.5 rounded-md">
+                            <Tag className="h-2.5 w-2.5 text-muted-foreground/80" /> {item.categoria || "Geral"}
                           </span>
                         </div>
-                        <h3 className="font-extrabold text-white text-sm line-clamp-1 mb-1">{item.titulo}</h3>
-                        <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">{item.descricao}</p>
+                        <h3 className="font-bold text-foreground text-sm truncate group-hover:text-primary transition-colors duration-150 mb-1">
+                          {item.titulo}
+                        </h3>
+                        <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                          {item.descricao}
+                        </p>
                       </div>
 
-                      <div className="border-t border-purple-950/60 pt-2.5 flex items-center justify-between text-[11px] text-gray-400">
+                      <div className="border-t border-border/40 pt-2.5 flex items-center justify-between text-xs text-muted-foreground">
                         <div className="flex items-center gap-1 truncate max-w-[70%]">
-                          <MapPin className="h-3 w-3 text-purple-500 shrink-0" />
-                          <span className="truncate text-gray-300 font-medium">{item.local_fato}</span>
+                          <MapPin className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
+                          <span className="truncate font-medium">{item.local_fato}</span>
                         </div>
-                        <span className="text-[10px] text-gray-500 whitespace-nowrap">
+                        <span className="text-[11px] text-muted-foreground/50 whitespace-nowrap">
                           {new Date(item.created_at).toLocaleDateString('pt-BR')}
                         </span>
                       </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               )}
