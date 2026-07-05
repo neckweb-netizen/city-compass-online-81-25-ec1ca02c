@@ -67,6 +67,13 @@ export const MobileHamburger = () => {
       categoria: 'principal'
     }, 
     {
+      id: 'achados-e-perdidos',
+      nome_item: 'Achados e Perdidos',
+      icone: 'Search',
+      rota: '/achados-e-perdidos',
+      categoria: 'principal'
+    },
+    {
       id: 'radios',
       nome_item: 'Rádios',
       icone: 'Radio',
