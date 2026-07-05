@@ -264,77 +264,83 @@ const Index = () => {
           <div className="space-y-12">
             <HomeContent />
             
-            {/* Seção dinâmica de Achados e Perdidos inserida na Home pública com estilo nativo */}
+            {/* Seção dinâmica de Achados e Perdidos envelopada no mesmo estilo container de Cupons */}
             <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
-              <div className="flex items-center justify-between border-b border-purple-950/60 pb-4 mb-6">
-                <div>
-                  <h2 className="text-lg sm:text-xl font-bold text-foreground flex items-center gap-2">
-                    <Search className="h-5 w-5 text-primary" /> Achados e Perdidos
-                  </h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">Utilidade pública em Santo Antônio de Jesus</p>
+              <div className="bg-[#150F22]/40 border border-purple-950/20 rounded-3xl p-6 sm:p-8 backdrop-blur-md shadow-2xl">
+                
+                {/* Header interno do Card */}
+                <div className="flex items-center justify-between border-b border-purple-950/60 pb-4 mb-6">
+                  <div>
+                    <h2 className="text-lg sm:text-xl font-bold text-foreground flex items-center gap-2">
+                      <Search className="h-5 w-5 text-primary" /> Achados e Perdidos
+                    </h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">Utilidade pública em Santo Antônio de Jesus</p>
+                  </div>
+                  <Link
+                    to="/achados-e-perdidos"
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline transition-all group"
+                  >
+                    Ver todos <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+                  </Link>
                 </div>
-                <Link
-                  to="/achados-e-perdidos"
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline transition-all group"
-                >
-                  Ver todas <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
-                </Link>
+
+                {/* Grid de Itens internos */}
+                {loadingAchados ? (
+                  <div className="flex items-center justify-center py-10 gap-2">
+                    <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    <span className="text-xs text-muted-foreground">Buscando itens...</span>
+                  </div>
+                ) : itensAchados.length === 0 ? (
+                  <div className="text-center py-8 max-w-md mx-auto">
+                    <AlertCircle className="h-8 w-8 text-muted-foreground/60 mx-auto mb-2" />
+                    <p className="text-xs text-muted-foreground">Nenhum objeto perdido ou achado publicado recentemente.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {itensAchados.map((item) => (
+                      <Link
+                        key={item.id}
+                        to="/achados-e-perdidos"
+                        className="bg-card text-card-foreground border border-border/40 rounded-2xl p-4 flex flex-col justify-between gap-4 shadow-sm hover:border-border/80 hover:shadow-md transition-all duration-200 group"
+                      >
+                        <div>
+                          <div className="flex items-center justify-between gap-2 mb-2.5">
+                            <span
+                              className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                                item.tipo === 'perdido'
+                                  ? 'bg-destructive/10 text-destructive border-destructive/20'
+                                  : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                              }`}
+                            >
+                              {item.tipo === 'perdido' ? 'Perdido' : 'Achado'}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground font-medium flex items-center gap-1 bg-muted/60 px-2 py-0.5 rounded-md">
+                              <Tag className="h-2.5 w-2.5 text-muted-foreground/80" /> {item.categoria || "Geral"}
+                            </span>
+                          </div>
+                          <h3 className="font-bold text-foreground text-sm truncate group-hover:text-primary transition-colors duration-150 mb-1">
+                            {item.titulo}
+                          </h3>
+                          <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                            {item.descricao}
+                          </p>
+                        </div>
+
+                        <div className="border-t border-border/40 pt-2.5 flex items-center justify-between text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1 truncate max-w-[70%]">
+                            <MapPin className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
+                            <span className="truncate font-medium">{item.local_fato}</span>
+                          </div>
+                          <span className="text-[11px] text-muted-foreground/50 whitespace-nowrap">
+                            {new Date(item.created_at).toLocaleDateString('pt-BR')}
+                          </span>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+
               </div>
-
-              {loadingAchados ? (
-                <div className="flex items-center justify-center py-10 gap-2">
-                  <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                  <span className="text-xs text-muted-foreground">Buscando itens...</span>
-                </div>
-              ) : itensAchados.length === 0 ? (
-                <div className="bg-card text-card-foreground border border-border/40 rounded-2xl p-8 text-center max-w-md mx-auto shadow-sm">
-                  <AlertCircle className="h-8 w-8 text-muted-foreground/60 mx-auto mb-2" />
-                  <p className="text-xs text-muted-foreground">Nenhum objeto perdido ou achado publicado recentemente.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {itensAchados.map((item) => (
-                    <Link
-                      key={item.id}
-                      to="/achados-e-perdidos"
-                      className="bg-card text-card-foreground border border-border/40 rounded-2xl p-4 flex flex-col justify-between gap-4 shadow-sm hover:border-border/80 hover:shadow-md transition-all duration-200 group"
-                    >
-                      <div>
-                        <div className="flex items-center justify-between gap-2 mb-2.5">
-                          <span
-                            className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
-                              item.tipo === 'perdido'
-                                ? 'bg-destructive/10 text-destructive border-destructive/20'
-                                : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
-                            }`}
-                          >
-                            {item.tipo === 'perdido' ? 'Perdido' : 'Achado'}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground font-medium flex items-center gap-1 bg-muted/60 px-2 py-0.5 rounded-md">
-                            <Tag className="h-2.5 w-2.5 text-muted-foreground/80" /> {item.categoria || "Geral"}
-                          </span>
-                        </div>
-                        <h3 className="font-bold text-foreground text-sm truncate group-hover:text-primary transition-colors duration-150 mb-1">
-                          {item.titulo}
-                        </h3>
-                        <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                          {item.descricao}
-                        </p>
-                      </div>
-
-                      <div className="border-t border-border/40 pt-2.5 flex items-center justify-between text-xs text-muted-foreground">
-                        <div className="flex items-center gap-1 truncate max-w-[70%]">
-                          <MapPin className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
-                          <span className="truncate font-medium">{item.local_fato}</span>
-                        </div>
-                        <span className="text-[11px] text-muted-foreground/50 whitespace-nowrap">
-                          {new Date(item.created_at).toLocaleDateString('pt-BR')}
-                        </span>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
             </section>
           </div>
         );
