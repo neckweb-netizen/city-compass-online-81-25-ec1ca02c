@@ -266,8 +266,7 @@ const Index = () => {
             
             {/* Seção dinâmica de Achados e Perdidos envelopada no mesmo estilo container de Cupons */}
             <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
-              <div className="bg-[#150F22]/40 border border-purple-950/20 rounded-3xl p-6 sm:p-8 backdrop-blur-md shadow-2xl">
-                
+            <div className="bg-[#221A32] border border-purple-950/20 rounded-3xl p-6 sm:p-8 backdrop-blur-md shadow-2xl">                
                 {/* Header interno do Card */}
                 <div className="flex items-center justify-between border-b border-purple-950/60 pb-4 mb-6">
                   <div>
