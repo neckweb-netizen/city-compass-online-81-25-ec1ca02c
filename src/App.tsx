@@ -311,6 +311,7 @@ const App = () => {
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminDashboard />} />
                 <Route path="locais" element={<AdminLocais />} />
+                <Route path="achados-e-perdidos" element={<AdminAchadosPerdidos />} />
                 <Route path="locais-pendentes" element={<AdminLocaisPendentes />} />
                 <Route path="local-admins" element={<AdminLocalAdmins />} />
                 <Route path="eventos" element={<AdminEventos />} />
