@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, MapPin, Phone, Plus, AlertCircle, CheckCircle2, Filter, Tag, Calendar, Sparkles, X, ChevronRight } from "lucide-react";
+import { Search, MapPin, Phone, Plus, AlertCircle, CheckCircle2, Tag, Calendar, Sparkles, X } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { useLocation } from "react-router-dom";
 
 interface ItemItem {
   id: string;
@@ -18,6 +19,7 @@ interface ItemItem {
 
 const AchadosPerdidos = () => {
   const { toast } = useToast();
+  const location = useLocation();
   const [itens, setItens] = useState<ItemItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtroTipo, setFiltroTipo] = useState<string>("todos");
@@ -33,6 +35,14 @@ const AchadosPerdidos = () => {
   const [contatoNome, setContatoNome] = useState("");
   const [contatoTelefone, setContatoTelefone] = useState("");
   const [enviando, setEnviando] = useState(false);
+
+  // Efeito para interceptar o clique do botão "+" global da BottomNavigation
+  useEffect(() => {
+    // Se o usuário clicou no "+" e foi redirecionado para cá, abre o modal direto
+    if (location.pathname === "/achados-e-perdidos") {
+      setIsModalAberto(true);
+    }
+  }, [location.pathname]);
 
   const buscarItens = async () => {
     try {
