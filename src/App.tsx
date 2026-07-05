@@ -15,7 +15,7 @@ import Index from "./pages/Index";
 
 // Lazy load non-critical pages
 const Search = lazy(() => import("./pages/Search"));
-const Locais = lazy(() => import("./pages/Locais"));
+const Locais = lazy(() => const AchadosPerdidos = lazy(() => import("./pages/AchadosPerdidos"));import("./pages/Locais"));
 const LocalProfile = lazy(() => import("./pages/LocalProfile"));
 const Eventos = lazy(() => import("./pages/Eventos"));
 const EventoPage = lazy(() => import("./pages/EventoPage"));
@@ -41,7 +41,7 @@ const AnuncieGratis = lazy(() => import("./pages/AnuncieGratis").then(m => ({ de
 
 // Lazy load all admin pages
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
-const AchadosPerdidos = lazy(() => import("./pages/AchadosPerdidos"));
+const AdminAchadosPerdidos = lazy(() => import("./pages/admin/AdminAchadosPerdidos"));
 const AdminLocais = lazy(() => import("./pages/admin/AdminLocais"));
 const AdminLocaisPendentes = lazy(() => import("./pages/admin/AdminLocaisPendentes"));
 const AdminLocalAdmins = lazy(() => import("./pages/admin/AdminLocalAdmins"));
@@ -275,6 +275,7 @@ const App = () => {
                 <Route path="achados-e-perdidos" element={<AchadosPerdidos />} />
                 <Route path="profile" element={<Profile />} />
                 <Route path="configuracoes" element={<Configuracoes />} />
+                <Route path="achados-e-perdidos" element={<AdminAchadosPerdidos />} />
                 <Route path="busca" element={<Busca />} />
                 <Route path="search" element={<Search />} />
                 <Route path="locais" element={<Locais />} />
