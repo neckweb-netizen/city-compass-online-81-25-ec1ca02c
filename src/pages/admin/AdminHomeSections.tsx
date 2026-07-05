@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -43,7 +42,8 @@ const sectionIcons: SectionIconMap = {
   featured_section: Star,
   eventos_slider: Calendar,
   stats_section: BarChart3,
-  featured_products: Briefcase
+  featured_products: Briefcase,
+  achados_perdidos: Search
 };
 
 export function AdminHomeSections() {
@@ -241,7 +241,7 @@ export function AdminHomeSections() {
                     Status: {section.ativo ? 'Visível' : 'Oculta'}
                   </span>
                   <span>
-                    Atualizada em: {new Date(section.atualizado_em).toLocaleDateString('pt-BR')}
+                    Atualizada em: {section.atualizado_em ? new Date(section.atualizado_em).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR')}
                   </span>
                 </div>
               </CardContent>
