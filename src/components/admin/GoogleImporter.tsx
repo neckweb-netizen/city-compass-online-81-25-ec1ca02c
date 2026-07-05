@@ -7,7 +7,7 @@ import { Search, Download, MapPin, Loader2, Landmark, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 
 // INSIRA AQUI A SUA CHAVE GERADA NO GOOGLE CLOUD CONSOLE
-const GOOGLE_MAPS_KEY = "AIzaSyCOLE_SUA_CHAVE_AQUI";
+const GOOGLE_MAPS_KEY = "AIzaSyCLx8QE_91chIyYdbIczKAyjpi5M7exVoc";
 
 interface GoogleItem {
   place_id: string;
