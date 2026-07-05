@@ -124,6 +124,7 @@ export const AdminSidebar = ({ activeSection, onSectionChange }: AdminSidebarPro
       items: [
         { icon: Building2, label: 'Locais', path: '/admin/locais', section: 'empresas', badge: 0 },
         { icon: UserCheck, label: 'Locais Pendentes', path: '/admin/locais-pendentes', section: 'empresas-pendentes', badge: pendentesLocais },
+        { icon: Download, label: 'Importar Google', path: '/admin/importar-google', section: 'importar-google', badge: 0 },
         { icon: Calendar, label: 'Eventos', path: '/admin/eventos', section: 'eventos', badge: 0 },
         { icon: Users, label: 'Usuários', path: '/admin/usuarios', section: 'usuarios', badge: 0 },
         { icon: Tag, label: 'Categorias', path: '/admin/categorias', section: 'categorias', badge: 0 },
