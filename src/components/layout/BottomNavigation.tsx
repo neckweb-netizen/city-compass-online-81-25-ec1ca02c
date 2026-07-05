@@ -1,5 +1,5 @@
-import { Link, useLocation } from 'react-router-dom';
-import { Home, Building2, MessageCircle, Radio, Briefcase, User, Plus, X, Tag, Package, Calendar, Megaphone } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Home, Building2, MessageCircle, Radio, Briefcase, User, Plus, X, Tag, Package, Calendar, Megaphone, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { useMinhaEmpresa } from '@/hooks/useMinhaEmpresa';
@@ -13,6 +13,7 @@ import { VagaFormModal } from '@/components/forms/VagaFormModal';
 
 export const BottomNavigation = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, profile } = useAuth();
   const { empresa } = useMinhaEmpresa();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -67,6 +68,16 @@ export const BottomNavigation = () => {
         setIsMenuOpen(false);
       },
       allowedUserTypes: ['empresa', 'admin_cidade', 'admin_geral', 'criador_empresa']
+    },
+    {
+      icon: Search,
+      label: 'Achados e Perdidos',
+      action: () => {
+        // Redireciona para a página e passa o estado para abrir o modal de cadastro automaticamente
+        navigate('/achados-e-perdidos');
+        setIsMenuOpen(false);
+      },
+      allowedUserTypes: ['usuario', 'empresa', 'admin_cidade', 'admin_geral', 'criador_empresa']
     }
   ];
 
