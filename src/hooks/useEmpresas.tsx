@@ -8,7 +8,19 @@ export const useEmpresas = (cidadeId?: string, categoriaId?: string) => {
       let query = supabase
         .from('empresas')
         .select(`
-          *,
+          id,
+          nome,
+          descricao,
+          endereco,
+          telefone,
+          slug,
+          imagem_capa_url,
+          verificado,
+          destaque,
+          status_aprovacao,
+          ativo,
+          cidade_id,
+          categoria_id,
           categorias(nome),
           cidades(nome),
           estatisticas(*)
