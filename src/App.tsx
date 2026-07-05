@@ -73,6 +73,7 @@ const ReclamacaoDetalhes = lazy(() => import("./pages/ProblemaDetalhes"));
 const AdminReclamacoes = lazy(() => import("./pages/admin/AdminProblemasCidade"));
 const AdminComentariosProblema = lazy(() => import("./pages/admin/AdminComentariosProblema"));
 const ShortUrlRedirect = lazy(() => import("./pages/ShortUrlRedirect"));
+const AdminGoogleImporter = lazy(() => import("./components/admin/GoogleImporter"));
 
 import { MainLayout } from "./components/layout/MainLayout";
 import { PublicLayout } from "./components/layout/PublicLayout";
@@ -337,6 +338,7 @@ const App = () => {
                 <Route path="enquetes" element={<AdminEnquetes />} />
                 <Route path="reclamacoes" element={<AdminReclamacoes />} />
                 <Route path="comentarios-problema" element={<AdminComentariosProblema />} />
+                <Route path="importar-google" element={<AdminGoogleImporter />} />
               </Route>
 
               <Route path="*" element={<NotFound />} />
