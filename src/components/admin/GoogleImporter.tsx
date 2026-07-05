@@ -21,7 +21,7 @@ export default function GoogleImporter() {
   const [carregandoBusca, setCarregandoBusca] = useState(false);
   const [importandoId, setImportingId] = useState<string | null>(null);
 
-  const executarBusca = async () => {
+ const executarBusca = async () => {
     if (!busca.trim()) return;
     setCarregandoBusca(true);
     try {
@@ -33,7 +33,11 @@ export default function GoogleImporter() {
 
       if (error) throw error;
       
-      const resultadosMapped = (data?.results || []).map((item: any) => ({
+      // Garante a leitura do objeto caso o Postgres o retorne de formas variantes
+      const dadosBrutos = typeof data === 'string' ? JSON.parse(data) : data;
+      const listaResultados = dadosBrutos?.results || [];
+
+      const resultadosMapped = listaResultados.map((item: any) => ({
         place_id: item.place_id,
         name: item.name,
         formatted_address: item.formatted_address
