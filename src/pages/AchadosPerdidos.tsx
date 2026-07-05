@@ -36,13 +36,15 @@ const AchadosPerdidos = () => {
   const [contatoTelefone, setContatoTelefone] = useState("");
   const [enviando, setEnviando] = useState(false);
 
-  // Efeito para interceptar o clique do botão "+" global da BottomNavigation
+  // Intercepta e abre o formulário APENAS se o clique veio do botão "+" (via state)
   useEffect(() => {
-    // Se o usuário clicou no "+" e foi redirecionado para cá, abre o modal direto
-    if (location.pathname === "/achados-e-perdidos") {
+    if (location.state && (location.state as any).abrirModal === true) {
       setIsModalAberto(true);
+      
+      // Limpa o estado da rota para não reabrir o modal caso a página seja recarregada (F5)
+      window.history.replaceState({}, document.title);
     }
-  }, [location.pathname]);
+  }, [location.state]);
 
   const buscarItens = async () => {
     try {
@@ -187,7 +189,7 @@ const AchadosPerdidos = () => {
               className={`px-4 py-2 rounded-xl text-xs font-black tracking-wider uppercase transition-all border ${
                 filtroTipo === "perdido"
                   ? "bg-red-500/20 text-red-400 border-red-500/40 shadow-sm"
-                  : "bg-[#0F0A19] text-gray-400 border-purple-900/30 hover:text-red-400 hover:border-red-900/40"
+                  : "bg-[#0F0A19] text-gray-400 border border-purple-900/30 hover:text-red-400 hover:border-red-900/40"
               }`}
             >
               Objetos Perdidos 🔍
@@ -197,7 +199,7 @@ const AchadosPerdidos = () => {
               className={`px-4 py-2 rounded-xl text-xs font-black tracking-wider uppercase transition-all border ${
                 filtroTipo === "encontrado"
                   ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-sm"
-                  : "bg-[#0F0A19] text-gray-400 border-purple-900/30 hover:text-emerald-400 hover:border-emerald-900/40"
+                  : "bg-[#0F0A19] text-gray-400 border border-purple-900/30 hover:text-emerald-400 hover:border-emerald-900/40"
               }`}
             >
               Encontrados 🎉
@@ -260,7 +262,7 @@ const AchadosPerdidos = () => {
                     <span>Publicação: {new Date(item.created_at).toLocaleDateString("pt-BR")}</span>
                   </div>
 
-                  {item.status === "resolvido" ? (
+                  ={item.status === "resolvido" ? (
                     <div className="w-full bg-[#0F0A19] text-gray-500 border border-purple-950/80 font-black text-xs p-3 rounded-xl flex items-center justify-center gap-1.5 text-center uppercase tracking-wider">
                       <CheckCircle2 className="h-4 w-4 text-purple-900" /> Item Devolvido / Resolvido
                     </div>
