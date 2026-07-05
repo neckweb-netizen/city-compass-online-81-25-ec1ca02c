@@ -1,4 +1,3 @@
-
 import { Link, useLocation } from 'react-router-dom';
 import { 
   Home, 
@@ -25,7 +24,8 @@ import {
   Download,
   Vote,
   Megaphone,
-  MessagesSquare
+  MessagesSquare,
+  Search
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { 
@@ -82,6 +82,7 @@ export const AdminSidebar = ({ activeSection, onSectionChange }: AdminSidebarPro
         { icon: MessageCircle, label: 'Canal Informativo', path: '/admin/canal-informativo', section: 'canal-informativo' },
         { icon: Megaphone, label: 'Voz do Povo', path: '/admin/reclamacoes', section: 'reclamacoes' },
         { icon: MessagesSquare, label: 'Comentários', path: '/admin/comentarios-problema', section: 'comentarios-problema' },
+        { icon: Search, label: 'Achados e Perdidos', path: '/admin/achados-e-perdidos', section: 'achados-e-perdidos' },
         { icon: Image, label: 'Banners', path: '/admin/banners', section: 'banners' },
         { icon: BookOpen, label: 'Stories', path: '/admin/stories', section: 'stories' },
         { icon: Vote, label: 'Enquetes', path: '/admin/enquetes', section: 'enquetes' },
