@@ -26,7 +26,7 @@ const AdminAchadosPerdidos = () => {
     try {
       setLoading(true);
       
-      // Criamos uma consulta limpa trazendo todos os dados para filtrar localmente de forma segura
+      // Realiza a chamada direta trazendo todas as linhas gravadas na tabela
       const { data, error } = await supabase
         .from("achados_perdidos" as any)
         .select("*")
@@ -34,10 +34,11 @@ const AdminAchadosPerdidos = () => {
 
       if (error) throw error;
       
+      // Filtra localmente de forma resiliente baseando-se no estado atual das abas
       const dadosFiltrados = (data || []).filter((item: any) => {
-        const statusNormalizado = String(item.status).toLowerCase().trim();
+        const statusNormalizado = item.status ? String(item.status).toLowerCase().trim() : "pendente";
         if (abaAtiva === "pendentes") {
-          return statusNormalizado === "pendente" || statusNormalizado === "";
+          return statusNormalizado === "pendente" || statusNormalizado === "rejeitado" || statusNormalizado === "";
         } else {
           return statusNormalizado === "aprovado" || statusNormalizado === "resolvido";
         }
@@ -192,7 +193,7 @@ const AdminAchadosPerdidos = () => {
                       {item.tipo === "perdido" ? "Perdido" : "Encontrado"}
                     </span>
                     <span className="text-[11px] font-bold text-purple-300 flex items-center gap-1 bg-purple-950/40 border border-purple-900/40 px-2 py-0.5 rounded-lg">
-                      <Tag className="h-3 w-3 text-purple-400" /> {item.categoria}
+                      <Tag className="h-3 w-3 text-purple-400" /> {item.categoria || "Geral"}
                     </span>
                     <span className="text-[11px] font-medium text-gray-500 flex items-center gap-1">
                       <Calendar className="h-3 w-3" /> {new Date(item.created_at).toLocaleDateString("pt-BR")}
@@ -216,24 +217,28 @@ const AdminAchadosPerdidos = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-[#0F0A19]/50 border border-purple-950/60 rounded-xl p-3 text-xs text-gray-400">
                     <div className="flex items-center gap-2 truncate">
                       <MapPin className="h-3.5 w-3.5 text-purple-500 shrink-0" />
-                      <span>Local: <strong className="text-gray-200">{item.local_fato}</strong></span>
+                      <span>Local: <strong className="text-gray-200">{item.local_fato || "Não Informado"}</strong></span>
                     </div>
                     <div className="flex items-center gap-2 truncate">
                       <span className="text-purple-400 font-bold uppercase tracking-wider text-[10px]">Autor:</span>
-                      <span className="text-gray-200 font-semibold">{item.contato_nome}</span>
+                      <span className="text-gray-200 font-semibold">{item.contato_nome || "Anônimo"}</span>
                     </div>
                     <div className="flex items-center gap-2 truncate">
                       <span className="text-purple-400 font-bold uppercase tracking-wider text-[10px]">Zap:</span>
-                      <a href={`https://wa.me/55${item.contato_telefone.replace(/\D/g,"")}`} target="_blank" rel="noreferrer" className="text-purple-400 font-bold hover:underline">
-                        {item.contato_telefone}
-                      </a>
+                      {item.contato_telefone ? (
+                        <a href={`https://wa.me/55${item.contato_telefone.replace(/\D/g,"")}`} target="_blank" rel="noreferrer" className="text-purple-400 font-bold hover:underline">
+                          {item.contato_telefone}
+                        </a>
+                      ) : (
+                        <span>Sem Telefone</span>
+                      )}
                     </div>
                   </div>
                 </div>
 
                 {/* Bloco de Botões de Ações rápidas de Moderação */}
                 <div className="flex lg:flex-col justify-end items-center gap-2 shrink-0 border-t lg:border-t-0 lg:border-l border-purple-950/80 pt-4 lg:pt-0 lg:pl-5">
-                  {(String(item.status).toLowerCase().trim() === "pendente" || String(item.status).toLowerCase().trim() === "") && (
+                  {(item.status === undefined || String(item.status).toLowerCase().trim() === "pendente" || String(item.status).toLowerCase().trim() === "") && (
                     <>
                       <button
                         onClick={() => alterarStatus(item.id, "aprovado")}
