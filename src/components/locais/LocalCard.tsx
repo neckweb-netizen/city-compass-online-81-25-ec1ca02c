@@ -14,7 +14,7 @@ import {
   Eye,
   Verified,
   Camera
-} from 'lucide-react';
+} from 'luc-react';
 
 interface LocalCardProps {
   empresa: {
@@ -68,67 +68,47 @@ export const LocalCard = ({ empresa, onClick, showActions = true }: LocalCardPro
     <NeonCard className="group hover:shadow-lg transition-all duration-300 cursor-pointer border-0 bg-card backdrop-blur-sm">
       <div className="relative overflow-hidden rounded-t-lg">
         {empresa.imagem_capa_url ? (
-          <>
+          <div className="w-full h-48 relative bg-gradient-to-br from-muted/50 to-muted flex items-center justify-center">
             <img 
               src={empresa.imagem_capa_url} 
               alt={empresa.nome}
-              className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               onClick={onClick}
-              crossOrigin="anonymous"
               loading="lazy"
               onError={(e) => {
                 console.error('❌ Erro ao carregar imagem da empresa:', empresa.nome);
-                console.error('❌ URL original da imagem:', empresa.imagem_capa_url);
-                console.error('❌ Tipo de erro:', e.type);
-                console.error('❌ Target src atual:', (e.target as HTMLImageElement)?.src);
-                
                 const img = e.currentTarget as HTMLImageElement;
-                const originalUrl = empresa.imagem_capa_url!;
                 
-                // Para URLs do Google, tentar versão sem parâmetros de tamanho primeiro
-                if (originalUrl.includes('googleusercontent.com') && !img.dataset.googleRetried) {
-                  img.dataset.googleRetried = 'true';
-                  // Remover parâmetros específicos do Google que podem causar problemas
-                  let cleanUrl = originalUrl.split('=')[0]; // Remove tudo após o primeiro =
-                  console.log('🔄 Tentando URL do Google limpa:', cleanUrl);
-                  img.src = cleanUrl;
-                  return;
-                }
+                // Esconde a imagem com erro de CORS de forma nativa e exibe o bloco de fallback
+                img.style.opacity = '0';
+                img.style.pointerEvents = 'none';
                 
-                // Tentar recarregar a imagem uma vez com timestamp para evitar cache
-                if (!img.dataset.retried) {
-                  img.dataset.retried = 'true';
-                  const separator = originalUrl.includes('?') ? '&' : '?';
-                  const retryUrl = `${originalUrl}${separator}t=${Date.now()}`;
-                  console.log('🔄 Tentando com timestamp:', retryUrl);
-                  img.src = retryUrl;
-                  return;
-                }
-                
-                console.warn('⚠️ Todas as tentativas falharam, mostrando fallback para:', empresa.nome);
-                // Se ainda falhou, mostrar fallback
-                img.style.display = 'none';
-                const fallbackDiv = img.nextElementSibling as HTMLElement;
-                if (fallbackDiv) {
-                  fallbackDiv.style.style.display = 'flex';
+                const containerPai = img.parentElement;
+                if (containerPai) {
+                  const fallbackDiv = containerPai.querySelector('.fallback-container-div') as HTMLElement;
+                  if (fallbackDiv) {
+                    fallbackDiv.style.setProperty('display', 'flex', 'important');
+                  }
                 }
               }}
-              onLoad={() => {
-                console.log('✅ Imagem carregada com sucesso:', empresa.nome, empresa.imagem_capa_url);
+              onLoad={(e) => {
+                console.log('✅ Imagem carregada com sucesso:', empresa.nome);
+                // Garante a visibilidade se carregar corretamente
+                (e.currentTarget as HTMLImageElement).style.opacity = '1';
               }}
             />
-            {/* Fallback sempre presente, mas inicialmente escondido */}
+            {/* Bloco de Fallback Estruturalmente Seguro */}
             <div 
-              className="w-full h-48 bg-gradient-to-br from-muted/50 to-muted hidden items-center justify-center group-hover:scale-105 transition-transform duration-300"
+              className="absolute inset-0 w-full h-full bg-gradient-to-br from-muted/30 to-muted/80 hidden items-center justify-center fallback-container-div"
               onClick={onClick}
               style={{ display: 'none' }}
             >
               <div className="text-center">
-                <Camera className="h-12 w-12 text-muted-foreground mb-2 mx-auto" />
-                <p className="text-xs text-muted-foreground">Imagem não disponível</p>
+                <Camera className="h-10 w-10 text-muted-foreground/60 mb-2 mx-auto" />
+                <p className="text-xs text-muted-foreground/60">Imagem não disponível (CORS)</p>
               </div>
             </div>
-          </>
+          </div>
         ) : (
           <div 
             className="w-full h-48 bg-gradient-to-br from-muted/50 to-muted flex items-center justify-center group-hover:scale-105 transition-transform duration-300"
