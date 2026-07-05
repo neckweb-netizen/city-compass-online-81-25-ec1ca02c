@@ -59,21 +59,21 @@ export const AdminSidebar = ({ activeSection, onSectionChange }: AdminSidebarPro
   // Busca as contagens de itens pendentes direto no Supabase
   const buscarContagensPendentes = async () => {
     try {
-      // 1. Contagem de Locais Pendentes
+      -- 1. Correção para buscar pela coluna correta 'status_aprovacao'
       const { count: countLocais, error: errorLocais } = await supabase
         .from('empresas' as any)
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'pendente');
+        .eq('status_aprovacao', 'pendente');
       if (!errorLocais && countLocais !== null) setPendentesLocais(countLocais);
 
-      // 2. Contagem de Voz do Povo (Reclamações Pendentes)
+      -- 2. Correção para buscar pela coluna correta de moderação de problemas
       const { count: countVoz, error: errorVoz } = await supabase
         .from('problemas_cidade' as any)
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'pendente');
+        .eq('status_aprovacao', 'pendente');
       if (!errorVoz && countVoz !== null) setPendentesVozDoPovo(countVoz);
 
-      // 3. Contagem de Achados e Perdidos Pendentes
+      -- 3. Contagem de Achados e Perdidos Pendentes
       const { count: countAchados, error: errorAchados } = await supabase
         .from('achados_perdidos' as any)
         .select('*', { count: 'exact', head: true })
