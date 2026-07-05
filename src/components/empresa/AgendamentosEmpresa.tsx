@@ -41,8 +41,16 @@ export const AgendamentosEmpresa: React.FC<AgendamentosEmpresaProps> = ({ empres
     );
   }
 
-  const agendamentosOrdenados = agendamentos
-    .sort((a, b) => new Date(a.data_agendamento).getTime() - new Date(b.data_agendamento).getTime());
+  // Função utilitária interna para converter datas com segurança e evitar quebras de tempo de execução
+  const safeNewDate = (dateString: any): Date => {
+    if (!dateString) return new Date();
+    const parsedDate = new Date(dateString);
+    return isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
+  };
+
+  const agendamentosOrdenados = Array.isArray(agendamentos) 
+    ? [...agendamentos].sort((a, b) => safeNewDate(a.data_agendamento).getTime() - safeNewDate(b.data_agendamento).getTime())
+    : [];
 
   return (
     <Card>
@@ -57,7 +65,7 @@ export const AgendamentosEmpresa: React.FC<AgendamentosEmpresaProps> = ({ empres
       </CardHeader>
       
       <CardContent>
-        {agendamentos.length === 0 ? (
+        {agendamentosOrdenados.length === 0 ? (
           <div className="text-center py-8">
             <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground">Nenhum agendamento encontrado</p>
@@ -67,83 +75,87 @@ export const AgendamentosEmpresa: React.FC<AgendamentosEmpresaProps> = ({ empres
           </div>
         ) : (
           <div className="space-y-4">
-            {agendamentosOrdenados.map((agendamento) => (
-              <div 
-                key={agendamento.id} 
-                className="p-4 border rounded-lg bg-card hover:bg-accent/50 transition-colors"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <User className="w-4 h-4 text-muted-foreground" />
-                    <span className="font-medium">{agendamento.nome_cliente}</span>
-                  </div>
-                  <Badge 
-                    variant="outline" 
-                    className={statusColors[agendamento.status as keyof typeof statusColors]}
-                  >
-                    {statusLabels[agendamento.status as keyof typeof statusLabels]}
-                  </Badge>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Phone className="w-4 h-4" />
-                    {agendamento.telefone_cliente}
+            {agendamentosOrdenados.map((agendamento) => {
+              const dataValida = safeNewDate(agendamento.data_agendamento);
+              
+              return (
+                <div 
+                  key={agendamento.id} 
+                  className="p-4 border rounded-lg bg-card hover:bg-accent/50 transition-colors"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-muted-foreground" />
+                      <span className="font-medium">{agendamento.nome_cliente || 'Cliente'}</span>
+                    </div>
+                    <Badge 
+                      variant="outline" 
+                      className={statusColors[agendamento.status as keyof typeof statusColors] || 'bg-gray-100 text-gray-800'}
+                    >
+                      {statusLabels[agendamento.status as keyof typeof statusLabels] || agendamento.status}
+                    </Badge>
                   </div>
 
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Calendar className="w-4 h-4" />
-                    {format(new Date(agendamento.data_agendamento), 'dd/MM/yyyy', { locale: ptBR })}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Phone className="w-4 h-4" />
+                      {agendamento.telefone_cliente || 'Não informado'}
+                    </div>
+
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Calendar className="w-4 h-4" />
+                      {format(dataValida, 'dd/MM/yyyy', { locale: ptBR })}
+                    </div>
+
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Clock className="w-4 h-4" />
+                      {format(dataValida, 'HH:mm')}
+                    </div>
+
+                    <div className="text-sm">
+                      <span className="font-medium">Serviço:</span> {agendamento.servico || 'Não especificado'}
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Clock className="w-4 h-4" />
-                    {format(new Date(agendamento.data_agendamento), 'HH:mm')}
-                  </div>
+                  {agendamento.observacoes && (
+                    <div className="flex items-start gap-2 text-sm text-muted-foreground mb-3">
+                      <MessageSquare className="w-4 h-4 mt-0.5" />
+                      <span>{agendamento.observacoes}</span>
+                    </div>
+                  )}
 
-                  <div className="text-sm">
-                    <span className="font-medium">Serviço:</span> {agendamento.servico}
-                  </div>
-                </div>
+                  {agendamento.status === 'pendente' && (
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => atualizarStatus({ id: agendamento.id, status: 'confirmado' })}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        Confirmar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => atualizarStatus({ id: agendamento.id, status: 'cancelado' })}
+                        className="border-red-200 text-red-600 hover:bg-red-50"
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
+                  )}
 
-                {agendamento.observacoes && (
-                  <div className="flex items-start gap-2 text-sm text-muted-foreground mb-3">
-                    <MessageSquare className="w-4 h-4 mt-0.5" />
-                    <span>{agendamento.observacoes}</span>
-                  </div>
-                )}
-
-                {agendamento.status === 'pendente' && (
-                  <div className="flex gap-2">
+                  {agendamento.status === 'confirmado' && (
                     <Button
                       size="sm"
-                      onClick={() => atualizarStatus({ id: agendamento.id, status: 'confirmado' })}
-                      className="bg-green-600 hover:bg-green-700"
+                      onClick={() => atualizarStatus({ id: agendamento.id, status: 'concluido' })}
+                      className="bg-blue-600 hover:bg-blue-700"
                     >
-                      Confirmar
+                      Marcar como Concluído
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => atualizarStatus({ id: agendamento.id, status: 'cancelado' })}
-                      className="border-red-200 text-red-600 hover:bg-red-50"
-                    >
-                      Cancelar
-                    </Button>
-                  </div>
-                )}
-
-                {agendamento.status === 'confirmado' && (
-                  <Button
-                    size="sm"
-                    onClick={() => atualizarStatus({ id: agendamento.id, status: 'concluido' })}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    Marcar como Concluído
-                  </Button>
-                )}
-              </div>
-            ))}
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </CardContent>
