@@ -89,7 +89,7 @@ const AchadosPerdidos = () => {
       setItens(data || []);
     } catch (error) {
       console.error("Erro ao buscar itens de achados e perdidos:", error);
-    } file {
+    } finally {
       setLoading(false);
     }
   };
@@ -429,7 +429,7 @@ const AchadosPerdidos = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-black uppercase tracking-widest text-purple-300 mb-1.5">Categoria</label>
+                    <label className="block text-xs font-black uppercase tracking-wider text-purple-300 mb-1.5">Categoria</label>
                     <select
                       value={categoria}
                       onChange={(e) => setCategoria(e.target.value)}
@@ -452,7 +452,7 @@ const AchadosPerdidos = () => {
                       value={localFato}
                       onChange={(e) => setLocalFato(e.target.value)}
                       className="w-full px-3 py-2.5 bg-[#0F0A19] border border-purple-900/40 rounded-xl text-sm focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/20 text-gray-200"
-                    />
+                  />
                   </div>
                 </div>
 
