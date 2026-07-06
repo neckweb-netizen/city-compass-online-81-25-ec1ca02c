@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, MapPin, Phone, Plus, AlertCircle, CheckCircle2, Tag, Calendar, Sparkles, X } from "lucide-react";
+import { Search, MapPin, Phone, Plus, AlertCircle, CheckCircle2, Tag, Calendar, Sparkles, X, User, Check } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useLocation } from "react-router-dom";
 
@@ -15,6 +15,7 @@ interface ItemItem {
   contato_telefone: string;
   status: string;
   created_at: string;
+  usuario_id?: string;
 }
 
 const AchadosPerdidos = () => {
@@ -22,9 +23,10 @@ const AchadosPerdidos = () => {
   const location = useLocation();
   const [itens, setItens] = useState<ItemItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filtroTipo, setFiltroTipo] = useState<string>("todos");
+  const [filtroTipo, setFiltroTipo] = useState<string>("todos"); // "todos" | "perdido" | "encontrado" | "meus"
   const [busca, setBusca] = useState<string>("");
   const [isModalAberto, setIsModalAberto] = useState(false);
+  const [usuarioLogadoId, setUsuarioLogadoId] = useState<string | null>(null);
 
   // Estados do formulário de novo cadastro
   const [tipo, setTipo] = useState<"perdido" | "encontrado">("perdido");
@@ -35,6 +37,24 @@ const AchadosPerdidos = () => {
   const [contatoNome, setContatoNome] = useState("");
   const [contatoTelefone, setContatoTelefone] = useState("");
   const [enviando, setEnviando] = useState(false);
+
+  // Captura a sessão do usuário logado no sistema
+  useEffect(() => {
+    const obterUsuario = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUsuarioLogadoId(session.user.id);
+      }
+    };
+
+    obterUsuario();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUsuarioLogadoId(session?.user?.id || null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Intercepta e abre o formulário APENAS se o clique veio do botão "+" (via state)
   useEffect(() => {
@@ -49,25 +69,35 @@ const AchadosPerdidos = () => {
   const buscarItens = async () => {
     try {
       setLoading(true);
+      
+      // Se o filtro selecionado for "meus", buscamos TODOS os estados do usuário (incluindo pendentes)
+      // Se for os filtros comunitários normais, filtramos apenas os publicados e resolvidos
       let query = supabase
         .from("achados_perdidos" as any)
-        .select("*")
-        .in("status", ["aprovado", "resolvido"])
-        .order("created_at", { ascending: false });
+        .select("*");
+
+      if (filtroTipo === "meus" && usuarioLogadoId) {
+        query = query.eq("usuario_id", usuarioLogadoId);
+      } else {
+        query = query.in("status", ["aprovado", "resolvido"]);
+      }
+
+      query = query.order("created_at", { ascending: false });
 
       const { data, error } = await query;
       if (error) throw error;
       setItens(data || []);
     } catch (error) {
       console.error("Erro ao buscar itens de achados e perdidos:", error);
-    } finally {
+    } file {
       setLoading(false);
     }
   };
 
+  // Recarrega os itens se o tipo de visualização ou o ID do usuário mudar
   useEffect(() => {
     buscarItens();
-  }, []);
+  }, [filtroTipo, usuarioLogadoId]);
 
   const handleCadastrarItem = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,6 +122,7 @@ const AchadosPerdidos = () => {
           contato_nome: contatoNome,
           contato_telefone: contatoTelefone,
           status: "pendente",
+          usuario_id: usuarioLogadoId, // Vincula o post ao usuário se ele estiver logado
         },
       ]);
 
@@ -108,6 +139,7 @@ const AchadosPerdidos = () => {
       setContatoNome("");
       setContatoTelefone("");
       setIsModalAberto(false);
+      buscarItens();
     } catch (error: any) {
       toast({
         title: "Erro ao cadastrar",
@@ -119,8 +151,34 @@ const AchadosPerdidos = () => {
     }
   };
 
+  // Função para marcar o item como resolvido diretamente pela tela
+  const handleMarcarComoResolvido = async (itemId: string) => {
+    try {
+      const { error } = await supabase
+        .from("achados_perdidos" as any)
+        .update({ status: "resolvido" } as any)
+        .eq("id", itemId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Caso resolvido!",
+        description: "Parabéns! O item foi marcado como resolvido e atualizado na plataforma.",
+      });
+
+      buscarItens();
+    } catch (error: any) {
+      toast({
+        title: "Erro ao atualizar",
+        description: error.message || "Não foi possível alterar o status do item.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const itensFiltrados = itens.filter((item) => {
-    const correspondeTipo = filtroTipo === "todos" || item.tipo === filtroTipo;
+    // Se a aba for "meus", o filtro por tipo já foi feito na query do banco. Caso contrário, aplica a separação por tipo
+    const correspondeTipo = filtroTipo === "todos" || filtroTipo === "meus" || item.tipo === filtroTipo;
     const correspondeBusca =
       item.titulo.toLowerCase().includes(busca.toLowerCase()) ||
       item.descricao.toLowerCase().includes(busca.toLowerCase()) ||
@@ -173,10 +231,10 @@ const AchadosPerdidos = () => {
             />
           </div>
 
-          <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+          <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0 custom-scrollbar">
             <button
               onClick={() => setFiltroTipo("todos")}
-              className={`px-4 py-2 rounded-xl text-xs font-black tracking-wider uppercase transition-all ${
+              className={`px-4 py-2 rounded-xl text-xs font-black tracking-wider uppercase transition-all shrink-0 ${
                 filtroTipo === "todos"
                   ? "bg-purple-600 text-white shadow-md shadow-purple-600/10"
                   : "bg-[#0F0A19] text-gray-400 border border-purple-900/30 hover:text-white hover:border-purple-800"
@@ -186,7 +244,7 @@ const AchadosPerdidos = () => {
             </button>
             <button
               onClick={() => setFiltroTipo("perdido")}
-              className={`px-4 py-2 rounded-xl text-xs font-black tracking-wider uppercase transition-all border ${
+              className={`px-4 py-2 rounded-xl text-xs font-black tracking-wider uppercase transition-all border shrink-0 ${
                 filtroTipo === "perdido"
                   ? "bg-red-500/20 text-red-400 border-red-500/40 shadow-sm"
                   : "bg-[#0F0A19] text-gray-400 border border-purple-900/30 hover:text-red-400 hover:border-red-900/40"
@@ -196,7 +254,7 @@ const AchadosPerdidos = () => {
             </button>
             <button
               onClick={() => setFiltroTipo("encontrado")}
-              className={`px-4 py-2 rounded-xl text-xs font-black tracking-wider uppercase transition-all border ${
+              className={`px-4 py-2 rounded-xl text-xs font-black tracking-wider uppercase transition-all border shrink-0 ${
                 filtroTipo === "encontrado"
                   ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-sm"
                   : "bg-[#0F0A19] text-gray-400 border border-purple-900/30 hover:text-emerald-400 hover:border-emerald-900/40"
@@ -204,6 +262,20 @@ const AchadosPerdidos = () => {
             >
               Encontrados 🎉
             </button>
+
+            {/* Nova Aba de controle exibida condicionalmente se houver uma sessão logada ativa */}
+            {usuarioLogadoId && (
+              <button
+                onClick={() => setFiltroTipo("meus")}
+                className={`px-4 py-2 rounded-xl text-xs font-black tracking-wider uppercase transition-all border shrink-0 flex items-center gap-1.5 ${
+                  filtroTipo === "meus"
+                    ? "bg-purple-500/20 text-purple-300 border-purple-500/40 shadow-sm"
+                    : "bg-[#0F0A19] text-gray-400 border border-purple-900/30 hover:text-purple-300 hover:border-purple-900/40"
+                }`}
+              >
+                <User className="h-3.5 w-3.5" /> Minhas Postagens
+              </button>
+            )}
           </div>
         </div>
 
@@ -230,15 +302,25 @@ const AchadosPerdidos = () => {
               >
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-3.5">
-                    <span
-                      className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border ${
-                        item.tipo === "perdido" 
-                          ? "bg-red-500/10 text-red-400 border-red-500/20" 
-                          : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                      }`}
-                    >
-                      {item.tipo === "perdido" ? "Perdido" : "Encontrado"}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border ${
+                          item.tipo === "perdido" 
+                            ? "bg-red-500/10 text-red-400 border-red-500/20" 
+                            : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                        }`}
+                      >
+                        {item.tipo === "perdido" ? "Perdido" : "Encontrado"}
+                      </span>
+                      
+                      {/* Badge informativo de aprovação para o dono saber se o post está ativo */}
+                      {filtroTipo === "meus" && item.status === "pendente" && (
+                        <span className="text-[10px] bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 px-2.5 py-1 rounded-full uppercase font-black tracking-widest">
+                          Pendente
+                        </span>
+                      )}
+                    </div>
+                    
                     <span className="text-[11px] font-bold text-purple-300 flex items-center gap-1 bg-purple-950/40 border border-purple-900/40 px-2 py-0.5 rounded-lg">
                       <Tag className="h-3 w-3 text-purple-400" /> {item.categoria}
                     </span>
@@ -262,10 +344,18 @@ const AchadosPerdidos = () => {
                     <span>Publicação: {new Date(item.created_at).toLocaleDateString("pt-BR")}</span>
                   </div>
 
-                  ={item.status === "resolvido" ? (
+                  {/* AÇÕES DE CONTROLE DE STATUS DO PROPRIETÁRIO OU EXIBIÇÃO DE CONTATO PÚBLICO */}
+                  {item.status === "resolvido" ? (
                     <div className="w-full bg-[#0F0A19] text-gray-500 border border-purple-950/80 font-black text-xs p-3 rounded-xl flex items-center justify-center gap-1.5 text-center uppercase tracking-wider">
                       <CheckCircle2 className="h-4 w-4 text-purple-900" /> Item Devolvido / Resolvido
                     </div>
+                  ) : usuarioLogadoId && item.usuario_id === usuarioLogadoId ? (
+                    <button
+                      onClick={() => handleMarcarComoResolvido(item.id)}
+                      className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-extrabold text-xs p-3 rounded-xl flex items-center justify-center gap-1.5 hover:shadow-md hover:shadow-emerald-600/10 hover:opacity-95 active:scale-[0.99] transition-all text-center uppercase tracking-wider mt-2"
+                    >
+                      <Check className="h-4 w-4" /> Marcar como Achado / Entregue
+                    </button>
                   ) : (
                     <a
                       href={`https://wa.me/55${item.contato_telefone.replace(/\D/g, "")}`}
