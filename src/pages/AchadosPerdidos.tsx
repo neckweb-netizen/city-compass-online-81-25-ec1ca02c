@@ -231,7 +231,8 @@ const AchadosPerdidos = () => {
             />
           </div>
 
-          <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0 custom-scrollbar">
+          {/* AJUSTADO: Mudado de overflow-x-auto para flex-wrap e removida a rolagem padrão horizontal */}
+          <div className="flex flex-wrap gap-2 w-full md:w-auto items-center justify-start md:justify-end">
             <button
               onClick={() => setFiltroTipo("todos")}
               className={`px-4 py-2 rounded-xl text-xs font-black tracking-wider uppercase transition-all shrink-0 ${
@@ -452,7 +453,7 @@ const AchadosPerdidos = () => {
                       value={localFato}
                       onChange={(e) => setLocalFato(e.target.value)}
                       className="w-full px-3 py-2.5 bg-[#0F0A19] border border-purple-900/40 rounded-xl text-sm focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/20 text-gray-200"
-                  />
+                    />
                   </div>
                 </div>
 
