@@ -3,11 +3,25 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
-import { Search, Download, MapPin, Loader2, Landmark, Tag } from 'lucide-react';
+import { Search, Download, MapPin, Loader2, Landmark, Tag, SlidersHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 
 // INSIRA AQUI A SUA CHAVE GERADA NO GOOGLE CLOUD CONSOLE
 const GOOGLE_MAPS_KEY = "AIzaSyCLx8QE_91chIyYdbIczKAyjpi5M7exVoc";
+
+// Lista de categorias comerciais nativas suportadas pela API do Google Places
+const GOOGLE_MAPS_CATEGORIES = [
+  { id: 'restaurant', nome: 'Restaurantes / Bares / Lanchonetes' },
+  { id: 'dentist', nome: 'Dentistas / Clínicas Odontológicas' },
+  { id: 'pharmacy', nome: 'Farmácias / Drogarias' },
+  { id: 'clothing_store', nome: 'Lojas de Roupas / Moda' },
+  { id: 'beauty_salon', nome: 'Salões de Beleza / Estética' },
+  { id: 'supermarket', nome: 'Supermercados / Mercearias' },
+  { id: 'car_repair', nome: 'Oficinas / Automotivo' },
+  { id: 'hotel', nome: 'Hotéis / Pousadas' },
+  { id: 'health', nome: 'Saúde / Clínicas Médicas' },
+  { id: 'store', nome: 'Comércio em Geral / Lojas' }
+];
 
 interface GoogleItem {
   place_id: string;
@@ -22,6 +36,7 @@ interface CategoriaItem {
 
 export default function GoogleImporter() {
   const [busca, setBusca] = useState('');
+  const [googleCategoria, setGoogleCategoria] = useState(GOOGLE_MAPS_CATEGORIES[0].id);
   const [locais, setLocais] = useState<GoogleItem[]>([]);
   const [categorias, setCategorias] = useState<CategoriaItem[]>([]);
   const [categoriasSelecionadas, setCategoriasSelecionadas] = useState<Record<string, string>>({});
@@ -47,13 +62,19 @@ export default function GoogleImporter() {
   }, []);
 
   const executarBusca = async () => {
-    if (!busca.trim()) return;
     setCarregandoBusca(true);
     setLocais([]);
     
     try {
+      // Pega o rótulo legível da categoria para juntar ao termo de pesquisa textualmente
+      const labelCategoria = GOOGLE_MAPS_CATEGORIES.find(c => c.id === googleCategoria)?.nome.split(' / ')[0] || '';
+      
+      // Força a pesquisa a acontecer estritamente dentro da cidade de Santo Antônio de Jesus
+      const termoFormatadoficial = `${busca} ${labelCategoria} Santo Antônio de Jesus BA`.trim();
+      console.log('🔍 Executando busca otimizada no Google Maps:', termoFormatadoficial);
+
       const { data, error } = await supabase.rpc('buscar_locais_google', {
-        busca_termo: busca,
+        busca_termo: termoFormatadoficial,
         google_key: GOOGLE_MAPS_KEY
       });
 
@@ -72,7 +93,7 @@ export default function GoogleImporter() {
       const listaResultados = dadosBrutos?.results || (dadosBrutos?.content ? JSON.parse(dadosBrutos.content)?.results : []);
 
       if (!listaResultados || listaResultados.length === 0) {
-        toast.info('Nenhum estabelecimento encontrado para este termo de busca.');
+        toast.info('Nenhum estabelecimento encontrado em SAJ para esses critérios.');
         return;
       }
 
@@ -93,7 +114,7 @@ export default function GoogleImporter() {
         setCategoriasSelecionadas(defaultMapping);
       }
 
-      toast.success(`${resultadosMapped.length} locais encontrados no Google Maps!`);
+      toast.success(`${resultadosMapped.length} locais mapeados em Santo Antônio de Jesus!`);
     } catch (err: any) {
       console.error('Erro na requisição RPC:', err);
       toast.error('Erro ao pesquisar no Guia: ' + err.message);
@@ -119,7 +140,6 @@ export default function GoogleImporter() {
 
     setImportingId(placeId);
     try {
-      // Dispara a rotina SQL enviando a chave estrangeira da categoria escolhida pelo admin
       const { data, error } = await supabase.rpc('importar_detalhes_google', {
         p_place_id: placeId,
         google_key: GOOGLE_MAPS_KEY,
@@ -130,7 +150,7 @@ export default function GoogleImporter() {
 
       const retornoLimpo = typeof data === 'string' ? JSON.parse(data) : data;
 
-      toast.success(`"${retornoLimpo?.nome || 'Estabelecimento'}" importado e cadastrado com sucesso!`);
+      toast.success(`"${retornoLimpo?.nome || 'Estabelecimento'}" importado com horários corrigidos!`);
       
       setLocais(prev => prev.filter(item => item.place_id !== placeId));
     } catch (err: any) {
@@ -151,31 +171,55 @@ export default function GoogleImporter() {
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Search className="w-5 h-5 text-purple-400" />
-            Extrair do Google Maps
+            Extrair do Google Maps (Restrito a SAJ)
           </CardTitle>
           <CardDescription className="text-gray-400">
-            Busque o nicho + a sua cidade para capturar Nome, Endereço, Site, Telefone e Foto padrão de uma vez só.
+            Filtre por categoria do mapa e digite palavras-chave adicionais se necessário. O sistema travará a busca em Santo Antônio de Jesus automaticamente.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex gap-2">
-            <Input
-              placeholder="Ex: Clínicas odontológicas em Santo Antônio de Jesus..."
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              className="bg-[#0F0B15] border-purple-900/60 text-white placeholder:text-gray-500 focus-visible:ring-purple-500"
-              onKeyDown={(e) => e.key === 'Enter' && executarBusca()}
-            />
-            <Button onClick={executarBusca} disabled={carregandoBusca} className="bg-purple-600 hover:bg-purple-700 text-white font-medium transition-colors px-6">
-              {carregandoBusca ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Pesquisar'}
-            </Button>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
+                <SlidersHorizontal className="w-3.5 h-3.5" /> Selecione a Categoria do Google Maps
+              </label>
+              <select
+                value={googleCategoria}
+                onChange={(e) => setGoogleCategoria(e.target.value)}
+                className="w-full px-3 py-2.5 bg-[#0F0B15] border border-purple-900/60 rounded-xl text-sm text-gray-200 outline-none focus:border-purple-500"
+              >
+                {GOOGLE_MAPS_CATEGORIES.map((cat) => (
+                  <option key={cat.id} value={cat.id} className="bg-[#110D1A]">
+                    {cat.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-purple-300">
+                Palavra-chave Opcional (Nome, Bairro, etc.)
+              </label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Ex: Centro, Perto do transbordo, Conveniência..."
+                  value={busca}
+                  onChange={(e) => setBusca(e.target.value)}
+                  className="bg-[#0F0B15] border-purple-900/60 text-white placeholder:text-gray-500 focus-visible:ring-purple-500"
+                  onKeyDown={(e) => e.key === 'Enter' && executarBusca()}
+                />
+                <Button onClick={executarBusca} disabled={carregandoBusca} className="bg-purple-600 hover:bg-purple-700 text-white font-medium transition-colors px-6">
+                  {carregandoBusca ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Pesquisar'}
+                </Button>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
 
       {locais.length > 0 && (
         <div className="space-y-3">
-          <p className="text-xs text-gray-400 px-1 font-medium">Resultados encontrados no mapa:</p>
+          <p className="text-xs text-gray-400 px-1 font-medium">Resultados encontrados no mapa de SAJ:</p>
           {locais.map((local) => (
             <div key={local.place_id} className="p-4 bg-[#110D1A] border border-purple-950/40 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-purple-900/50 transition-all shadow-md">
               <div className="space-y-1 flex-1">
