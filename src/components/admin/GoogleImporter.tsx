@@ -66,10 +66,7 @@ export default function GoogleImporter() {
     setLocais([]);
     
     try {
-      // Pega o rótulo legível da categoria para juntar ao termo de pesquisa textualmente
       const labelCategoria = GOOGLE_MAPS_CATEGORIES.find(c => c.id === googleCategoria)?.nome.split(' / ')[0] || '';
-      
-      // Força a pesquisa a acontecer estritamente dentro da cidade de Santo Antônio de Jesus
       const termoFormatadoficial = `${busca} ${labelCategoria} Santo Antônio de Jesus BA`.trim();
       console.log('🔍 Executando busca otimizada no Google Maps:', termoFormatadoficial);
 
@@ -80,7 +77,26 @@ export default function GoogleImporter() {
 
       if (error) throw error;
       
-      const dadosBrutos = typeof data === 'string' ? JSON.parse(data) : data;
+      // AJUSTE DE SEGURANÇA: Tratamento resiliente de JSON quebrado vindo da RPC do banco
+      let dadosBrutos: any = null;
+      if (typeof data === 'string') {
+        try {
+          // Só tenta fazer o parse se o conteúdo tiver cara de objeto estruturado
+          if (data.trim().startsWith('{') || data.trim().startsWith('[')) {
+            dadosBrutos = JSON.parse(data);
+          } else {
+            console.error('Retorno inválido recebido (Não é JSON):', data);
+            toast.error('O servidor do Google retornou um texto inválido. Tente novamente.');
+            return;
+          }
+        } catch (parseError) {
+          console.error('Erro ao fazer o parse de dados brutos:', parseError);
+          toast.error('Erro na estrutura de dados enviada pelo Supabase.');
+          return;
+        }
+      } else {
+        dadosBrutos = data;
+      }
       
       const googleStatus = dadosBrutos?.status || (dadosBrutos?.content ? JSON.parse(dadosBrutos.content)?.status : null);
       const googleErrorMessage = dadosBrutos?.error_message || (dadosBrutos?.content ? JSON.parse(dadosBrutos.content)?.error_message : null);
@@ -105,7 +121,6 @@ export default function GoogleImporter() {
 
       setLocais(resultadosMapped);
       
-      // Define a primeira categoria como padrão selecionada para todos os resultados listados
       if (categorias.length > 0) {
         const defaultMapping: Record<string, string> = {};
         resultadosMapped.forEach((item: GoogleItem) => {
@@ -230,7 +245,6 @@ export default function GoogleImporter() {
                 </p>
               </div>
 
-              {/* Controles de Seleção de Categoria e Importação por Item */}
               <div className="flex flex-wrap items-center gap-3 shrink-0">
                 <div className="flex items-center gap-1.5 bg-[#0F0B15] px-2.5 py-1.5 rounded-lg border border-purple-900/40">
                   <Tag className="w-3.5 h-3.5 text-purple-400" />
