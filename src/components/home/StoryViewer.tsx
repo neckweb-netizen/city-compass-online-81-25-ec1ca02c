@@ -120,17 +120,15 @@ export const StoryViewer = ({
 
   return (
     <Dialog open={currentIndex !== null} onOpenChange={onClose}>
-      {/* AJUSTADO: Removido max-w-md e max-h-[80vh], injetado w-screen h-screen, max-w-none, rounded-none e [&>button]:hidden para sumir com o X flutuante nativo do Shadcn */}
       <DialogContent className="p-0 w-screen h-screen max-w-none md:max-w-none bg-black border-none rounded-none flex items-center justify-center overflow-hidden [&>button]:hidden">
         <DialogTitle className="sr-only">
           Story de {currentStory.empresas?.nome || currentStory.nome_perfil_sistema || 'Sistema'}
         </DialogTitle>
         
-        {/* AJUSTADO: Forçado w-full h-full para esticar o container interno */}
         <div className="relative w-full h-full flex items-center justify-center bg-black">
           
-          {/* Progress bars */}
-          <div className="absolute top-2 left-2 right-2 z-20 flex gap-1">
+          {/* MODIFICADO: Adicionado um container retangular preto transparente com desfoque de fundo para dar contraste total às barrinhas */}
+          <div className="absolute top-2 left-2 right-2 z-20 px-3 py-2 bg-black/40 backdrop-blur-sm rounded-lg flex gap-1">
             {stories.map((_, index) => (
               <div
                 key={index}
@@ -151,7 +149,7 @@ export const StoryViewer = ({
           </div>
 
           {/* Story header */}
-          <div className="absolute top-4 left-4 right-4 z-20 flex items-center justify-between mt-4">
+          <div className="absolute top-12 left-4 right-4 z-20 flex items-center justify-between mt-2">
             <div className="flex items-center gap-3">
               <Avatar className="w-8 h-8 border border-white">
                 <AvatarImage 
@@ -177,7 +175,6 @@ export const StoryViewer = ({
           </div>
 
           {/* Story image */}
-          {/* AJUSTADO: Garantido que ocupará toda a área disponível com w-full h-full */}
           <div className="relative w-full h-full flex items-center justify-center">
             <img
               src={currentStory.imagem_story_url}
