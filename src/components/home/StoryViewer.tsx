@@ -127,7 +127,7 @@ export const StoryViewer = ({
         
         <div className="relative w-full h-full flex items-center justify-center bg-black">
           
-          {/* MODIFICADO: Adicionado um container retangular preto transparente com desfoque de fundo para dar contraste total às barrinhas */}
+          {/* Progress bars background frame */}
           <div className="absolute top-2 left-2 right-2 z-20 px-3 py-2 bg-black/40 backdrop-blur-sm rounded-lg flex gap-1">
             {stories.map((_, index) => (
               <div
@@ -221,11 +221,11 @@ export const StoryViewer = ({
               </Button>
             )}
 
-            {/* Action button */}
-            <div className="absolute bottom-4 left-4 right-4 z-20">
+            {/* MODIFICADO: Subi a posição mudando para bottom-10 e estilizei o botão com a identidade visual roxa da marca, adicionando mais altura interna */}
+            <div className="absolute bottom-10 left-4 right-4 z-20">
               <Button
                 onClick={handleButtonClick}
-                className="w-full bg-primary text-primary-foreground hover:bg-primary/90 backdrop-blur-sm shadow-lg"
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm py-6 rounded-xl shadow-xl transition-all duration-200 active:scale-[0.98]"
               >
                 {getButtonTitle()}
               </Button>
