@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
@@ -121,14 +120,17 @@ export const StoryViewer = ({
 
   return (
     <Dialog open={currentIndex !== null} onOpenChange={onClose}>
-      <DialogContent className="p-0 max-w-md w-full h-full max-h-[80vh] bg-black border-none">
+      {/* AJUSTADO: Removido max-w-md e max-h-[80vh], injetado w-screen h-screen, max-w-none, rounded-none e [&>button]:hidden para sumir com o X flutuante nativo do Shadcn */}
+      <DialogContent className="p-0 w-screen h-screen max-w-none md:max-w-none bg-black border-none rounded-none flex items-center justify-center overflow-hidden [&>button]:hidden">
         <DialogTitle className="sr-only">
           Story de {currentStory.empresas?.nome || currentStory.nome_perfil_sistema || 'Sistema'}
         </DialogTitle>
         
-        <div className="relative w-full h-full">
+        {/* AJUSTADO: Forçado w-full h-full para esticar o container interno */}
+        <div className="relative w-full h-full flex items-center justify-center bg-black">
+          
           {/* Progress bars */}
-          <div className="absolute top-2 left-2 right-2 z-10 flex gap-1">
+          <div className="absolute top-2 left-2 right-2 z-20 flex gap-1">
             {stories.map((_, index) => (
               <div
                 key={index}
@@ -149,7 +151,7 @@ export const StoryViewer = ({
           </div>
 
           {/* Story header */}
-          <div className="absolute top-4 left-4 right-4 z-10 flex items-center justify-between mt-4">
+          <div className="absolute top-4 left-4 right-4 z-20 flex items-center justify-between mt-4">
             <div className="flex items-center gap-3">
               <Avatar className="w-8 h-8 border border-white">
                 <AvatarImage 
@@ -160,7 +162,7 @@ export const StoryViewer = ({
                   {(currentStory.empresas?.nome || currentStory.nome_perfil_sistema || 'Sistema').charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <span className="text-white text-sm font-medium">
+              <span className="text-white text-sm font-medium shadow-sm drop-shadow-md">
                 {currentStory.empresas?.nome || currentStory.nome_perfil_sistema || 'Sistema'}
               </span>
             </div>
@@ -170,12 +172,13 @@ export const StoryViewer = ({
               className="text-white hover:bg-white/20 p-1 h-auto"
               onClick={onClose}
             >
-              <X className="w-5 h-5" />
+              <X className="w-5 h-5 drop-shadow-md" />
             </Button>
           </div>
 
           {/* Story image */}
-          <div className="relative w-full h-full">
+          {/* AJUSTADO: Garantido que ocupará toda a área disponível com w-full h-full */}
+          <div className="relative w-full h-full flex items-center justify-center">
             <img
               src={currentStory.imagem_story_url}
               alt="Story"
@@ -187,7 +190,7 @@ export const StoryViewer = ({
             />
             
             {/* Navigation areas */}
-            <div className="absolute inset-0 flex">
+            <div className="absolute inset-0 flex z-10">
               <div 
                 className="flex-1 cursor-pointer"
                 onClick={onPrev}
@@ -203,10 +206,10 @@ export const StoryViewer = ({
               <Button
                 size="sm"
                 variant="ghost"
-                className="absolute left-2 top-1/2 -translate-y-1/2 text-white hover:bg-white/20 p-1 h-auto"
+                className="absolute left-2 top-1/2 -translate-y-1/2 text-white hover:bg-white/20 p-1 h-auto z-20"
                 onClick={onPrev}
               >
-                <ChevronLeft className="w-6 h-6" />
+                <ChevronLeft className="w-6 h-6 drop-shadow-md" />
               </Button>
             )}
             
@@ -214,18 +217,18 @@ export const StoryViewer = ({
               <Button
                 size="sm"
                 variant="ghost"
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-white hover:bg-white/20 p-1 h-auto"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-white hover:bg-white/20 p-1 h-auto z-20"
                 onClick={onNext}
               >
-                <ChevronRight className="w-6 h-6" />
+                <ChevronRight className="w-6 h-6 drop-shadow-md" />
               </Button>
             )}
 
             {/* Action button */}
-            <div className="absolute bottom-4 left-4 right-4">
+            <div className="absolute bottom-4 left-4 right-4 z-20">
               <Button
                 onClick={handleButtonClick}
-                className="w-full bg-primary text-primary-foreground hover:bg-primary/90 backdrop-blur-sm"
+                className="w-full bg-primary text-primary-foreground hover:bg-primary/90 backdrop-blur-sm shadow-lg"
               >
                 {getButtonTitle()}
               </Button>
