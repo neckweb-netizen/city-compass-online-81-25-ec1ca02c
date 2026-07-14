@@ -113,23 +113,59 @@ export default function GoogleImporter() {
         return;
       }
 
-      const resultadosMapped = listaResultados.map((item: any) => ({
+      const resultadosMapped: GoogleItem[] = listaResultados.map((item: any) => ({
         place_id: item.place_id,
         name: item.name,
         formatted_address: item.formatted_address
       }));
 
-      setLocais(resultadosMapped);
+      // -------------------------------------------------------------
+      // NOVO FILTRO: Verificar quais locais já estão cadastrados no banco de dados
+      // -------------------------------------------------------------
+      const listPlaceIds = resultadosMapped.map(item => item.place_id);
+
+      // Busca na tabela 'empresas' se algum dos 'place_id' recebidos do Google já existe
+      const { data: empresasExistentes, error: errorExistentes } = await supabase
+        .from('empresas')
+        .select('place_id')
+        .in('place_id', listPlaceIds);
+
+      if (errorExistentes) {
+        console.error('Erro ao verificar empresas existentes:', errorExistentes);
+      }
+
+      // Cria um conjunto (Set) contendo apenas os place_ids das empresas que já existem no banco
+      const idsExistentes = new Set(
+        empresasExistentes ? empresasExistentes.map(emp => emp.place_id).filter(Boolean) : []
+      );
+
+      // Filtra os resultados originais do Google, descartando quem já está cadastrado
+      const resultadosFiltrados = resultadosMapped.filter(item => !idsExistentes.has(item.place_id));
+
+      if (resultadosFiltrados.length === 0) {
+        toast.info('Todas as empresas encontradas nesta busca já estão importadas no sistema!');
+        setLocais([]);
+        return;
+      }
+
+      setLocais(resultadosFiltrados);
       
       if (categorias.length > 0) {
         const defaultMapping: Record<string, string> = {};
-        resultadosMapped.forEach((item: GoogleItem) => {
+        resultadosFiltrados.forEach((item: GoogleItem) => {
           defaultMapping[item.place_id] = categorias[0].id;
         });
         setCategoriasSelecionadas(defaultMapping);
       }
 
-      toast.success(`${resultadosMapped.length} locais mapeados em Santo Antônio de Jesus!`);
+      const qtdOcultados = resultadosMapped.length - resultadosFiltrados.length;
+      if (qtdOcultados > 0) {
+        toast.success(`${resultadosFiltrados.length} novos locais prontos para importação! (${qtdOcultados} já cadastrados foram ocultados)`);
+      } else {
+        toast.success(`${resultadosFiltrados.length} locais mapeados em Santo Antônio de Jesus!`);
+      }
+      // -------------------------------------------------------------
+
     } catch (err: any) {
       console.error('Erro na requisição RPC:', err);
       toast.error('Erro ao pesquisar no Guia: ' + err.message);
