@@ -86,26 +86,50 @@ export const StoryViewer = ({
       empresa_slug: currentStory.empresas?.slug
     });
 
+    // 1. Caso o botão seja do tipo personalizado e possua um link
     if (currentStory.botao_tipo === 'personalizado' && currentStory.botao_link) {
-      // Open custom link in new tab
-      console.log('🌐 Opening custom link:', currentStory.botao_link);
-      window.open(currentStory.botao_link, '_blank');
-    } else if (currentStory.empresas && currentStory.empresa_id) {
-      // Navigate to company profile using slug preferentially, fallback to ID
-      let profileUrl;
-      
-      if (currentStory.empresas.slug) {
-        profileUrl = `/local/${currentStory.empresas.slug}`;
+      const link = currentStory.botao_link.trim();
+      const currentHost = window.location.host;
+
+      // Verifica se o link fornecido é de uma página de dentro do próprio site/sistema
+      const isInternalLink = 
+        link.startsWith('/') || 
+        link.startsWith(window.location.origin) || 
+        (link.includes(currentHost) && !link.startsWith('http'));
+
+      if (isInternalLink) {
+        // Extrai apenas o caminho da URL para o roteador interno navegar sem recarregar a aplicação
+        let path = link;
+        if (link.startsWith('http')) {
+          try {
+            const urlObj = new URL(link);
+            path = urlObj.pathname + urlObj.search + urlObj.hash;
+          } catch (e) {
+            console.error('Erro ao converter URL interna:', e);
+          }
+        }
+        
+        console.log('📱 PWA Internal Navigation:', path);
+        onClose();
+        setTimeout(() => {
+          navigate(path);
+        }, 100);
       } else {
-        profileUrl = `/local/${currentStory.empresa_id}`;
+        // Se for um link externo de verdade (ex: WhatsApp, outro site), abre fora do app
+        console.log('🌐 Opening external link outside PWA:', link);
+        window.open(link, '_blank');
       }
+
+    // 2. Caso padrão: Abrir perfil da empresa vinculada
+    } else if (currentStory.empresas && currentStory.empresa_id) {
+      // Prioriza navegar pelo slug cadastrado, senão usa o ID
+      const profileUrl = currentStory.empresas.slug 
+        ? `/local/${currentStory.empresas.slug}` 
+        : `/local/${currentStory.empresa_id}`;
       
-      console.log('📍 Navigating to company profile:', profileUrl);
+      console.log('📍 Navigating to company profile inside PWA:', profileUrl);
       
-      // Close the story viewer first
       onClose();
-      
-      // Navigate after a small delay to ensure the dialog closes
       setTimeout(() => {
         navigate(profileUrl);
       }, 100);
@@ -204,7 +228,7 @@ export const StoryViewer = ({
               />
             </div>
 
-            {/* Setas físicas para desktop (Sumindo na tela central para preservar contraste no celular) */}
+            {/* Setas físicas para desktop */}
             {currentIndex > 0 && (
               <Button
                 size="sm"
