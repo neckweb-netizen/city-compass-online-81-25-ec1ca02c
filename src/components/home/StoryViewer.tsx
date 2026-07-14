@@ -125,68 +125,74 @@ export const StoryViewer = ({
           Story de {currentStory.empresas?.nome || currentStory.nome_perfil_sistema || 'Sistema'}
         </DialogTitle>
         
-        <div className="relative w-full h-full flex items-center justify-center bg-black">
+        {/* Container principal flex vertical para estruturar no estilo do WhatsApp */}
+        <div className="relative w-full h-full flex flex-col justify-between bg-black">
           
-          {/* Progress bars background frame */}
-          <div className="absolute top-2 left-2 right-2 z-20 px-3 py-2 bg-black/40 backdrop-blur-sm rounded-lg flex gap-1">
-            {stories.map((_, index) => (
-              <div
-                key={index}
-                className="flex-1 h-0.5 bg-white/30 rounded-full overflow-hidden"
-              >
+          {/* CABEÇALHO SUPERIOR UNIFICADO COM FUNDO ESCURO TRANSLÚCIDO PROTETOR */}
+          <div className="w-full bg-black/80 backdrop-blur-md pt-4 pb-4 px-4 flex flex-col gap-3 z-30 border-b border-white/5 shrink-0">
+            {/* Progress bars - Dentro do mesmo container para alinhamento vertical perfeito */}
+            <div className="w-full flex gap-1">
+              {stories.map((_, index) => (
                 <div
-                  className="h-full bg-white transition-all duration-75 ease-linear"
-                  style={{
-                    width: index < currentIndex 
-                      ? '100%' 
-                      : index === currentIndex 
-                        ? `${progress}%` 
-                        : '0%'
-                  }}
-                />
-              </div>
-            ))}
-          </div>
-
-          {/* Story header */}
-          <div className="absolute top-12 left-4 right-4 z-20 flex items-center justify-between mt-2">
-            <div className="flex items-center gap-3">
-              <Avatar className="w-8 h-8 border border-white">
-                <AvatarImage 
-                  src={currentStory.empresas?.imagem_capa_url || currentStory.imagem_capa_url || '/placeholder.svg'} 
-                  alt={currentStory.empresas?.nome || currentStory.nome_perfil_sistema || 'Sistema'}
-                />
-                <AvatarFallback className="text-xs">
-                  {(currentStory.empresas?.nome || currentStory.nome_perfil_sistema || 'Sistema').charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <span className="text-white text-sm font-medium shadow-sm drop-shadow-md">
-                {currentStory.empresas?.nome || currentStory.nome_perfil_sistema || 'Sistema'}
-              </span>
+                  key={index}
+                  className="flex-1 h-0.5 bg-white/20 rounded-full overflow-hidden"
+                >
+                  <div
+                    className="h-full bg-white transition-all duration-75 ease-linear"
+                    style={{
+                      width: index < currentIndex 
+                        ? '100%' 
+                        : index === currentIndex 
+                          ? `${progress}%` 
+                          : '0%'
+                    }}
+                  />
+                </div>
+              ))}
             </div>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-white hover:bg-white/20 p-1 h-auto"
-              onClick={onClose}
-            >
-              <X className="w-5 h-5 drop-shadow-md" />
-            </Button>
+
+            {/* Perfil e Botão X de Fechar */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Avatar className="w-9 h-9 border border-white/30">
+                  <AvatarImage 
+                    src={currentStory.empresas?.imagem_capa_url || currentStory.imagem_capa_url || '/placeholder.svg'} 
+                    alt={currentStory.empresas?.nome || currentStory.nome_perfil_sistema || 'Sistema'}
+                  />
+                  <AvatarFallback className="text-xs font-bold bg-purple-900 text-white">
+                    {(currentStory.empresas?.nome || currentStory.nome_perfil_sistema || 'Sistema').charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-white text-sm font-semibold tracking-wide">
+                  {currentStory.empresas?.nome || currentStory.nome_perfil_sistema || 'Sistema'}
+                </span>
+              </div>
+
+              {/* Botão de fechar (X) com fundo circular escuro, transparência protetora e bordas de contraste */}
+              <Button
+                size="icon"
+                variant="ghost"
+                className="text-white hover:text-gray-200 bg-black/50 hover:bg-black/70 backdrop-blur-sm border border-white/10 rounded-full w-9 h-9 flex items-center justify-center p-0 transition-colors"
+                onClick={onClose}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
 
-          {/* Story image */}
-          <div className="relative w-full h-full flex items-center justify-center">
+          {/* ÁREA CENTRAL DO STORY - Centralizada verticalmente e protegida das barras */}
+          <div className="relative flex-1 w-full flex items-center justify-center bg-black overflow-hidden">
             <img
               src={currentStory.imagem_story_url}
               alt="Story"
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 target.src = '/placeholder.svg';
               }}
             />
             
-            {/* Navigation areas */}
+            {/* Áreas invisíveis laterais de clique (Apenas cobrindo a mídia central para avançar/voltar) */}
             <div className="absolute inset-0 flex z-10">
               <div 
                 className="flex-1 cursor-pointer"
@@ -198,15 +204,15 @@ export const StoryViewer = ({
               />
             </div>
 
-            {/* Navigation arrows */}
+            {/* Setas físicas para desktop (Sumindo na tela central para preservar contraste no celular) */}
             {currentIndex > 0 && (
               <Button
                 size="sm"
                 variant="ghost"
-                className="absolute left-2 top-1/2 -translate-y-1/2 text-white hover:bg-white/20 p-1 h-auto z-20"
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white bg-black/40 hover:bg-black/60 rounded-full p-2 h-auto z-20 hidden md:flex"
                 onClick={onPrev}
               >
-                <ChevronLeft className="w-6 h-6 drop-shadow-md" />
+                <ChevronLeft className="w-6 h-6" />
               </Button>
             )}
             
@@ -214,22 +220,22 @@ export const StoryViewer = ({
               <Button
                 size="sm"
                 variant="ghost"
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-white hover:bg-white/20 p-1 h-auto z-20"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white bg-black/40 hover:bg-black/60 rounded-full p-2 h-auto z-20 hidden md:flex"
                 onClick={onNext}
               >
-                <ChevronRight className="w-6 h-6 drop-shadow-md" />
+                <ChevronRight className="w-6 h-6" />
               </Button>
             )}
+          </div>
 
-            {/* MODIFICADO: Subi a posição mudando para bottom-10 e estilizei o botão com a identidade visual roxa da marca, adicionando mais altura interna */}
-            <div className="absolute bottom-10 left-4 right-4 z-20">
-              <Button
-                onClick={handleButtonClick}
-                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm py-6 rounded-xl shadow-xl transition-all duration-200 active:scale-[0.98]"
-              >
-                {getButtonTitle()}
-              </Button>
-            </div>
+          {/* RODAPÉ E BOTÃO DE AÇÃO */}
+          <div className="w-full pb-10 pt-4 px-4 bg-gradient-to-t from-black to-transparent z-20 shrink-0">
+            <Button
+              onClick={handleButtonClick}
+              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm py-6 rounded-xl shadow-xl transition-all duration-200 active:scale-[0.98]"
+            >
+              {getButtonTitle()}
+            </Button>
           </div>
         </div>
       </DialogContent>
