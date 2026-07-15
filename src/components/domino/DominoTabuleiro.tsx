@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, RefreshCw, Trophy, User } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Trophy, User, Maximize2, Minimize2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface DominoTabuleiroProps {
@@ -11,10 +11,11 @@ interface DominoTabuleiroProps {
 }
 
 // Componente para renderizar a pedra de dominó clássica (Fundo preto com bolinhas brancas)
-const PedraClassica = ({ valor, onClick, disabled }: { valor: string; onClick?: () => void; disabled?: boolean }) => {
+const PedraClassica = ({ valor, onClick, disabled, menor = false }: { valor: string; onClick?: () => void; disabled?: boolean; menor?: boolean }) => {
   const [ladoA, ladoB] = valor.split('-').map(Number);
+  const isBucha = ladoA === ladoB;
 
-  // Função auxiliar para renderizar as bolinhas pretas/brancas nas posições corretas (grid 3x3 para cada metade)
+  // Função para renderizar as bolinhas pretas/brancas nas posições corretas (grid 3x3)
   const renderBolinhas = (pontos: number) => {
     const posicoes: Record<number, number[]> = {
       0: [],
@@ -27,13 +28,15 @@ const PedraClassica = ({ valor, onClick, disabled }: { valor: string; onClick?: 
     };
 
     const ativas = posicoes[pontos] || [];
+    const tamanhoBolinha = menor ? 'w-1 h-1' : 'w-1.5 h-1.5';
+    const espacamentoGrid = menor ? 'gap-0.5 p-1' : 'gap-1 p-1.5';
 
     return (
-      <div className="grid grid-cols-3 gap-1 p-1.5 h-full w-full items-center justify-items-center">
+      <div className={`grid grid-cols-3 ${espacamentoGrid} h-full w-full items-center justify-items-center`}>
         {[...Array(9)].map((_, i) => (
           <div
             key={i}
-            className={`w-1.5 h-1.5 rounded-full transition-all ${
+            className={`${tamanhoBolinha} rounded-full transition-all ${
               ativas.includes(i) ? 'bg-white' : 'bg-transparent'
             }`}
           />
@@ -42,14 +45,19 @@ const PedraClassica = ({ valor, onClick, disabled }: { valor: string; onClick?: 
     );
   };
 
+  // Tamanhos otimizados para Mobile de acordo com o parâmetro 'menor'
+  const classesTamanho = menor 
+    ? "w-8 h-16 border-2" 
+    : "w-10 h-20 border-2";
+
   return (
     <button
       disabled={disabled}
       onClick={onClick}
-      className={`w-12 h-24 bg-[#1a1a1a] border-2 border-[#333] rounded-xl flex flex-col items-center justify-between shadow-2xl relative transition-all ${
+      className={`${classesTamanho} bg-[#1a1a1a] border-[#333] rounded-lg flex flex-col items-center justify-between shadow-lg relative transition-all ${
         disabled 
           ? 'opacity-50 cursor-not-allowed' 
-          : 'hover:-translate-y-2 hover:border-purple-500 cursor-pointer active:scale-95'
+          : 'hover:-translate-y-1 hover:border-purple-500 cursor-pointer active:scale-95'
       }`}
     >
       {/* Metade Superior */}
@@ -58,7 +66,7 @@ const PedraClassica = ({ valor, onClick, disabled }: { valor: string; onClick?: 
       </div>
 
       {/* Linha divisória de metal/plástico clássica */}
-      <div className="w-[90%] h-[2px] bg-amber-600/80 rounded-full" />
+      <div className="w-[90%] h-[1.5px] bg-amber-600/80 rounded-full" />
 
       {/* Metade Inferior */}
       <div className="flex-1 w-full h-[45%] flex items-center justify-center">
@@ -69,17 +77,59 @@ const PedraClassica = ({ valor, onClick, disabled }: { valor: string; onClick?: 
 };
 
 export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby }: DominoTabuleiroProps) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [jogador1Id, setJogador1Id] = useState<string | null>(null);
   const [jogador2Id, setJogador2Id] = useState<string | null>(null);
   const [nomeJ1, setNomeJ1] = useState('Jogador 1');
   const [nomeJ2, setNomeJ2] = useState('Jogador 2');
   const [vezUsuarioId, setVezUsuarioId] = useState<string | null>(null);
   
-  // Estados do Jogo local sincronizados com o banco
   const [minhasPedras, setMinhasPedras] = useState<string[]>([]);
   const [mesaPedras, setMesaPedras] = useState<string[]>([]);
   const [pontaEsquerda, setPontaEsquerda] = useState<number | null>(null);
   const [pontaDireita, setPontaDireita] = useState<number | null>(null);
+
+  // Lógica para forçar tela cheia e tentar rotacionar a tela para deitado (Landscape)
+  const entrarModoJogoReal = async () => {
+    try {
+      if (containerRef.current) {
+        if (containerRef.current.requestFullscreen) {
+          await containerRef.current.requestFullscreen();
+        } else if ((containerRef.current as any).webkitRequestFullscreen) {
+          await (containerRef.current as any).webkitRequestFullscreen();
+        }
+        setIsFullscreen(true);
+
+        // Tenta rotacionar o celular para landscape (deitado)
+        if (screen.orientation && (screen.orientation as any).lock) {
+          await (screen.orientation as any).lock('landscape').catch((e: any) => {
+            console.log("Rotação automática bloqueada pelo navegador. Ative a auto-rotação do celular.");
+          });
+        }
+      }
+    } catch (err) {
+      console.warn("Navegador não suporta rotação automática completa:", err);
+    }
+  };
+
+  const sairModoJogoReal = () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    }
+    setIsFullscreen(false);
+    if (screen.orientation && screen.orientation.unlock) {
+      screen.orientation.unlock();
+    }
+  };
+
+  // Ativa o modo deitado automaticamente quando a tela monta
+  useEffect(() => {
+    entrarModoJogoReal();
+    return () => {
+      sairModoJogoReal();
+    };
+  }, []);
 
   const carregarDadosPartida = async () => {
     try {
@@ -110,11 +160,9 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         setPontaEsquerda(data.mesa_ponta_esquerda);
         setPontaDireita(data.mesa_ponta_direita);
 
-        // Se o histórico de jogadas vier nulo, começamos um jogo novo
         const jogadas = (data.historico_jogadas as string[]) || [];
         setMesaPedras(jogadas);
 
-        // Define a vez inicial de forma justa caso não esteja definida
         if (!data.vez_usuario_id && data.jogador_1_id) {
           await supabase
             .from('domino_salas')
@@ -128,20 +176,16 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
-  // Distribuição simples e justa de pedras para o início (7 pedras para cada)
   useEffect(() => {
     carregarDadosPartida();
 
-    // Gera pedras aleatórias para o jogador local ao iniciar
     const pedrasIniciais = [
       '6-6', '6-5', '5-4', '4-4', '3-3', '2-1', '0-4', '5-2', 
       '3-2', '1-1', '0-0', '5-5', '6-4', '6-1', '3-1'
     ];
-    // Embaralha e pega 7
     const minhasPróprias = pedrasIniciais.sort(() => 0.5 - Math.random()).slice(0, 7);
     setMinhasPedras(minhasPróprias);
 
-    // Ouvinte em tempo real para sincronizar as jogadas do outro jogador instantaneamente
     const canalJogo = supabase
       .channel(`jogo-realtime-${salaId}`)
       .on(
@@ -155,9 +199,9 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             setPontaDireita(newData.mesa_ponta_direita);
             setMesaPedras((newData.historico_jogadas as string[]) || []);
 
-            // Se o adversário saiu do jogo
             if (newData.jogador_1_id === null || newData.jogador_2_id === null) {
               alert('Partida encerrada: O adversário saiu da sala.');
+              sairModoJogoReal();
               onVoltarAoLobby();
             }
           }
@@ -173,7 +217,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const meuTurno = vezUsuarioId === usuarioId;
   const adversarioNome = usuarioId === jogador1Id ? nomeJ2 : nomeJ1;
 
-  // Função clássica: Verifica se a pedra pode ser jogada nas pontas da mesa
   const tentarJogarPedra = async (pedra: string) => {
     if (!meuTurno) return;
 
@@ -182,15 +225,13 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     let novaPontaE = pontaEsquerda;
     let novaPontaD = pontaDireita;
 
-    // Se a mesa estiver vazia, qualquer pedra entra e define ambas as pontas
     if (mesaPedras.length === 0) {
       novaMesa.push(pedra);
       novaPontaE = ladoA;
       novaPontaD = ladoB;
     } else {
-      // Regra de encaixe do dominó brasileiro
       if (ladoA === pontaEsquerda) {
-        novaMesa.unshift(`${ladoB}-${ladoA}`); // Rotaciona a pedra para encaixar visualmente
+        novaMesa.unshift(`${ladoB}-${ladoA}`);
         novaPontaE = ladoB;
       } else if (ladoB === pontaEsquerda) {
         novaMesa.unshift(pedra);
@@ -207,7 +248,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       }
     }
 
-    // Passa o turno para o adversário
     const proximoTurnoId = usuarioId === jogador1Id ? jogador2Id : jogador1Id;
 
     try {
@@ -223,18 +263,14 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         .eq('id', salaId);
 
       if (error) throw error;
-
-      // Remove a pedra jogada da mão do usuário local
       setMinhasPedras(prev => prev.filter(p => p !== pedra));
     } catch (err) {
       console.error('Erro ao processar jogada:', err);
     }
   };
 
-  // Função para passar a vez caso o jogador não tenha nenhuma pedra compatível (o famoso "passo")
   const passarVez = async () => {
     if (!meuTurno) return;
-
     const proximoTurnoId = usuarioId === jogador1Id ? jogador2Id : jogador1Id;
 
     try {
@@ -251,91 +287,127 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   };
 
   return (
-    <div className="max-w-5xl mx-auto p-4 flex flex-col h-[92vh] justify-between text-white font-sans">
+    <div 
+      ref={containerRef}
+      className="w-full h-screen bg-[#090610] text-white font-sans flex flex-col justify-between p-2 md:p-4 overflow-hidden select-none"
+    >
       
-      {/* Topo informativo */}
-      <div className="flex items-center justify-between bg-[#110D1A] border border-purple-950/40 p-3 rounded-xl shadow-lg">
-        <Button variant="ghost" size="sm" onClick={onVoltarAoLobby} className="text-gray-400 hover:text-white">
-          <ArrowLeft className="w-4 h-4 mr-1.5" /> Voltar ao Lobby
-        </Button>
+      {/* 1. HUD / BARRA SUPERIOR OTIMIZADA */}
+      <div className="flex items-center justify-between bg-[#110D1A]/95 border border-purple-950/40 px-3 py-1.5 rounded-xl shadow-lg h-[10%]">
         <div className="flex items-center gap-2">
-          <Trophy className="w-4 h-4 text-amber-500 animate-pulse" />
-          <span className="text-xs font-bold text-purple-300">Sala {numeroSala}</span>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => { sairModoJogoReal(); onVoltarAoLobby(); }} 
+            className="text-gray-400 hover:text-white h-8 text-xs px-2"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Sair
+          </Button>
+          <span className="text-[10px] text-purple-300 font-bold bg-purple-950/50 px-2 py-0.5 rounded-full">
+            Mesa {numeroSala}
+          </span>
         </div>
+
+        {/* Informação dos Jogadores Lado a Lado (Estilo Placar) */}
+        <div className="flex items-center gap-4 bg-purple-950/20 px-3 py-1 rounded-lg border border-purple-900/10 text-xs">
+          <div className="flex items-center gap-1.5">
+            <div className={`w-1.5 h-1.5 rounded-full ${vezUsuarioId === jogador1Id ? 'bg-green-500 animate-pulse' : 'bg-gray-600'}`} />
+            <span className="max-w-[70px] truncate font-medium">{nomeJ1}</span>
+          </div>
+          <span className="text-purple-500 font-bold">VS</span>
+          <div className="flex items-center gap-1.5">
+            <span className="max-w-[70px] truncate font-medium">{nomeJ2}</span>
+            <div className={`w-1.5 h-1.5 rounded-full ${vezUsuarioId === jogador2Id ? 'bg-green-500 animate-pulse' : 'bg-gray-600'}`} />
+          </div>
+        </div>
+
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={isFullscreen ? sairModoJogoReal : entrarModoJogoReal} 
+          className="text-purple-400 hover:text-white w-8 h-8"
+        >
+          {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+        </Button>
       </div>
 
-      {/* Adversário */}
-      <div className="text-center bg-[#150F22]/60 border border-purple-900/20 p-3 rounded-xl max-w-xs mx-auto w-full">
-        <span className="text-[10px] text-purple-400 font-semibold uppercase tracking-wider block">Adversário</span>
-        <h4 className="font-bold text-sm text-white flex items-center justify-center gap-1.5">
-          <User className="w-4 h-4 text-purple-500" /> {adversarioNome || 'Aguardando...'}
-        </h4>
-      </div>
-
-      {/* Mesa Central do Jogo (Feltro Verde Clássico de Bar) */}
-      <div className="flex-grow my-4 bg-emerald-950 border-[6px] border-amber-950 rounded-[35px] shadow-[inset_0_4px_20px_rgba(0,0,0,0.6)] relative flex flex-col items-center justify-center min-h-[320px] p-4">
+      {/* 2. MESA DE FELTRO DE BAR (ALTAMENTE OTIMIZADA PARA LANDSCAPE) */}
+      <div className="flex-grow my-2 bg-emerald-950 border-[4px] border-amber-950 rounded-[24px] shadow-[inset_0_4px_12px_rgba(0,0,0,0.6)] relative flex flex-col items-center justify-center h-[55%] overflow-hidden">
         
-        {/* Marcadores de Pontas da Mesa */}
+        {/* Marcadores de Pontas da Mesa de forma discreta */}
         {mesaPedras.length > 0 && (
-          <div className="absolute top-4 left-6 flex items-center gap-4 text-xs font-semibold text-emerald-300/60">
-            <span>Ponta Esquerda: <strong className="text-white text-sm bg-emerald-900/60 px-2 py-0.5 rounded">{pontaEsquerda}</strong></span>
-            <span>Ponta Direita: <strong className="text-white text-sm bg-emerald-900/60 px-2 py-0.5 rounded">{pontaDireita}</strong></span>
+          <div className="absolute top-2 left-4 flex items-center gap-3 text-[10px] font-semibold text-emerald-300/60">
+            <span>Esquerda: <strong className="text-white bg-emerald-900/60 px-1.5 py-0.5 rounded text-xs">{pontaEsquerda}</strong></span>
+            <span>Direita: <strong className="text-white bg-emerald-900/60 px-1.5 py-0.5 rounded text-xs">{pontaDireita}</strong></span>
           </div>
         )}
 
-        {/* Linha das pedras clássicas na mesa */}
-        <div className="flex flex-wrap items-center justify-center gap-3 max-w-full overflow-x-auto p-4">
+        {/* Tabuleiro Dinâmico: Buchas ficam normais (em pé) e as outras deitadas */}
+        <div className="flex items-center justify-center gap-1.5 max-w-full overflow-x-auto px-4 py-2">
           {mesaPedras.length === 0 ? (
-            <div className="text-center text-emerald-300/30 font-bold uppercase tracking-widest text-sm py-12">
+            <div className="text-center text-emerald-300/30 font-bold uppercase tracking-widest text-xs py-6">
               Mesa de Dominó Limpa<br />
-              <span className="text-xs font-normal">Aguardando a primeira pedra ser jogada...</span>
+              <span className="text-[10px] font-normal lowercase">Seu turno! Jogue a primeira pedra.</span>
             </div>
           ) : (
-            mesaPedras.map((pedra, idx) => (
-              <div key={idx} className="rotate-90 origin-center my-4 shrink-0 scale-90">
-                <PedraClassica valor={pedra} disabled={true} />
-              </div>
-            ))
+            mesaPedras.map((pedra, idx) => {
+              const [ladoA, ladoB] = pedra.split('-').map(Number);
+              const isBucha = ladoA === ladoB;
+
+              return (
+                <div 
+                  key={idx} 
+                  className={`shrink-0 transition-transform ${
+                    isBucha 
+                      ? 'rotate-0 mx-0.5' // Bucha fica em pé no centro (vertical)
+                      : 'rotate-90 mx-3 my-2' // Pedras comuns deitam de lado (horizontal)
+                  }`}
+                >
+                  <PedraClassica valor={pedra} disabled={true} menor={true} />
+                </div>
+              );
+            })
           )}
         </div>
 
-        {/* Status Dinâmico de Turnos */}
-        <div className="absolute bottom-4 bg-[#090610]/90 border border-purple-900/40 px-5 py-2 rounded-full text-xs font-bold tracking-wide">
+        {/* Banner do Turno */}
+        <div className="absolute bottom-2 bg-[#090610]/95 border border-purple-900/40 px-4 py-1 rounded-full text-[10px] font-bold tracking-wide">
           {meuTurno ? (
-            <span className="text-green-400 animate-pulse flex items-center gap-1.5">
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" /> É SUA VEZ DE JOGAR!
+            <span className="text-green-400 animate-pulse flex items-center gap-1">
+              <RefreshCw className="w-3 h-3 animate-spin" /> SUA VEZ DE JOGAR!
             </span>
           ) : (
-            <span className="text-gray-400">Aguardando a jogada de {adversarioNome}...</span>
+            <span className="text-gray-400">Aguardando {adversarioNome}...</span>
           )}
         </div>
       </div>
 
-      {/* Minha Mão de Pedras de Dominó */}
-      <div className="bg-[#110D1A] border border-purple-950/40 p-4 rounded-3xl space-y-4">
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-purple-300 font-black uppercase tracking-wider">Suas Pedras ({minhasPedras.length})</span>
+      {/* 3. MINHA MÃO DE PEDRAS (OTIMIZADA E ESPAÇADA) */}
+      <div className="bg-[#110D1A]/95 border border-purple-950/40 p-2.5 rounded-2xl h-[30%] flex flex-col justify-between">
+        <div className="flex items-center justify-between px-1 h-[25%]">
+          <span className="text-[10px] text-purple-300 font-bold uppercase tracking-wider">Suas Pedras ({minhasPedras.length})</span>
           {meuTurno && (
             <Button 
               onClick={passarVez} 
               variant="outline" 
-              size="sm" 
-              className="text-amber-500 border-amber-500/30 hover:bg-amber-500/10 font-bold h-8 text-xs"
+              className="text-amber-500 border-amber-500/30 hover:bg-amber-500/10 font-bold h-6 text-[10px] px-2 py-0"
             >
-              Não tenho pedra (Passar Vez)
+              Passar Vez
             </Button>
           )}
         </div>
 
-        {/* Mão de pedras alinhadas */}
-        <div className="flex flex-wrap justify-center gap-3">
+        {/* Pedras de jogo menores na mão para não ocupar toda a tela mobile */}
+        <div className="flex justify-center items-center gap-1.5 overflow-x-auto h-[75%] py-1">
           {minhasPedras.map((pedra, idx) => (
-            <PedraClassica 
-              key={idx} 
-              valor={pedra} 
-              onClick={() => tentarJogarPedra(pedra)}
-              disabled={!meuTurno}
-            />
+            <div key={idx} className="shrink-0 scale-90 md:scale-100">
+              <PedraClassica 
+                valor={pedra} 
+                onClick={() => tentarJogarPedra(pedra)}
+                disabled={!meuTurno}
+                menor={true}
+              />
+            </div>
           ))}
         </div>
       </div>
