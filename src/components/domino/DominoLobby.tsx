@@ -3,7 +3,7 @@ import { useDominoLobby } from '@/hooks/useDominoLobby';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Users, Hourglass, Gamepad2, ArrowRight, DoorOpen, Loader2 } from 'lucide-react';
 
 interface DominoLobbyProps {
@@ -134,8 +134,7 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
                   {/* Jogador 1 */}
                   <div className="flex flex-col items-center space-y-1.5">
                     <Avatar className="w-10 h-10 border-2 border-purple-500">
-                      <AvatarImage src={sala.jogador_1?.imagem_capa_url || '/placeholder.svg'} />
-                      <AvatarFallback className="text-xs bg-purple-900 text-white">
+                      <AvatarFallback className="text-xs bg-purple-900 text-white font-bold">
                         {sala.jogador_1 ? sala.jogador_1.nome.charAt(0).toUpperCase() : '?'}
                       </AvatarFallback>
                     </Avatar>
@@ -149,8 +148,7 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
                   {/* Jogador 2 */}
                   <div className="flex flex-col items-center space-y-1.5">
                     <Avatar className="w-10 h-10 border-2 border-purple-500">
-                      <AvatarImage src={sala.jogador_2?.imagem_capa_url || '/placeholder.svg'} />
-                      <AvatarFallback className="text-xs bg-purple-900 text-white">
+                      <AvatarFallback className="text-xs bg-purple-900 text-white font-bold">
                         {sala.jogador_2 ? sala.jogador_2.nome.charAt(0).toUpperCase() : '?'}
                       </AvatarFallback>
                     </Avatar>
