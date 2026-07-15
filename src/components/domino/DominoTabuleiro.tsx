@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, RefreshCw, Trophy, User, Maximize2, Minimize2 } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Trophy, User, Maximize2, Minimize2, ShieldAlert } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface DominoTabuleiroProps {
@@ -17,8 +17,21 @@ interface PedraMesa {
   ladoDireito: number;   // Valor que ficou voltado para a direita
 }
 
-const PedraClassica = ({ valor, onClick, disabled, menor = false, deitada = false }: { valor: string; onClick?: () => void; disabled?: boolean; menor?: boolean; deitada?: boolean }) => {
-  // Blindagem contra valores nulos ou indefinidos que possam quebrar o split
+const PedraClassica = ({ 
+  valor, 
+  onClick, 
+  disabled, 
+  menor = false, 
+  deitada = false,
+  destacada = false 
+}: { 
+  valor: string; 
+  onClick?: () => void; 
+  disabled?: boolean; 
+  menor?: boolean; 
+  deitada?: boolean;
+  destacada?: boolean;
+}) => {
   const safeValor = valor || '0-0';
   const [ladoA, ladoB] = safeValor.split('-').map(Number);
 
@@ -51,7 +64,6 @@ const PedraClassica = ({ valor, onClick, disabled, menor = false, deitada = fals
     );
   };
 
-  // Ajusta a proporção para quando a peça estiver deitada de lado horizontalmente
   const classesTamanho = deitada
     ? (menor ? "w-16 h-8 border-2 flex-row" : "w-20 h-10 border-2 flex-row")
     : (menor ? "w-8 h-16 border-2 flex-col" : "w-10 h-20 border-2 flex-col");
@@ -61,9 +73,11 @@ const PedraClassica = ({ valor, onClick, disabled, menor = false, deitada = fals
       disabled={disabled}
       onClick={onClick}
       className={`${classesTamanho} bg-[#1a1a1a] border-[#333] rounded-lg flex items-center justify-between shadow-lg relative transition-all ${
-        disabled 
-          ? 'opacity-50 cursor-not-allowed' 
-          : 'hover:-translate-y-1 hover:border-purple-500 cursor-pointer active:scale-95'
+        destacada 
+          ? 'border-purple-500 shadow-[0_0_15px_rgba(147,51,234,0.7)] scale-105 animate-pulse cursor-pointer' 
+          : disabled && !onClick
+            ? 'opacity-100'
+            : 'opacity-40 cursor-not-allowed'
       }`}
     >
       {/* Metade A */}
@@ -129,12 +143,21 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   useEffect(() => {
     entrarModoJogoReal();
+
+    const monitorarTelaCheia = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', monitorarTelaCheia);
+    document.addEventListener('webkitfullscreenchange', monitorarTelaCheia);
+
     return () => {
+      document.removeEventListener('fullscreenchange', monitorarTelaCheia);
+      document.removeEventListener('webkitfullscreenchange', monitorarTelaCheia);
       sairModoJogoReal();
     };
   }, []);
 
-  // Inicializa o baralho de 28 pedras sem repetições de forma justa
   const inicializarPedrasCompartilhadas = (userId: string, j1: string | null, j2: string | null) => {
     const totalVinteOitoPedras = [
       '0-0', '0-1', '0-2', '0-3', '0-4', '0-5', '0-6',
@@ -146,7 +169,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       '6-6'
     ];
 
-    // Embaralha determinístico baseado no ID da sala para que ambos tenham a mesma distribuição lógica
     const salaHash = salaId.replace(/[^0-9]/g, '');
     const seed = salaHash ? parseInt(salaHash.substring(0, 5)) : 12345;
     
@@ -160,7 +182,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       pool[j] = temp;
     }
 
-    // Jogador 1 fica com as primeiras 7, Jogador 2 com as próximas 7
     if (userId === j1) {
       setMinhasPedras(pool.slice(0, 7));
     } else if (userId === j2) {
@@ -210,7 +231,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
         setMesaPedras(jogadasProcessadas);
 
-        // Distribui as pedras únicas sem repetição
         inicializarPedrasCompartilhadas(usuarioId, data.jogador_1_id, data.jogador_2_id);
 
         if (!data.vez_usuario_id && data.jogador_1_id) {
@@ -272,6 +292,25 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const meuTurno = vezUsuarioId === usuarioId;
   const adversarioNome = usuarioId === jogador1Id ? nomeJ2 : nomeJ1;
 
+  // Lógica de auxílio para verificar se uma peça específica é jogável
+  const isPedraJogavel = (pedra: string) => {
+    if (mesaPedras.length === 0) return true; // Primeira rodada todas são válidas
+    const [ladoA, ladoB] = pedra.split('-').map(Number);
+    return ladoA === pontaEsquerda || ladoB === pontaEsquerda || ladoA === pontaDireita || ladoB === pontaDireita;
+  };
+
+  // Monitoramento de Passe Automático: Verifica se o jogador tem alguma peça utilizável
+  useEffect(() => {
+    if (meuTurno && minhasPedras.length > 0 && mesaPedras.length > 0) {
+      const temQualquerPecaJogavel = minhasPedras.some(pedra => isPedraJogavel(pedra));
+
+      if (!temQualquerPecaJogavel) {
+        alert("Você não possui peças jogáveis nesta rodada! Sua vez será passada para o adversário automaticamente.");
+        passarVez();
+      }
+    }
+  }, [meuTurno, minhasPedras, mesaPedras, pontaEsquerda, pontaDireita]);
+
   const tentarJogarPedra = async (pedra: string) => {
     if (!meuTurno) return;
 
@@ -280,7 +319,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     let novaPontaE = pontaEsquerda;
     let novaPontaD = pontaDireita;
 
-    // Se for a primeira peça da mesa
     if (mesaPedras.length === 0) {
       const novaPedra: PedraMesa = {
         valorOriginal: pedra,
@@ -291,7 +329,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       novaPontaE = ladoA;
       novaPontaD = ladoB;
     } else {
-      // 1. Tenta jogar na ponta esquerda
       if (ladoA === pontaEsquerda) {
         const novaPedra: PedraMesa = {
           valorOriginal: `${ladoB}-${ladoA}`,
@@ -309,7 +346,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         novaMesa.unshift(novaPedra);
         novaPontaE = ladoA;
       }
-      // 2. Tenta jogar na ponta direita
       else if (ladoA === pontaDireita) {
         const novaPedra: PedraMesa = {
           valorOriginal: `${ladoA}-${ladoB}`,
@@ -354,7 +390,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   };
 
   const passarVez = async () => {
-    if (!meuTurno) return;
     const proximoTurnoId = usuarioId === jogador1Id ? jogador2Id : jogador1Id;
 
     try {
@@ -373,8 +408,30 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   return (
     <div 
       ref={containerRef}
-      className="w-full h-screen bg-[#090610] text-white font-sans flex flex-col justify-between p-2 md:p-4 overflow-hidden select-none"
+      className="w-full h-screen bg-[#090610] text-white font-sans flex flex-col justify-between p-2 md:p-4 overflow-hidden select-none relative"
     >
+      {/* OVERLAY DE TRAVAMENTO CASO NÃO ESTEJA EM TELA CHEIA */}
+      {!isFullscreen && (
+        <div className="absolute inset-0 bg-[#090610]/98 z-50 flex flex-col items-center justify-center p-6 text-center">
+          <div className="max-w-sm space-y-6">
+            <div className="p-4 bg-purple-950/40 border border-purple-900/30 rounded-full w-fit mx-auto text-purple-400 animate-bounce">
+              <ShieldAlert className="w-12 h-12" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-xl font-black text-white">Modo Exclusivo Ativo</h2>
+              <p className="text-xs text-gray-400 leading-relaxed">
+                Para garantir a melhor experiência e usabilidade visual do dominó, você deve jogar em modo tela cheia.
+              </p>
+            </div>
+            <Button 
+              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold h-11 shadow-lg shadow-purple-900/20"
+              onClick={entrarModoJogoReal}
+            >
+              Ativar Tela Cheia / Jogar
+            </Button>
+          </div>
+        </div>
+      )}
       
       {/* 1. HUD SUPERIOR */}
       <div className="flex items-center justify-between bg-[#110D1A]/95 border border-purple-950/40 px-3 py-1.5 rounded-xl shadow-lg h-[10%]">
@@ -477,16 +534,22 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </div>
 
         <div className="flex justify-center items-center gap-1.5 overflow-x-auto h-[75%] py-1">
-          {minhasPedras.map((pedra, idx) => (
-            <div key={idx} className="shrink-0 scale-90 md:scale-100">
-              <PedraClassica 
-                valor={pedra} 
-                onClick={() => tentarJogarPedra(pedra)}
-                disabled={!meuTurno}
-                menor={true}
-              />
-            </div>
-          ))}
+          {minhasPedras.map((pedra, idx) => {
+            // Verifica dinamicamente se a pedra atual pode ser jogada na rodada
+            const jogavel = meuTurno && isPedraJogavel(pedra);
+
+            return (
+              <div key={idx} className="shrink-0 scale-90 md:scale-100">
+                <PedraClassica 
+                  valor={pedra} 
+                  onClick={() => tentarJogarPedra(pedra)}
+                  disabled={!jogavel}
+                  menor={true}
+                  destacada={jogavel}
+                />
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
