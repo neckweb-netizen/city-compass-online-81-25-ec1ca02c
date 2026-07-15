@@ -77,13 +77,12 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
             
             <div className="flex gap-3 w-full md:w-auto">
               {minhaSala?.status === 'jogando' && (
-            <Button 
-             className="flex-1 md:flex-none bg-green-600 hover:bg-green-700 text-white font-bold"
-             onClick={() => window.location.reload()} // Força a página a recarregar e carregar o tabuleiro >
-              Ir para o Jogo <ArrowRight className="w-4 h-4 ml-1.5" />
-              </Button>
-              )}
-
+                <Button 
+                  className="flex-1 md:flex-none bg-green-600 hover:bg-green-700 text-white font-bold"
+                  onClick={() => window.location.reload()}
+                >
+                  Ir para o Jogo <ArrowRight className="w-4 h-4 ml-1.5" />
+                </Button>
               )}
               <Button 
                 variant="destructive" 
