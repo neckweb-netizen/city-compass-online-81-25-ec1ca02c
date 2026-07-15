@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, RefreshCw, Trophy, User, Maximize2, Minimize2, ShieldAlert } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Trophy, User, Maximize2, Minimize2, ShieldAlert, Award } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface DominoTabuleiroProps {
@@ -10,11 +10,10 @@ interface DominoTabuleiroProps {
   onVoltarAoLobby: () => void;
 }
 
-// Representação de uma pedra renderizada na mesa (com valor físico e orientação)
 interface PedraMesa {
-  valorOriginal: string; // Ex: '6-1'
-  ladoEsquerdo: number;  // Valor que ficou voltado para a esquerda
-  ladoDireito: number;   // Valor que ficou voltado para a direita
+  valorOriginal: string;
+  ladoEsquerdo: number;
+  ladoDireito: number;
 }
 
 const PedraClassica = ({ 
@@ -74,21 +73,16 @@ const PedraClassica = ({
       onClick={onClick}
       className={`${classesTamanho} bg-[#1a1a1a] border-[#333] rounded-lg flex items-center justify-between shadow-lg relative transition-all ${
         destacada 
-          ? 'border-purple-500 shadow-[0_0_15px_rgba(147,51,234,0.7)] scale-105 animate-pulse cursor-pointer' 
+          ? 'border-purple-500 shadow-[0_0_15px_rgba(147,51,234,0.7)] scale-105 animate-pulse cursor-pointer z-10' 
           : disabled && !onClick
             ? 'opacity-100'
             : 'opacity-40 cursor-not-allowed'
       }`}
     >
-      {/* Metade A */}
       <div className="flex-1 w-full h-full flex items-center justify-center">
         {renderBolinhas(ladoA)}
       </div>
-
-      {/* Linha divisória clássica */}
       <div className={deitada ? "h-[90%] w-[1.5px] bg-amber-600/80 rounded-full" : "w-[90%] h-[1.5px] bg-amber-600/80 rounded-full"} />
-
-      {/* Metade B */}
       <div className="flex-1 w-full h-full flex items-center justify-center">
         {renderBolinhas(ladoB)}
       </div>
@@ -110,6 +104,14 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const [pontaEsquerda, setPontaEsquerda] = useState<number | null>(null);
   const [pontaDireita, setPontaDireita] = useState<number | null>(null);
 
+  // Estados para modais customizados de jogo (Substitutos profissionais do alert)
+  const [modalNotificacao, setModalNotificacao] = useState<{ visivel: boolean; titulo: string; mensagem: string; tipo: 'info' | 'erro' | 'fim' }>({
+    visivel: false,
+    titulo: '',
+    mensagem: '',
+    tipo: 'info'
+  });
+
   const entrarModoJogoReal = async () => {
     try {
       if (containerRef.current) {
@@ -122,12 +124,12 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
         if (screen.orientation && (screen.orientation as any).lock) {
           await (screen.orientation as any).lock('landscape').catch(() => {
-            console.log("Rotação automática bloqueada pelo navegador.");
+            console.log("Rotação bloqueada.");
           });
         }
       }
     } catch (err) {
-      console.warn("Navegador não suporta rotação automática completa:", err);
+      console.warn("Navegador não suporta rotação:", err);
     }
   };
 
@@ -158,6 +160,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     };
   }, []);
 
+  // Inicializador de pedras que cria o lote de 28 pedras sem NENHUMA repetição física
   const inicializarPedrasCompartilhadas = (userId: string, j1: string | null, j2: string | null) => {
     const totalVinteOitoPedras = [
       '0-0', '0-1', '0-2', '0-3', '0-4', '0-5', '0-6',
@@ -275,9 +278,12 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             setMesaPedras(jogadasProcessadas);
 
             if (newData.jogador_1_id === null || newData.jogador_2_id === null) {
-              alert('Partida encerrada: O adversário saiu da sala.');
-              sairModoJogoReal();
-              onVoltarAoLobby();
+              setModalNotificacao({
+                visivel: true,
+                titulo: 'Adversário Desconectado',
+                mensagem: 'A partida foi encerrada porque o seu oponente deixou a sala de dominó.',
+                tipo: 'erro'
+              });
             }
           }
         }
@@ -292,24 +298,40 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const meuTurno = vezUsuarioId === usuarioId;
   const adversarioNome = usuarioId === jogador1Id ? nomeJ2 : nomeJ1;
 
-  // Lógica de auxílio para verificar se uma peça específica é jogável
   const isPedraJogavel = (pedra: string) => {
-    if (mesaPedras.length === 0) return true; // Primeira rodada todas são válidas
+    if (mesaPedras.length === 0) return true;
     const [ladoA, ladoB] = pedra.split('-').map(Number);
     return ladoA === pontaEsquerda || ladoB === pontaEsquerda || ladoA === pontaDireita || ladoB === pontaDireita;
   };
 
-  // Monitoramento de Passe Automático: Verifica se o jogador tem alguma peça utilizável
+  // Monitora se o jogador está sem peças para passar a vez automaticamente de forma nativa e profissional
   useEffect(() => {
     if (meuTurno && minhasPedras.length > 0 && mesaPedras.length > 0) {
       const temQualquerPecaJogavel = minhasPedras.some(pedra => isPedraJogavel(pedra));
 
       if (!temQualquerPecaJogavel) {
-        alert("Você não possui peças jogáveis nesta rodada! Sua vez será passada para o adversário automaticamente.");
+        setModalNotificacao({
+          visivel: true,
+          titulo: 'Sem Peças Compatíveis!',
+          mensagem: 'Você não tem peças jogáveis para as pontas disponíveis. Sua vez foi passada para o oponente automaticamente.',
+          tipo: 'info'
+        });
         passarVez();
       }
     }
   }, [meuTurno, minhasPedras, mesaPedras, pontaEsquerda, pontaDireita]);
+
+  // Monitora se as pedras do jogador acabaram (Vencedor da Rodada)
+  useEffect(() => {
+    if (minhasPedras.length === 0 && mesaPedras.length > 0) {
+      setModalNotificacao({
+        visivel: true,
+        titulo: 'Parabéns, Você Venceu!',
+        mensagem: 'Você bateu o jogo e jogou todas as suas pedras na mesa de dominó.',
+        tipo: 'fim'
+      });
+    }
+  }, [minhasPedras]);
 
   const tentarJogarPedra = async (pedra: string) => {
     if (!meuTurno) return;
@@ -363,7 +385,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         novaMesa.push(novaPedra);
         novaPontaD = ladoA;
       } else {
-        alert('Essa pedra não encaixa em nenhuma das pontas!');
         return;
       }
     }
@@ -405,11 +426,40 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
+  const fecharModalNotificacao = () => {
+    setModalNotificacao(prev => ({ ...prev, visivel: false }));
+    if (modalNotificacao.tipo === 'erro' || modalNotificacao.tipo === 'fim') {
+      sairModoJogoReal();
+      onVoltarAoLobby();
+    }
+  };
+
   return (
     <div 
       ref={containerRef}
       className="w-full h-screen bg-[#090610] text-white font-sans flex flex-col justify-between p-2 md:p-4 overflow-hidden select-none relative"
     >
+      {/* MODAL CUSTOMIZADO (SUBSTITUTO DOS ALERTS NATIVOS) */}
+      {modalNotificacao.visivel && (
+        <div className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="max-w-xs bg-[#110D1A] border border-purple-950/60 p-6 rounded-2xl shadow-2xl text-center space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="p-3 bg-purple-950/40 border border-purple-900/30 rounded-full w-fit mx-auto text-purple-400">
+              {modalNotificacao.tipo === 'fim' ? <Award className="w-8 h-8 text-yellow-500" /> : <ShieldAlert className="w-8 h-8" />}
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-bold text-md text-white">{modalNotificacao.titulo}</h3>
+              <p className="text-[11px] text-gray-400 leading-relaxed">{modalNotificacao.mensagem}</p>
+            </div>
+            <Button 
+              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold h-9 text-xs"
+              onClick={fecharModalNotificacao}
+            >
+              OK, Entendi
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* OVERLAY DE TRAVAMENTO CASO NÃO ESTEJA EM TELA CHEIA */}
       {!isFullscreen && (
         <div className="absolute inset-0 bg-[#090610]/98 z-50 flex flex-col items-center justify-center p-6 text-center">
@@ -535,7 +585,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
         <div className="flex justify-center items-center gap-1.5 overflow-x-auto h-[75%] py-1">
           {minhasPedras.map((pedra, idx) => {
-            // Verifica dinamicamente se a pedra atual pode ser jogada na rodada
             const jogavel = meuTurno && isPedraJogavel(pedra);
 
             return (
