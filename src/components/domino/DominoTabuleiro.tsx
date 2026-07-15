@@ -18,7 +18,9 @@ interface PedraMesa {
 }
 
 const PedraClassica = ({ valor, onClick, disabled, menor = false, deitada = false }: { valor: string; onClick?: () => void; disabled?: boolean; menor?: boolean; deitada?: boolean }) => {
-  const [ladoA, ladoB] = valor.split('-').map(Number);
+  // Blindagem contra valores nulos ou indefinidos que possam quebrar o split
+  const safeValor = valor || '0-0';
+  const [ladoA, ladoB] = safeValor.split('-').map(Number);
 
   const renderBolinhas = (pontos: number) => {
     const posicoes: Record<number, number[]> = {
@@ -195,8 +197,18 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         setPontaEsquerda(data.mesa_ponta_esquerda);
         setPontaDireita(data.mesa_ponta_direita);
 
-        const jogadas = (data.historico_jogadas as any[]) || [];
-        setMesaPedras(jogadas);
+        const jogadasRaw = data.historico_jogadas as any[];
+        const jogadasProcessadas: PedraMesa[] = Array.isArray(jogadasRaw) 
+          ? jogadasRaw.map((jogada: any) => {
+              if (typeof jogada === 'string') {
+                const [lA, lB] = jogada.split('-').map(Number);
+                return { valorOriginal: jogada, ladoEsquerdo: lA, ladoDireito: lB };
+              }
+              return jogada as PedraMesa;
+            })
+          : [];
+
+        setMesaPedras(jogadasProcessadas);
 
         // Distribui as pedras únicas sem repetição
         inicializarPedrasCompartilhadas(usuarioId, data.jogador_1_id, data.jogador_2_id);
@@ -228,7 +240,19 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             setVezUsuarioId(newData.vez_usuario_id);
             setPontaEsquerda(newData.mesa_ponta_esquerda);
             setPontaDireita(newData.mesa_ponta_direita);
-            setMesaPedras((newData.historico_jogadas as PedraMesa[]) || []);
+
+            const jogadasRaw = newData.historico_jogadas as any[];
+            const jogadasProcessadas: PedraMesa[] = Array.isArray(jogadasRaw) 
+              ? jogadasRaw.map((jogada: any) => {
+                  if (typeof jogada === 'string') {
+                    const [lA, lB] = jogada.split('-').map(Number);
+                    return { valorOriginal: jogada, ladoEsquerdo: lA, ladoDireito: lB };
+                  }
+                  return jogada as PedraMesa;
+                })
+              : [];
+              
+            setMesaPedras(jogadasProcessadas);
 
             if (newData.jogador_1_id === null || newData.jogador_2_id === null) {
               alert('Partida encerrada: O adversário saiu da sala.');
@@ -248,7 +272,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const meuTurno = vezUsuarioId === usuarioId;
   const adversarioNome = usuarioId === jogador1Id ? nomeJ2 : nomeJ1;
 
-  // Lógica clássica de dominó com rotação visual perfeita e sem colagem invertida
   const tentarJogarPedra = async (pedra: string) => {
     if (!meuTurno) return;
 
@@ -271,7 +294,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       // 1. Tenta jogar na ponta esquerda
       if (ladoA === pontaEsquerda) {
         const novaPedra: PedraMesa = {
-          valorOriginal: `${ladoB}-${ladoA}`, // Inverte a pedra para expor o ladoB na ponta
+          valorOriginal: `${ladoB}-${ladoA}`,
           ladoEsquerdo: ladoB,
           ladoDireito: ladoA
         };
@@ -279,7 +302,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         novaPontaE = ladoB;
       } else if (ladoB === pontaEsquerda) {
         const novaPedra: PedraMesa = {
-          valorOriginal: `${ladoA}-${ladoB}`, // Mantém para expor o ladoA na ponta
+          valorOriginal: `${ladoA}-${ladoB}`,
           ladoEsquerdo: ladoA,
           ladoDireito: ladoB
         };
@@ -289,7 +312,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       // 2. Tenta jogar na ponta direita
       else if (ladoA === pontaDireita) {
         const novaPedra: PedraMesa = {
-          valorOriginal: `${ladoA}-${ladoB}`, // Expõe ladoB na ponta direita
+          valorOriginal: `${ladoA}-${ladoB}`,
           ladoEsquerdo: ladoA,
           ladoDireito: ladoB
         };
@@ -297,7 +320,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         novaPontaD = ladoB;
       } else if (ladoB === pontaDireita) {
         const novaPedra: PedraMesa = {
-          valorOriginal: `${ladoB}-${ladoA}`, // Expõe ladoA na ponta direita
+          valorOriginal: `${ladoB}-${ladoA}`,
           ladoEsquerdo: ladoB,
           ladoDireito: ladoA
         };
@@ -409,12 +432,12 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             </div>
           ) : (
             mesaPedras.map((pedra, idx) => {
+              if (!pedra || !pedra.valorOriginal) return null;
               const [ladoA, ladoB] = pedra.valorOriginal.split('-').map(Number);
               const isBucha = ladoA === ladoB;
 
               return (
                 <div key={idx} className="shrink-0 flex items-center justify-center">
-                  {/* Se for bucha, renderiza vertical (em pé) e se for normal, horizontal (deitada) */}
                   <PedraClassica 
                     valor={pedra.valorOriginal} 
                     disabled={true} 
