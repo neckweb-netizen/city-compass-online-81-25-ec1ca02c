@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { DominoLobby } from '@/components/domino/DominoLobby';
+import { DominoTabuleiro } from '@/components/domino/DominoTabuleiro';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -8,15 +9,18 @@ import { useNavigate } from 'react-router-dom';
 export default function DominoPage() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [telaAtiva, setTelaAtiva] = useState<'lobby' | 'tabuleiro'>('lobby');
+  const [salaAtivaId, setSalaAtivaId] = useState<string | null>(null);
+  const [numeroSalaAtiva, setNumeroSalaAtiva] = useState<number>(1);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Obtém a sessão ativa do usuário no Supabase
     const obterUsuario = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
           setUser(session.user);
+          verificarJogoEmAndamento(session.user.id);
         }
       } catch (err) {
         console.error("Erro ao verificar sessão:", err);
@@ -27,15 +31,39 @@ export default function DominoPage() {
 
     obterUsuario();
 
-    // Ouvinte para acompanhar mudanças no estado da sessão (login/logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user || null);
+      if (session?.user) {
+        verificarJogoEmAndamento(session.user.id);
+      }
     });
 
     return () => {
       subscription.unsubscribe();
     };
   }, []);
+
+  // Verifica se o usuário já está no meio de um jogo ativo ao carregar a página
+  const verificarJogoEmAndamento = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('domino_salas')
+        .select('id, numero_sala, status')
+        .or(`jogador_1_id.eq.${userId},jogador_2_id.eq.${userId}`)
+        .eq('status', 'jogando')
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data) {
+        setSalaAtivaId(data.id);
+        setNumeroSalaAtiva(data.numero_sala);
+        setTelaAtiva('tabuleiro'); // Envia o jogador direto para a partida se ela estiver ativa
+      }
+    } catch (err) {
+      console.error('Erro ao verificar jogo ativo:', err);
+    }
+  };
 
   if (loading) {
     return (
@@ -46,7 +74,6 @@ export default function DominoPage() {
     );
   }
 
-  // Caso o usuário não esteja logado, exibe uma tela amigável convidando-o a entrar
   if (!user) {
     return (
       <div className="min-h-screen bg-[#090610] flex flex-col items-center justify-center p-6 text-center text-white">
@@ -82,10 +109,23 @@ export default function DominoPage() {
     );
   }
 
+  // Alterna a renderização entre o Tabuleiro de Feltro e o Lobby de espera
+  if (telaAtiva === 'tabuleiro' && salaAtivaId) {
+    return (
+      <div className="min-h-screen bg-[#090610] text-white py-4">
+        <DominoTabuleiro 
+          usuarioId={user.id} 
+          salaId={salaAtivaId} 
+          numeroSala={numeroSalaAtiva} 
+          onVoltarAoLobby={() => setTelaAtiva('lobby')}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#090610] text-white py-10">
       <DominoLobby usuarioId={user.id} />
     </div>
   );
 }
-
