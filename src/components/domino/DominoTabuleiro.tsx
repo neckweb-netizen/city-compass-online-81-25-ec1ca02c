@@ -10,12 +10,16 @@ interface DominoTabuleiroProps {
   onVoltarAoLobby: () => void;
 }
 
-// Componente para renderizar a pedra de dominó clássica (Fundo preto com bolinhas brancas)
-const PedraClassica = ({ valor, onClick, disabled, menor = false }: { valor: string; onClick?: () => void; disabled?: boolean; menor?: boolean }) => {
-  const [ladoA, ladoB] = valor.split('-').map(Number);
-  const isBucha = ladoA === ladoB;
+// Representação de uma pedra renderizada na mesa (com valor físico e orientação)
+interface PedraMesa {
+  valorOriginal: string; // Ex: '6-1'
+  ladoEsquerdo: number;  // Valor que ficou voltado para a esquerda
+  ladoDireito: number;   // Valor que ficou voltado para a direita
+}
 
-  // Função para renderizar as bolinhas pretas/brancas nas posições corretas (grid 3x3)
+const PedraClassica = ({ valor, onClick, disabled, menor = false, deitada = false }: { valor: string; onClick?: () => void; disabled?: boolean; menor?: boolean; deitada?: boolean }) => {
+  const [ladoA, ladoB] = valor.split('-').map(Number);
+
   const renderBolinhas = (pontos: number) => {
     const posicoes: Record<number, number[]> = {
       0: [],
@@ -45,31 +49,31 @@ const PedraClassica = ({ valor, onClick, disabled, menor = false }: { valor: str
     );
   };
 
-  // Tamanhos otimizados para Mobile de acordo com o parâmetro 'menor'
-  const classesTamanho = menor 
-    ? "w-8 h-16 border-2" 
-    : "w-10 h-20 border-2";
+  // Ajusta a proporção para quando a peça estiver deitada de lado horizontalmente
+  const classesTamanho = deitada
+    ? (menor ? "w-16 h-8 border-2 flex-row" : "w-20 h-10 border-2 flex-row")
+    : (menor ? "w-8 h-16 border-2 flex-col" : "w-10 h-20 border-2 flex-col");
 
   return (
     <button
       disabled={disabled}
       onClick={onClick}
-      className={`${classesTamanho} bg-[#1a1a1a] border-[#333] rounded-lg flex flex-col items-center justify-between shadow-lg relative transition-all ${
+      className={`${classesTamanho} bg-[#1a1a1a] border-[#333] rounded-lg flex items-center justify-between shadow-lg relative transition-all ${
         disabled 
           ? 'opacity-50 cursor-not-allowed' 
           : 'hover:-translate-y-1 hover:border-purple-500 cursor-pointer active:scale-95'
       }`}
     >
-      {/* Metade Superior */}
-      <div className="flex-1 w-full h-[45%] flex items-center justify-center">
+      {/* Metade A */}
+      <div className="flex-1 w-full h-full flex items-center justify-center">
         {renderBolinhas(ladoA)}
       </div>
 
-      {/* Linha divisória de metal/plástico clássica */}
-      <div className="w-[90%] h-[1.5px] bg-amber-600/80 rounded-full" />
+      {/* Linha divisória clássica */}
+      <div className={deitada ? "h-[90%] w-[1.5px] bg-amber-600/80 rounded-full" : "w-[90%] h-[1.5px] bg-amber-600/80 rounded-full"} />
 
-      {/* Metade Inferior */}
-      <div className="flex-1 w-full h-[45%] flex items-center justify-center">
+      {/* Metade B */}
+      <div className="flex-1 w-full h-full flex items-center justify-center">
         {renderBolinhas(ladoB)}
       </div>
     </button>
@@ -86,11 +90,10 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const [vezUsuarioId, setVezUsuarioId] = useState<string | null>(null);
   
   const [minhasPedras, setMinhasPedras] = useState<string[]>([]);
-  const [mesaPedras, setMesaPedras] = useState<string[]>([]);
+  const [mesaPedras, setMesaPedras] = useState<PedraMesa[]>([]);
   const [pontaEsquerda, setPontaEsquerda] = useState<number | null>(null);
   const [pontaDireita, setPontaDireita] = useState<number | null>(null);
 
-  // Lógica para forçar tela cheia e tentar rotacionar a tela para deitado (Landscape)
   const entrarModoJogoReal = async () => {
     try {
       if (containerRef.current) {
@@ -101,10 +104,9 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         }
         setIsFullscreen(true);
 
-        // Tenta rotacionar o celular para landscape (deitado)
         if (screen.orientation && (screen.orientation as any).lock) {
-          await (screen.orientation as any).lock('landscape').catch((e: any) => {
-            console.log("Rotação automática bloqueada pelo navegador. Ative a auto-rotação do celular.");
+          await (screen.orientation as any).lock('landscape').catch(() => {
+            console.log("Rotação automática bloqueada pelo navegador.");
           });
         }
       }
@@ -123,13 +125,46 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
-  // Ativa o modo deitado automaticamente quando a tela monta
   useEffect(() => {
     entrarModoJogoReal();
     return () => {
       sairModoJogoReal();
     };
   }, []);
+
+  // Inicializa o baralho de 28 pedras sem repetições de forma justa
+  const inicializarPedrasCompartilhadas = (userId: string, j1: string | null, j2: string | null) => {
+    const totalVinteOitoPedras = [
+      '0-0', '0-1', '0-2', '0-3', '0-4', '0-5', '0-6',
+      '1-1', '1-2', '1-3', '1-4', '1-5', '1-6',
+      '2-2', '2-3', '2-4', '2-5', '2-6',
+      '3-3', '3-4', '3-5', '3-6',
+      '4-4', '4-5', '4-6',
+      '5-5', '5-6',
+      '6-6'
+    ];
+
+    // Embaralha determinístico baseado no ID da sala para que ambos tenham a mesma distribuição lógica
+    const salaHash = salaId.replace(/[^0-9]/g, '');
+    const seed = salaHash ? parseInt(salaHash.substring(0, 5)) : 12345;
+    
+    let pool = [...totalVinteOitoPedras];
+    let tempSeed = seed;
+    for (let i = pool.length - 1; i > 0; i--) {
+      tempSeed = (tempSeed * 9301 + 49297) % 233280;
+      const j = Math.floor((tempSeed / 233280) * (i + 1));
+      const temp = pool[i];
+      pool[i] = pool[j];
+      pool[j] = temp;
+    }
+
+    // Jogador 1 fica com as primeiras 7, Jogador 2 com as próximas 7
+    if (userId === j1) {
+      setMinhasPedras(pool.slice(0, 7));
+    } else if (userId === j2) {
+      setMinhasPedras(pool.slice(7, 14));
+    }
+  };
 
   const carregarDadosPartida = async () => {
     try {
@@ -160,8 +195,11 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         setPontaEsquerda(data.mesa_ponta_esquerda);
         setPontaDireita(data.mesa_ponta_direita);
 
-        const jogadas = (data.historico_jogadas as string[]) || [];
+        const jogadas = (data.historico_jogadas as any[]) || [];
         setMesaPedras(jogadas);
+
+        // Distribui as pedras únicas sem repetição
+        inicializarPedrasCompartilhadas(usuarioId, data.jogador_1_id, data.jogador_2_id);
 
         if (!data.vez_usuario_id && data.jogador_1_id) {
           await supabase
@@ -179,13 +217,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   useEffect(() => {
     carregarDadosPartida();
 
-    const pedrasIniciais = [
-      '6-6', '6-5', '5-4', '4-4', '3-3', '2-1', '0-4', '5-2', 
-      '3-2', '1-1', '0-0', '5-5', '6-4', '6-1', '3-1'
-    ];
-    const minhasPróprias = pedrasIniciais.sort(() => 0.5 - Math.random()).slice(0, 7);
-    setMinhasPedras(minhasPróprias);
-
     const canalJogo = supabase
       .channel(`jogo-realtime-${salaId}`)
       .on(
@@ -197,7 +228,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             setVezUsuarioId(newData.vez_usuario_id);
             setPontaEsquerda(newData.mesa_ponta_esquerda);
             setPontaDireita(newData.mesa_ponta_direita);
-            setMesaPedras((newData.historico_jogadas as string[]) || []);
+            setMesaPedras((newData.historico_jogadas as PedraMesa[]) || []);
 
             if (newData.jogador_1_id === null || newData.jogador_2_id === null) {
               alert('Partida encerrada: O adversário saiu da sala.');
@@ -217,6 +248,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const meuTurno = vezUsuarioId === usuarioId;
   const adversarioNome = usuarioId === jogador1Id ? nomeJ2 : nomeJ1;
 
+  // Lógica clássica de dominó com rotação visual perfeita e sem colagem invertida
   const tentarJogarPedra = async (pedra: string) => {
     if (!meuTurno) return;
 
@@ -225,22 +257,51 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     let novaPontaE = pontaEsquerda;
     let novaPontaD = pontaDireita;
 
+    // Se for a primeira peça da mesa
     if (mesaPedras.length === 0) {
-      novaMesa.push(pedra);
+      const novaPedra: PedraMesa = {
+        valorOriginal: pedra,
+        ladoEsquerdo: ladoA,
+        ladoDireito: ladoB
+      };
+      novaMesa.push(novaPedra);
       novaPontaE = ladoA;
       novaPontaD = ladoB;
     } else {
+      // 1. Tenta jogar na ponta esquerda
       if (ladoA === pontaEsquerda) {
-        novaMesa.unshift(`${ladoB}-${ladoA}`);
+        const novaPedra: PedraMesa = {
+          valorOriginal: `${ladoB}-${ladoA}`, // Inverte a pedra para expor o ladoB na ponta
+          ladoEsquerdo: ladoB,
+          ladoDireito: ladoA
+        };
+        novaMesa.unshift(novaPedra);
         novaPontaE = ladoB;
       } else if (ladoB === pontaEsquerda) {
-        novaMesa.unshift(pedra);
+        const novaPedra: PedraMesa = {
+          valorOriginal: `${ladoA}-${ladoB}`, // Mantém para expor o ladoA na ponta
+          ladoEsquerdo: ladoA,
+          ladoDireito: ladoB
+        };
+        novaMesa.unshift(novaPedra);
         novaPontaE = ladoA;
-      } else if (ladoA === pontaDireita) {
-        novaMesa.push(pedra);
+      }
+      // 2. Tenta jogar na ponta direita
+      else if (ladoA === pontaDireita) {
+        const novaPedra: PedraMesa = {
+          valorOriginal: `${ladoA}-${ladoB}`, // Expõe ladoB na ponta direita
+          ladoEsquerdo: ladoA,
+          ladoDireito: ladoB
+        };
+        novaMesa.push(novaPedra);
         novaPontaD = ladoB;
       } else if (ladoB === pontaDireita) {
-        novaMesa.push(`${ladoB}-${ladoA}`);
+        const novaPedra: PedraMesa = {
+          valorOriginal: `${ladoB}-${ladoA}`, // Expõe ladoA na ponta direita
+          ladoEsquerdo: ladoB,
+          ladoDireito: ladoA
+        };
+        novaMesa.push(novaPedra);
         novaPontaD = ladoA;
       } else {
         alert('Essa pedra não encaixa em nenhuma das pontas!');
@@ -292,7 +353,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       className="w-full h-screen bg-[#090610] text-white font-sans flex flex-col justify-between p-2 md:p-4 overflow-hidden select-none"
     >
       
-      {/* 1. HUD / BARRA SUPERIOR OTIMIZADA */}
+      {/* 1. HUD SUPERIOR */}
       <div className="flex items-center justify-between bg-[#110D1A]/95 border border-purple-950/40 px-3 py-1.5 rounded-xl shadow-lg h-[10%]">
         <div className="flex items-center gap-2">
           <Button 
@@ -308,7 +369,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           </span>
         </div>
 
-        {/* Informação dos Jogadores Lado a Lado (Estilo Placar) */}
         <div className="flex items-center gap-4 bg-purple-950/20 px-3 py-1 rounded-lg border border-purple-900/10 text-xs">
           <div className="flex items-center gap-1.5">
             <div className={`w-1.5 h-1.5 rounded-full ${vezUsuarioId === jogador1Id ? 'bg-green-500 animate-pulse' : 'bg-gray-600'}`} />
@@ -331,10 +391,9 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </Button>
       </div>
 
-      {/* 2. MESA DE FELTRO DE BAR (ALTAMENTE OTIMIZADA PARA LANDSCAPE) */}
+      {/* 2. MESA DE JOGO */}
       <div className="flex-grow my-2 bg-emerald-950 border-[4px] border-amber-950 rounded-[24px] shadow-[inset_0_4px_12px_rgba(0,0,0,0.6)] relative flex flex-col items-center justify-center h-[55%] overflow-hidden">
         
-        {/* Marcadores de Pontas da Mesa de forma discreta */}
         {mesaPedras.length > 0 && (
           <div className="absolute top-2 left-4 flex items-center gap-3 text-[10px] font-semibold text-emerald-300/60">
             <span>Esquerda: <strong className="text-white bg-emerald-900/60 px-1.5 py-0.5 rounded text-xs">{pontaEsquerda}</strong></span>
@@ -342,7 +401,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           </div>
         )}
 
-        {/* Tabuleiro Dinâmico: Buchas ficam normais (em pé) e as outras deitadas */}
         <div className="flex items-center justify-center gap-1.5 max-w-full overflow-x-auto px-4 py-2">
           {mesaPedras.length === 0 ? (
             <div className="text-center text-emerald-300/30 font-bold uppercase tracking-widest text-xs py-6">
@@ -351,26 +409,24 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             </div>
           ) : (
             mesaPedras.map((pedra, idx) => {
-              const [ladoA, ladoB] = pedra.split('-').map(Number);
+              const [ladoA, ladoB] = pedra.valorOriginal.split('-').map(Number);
               const isBucha = ladoA === ladoB;
 
               return (
-                <div 
-                  key={idx} 
-                  className={`shrink-0 transition-transform ${
-                    isBucha 
-                      ? 'rotate-0 mx-0.5' // Bucha fica em pé no centro (vertical)
-                      : 'rotate-90 mx-3 my-2' // Pedras comuns deitam de lado (horizontal)
-                  }`}
-                >
-                  <PedraClassica valor={pedra} disabled={true} menor={true} />
+                <div key={idx} className="shrink-0 flex items-center justify-center">
+                  {/* Se for bucha, renderiza vertical (em pé) e se for normal, horizontal (deitada) */}
+                  <PedraClassica 
+                    valor={pedra.valorOriginal} 
+                    disabled={true} 
+                    menor={true} 
+                    deitada={!isBucha} 
+                  />
                 </div>
               );
             })
           )}
         </div>
 
-        {/* Banner do Turno */}
         <div className="absolute bottom-2 bg-[#090610]/95 border border-purple-900/40 px-4 py-1 rounded-full text-[10px] font-bold tracking-wide">
           {meuTurno ? (
             <span className="text-green-400 animate-pulse flex items-center gap-1">
@@ -382,7 +438,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </div>
       </div>
 
-      {/* 3. MINHA MÃO DE PEDRAS (OTIMIZADA E ESPAÇADA) */}
+      {/* 3. MINHA MÃO */}
       <div className="bg-[#110D1A]/95 border border-purple-950/40 p-2.5 rounded-2xl h-[30%] flex flex-col justify-between">
         <div className="flex items-center justify-between px-1 h-[25%]">
           <span className="text-[10px] text-purple-300 font-bold uppercase tracking-wider">Suas Pedras ({minhasPedras.length})</span>
@@ -397,7 +453,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           )}
         </div>
 
-        {/* Pedras de jogo menores na mão para não ocupar toda a tela mobile */}
         <div className="flex justify-center items-center gap-1.5 overflow-x-auto h-[75%] py-1">
           {minhasPedras.map((pedra, idx) => (
             <div key={idx} className="shrink-0 scale-90 md:scale-100">
