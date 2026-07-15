@@ -7,8 +7,8 @@ export interface Sala {
   status: 'aguardando' | 'jogando' | 'finalizada';
   jogador_1_id: string | null;
   jogador_2_id: string | null;
-  jogador_1?: { nome: string; avatar_url: string | null } | null;
-  jogador_2?: { nome: string; avatar_url: string | null } | null;
+  jogador_1?: { nome: string } | null;
+  jogador_2?: { nome: string } | null;
 }
 
 export interface FilaItem {
@@ -27,6 +27,7 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
   // Busca o estado inicial das salas e da fila
   const carregarDados = async () => {
     try {
+      // AJUSTADO: Removido o campo de imagem para evitar quebras de coluna inexistente
       const { data: dataSalas, error: errorSalas } = await supabase
         .from('domino_salas')
         .select(`
@@ -38,12 +39,10 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
           criado_em,
           atualizado_em,
           jogador_1:jogador_1_id (
-            nome,
-            avatar_url
+            nome
           ),
           jogador_2:jogador_2_id (
-            nome,
-            avatar_url
+            nome
           )
         `)
         .order('numero_sala', { ascending: true });
