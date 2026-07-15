@@ -40,6 +40,9 @@ const Configuracoes = lazy(() => import("./pages/Configuracoes"));
 const ContactPage = lazy(() => import("./pages/ContactPage").then(m => ({ default: m.ContactPage })));
 const AnuncieGratis = lazy(() => import("./pages/AnuncieGratis").then(m => ({ default: m.AnuncieGratis })));
 
+// NOVO: Importação Lazy Load da nova página de Dominó
+const Domino = lazy(() => import("./pages/Domino"));
+
 // Lazy load all admin pages
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminAchadosPerdidos = lazy(() => import("./pages/admin/AdminAchadosPerdidos"));
@@ -301,6 +304,10 @@ const App = () => {
                 <Route path="reclamacoes" element={<Reclamacoes />} />
                 <Route path="reclamacoes/:id" element={<ReclamacaoDetalhes />} />
                 <Route path="unauthorized" element={<UnauthorizedPage />} />
+                
+                {/* ROTA ADICIONADA: Página pública de Dominó */}
+                <Route path="domino" element={<Domino />} />
+                
                 <Route path=":shortCode" element={<ShortUrlRedirect />} />
               </Route>
               
