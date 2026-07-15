@@ -7,8 +7,8 @@ export interface Sala {
   status: 'aguardando' | 'jogando' | 'finalizada';
   jogador_1_id: string | null;
   jogador_2_id: string | null;
-  jogador_1?: { nome: string; imagem_capa_url: string | null } | null;
-  jogador_2?: { nome: string; imagem_capa_url: string | null } | null;
+  jogador_1?: { nome: string; avatar_url: string | null } | null;
+  jogador_2?: { nome: string; avatar_url: string | null } | null;
 }
 
 export interface FilaItem {
@@ -27,7 +27,6 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
   // Busca o estado inicial das salas e da fila
   const carregarDados = async () => {
     try {
-      // MODIFICADO: Busca as salas trazendo os perfis da tabela pública 'usuarios'
       const { data: dataSalas, error: errorSalas } = await supabase
         .from('domino_salas')
         .select(`
@@ -40,11 +39,11 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
           atualizado_em,
           jogador_1:jogador_1_id (
             nome,
-            imagem_capa_url
+            avatar_url
           ),
           jogador_2:jogador_2_id (
             nome,
-            imagem_capa_url
+            avatar_url
           )
         `)
         .order('numero_sala', { ascending: true });
@@ -178,7 +177,7 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
           .eq('usuario_id', usuarioId);
       }
 
-      // Se estiver em uma sala de jogo ativa, remove o ID e redefine a sala
+      // Se estiver em uma sala de jogo activa, remove o ID e redefine a sala
       if (minhaSala) {
         const atualizacoes: any = {};
         if (minhaSala.jogador_1_id === usuarioId) {
