@@ -14,6 +14,45 @@ export default function DominoPage() {
   const [numeroSalaAtiva, setNumeroSalaAtiva] = useState<number>(1);
   const navigate = useNavigate();
 
+  // Função centralizada para remover o usuário de qualquer mesa ativa (limpeza de segurança)
+  const limparResiduosUsuarioLocal = async (userId: string) => {
+    try {
+      // 1. Remove da fila
+      await supabase
+        .from('domino_fila')
+        .delete()
+        .eq('usuario_id', userId);
+
+      // 2. Busca e limpa vagas ocupadas por ele nas salas
+      const { data } = await supabase
+        .from('domino_salas')
+        .select('id, jogador_1_id, jogador_2_id')
+        .or(`jogador_1_id.eq.${userId},jogador_2_id.eq.${userId}`);
+
+      if (data && data.length > 0) {
+        for (const sala of data) {
+          const updates: any = {};
+          if (sala.jogador_1_id === userId) updates.jogador_1_id = null;
+          if (sala.jogador_2_id === userId) updates.jogador_2_id = null;
+          
+          updates.status = 'aguardando';
+          updates.vez_usuario_id = null;
+          updates.mesa_ponta_esquerda = null;
+          updates.mesa_ponta_direita = null;
+          updates.historico_jogadas = [];
+          updates.atualizado_em = new Date().toISOString();
+
+          await supabase
+            .from('domino_salas')
+            .update(updates)
+            .eq('id', sala.id);
+        }
+      }
+    } catch (err) {
+      console.error('Erro ao limpar dados na saída do navegador:', err);
+    }
+  };
+
   useEffect(() => {
     const obterUsuario = async () => {
       try {
@@ -43,7 +82,47 @@ export default function DominoPage() {
     };
   }, []);
 
-  // Verifica se o usuário já está no meio de um jogo ativo ao carregar a página
+  // Monitora o fechamento da aba/navegador (beforeunload) e desconexão física
+  useEffect(() => {
+    if (!user) return;
+
+    const lidarComFechamento = () => {
+      // Executa a limpeza imediata de forma síncrona ao fechar a janela
+      limparResiduosUsuarioLocal(user.id);
+    };
+
+    window.addEventListener('beforeunload', lidarComFechamento);
+    window.addEventListener('unload', lidarComFechamento);
+
+    // CANAL DE PRESENCE (Websocket ativa): Se o canal fechar, o banco detecta que ele saiu
+    const canalPresenca = supabase.channel(`online-domino-${user.id}`)
+    canalPresenca
+      .on('presence', { event: 'sync' }, () => {
+        // Usuário sincronizado online
+      })
+      .on('presence', { event: 'join' }, ({ newPresences }) => {
+        // Entrou no canal
+      })
+      .on('presence', { event: 'leave' }, ({ leftPresences }) => {
+        // Se a conexão cair, garante a limpeza das mesas
+        limparResiduosUsuarioLocal(user.id);
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await canalPresenca.track({
+            online_at: new Date().toISOString(),
+            user_id: user.id
+          });
+        }
+      });
+
+    return () => {
+      window.removeEventListener('beforeunload', lidarComFechamento);
+      window.removeEventListener('unload', lidarComFechamento);
+      supabase.removeChannel(canalPresenca);
+    };
+  }, [user]);
+
   const verificarJogoEmAndamento = async (userId: string) => {
     try {
       const { data, error } = await supabase
@@ -67,7 +146,6 @@ export default function DominoPage() {
     }
   };
 
-  // Escuta alterações em tempo real para mandar o jogador para o tabuleiro assim que a mesa lotar
   useEffect(() => {
     if (!user) return;
 
