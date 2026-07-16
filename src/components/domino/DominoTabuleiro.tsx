@@ -206,8 +206,10 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     tipo: 'info'
   });
 
-  // Referência persistente para saber se a sala já teve 2 jogadores conectados alguma vez nesta sessão
   const partidaJaIniciadaRef = useRef(false);
+
+  // Verificação em tempo real: Ambos os jogadores precisam estar na sala para o jogo rodar
+  const ambosJogadoresPresentes = jogador1Id !== null && jogador2Id !== null;
 
   const entrarModoJogoReal = async () => {
     try {
@@ -319,7 +321,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         setPontaEsquerda(data.mesa_ponta_esquerda);
         setPontaDireita(data.mesa_ponta_direita);
 
-        // Ativa a flag se os dois jogadores já estão presentes no banco
         if (data.jogador_1_id !== null && data.jogador_2_id !== null) {
           partidaJaIniciadaRef.current = true;
         }
@@ -336,7 +337,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           : [];
 
         setMesaPedras(jogadasProcessadas);
-
         inicializarPedrasCompartilhadas(usuarioId, data.jogador_1_id, data.jogador_2_id);
 
         if (!data.vez_usuario_id && data.jogador_1_id) {
@@ -368,8 +368,9 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             setVezUsuarioId(newData.vez_usuario_id);
             setPontaEsquerda(newData.mesa_ponta_esquerda);
             setPontaDireita(newData.mesa_ponta_direita);
+            setJogador1Id(newData.jogador_1_id);
+            setJogador2Id(newData.jogador_2_id);
 
-            // Se os dois entrarem na sala ao longo da assinatura, ativa a flag
             if (newData.jogador_1_id !== null && newData.jogador_2_id !== null) {
               partidaJaIniciadaRef.current = true;
             }
@@ -388,7 +389,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             setMesaPedras(jogadasProcessadas);
             tocarSom('jogar');
 
-            // CORREÇÃO CIRÚRGICA: Só declara W.O. se a partida já tiver começado de fato (ambos logados antes)
             if (partidaJaIniciadaRef.current && (newData.jogador_1_id === null || newData.jogador_2_id === null)) {
               tocarSom('vitoria');
               setModalNotificacao({
@@ -422,7 +422,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     };
   }, [salaId, jogador1Id, jogador2Id]);
 
-  const meuTurno = vezUsuarioId === usuarioId;
+  const meuTurno = vezUsuarioId === usuarioId && ambosJogadoresPresentes;
   const adversarioNome = usuarioId === jogador1Id ? nomeJ2 : nomeJ1;
 
   const isPedraJogavel = (pedra: string) => {
@@ -432,11 +432,14 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   };
 
   useEffect(() => {
-    setTempoRestante(20);
-  }, [vezUsuarioId]);
+    if (ambosJogadoresPresentes) {
+      setTempoRestante(20);
+    }
+  }, [vezUsuarioId, ambosJogadoresPresentes]);
 
+  // CORREÇÃO: O relógio e contagem regressiva só diminuem se os dois usuários estiverem na mesa
   useEffect(() => {
-    if (!vezUsuarioId) return;
+    if (!vezUsuarioId || !ambosJogadoresPresentes) return;
 
     const tick = setInterval(() => {
       setTempoRestante((prev) => {
@@ -454,7 +457,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }, 1000);
 
     return () => clearInterval(tick);
-  }, [vezUsuarioId, meuTurno]);
+  }, [vezUsuarioId, meuTurno, ambosJogadoresPresentes]);
 
   useEffect(() => {
     if (meuTurno && minhasPedras.length > 0 && mesaPedras.length > 0) {
@@ -485,7 +488,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   }, [minhasPedras]);
 
   const tentarJogarPedra = async (pedra: string) => {
-    if (!meuTurno) return;
+    if (!meuTurno || !ambosJogadoresPresentes) return;
 
     const [ladoA, ladoB] = pedra.split('-').map(Number);
     let novaMesa = [...mesaPedras];
@@ -732,7 +735,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
         <div className="flex items-center gap-2 sm:gap-4 bg-purple-950/20 px-2 sm:px-3 py-1 rounded-lg border border-purple-900/10 text-[11px] sm:text-xs">
           <div className="flex items-center gap-1.5 sm:gap-2 relative">
-            <div className={`w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full ${vezUsuarioId === jogador1Id ? 'bg-green-500 animate-pulse' : 'bg-gray-600'}`} />
+            <div className={`w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full ${vezUsuarioId === jogador1Id && ambosJogadoresPresentes ? 'bg-green-500 animate-pulse' : 'bg-gray-600'}`} />
             <div className="relative">
               <img 
                 src={obterAvatarUsuario(fotoJ1, jogador1Id)} 
@@ -766,7 +769,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
                 </div>
               )}
             </div>
-            <div className={`w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full ${vezUsuarioId === jogador2Id ? 'bg-green-500 animate-pulse' : 'bg-gray-600'}`} />
+            <div className={`w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full ${vezUsuarioId === jogador2Id && ambosJogadoresPresentes ? 'bg-green-500 animate-pulse' : 'bg-gray-600'}`} />
           </div>
         </div>
 
@@ -791,15 +794,22 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         )}
 
         <div className="flex items-center justify-center gap-0 max-w-full overflow-x-auto px-4 py-2">
+          {/* CORREÇÃO DA RENDERIZAÇÃO DAS PEDRAS (ServerValor removido) */}
           {mesaPedras.length === 0 ? (
             <div className="text-center text-emerald-300/30 font-bold uppercase tracking-widest text-xs py-6">
-              Mesa de Dominó Limpa<br />
-              <span className="text-[10px] font-normal lowercase">Seu turno! Jogue a primeira pedra.</span>
+              {ambosJogadoresPresentes ? (
+                <>
+                  Mesa de Dominó Limpa<br />
+                  <span className="text-[10px] font-normal lowercase">Seu turno! Jogue a primeira pedra.</span>
+                </>
+              ) : (
+                <span className="text-amber-500 animate-pulse">Aguardando oponente para iniciar...</span>
+              )}
             </div>
           ) : (
             mesaPedras.map((pedra, idx) => {
               if (!pedra || !pedra.valorOriginal) return null;
-              const [ladoA, ladoB] = ServerValor || pedra.valorOriginal.split('-').map(Number);
+              const [ladoA, ladoB] = pedra.valorOriginal.split('-').map(Number);
               const isBucha = ladoA === ladoB;
 
               return (
@@ -829,9 +839,12 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           ))}
         </div>
 
+        {/* BARRA DO TEMPO CONDICIONADA */}
         <div className="absolute bottom-2 right-3 bg-[#090610]/95 border border-purple-900/40 px-4 py-1.5 rounded-2xl flex flex-col items-center justify-center gap-1 min-w-[130px]">
           <div className="text-[10px] font-bold tracking-wide">
-            {meuTurno ? (
+            {!ambosJogadoresPresentes ? (
+              <span className="text-amber-500 animate-pulse">AGUARDANDO...</span>
+            ) : meuTurno ? (
               <span className="text-green-400 animate-pulse flex items-center gap-1">
                 <RefreshCw className="w-3 h-3 animate-spin" /> SUA VEZ ({tempoRestante}s)
               </span>
@@ -842,9 +855,9 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           <div className="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
             <div 
               className={`h-full transition-all duration-1000 ${
-                tempoRestante > 10 ? 'bg-green-500' : tempoRestante > 4 ? 'bg-amber-500' : 'bg-red-500'
+                !ambosJogadoresPresentes ? 'bg-gray-600' : tempoRestante > 10 ? 'bg-green-500' : tempoRestante > 4 ? 'bg-amber-500' : 'bg-red-500'
               }`} 
-              style={{ width: `${(tempoRestante / 20) * 100}%` }}
+              style={{ width: `${!ambosJogadoresPresentes ? 100 : (tempoRestante / 20) * 100}%` }}
             />
           </div>
         </div>
@@ -858,7 +871,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
         <div className="flex justify-center items-center gap-1.5 overflow-x-auto h-[75%] py-1">
           {minhasPedras.map((pedra, idx) => {
-            const jogavel = meuTurno && isPedraJogavel(pedra);
+            const jogavel = meuTurno && isPedraJogavel(pedra) && ambosJogadoresPresentes;
 
             return (
               <div key={idx} className="shrink-0 scale-90 md:scale-100">
