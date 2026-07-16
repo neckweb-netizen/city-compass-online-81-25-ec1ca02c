@@ -146,7 +146,6 @@ export default function Domino() {
     }
   }, [session]);
 
-  // CORRIGIDO: Nome da função unificado para evitar o ReferenceError do botão
   const executarMatchmaking = async () => {
     if (!session || procurandoFila) {
       setProcurandoFila(false);
@@ -273,7 +272,7 @@ export default function Domino() {
     return (
       <div className="w-full h-screen flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-[#090610] text-center gap-4">
         <AlertCircle className="w-12 h-12 text-red-500" />
-        <h2 className="text-xl font-bold">Acesso não autorizado</h2>
+        <h2 className="text-xl font-bold">Acesso não authorized</h2>
         <p className="text-xs text-slate-500 max-w-xs">Por favor, faça login no site para acessar as salas de dominó.</p>
       </div>
     );
@@ -406,7 +405,8 @@ export default function Domino() {
                       }`}
                     />
                     <span className="text-xs font-bold truncate max-w-full text-slate-800 dark:text-gray-300">
-                      {jogador2 ? presidential => jogador2.nome : "Vago"}
+                      {/* CORRIGIDO: Removido o erro de sintaxe 'presidential =>' gerado no passo anterior */}
+                      {jogador2 ? jogador2.nome : "Vago"}
                     </span>
                   </div>
                 </div>
