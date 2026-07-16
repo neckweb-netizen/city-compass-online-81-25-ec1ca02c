@@ -16,7 +16,6 @@ interface PedraMesa {
   ladoDireito: number;
 }
 
-// 5 Avatares padrão modernos do DiceBear caso o jogador não possua foto cadastrada (foto_url = NULL)
 const AVATARES_PADROES = [
   "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix&backgroundColor=b6e3f4",
   "https://api.dicebear.com/7.x/adventurer/svg?seed=Aneka&backgroundColor=ffdfbf",
@@ -25,21 +24,24 @@ const AVATARES_PADROES = [
   "https://api.dicebear.com/7.x/adventurer/svg?seed=JD&backgroundColor=b1e2c6"
 ];
 
-// Emojis disponíveis para provocação entre os jogadores
 const LISTA_EMOJIS = ['🤫', '😂', '🥱', '🤡', '☠️'];
 
-// Função que define qual imagem usar de forma segura
-const obterAvatarUsuario = (fotoUrl: string | null, idUsuario: string | null) => {
+const obterAvatarUsuario = (fotoUrl: string | null | undefined, idUsuario: string | null | undefined) => {
   if (fotoUrl && fotoUrl !== "" && fotoUrl !== "NULL") {
     return fotoUrl;
   }
-  // Usa o resto da divisão do ID para definir um avatar padrão único por usuário (de 0 a 4)
-  const idNumerico = idUsuario ? idUsuario.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) : 0;
-  const indiceAvatar = idNumerico % 5;
-  return AVATARES_PADROES[indiceAvatar];
+  if (!idUsuario) {
+    return AVATARES_PADROES[0];
+  }
+  try {
+    const idNumerico = idUsuario.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const indiceAvatar = idNumerico % 5;
+    return AVATARES_PADROES[indiceAvatar];
+  } catch (err) {
+    return AVATARES_PADROES[0];
+  }
 };
 
-// Sintetizador de efeitos sonoros nativo do navegador para 100% de estabilidade
 const tocarSom = (tipo: 'jogar' | 'alerta' | 'passar' | 'emoji' | 'vitoria') => {
   try {
     const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
@@ -87,10 +89,10 @@ const tocarSom = (tipo: 'jogar' | 'alerta' | 'passar' | 'emoji' | 'vitoria') => 
       osc.stop(tempo + 0.25);
     } else if (tipo === 'vitoria') {
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(523.25, tempo); // C5
-      osc.frequency.setValueAtTime(659.25, tempo + 0.1); // E5
-      osc.frequency.setValueAtTime(783.99, tempo + 0.2); // G5
-      osc.frequency.setValueAtTime(1046.50, tempo + 0.3); // C6
+      osc.frequency.setValueAtTime(523.25, tempo);
+      osc.frequency.setValueAtTime(659.25, tempo + 0.1);
+      osc.frequency.setValueAtTime(783.99, tempo + 0.2);
+      osc.frequency.setValueAtTime(1046.50, tempo + 0.3);
       gain.gain.setValueAtTime(0.2, tempo);
       gain.gain.exponentialRampToValueAtTime(0.01, tempo + 0.6);
       osc.start(tempo);
@@ -193,20 +195,19 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const [pontaEsquerda, setPontaEsquerda] = useState<number | null>(null);
   const [pontaDireita, setPontaDireita] = useState<number | null>(null);
 
-  // Estados do temporizador de 20 segundos
   const [tempoRestante, setTempoRestante] = useState(20);
-
-  // Estados das reações (provocações de emoji) com 6 segundos de duração
   const [emojiAtivoJ1, setEmojiAtivoJ1] = useState<string | null>(null);
   const [emojiAtivoJ2, setEmojiAtivoJ2] = useState<string | null>(null);
 
-  // Estados para modais de jogo (Substitutos profissionais do alert)
   const [modalNotificacao, setModalNotificacao] = useState<{ visivel: boolean; titulo: string; mensagem: string; tipo: 'info' | 'erro' | 'fim' }>({
     visivel: false,
     titulo: '',
     mensagem: '',
     tipo: 'info'
   });
+
+  // Referência persistente para saber se a sala já teve 2 jogadores conectados alguma vez nesta sessão
+  const partidaJaIniciadaRef = useRef(false);
 
   const entrarModoJogoReal = async () => {
     try {
@@ -256,7 +257,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     };
   }, []);
 
-  // Inicializa o lote de pedras
   const inicializarPedrasCompartilhadas = (userId: string, j1: string | null, j2: string | null) => {
     const totalVinteOitoPedras = [
       '0-0', '0-1', '0-2', '0-3', '0-4', '0-5', '0-6',
@@ -319,6 +319,11 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         setPontaEsquerda(data.mesa_ponta_esquerda);
         setPontaDireita(data.mesa_ponta_direita);
 
+        // Ativa a flag se os dois jogadores já estão presentes no banco
+        if (data.jogador_1_id !== null && data.jogador_2_id !== null) {
+          partidaJaIniciadaRef.current = true;
+        }
+
         const jogadasRaw = data.historico_jogadas as any[];
         const jogadasProcessadas: PedraMesa[] = Array.isArray(jogadasRaw) 
           ? jogadasRaw.map((jogada: any) => {
@@ -364,6 +369,11 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             setPontaEsquerda(newData.mesa_ponta_esquerda);
             setPontaDireita(newData.mesa_ponta_direita);
 
+            // Se os dois entrarem na sala ao longo da assinatura, ativa a flag
+            if (newData.jogador_1_id !== null && newData.jogador_2_id !== null) {
+              partidaJaIniciadaRef.current = true;
+            }
+
             const jogadasRaw = newData.historico_jogadas as any[];
             const jogadasProcessadas: PedraMesa[] = Array.isArray(jogadasRaw) 
               ? jogadasRaw.map((jogada: any) => {
@@ -378,8 +388,8 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             setMesaPedras(jogadasProcessadas);
             tocarSom('jogar');
 
-            // Se um dos jogadores abandonou a sala (id === null), quem sobrou ganha automaticamente
-            if (newData.jogador_1_id === null || newData.jogador_2_id === null) {
+            // CORREÇÃO CIRÚRGICA: Só declara W.O. se a partida já tiver começado de fato (ambos logados antes)
+            if (partidaJaIniciadaRef.current && (newData.jogador_1_id === null || newData.jogador_2_id === null)) {
               tocarSom('vitoria');
               setModalNotificacao({
                 visivel: true,
@@ -391,7 +401,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           }
         }
       )
-      // Listener do Broadcast em tempo real para os Emojis (Duração estendida para 6 segundos)
       .on('broadcast', { event: 'provocacao' }, (response) => {
         const payload = response.payload;
         if (payload.autorId === jogador1Id) {
@@ -422,7 +431,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     return ladoA === pontaEsquerda || ladoB === pontaEsquerda || ladoA === pontaDireita || ladoB === pontaDireita;
   };
 
-  // Temporizador Geral de 20 Segundos
   useEffect(() => {
     setTempoRestante(20);
   }, [vezUsuarioId]);
@@ -438,7 +446,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           }
           return 20;
         }
-        // Alerta sonoro nos últimos 5 segundos para refletir a nova margem de 20s
         if (prev === 6) {
           tocarSom('alerta');
         }
@@ -449,7 +456,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     return () => clearInterval(tick);
   }, [vezUsuarioId, meuTurno]);
 
-  // Passar vez automática se não houver pedras jogáveis
   useEffect(() => {
     if (meuTurno && minhasPedras.length > 0 && mesaPedras.length > 0) {
       const temQualquerPecaJogavel = minhasPedras.some(pedra => isPedraJogavel(pedra));
@@ -466,7 +472,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   }, [meuTurno, minhasPedras, mesaPedras, pontaEsquerda, pontaDireita]);
 
-  // Monitora vitória normal (jogou todas as pedras)
   useEffect(() => {
     if (minhasPedras.length === 0 && mesaPedras.length > 0) {
       tocarSom('vitoria');
@@ -556,11 +561,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
-  const pasarVezStatic = async () => {
-    // Mantido para compatibilidade se o arquivo de página chamar
-    await passarVez();
-  };
-
   const passarVez = async () => {
     const proximoTurnoId = usuarioId === jogador1Id ? jogador2Id : jogador1Id;
     tocarSom('passar');
@@ -577,7 +577,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
-  // Trata a saída e abandono limpando a sala para ambos saírem ao mesmo tempo
   const lidarComSaidaVoluntaria = async () => {
     try {
       const updates: any = {
@@ -600,7 +599,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
-  // Disparar reação (Provocação) via Broadcast realtime
   const enviarProvocacao = (emoji: string) => {
     if (canalRef.current) {
       canalRef.current.send({
@@ -613,7 +611,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   const fecharModalNotificacao = async () => {
     setModalNotificacao(prev => ({ ...prev, visivel: false }));
-    // Força a saída de ambos os usuários ao concluir a partida de qualquer forma
     try {
       await supabase
         .from('domino_salas')
@@ -640,12 +637,9 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       ref={containerRef}
       className="w-full h-screen bg-[#090610] text-white font-sans flex flex-col justify-between p-2 md:p-4 overflow-hidden select-none relative"
     >
-      {/* BANNER DE NOTIFICAÇÃO PROFISSIONAL EM TELA CHEIA (SEM ALERT NATIVO) */}
       {modalNotificacao.visivel && (
         <div className="absolute inset-0 bg-black/85 z-50 flex items-center justify-center p-4">
           <div className="max-w-sm bg-[#110D1A] border border-purple-950/60 p-8 rounded-2xl shadow-2xl text-center space-y-5 animate-in fade-in zoom-in-95 duration-150 relative overflow-hidden">
-            
-            {/* Elemento de iluminação decorativa no fundo */}
             <div className="absolute -top-10 -left-10 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl" />
             <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-yellow-500/10 rounded-full blur-2xl" />
 
@@ -676,7 +670,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </div>
       )}
 
-      {/* OVERLAY DE TRAVAMENTO CASO NÃO ESTEJA EM TELA CHEIA */}
       {!isFullscreen && (
         <div className="absolute inset-0 bg-[#090610]/98 z-50 flex flex-col items-center justify-center p-6 text-center">
           <div className="max-w-sm space-y-6">
@@ -702,7 +695,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       {/* 1. HUD SUPERIOR */}
       <div className="flex items-center justify-between bg-[#110D1A]/95 border border-purple-950/40 px-3 py-1.5 rounded-xl shadow-lg h-[12%] relative gap-2">
         <div className="flex items-center gap-2">
-          {/* Botão de Sair com destruição de sessão ativa e vitória por abandono */}
           <Button 
             variant="ghost" 
             size="sm" 
@@ -716,7 +708,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           </span>
         </div>
 
-        {/* BOTÃO DE ENTRAR NA FILA E PROCURAR MESA NO TOPO */}
         <div className="flex items-center">
           <Button
             size="sm"
@@ -739,9 +730,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           </Button>
         </div>
 
-        {/* HUD DOS JOGADORES COM REAÇÕES DE LONGA DURAÇÃO (6s) */}
         <div className="flex items-center gap-2 sm:gap-4 bg-purple-950/20 px-2 sm:px-3 py-1 rounded-lg border border-purple-900/10 text-[11px] sm:text-xs">
-          {/* JOGADOR 1 */}
           <div className="flex items-center gap-1.5 sm:gap-2 relative">
             <div className={`w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full ${vezUsuarioId === jogador1Id ? 'bg-green-500 animate-pulse' : 'bg-gray-600'}`} />
             <div className="relative">
@@ -751,7 +740,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
                 className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border border-purple-500/50 object-cover bg-[#222]" 
                 onError={(e) => { (e.target as HTMLImageElement).src = AVATARES_PADROES[0]; }}
               />
-              {/* Balão de Provocação J1 */}
               {emojiAtivoJ1 && (
                 <div className="absolute -top-10 -left-2 bg-purple-600 text-white p-1.5 rounded-full text-lg animate-bounce shadow-lg border border-purple-400 z-50">
                   {emojiAtivoJ1}
@@ -763,7 +751,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
           <span className="text-purple-500 font-bold text-[9px] sm:text-[10px]">VS</span>
 
-          {/* JOGADOR 2 */}
           <div className="flex items-center gap-1.5 sm:gap-2 relative">
             <span className="max-w-[50px] sm:max-w-[70px] truncate font-medium">{nomeJ2}</span>
             <div className="relative">
@@ -773,7 +760,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
                 className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border border-purple-500/50 object-cover bg-[#222]" 
                 onError={(e) => { (e.target as HTMLImageElement).src = AVATARES_PADROES[1]; }}
               />
-              {/* Balão de Provocação J2 */}
               {emojiAtivoJ2 && (
                 <div className="absolute -top-10 -right-2 bg-purple-600 text-white p-1.5 rounded-full text-lg animate-bounce shadow-lg border border-purple-400 z-50">
                   {emojiAtivoJ2}
@@ -804,7 +790,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           </div>
         )}
 
-        {/* CONTAINER RE-ESPAÇADO: Sem deitar ou deixar vãos (margem negativa -ml-2) */}
         <div className="flex items-center justify-center gap-0 max-w-full overflow-x-auto px-4 py-2">
           {mesaPedras.length === 0 ? (
             <div className="text-center text-emerald-300/30 font-bold uppercase tracking-widest text-xs py-6">
@@ -814,7 +799,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           ) : (
             mesaPedras.map((pedra, idx) => {
               if (!pedra || !pedra.valorOriginal) return null;
-              const [ladoA, ladoB] = pedra.valorOriginal.split('-').map(Number);
+              const [ladoA, ladoB] = ServerValor || pedra.valorOriginal.split('-').map(Number);
               const isBucha = ladoA === ladoB;
 
               return (
@@ -831,7 +816,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           )}
         </div>
 
-        {/* DOCK FLUTUANTE DE PROVOCAÇÃO (EMOJIS) */}
         <div className="absolute left-3 bottom-3 flex items-center gap-1.5 bg-black/60 border border-purple-900/30 p-1.5 rounded-full shadow-lg">
           <Smile className="w-3.5 h-3.5 text-purple-400 ml-1" />
           {LISTA_EMOJIS.map((emoji) => (
@@ -845,7 +829,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           ))}
         </div>
 
-        {/* BARRA E PLACA DO TEMPO DE JOGO DE 20s */}
         <div className="absolute bottom-2 right-3 bg-[#090610]/95 border border-purple-900/40 px-4 py-1.5 rounded-2xl flex flex-col items-center justify-center gap-1 min-w-[130px]">
           <div className="text-[10px] font-bold tracking-wide">
             {meuTurno ? (
@@ -856,7 +839,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
               <span className="text-gray-400">Tempo de {adversarioNome}: {tempoRestante}s</span>
             )}
           </div>
-          {/* BARRA DE PROGRESSO DO TEMPO REGRESSIVO (BASEADO NO TOTAL DE 20 SEGUNDOS) */}
           <div className="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
             <div 
               className={`h-full transition-all duration-1000 ${
@@ -896,5 +878,4 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   );
 };
 
-// Export padrão adicionado para evitar falhas de importação em qualquer configuração do bundler/Vite
 export default DominoTabuleiro;
