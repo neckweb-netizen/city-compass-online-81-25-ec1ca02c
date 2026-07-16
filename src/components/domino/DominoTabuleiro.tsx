@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, RefreshCw, Trophy, User, Maximize2, Minimize2, ShieldAlert, Award, Smile } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Trophy, User, Maximize2, Minimize2, ShieldAlert, Award, Smile, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface DominoTabuleiroProps {
@@ -186,6 +186,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const [fotoJ1, setFotoJ1] = useState<string | null>(null);
   const [fotoJ2, setFotoJ2] = useState<string | null>(null);
   const [vezUsuarioId, setVezUsuarioId] = useState<string | null>(null);
+  const [procurandoFila, setProcurandoFila] = useState(false);
   
   const [minhasPedras, setMinhasPedras] = useState<string[]>([]);
   const [mesaPedras, setMesaPedras] = useState<PedraMesa[]>([]);
@@ -571,15 +572,14 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
-  // Trata a saída do usuário fazendo o oponente ganhar automaticamente (Atualiza banco)
+  // Trata a saída e abandono limpando a sala para ambos saírem ao mesmo tempo
   const lidarComSaidaVoluntaria = async () => {
     try {
-      const updates: any = {};
-      if (usuarioId === jogador1Id) {
-        updates.jogador_1_id = null;
-      } else if (usuarioId === jogador2Id) {
-        updates.jogador_2_id = null;
-      }
+      const updates: any = {
+        jogador_1_id: null,
+        jogador_2_id: null,
+        historico_jogadas: []
+      };
       
       await supabase
         .from('domino_salas')
@@ -606,12 +606,28 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
-  const fecharModalNotificacao = () => {
+  const fecharModalNotificacao = async () => {
     setModalNotificacao(prev => ({ ...prev, visivel: false }));
-    if (modalNotificacao.tipo === 'erro' || modalNotificacao.tipo === 'fim') {
-      sairModoJogoReal();
-      onVoltarAoLobby();
+    // Força a saída de ambos os usuários ao concluir a partida de qualquer forma
+    try {
+      await supabase
+        .from('domino_salas')
+        .update({
+          jogador_1_id: null,
+          jogador_2_id: null,
+          historico_jogadas: []
+        })
+        .eq('id', salaId);
+    } catch (err) {
+      console.warn("Falha ao redefinir sala:", err);
     }
+    sairModoJogoReal();
+    onVoltarAoLobby();
+  };
+
+  const alternarProcuraFila = () => {
+    setProcurandoFila(!procurandoFila);
+    tocarSom('emoji');
   };
 
   return (
@@ -679,7 +695,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       )}
       
       {/* 1. HUD SUPERIOR */}
-      <div className="flex items-center justify-between bg-[#110D1A]/95 border border-purple-950/40 px-3 py-1.5 rounded-xl shadow-lg h-[10%] relative">
+      <div className="flex items-center justify-between bg-[#110D1A]/95 border border-purple-950/40 px-3 py-1.5 rounded-xl shadow-lg h-[12%] relative gap-2">
         <div className="flex items-center gap-2">
           {/* Botão de Sair com destruição de sessão ativa e vitória por abandono */}
           <Button 
@@ -690,21 +706,44 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           >
             <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Sair
           </Button>
-          <span className="text-[10px] text-purple-300 font-bold bg-purple-950/50 px-2 py-0.5 rounded-full">
+          <span className="text-[10px] text-purple-300 font-bold bg-purple-950/50 px-2 py-0.5 rounded-full hidden sm:inline">
             Mesa {numeroSala}
           </span>
         </div>
 
+        {/* BOTÃO DE ENTRAR NA FILA E PROCURAR MESA NO TOPO */}
+        <div className="flex items-center">
+          <Button
+            size="sm"
+            onClick={alternarProcuraFila}
+            className={`font-bold text-[10px] h-8 px-3 rounded-lg shadow-md transition-all flex items-center gap-1.5 ${
+              procurandoFila 
+                ? 'bg-amber-600 hover:bg-amber-700 text-white animate-pulse' 
+                : 'bg-purple-600 hover:bg-purple-700 text-white'
+            }`}
+          >
+            {procurandoFila ? (
+              <>
+                <RefreshCw className="w-3 h-3 animate-spin" /> Buscando...
+              </>
+            ) : (
+              <>
+                <Search className="w-3 h-3" /> Procurar Partida
+              </>
+            )}
+          </Button>
+        </div>
+
         {/* HUD DOS JOGADORES COM REAÇÕES DE LONGA DURAÇÃO (6s) */}
-        <div className="flex items-center gap-4 bg-purple-950/20 px-3 py-1 rounded-lg border border-purple-900/10 text-xs">
+        <div className="flex items-center gap-2 sm:gap-4 bg-purple-950/20 px-2 sm:px-3 py-1 rounded-lg border border-purple-900/10 text-[11px] sm:text-xs">
           {/* JOGADOR 1 */}
-          <div className="flex items-center gap-2 relative">
-            <div className={`w-2 h-2 rounded-full ${vezUsuarioId === jogador1Id ? 'bg-green-500 animate-pulse' : 'bg-gray-600'}`} />
+          <div className="flex items-center gap-1.5 sm:gap-2 relative">
+            <div className={`w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full ${vezUsuarioId === jogador1Id ? 'bg-green-500 animate-pulse' : 'bg-gray-600'}`} />
             <div className="relative">
               <img 
                 src={obterAvatarUsuario(fotoJ1, jogador1Id)} 
                 alt={nomeJ1} 
-                className="w-6 h-6 rounded-full border border-purple-500/50 object-cover bg-[#222]" 
+                className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border border-purple-500/50 object-cover bg-[#222]" 
                 onError={(e) => { (e.target as HTMLImageElement).src = AVATARES_PADROES[0]; }}
               />
               {/* Balão de Provocação J1 */}
@@ -714,19 +753,19 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
                 </div>
               )}
             </div>
-            <span className="max-w-[70px] truncate font-medium">{nomeJ1}</span>
+            <span className="max-w-[50px] sm:max-w-[70px] truncate font-medium">{nomeJ1}</span>
           </div>
 
-          <span className="text-purple-500 font-bold text-[10px]">VS</span>
+          <span className="text-purple-500 font-bold text-[9px] sm:text-[10px]">VS</span>
 
           {/* JOGADOR 2 */}
-          <div className="flex items-center gap-2 relative">
-            <span className="max-w-[70px] truncate font-medium">{nomeJ2}</span>
+          <div className="flex items-center gap-1.5 sm:gap-2 relative">
+            <span className="max-w-[50px] sm:max-w-[70px] truncate font-medium">{nomeJ2}</span>
             <div className="relative">
               <img 
                 src={obterAvatarUsuario(fotoJ2, jogador2Id)} 
                 alt={nomeJ2} 
-                className="w-6 h-6 rounded-full border border-purple-500/50 object-cover bg-[#222]" 
+                className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border border-purple-500/50 object-cover bg-[#222]" 
                 onError={(e) => { (e.target as HTMLImageElement).src = AVATARES_PADROES[1]; }}
               />
               {/* Balão de Provocação J2 */}
@@ -736,7 +775,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
                 </div>
               )}
             </div>
-            <div className={`w-2 h-2 rounded-full ${vezUsuarioId === jogador2Id ? 'bg-green-500 animate-pulse' : 'bg-gray-600'}`} />
+            <div className={`w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full ${vezUsuarioId === jogador2Id ? 'bg-green-500 animate-pulse' : 'bg-gray-600'}`} />
           </div>
         </div>
 
@@ -744,14 +783,14 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           variant="ghost" 
           size="icon" 
           onClick={isFullscreen ? sairModoJogoReal : entrarModoJogoReal} 
-          className="text-purple-400 hover:text-white w-8 h-8"
+          className="text-purple-400 hover:text-white w-8 h-8 hidden sm:flex"
         >
           {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
         </Button>
       </div>
 
       {/* 2. MESA DE JOGO */}
-      <div className="flex-grow my-2 bg-emerald-950 border-[4px] border-amber-950 rounded-[24px] shadow-[inset_0_4px_12px_rgba(0,0,0,0.6)] relative flex flex-col items-center justify-center h-[55%] overflow-hidden">
+      <div className="flex-grow my-1 bg-emerald-950 border-[4px] border-amber-950 rounded-[24px] shadow-[inset_0_4px_12px_rgba(0,0,0,0.6)] relative flex flex-col items-center justify-center h-[53%] overflow-hidden">
         
         {mesaPedras.length > 0 && (
           <div className="absolute top-2 left-4 flex items-center gap-3 text-[10px] font-semibold text-emerald-300/60">
@@ -812,7 +851,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
               <span className="text-gray-400">Tempo de {adversarioNome}: {tempoRestante}s</span>
             )}
           </div>
-          {/* BARRA DE PROGRESSO DO TEMPO REGRESSIVO (BASEADO NO NOVO TOTAL DE 20 SEGUNDOS) */}
+          {/* BARRA DE PROGRESSO DO TEMPO REGRESSIVO (BASEADO NO TOTAL DE 20 SEGUNDOS) */}
           <div className="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
             <div 
               className={`h-full transition-all duration-1000 ${
