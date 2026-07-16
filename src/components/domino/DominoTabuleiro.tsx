@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, RefreshCw, Trophy, User, Maximize2, Minimize2, ShieldAlert, Award } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Trophy, User, Maximize2, Minimize2, ShieldAlert, Award, MessageSquare } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface DominoTabuleiroProps {
@@ -104,12 +104,16 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const [pontaEsquerda, setPontaEsquerda] = useState<number | null>(null);
   const [pontaDireita, setPontaDireita] = useState<number | null>(null);
 
+  // Modal estático que requer clique de OK
   const [modalNotificacao, setModalNotificacao] = useState<{ visivel: boolean; titulo: string; mensagem: string; tipo: 'info' | 'erro' | 'fim' }>({
     visivel: false,
     titulo: '',
     mensagem: '',
     tipo: 'info'
   });
+
+  // Estado para os Alertas Temporários (Toasts que somem sozinhos)
+  const [alertaTemporario, setAlertaTemporario] = useState<{ visivel: boolean; mensagem: string } | null>(null);
 
   const entrarModoJogoReal = async () => {
     try {
@@ -148,7 +152,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     return ladoA === pontaEsquerda || ladoB === pontaEsquerda || ladoA === pontaDireita || ladoB === pontaDireita;
   };
 
-  // 1. DECLARAÇÃO DAS FUNÇÕES DE JOGADA PRIMEIRO (Para evitar o ReferenceError)
   const passarVez = async () => {
     const proximoTurnoId = usuarioId === jogador1Id ? jogador2Id : jogador1Id;
 
@@ -242,7 +245,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
-  // 2. DECLARAÇÃO DOS EFFECTS DEPOIS (Assim eles acham as funções acima no escopo)
   useEffect(() => {
     entrarModoJogoReal();
 
@@ -358,8 +360,13 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         { event: 'UPDATE', schema: 'public', table: 'domino_salas', filter: `id=eq.${salaId}` },
         (payload) => {
           const newData = payload.new;
+          const oldData = payload.old;
           if (newData) {
-            setVezUsuarioId(newData.vez_usuario_id);
+            // DETECTA SE HOUVE MUDANÇA DE TURNO (O oponente passou ou jogou)
+            const vezAntigaId = oldData ? oldData.vez_usuario_id : vezUsuarioId;
+            const novaVezId = newData.vez_usuario_id;
+            
+            setVezUsuarioId(novaVezId);
             setPontaEsquerda(newData.mesa_ponta_esquerda);
             setPontaDireita(newData.mesa_ponta_direita);
 
@@ -374,7 +381,29 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
                 })
               : [];
               
+            // Verifica se a quantidade de pedras na mesa continuou a mesma. 
+            // Se as pedras não aumentaram mas a vez mudou, significa que o adversário PASSOU!
+            const mesaAntigaLength = mesaPedras.length;
+            const mesaNovaLength = jogadasProcessadas.length;
+
             setMesaPedras(jogadasProcessadas);
+
+            if (novaVezId === usuarioId && vezAntigaId !== usuarioId) {
+              if (mesaNovaLength === mesaAntigaLength && mesaNovaLength > 0) {
+                // Alerta Discreto de que o adversário passou e agora é a sua vez
+                const nomeAdv = usuarioId === newData.jogador_1_id ? (newData.jogador_2 as any)?.nome || 'Adversário' : (newData.jogador_1 as any)?.nome || 'Adversário';
+                setAlertaTemporario({
+                  visivel: true,
+                  mensagem: `⚠️ ${nomeAdv} passou a vez! Agora é o seu turno de jogar.`
+                });
+              } else {
+                // Alerta Discreto de turno regular de jogo
+                setAlertaTemporario({
+                  visivel: true,
+                  mensagem: '🟢 Sua vez de jogar! Faça a sua jogada na mesa.'
+                });
+              }
+            }
 
             if (newData.jogador_1_id === null || newData.jogador_2_id === null) {
               setModalNotificacao({
@@ -392,10 +421,20 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     return () => {
       supabase.removeChannel(canalJogo);
     };
-  }, [salaId]);
+  }, [salaId, mesaPedras.length]);
 
   const meuTurno = vezUsuarioId === usuarioId;
   const adversarioNome = usuarioId === jogador1Id ? nomeJ2 : nomeJ1;
+
+  // Temporizador para fazer os alertas de toast desaparecerem sozinhos em 3 segundos
+  useEffect(() => {
+    if (alertaTemporario && alertaTemporario.visivel) {
+      const timer = setTimeout(() => {
+        setAlertaTemporario(null);
+      }, 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [alertaTemporario]);
 
   useEffect(() => {
     if (meuTurno && minhasPedras.length > 0 && mesaPedras.length > 0) {
@@ -437,6 +476,15 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       ref={containerRef}
       className="w-full h-screen bg-[#090610] text-white font-sans flex flex-col justify-between p-2 md:p-4 overflow-hidden select-none relative"
     >
+      {/* ALERTA FLUTUANTE TEMPORÁRIO (TOAST DISCRETO QUE SOME SÓ) */}
+      {alertaTemporario && alertaTemporario.visivel && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[60] bg-purple-950/95 border-2 border-purple-500 text-white px-5 py-2 rounded-2xl shadow-[0_4px_15px_rgba(147,51,234,0.4)] flex items-center gap-2 text-xs font-bold animate-in fade-in slide-in-from-top-4 duration-200">
+          <MessageSquare className="w-4 h-4 text-purple-400 animate-pulse" />
+          <span>{alertaTemporario.mensagem}</span>
+        </div>
+      )}
+
+      {/* MODAL ESTÁTICO (OBRIGATÓRIO CLIQUE) */}
       {modalNotificacao.visivel && (
         <div className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
           <div className="max-w-xs bg-[#110D1A] border border-purple-950/60 p-6 rounded-2xl shadow-2xl text-center space-y-4 animate-in fade-in zoom-in-95 duration-150">
@@ -457,6 +505,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </div>
       )}
 
+      {/* OVERLAY DE TRAVAMENTO CASO NÃO ESTEJA EM TELA CHEIA */}
       {!isFullscreen && (
         <div className="absolute inset-0 bg-[#090610]/98 z-50 flex flex-col items-center justify-center p-6 text-center">
           <div className="max-w-sm space-y-6">
