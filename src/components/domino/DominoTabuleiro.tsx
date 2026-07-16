@@ -16,6 +16,26 @@ interface PedraMesa {
   ladoDireito: number;
 }
 
+// 5 Avatares padrão modernos do DiceBear caso o jogador não possua foto cadastrada (foto_url = NULL)
+const AVATARES_PADROES = [
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix&backgroundColor=b6e3f4",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=Aneka&backgroundColor=ffdfbf",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=Jack&backgroundColor=c0aede",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=Emery&backgroundColor=d1d4f9",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=JD&backgroundColor=b1e2c6"
+];
+
+// Função que define qual imagem usar de forma segura
+const obterAvatarUsuario = (fotoUrl: string | null, idUsuario: string | null) => {
+  if (fotoUrl && fotoUrl !== "" && fotoUrl !== "NULL") {
+    return fotoUrl;
+  }
+  // Usa o resto da divisão do ID para definir um avatar padrão único por usuário (de 0 a 4)
+  const idNumerico = idUsuario ? idUsuario.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) : 0;
+  const indiceAvatar = idNumerico % 5;
+  return AVATARES_PADROES[indiceAvatar];
+};
+
 const PedraClassica = ({ 
   valor, 
   onClick, 
@@ -97,6 +117,8 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const [jogador2Id, setJogador2Id] = useState<string | null>(null);
   const [nomeJ1, setNomeJ1] = useState('Jogador 1');
   const [nomeJ2, setNomeJ2] = useState('Jogador 2');
+  const [fotoJ1, setFotoJ1] = useState<string | null>(null);
+  const [fotoJ2, setFotoJ2] = useState<string | null>(null);
   const [vezUsuarioId, setVezUsuarioId] = useState<string | null>(null);
   
   const [minhasPedras, setMinhasPedras] = useState<string[]>([]);
@@ -104,7 +126,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const [pontaEsquerda, setPontaEsquerda] = useState<number | null>(null);
   const [pontaDireita, setPontaDireita] = useState<number | null>(null);
 
-  // Estados para modais customizados de jogo (Substitutos profissionais do alert)
+  // Estados para modais de jogo (Substitutos profissionais do alert)
   const [modalNotificacao, setModalNotificacao] = useState<{ visivel: boolean; titulo: string; mensagem: string; tipo: 'info' | 'erro' | 'fim' }>({
     visivel: false,
     titulo: '',
@@ -160,7 +182,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     };
   }, []);
 
-  // Inicializador de pedras que cria o lote de 28 pedras sem NENHUMA repetição física
+  // Inicializa o lote sem duplicações
   const inicializarPedrasCompartilhadas = (userId: string, j1: string | null, j2: string | null) => {
     const totalVinteOitoPedras = [
       '0-0', '0-1', '0-2', '0-3', '0-4', '0-5', '0-6',
@@ -204,8 +226,8 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           mesa_ponta_esquerda,
           mesa_ponta_direita,
           historico_jogadas,
-          jogador_1:jogador_1_id ( nome ),
-          jogador_2:jogador_2_id ( nome )
+          jogador_1:jogador_1_id ( nome, foto_url ),
+          jogador_2:jogador_2_id ( nome, foto_url )
         `)
         .eq('id', salaId)
         .single();
@@ -218,6 +240,8 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         setVezUsuarioId(data.vez_usuario_id);
         setNomeJ1(data.jogador_1 ? (data.jogador_1 as any).nome : 'Jogador 1');
         setNomeJ2(data.jogador_2 ? (data.jogador_2 as any).nome : 'Jogador 2');
+        setFotoJ1(data.jogador_1 ? (data.jogador_1 as any).foto_url : null);
+        setFotoJ2(data.jogador_2 ? (data.jogador_2 as any).foto_url : null);
         setPontaEsquerda(data.mesa_ponta_esquerda);
         setPontaDireita(data.mesa_ponta_direita);
 
@@ -304,7 +328,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     return ladoA === pontaEsquerda || ladoB === pontaEsquerda || ladoA === pontaDireita || ladoB === pontaDireita;
   };
 
-  // Monitora se o jogador está sem peças para passar a vez automaticamente de forma nativa e profissional
   useEffect(() => {
     if (meuTurno && minhasPedras.length > 0 && mesaPedras.length > 0) {
       const temQualquerPecaJogavel = minhasPedras.some(pedra => isPedraJogavel(pedra));
@@ -321,7 +344,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   }, [meuTurno, minhasPedras, mesaPedras, pontaEsquerda, pontaDireita]);
 
-  // Monitora se as pedras do jogador acabaram (Vencedor da Rodada)
   useEffect(() => {
     if (minhasPedras.length === 0 && mesaPedras.length > 0) {
       setModalNotificacao({
@@ -499,15 +521,28 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           </span>
         </div>
 
+        {/* HUD DOS JOGADORES COM FOTO DINÂMICA OU AVATARES PADRÕES DE BACKUP */}
         <div className="flex items-center gap-4 bg-purple-950/20 px-3 py-1 rounded-lg border border-purple-900/10 text-xs">
-          <div className="flex items-center gap-1.5">
-            <div className={`w-1.5 h-1.5 rounded-full ${vezUsuarioId === jogador1Id ? 'bg-green-500 animate-pulse' : 'bg-gray-600'}`} />
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${vezUsuarioId === jogador1Id ? 'bg-green-500 animate-pulse' : 'bg-gray-600'}`} />
+            <img 
+              src={obterAvatarUsuario(fotoJ1, jogador1Id)} 
+              alt={nomeJ1} 
+              className="w-6 h-6 rounded-full border border-purple-500/50 object-cover bg-[#222]" 
+              onError={(e) => { (e.target as HTMLImageElement).src = AVATARES_PADROES[0]; }}
+            />
             <span className="max-w-[70px] truncate font-medium">{nomeJ1}</span>
           </div>
-          <span className="text-purple-500 font-bold">VS</span>
-          <div className="flex items-center gap-1.5">
+          <span className="text-purple-500 font-bold text-[10px]">VS</span>
+          <div className="flex items-center gap-2">
             <span className="max-w-[70px] truncate font-medium">{nomeJ2}</span>
-            <div className={`w-1.5 h-1.5 rounded-full ${vezUsuarioId === jogador2Id ? 'bg-green-500 animate-pulse' : 'bg-gray-600'}`} />
+            <img 
+              src={obterAvatarUsuario(fotoJ2, jogador2Id)} 
+              alt={nomeJ2} 
+              className="w-6 h-6 rounded-full border border-purple-500/50 object-cover bg-[#222]" 
+              onError={(e) => { (e.target as HTMLImageElement).src = AVATARES_PADROES[1]; }}
+            />
+            <div className={`w-2 h-2 rounded-full ${vezUsuarioId === jogador2Id ? 'bg-green-500 animate-pulse' : 'bg-gray-600'}`} />
           </div>
         </div>
 
@@ -531,7 +566,8 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           </div>
         )}
 
-        <div className="flex items-center justify-center gap-1.5 max-w-full overflow-x-auto px-4 py-2">
+        {/* CONTAINER RE-ESPAÇADO: Alterado de gap-1.5 para gap-0 com margem negativa -ml-2 (-8px) */}
+        <div className="flex items-center justify-center gap-0 max-w-full overflow-x-auto px-4 py-2">
           {mesaPedras.length === 0 ? (
             <div className="text-center text-emerald-300/30 font-bold uppercase tracking-widest text-xs py-6">
               Mesa de Dominó Limpa<br />
@@ -544,7 +580,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
               const isBucha = ladoA === ladoB;
 
               return (
-                <div key={idx} className="shrink-0 flex items-center justify-center">
+                <div key={idx} className={`shrink-0 flex items-center justify-center ${idx > 0 ? '-ml-2' : ''}`}>
                   <PedraClassica 
                     valor={pedra.valorOriginal} 
                     disabled={true} 
