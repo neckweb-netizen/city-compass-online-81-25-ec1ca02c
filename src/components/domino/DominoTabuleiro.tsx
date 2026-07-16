@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, RefreshCw, Trophy, User, Maximize2, Minimize2, ShieldAlert, Award } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Trophy, User, Maximize2, Minimize2, ShieldAlert, Award, Smile } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface DominoTabuleiroProps {
@@ -25,6 +25,9 @@ const AVATARES_PADROES = [
   "https://api.dicebear.com/7.x/adventurer/svg?seed=JD&backgroundColor=b1e2c6"
 ];
 
+// Emojis disponíveis para provocação entre os jogadores
+const LISTA_EMOJIS = ['🤫', '😂', '🥱', '🤡', '☠️'];
+
 // Função que define qual imagem usar de forma segura
 const obterAvatarUsuario = (fotoUrl: string | null, idUsuario: string | null) => {
   if (fotoUrl && fotoUrl !== "" && fotoUrl !== "NULL") {
@@ -34,6 +37,58 @@ const obterAvatarUsuario = (fotoUrl: string | null, idUsuario: string | null) =>
   const idNumerico = idUsuario ? idUsuario.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) : 0;
   const indiceAvatar = idNumerico % 5;
   return AVATARES_PADROES[indiceAvatar];
+};
+
+// Sintetizador de efeitos sonoros nativo do navegador para 100% de estabilidade
+const tocarSom = (tipo: 'jogar' | 'alerta' | 'passar' | 'emoji') => {
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    const tempo = ctx.currentTime;
+
+    if (tipo === 'jogar') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(400, tempo);
+      osc.frequency.exponentialRampToValueAtTime(800, tempo + 0.1);
+      gain.gain.setValueAtTime(0.15, tempo);
+      gain.gain.exponentialRampToValueAtTime(0.01, tempo + 0.12);
+      osc.start(tempo);
+      osc.stop(tempo + 0.12);
+    } else if (tipo === 'alerta') {
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(550, tempo);
+      gain.gain.setValueAtTime(0.08, tempo);
+      gain.gain.setValueAtTime(0, tempo + 0.08);
+      gain.gain.setValueAtTime(0.08, tempo + 0.12);
+      gain.gain.setValueAtTime(0, tempo + 0.2);
+      osc.start(tempo);
+      osc.stop(tempo + 0.2);
+    } else if (tipo === 'passar') {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(320, tempo);
+      osc.frequency.linearRampToValueAtTime(120, tempo + 0.3);
+      gain.gain.setValueAtTime(0.12, tempo);
+      gain.gain.exponentialRampToValueAtTime(0.01, tempo + 0.3);
+      osc.start(tempo);
+      osc.stop(tempo + 0.3);
+    } else if (tipo === 'emoji') {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(220, tempo);
+      osc.frequency.exponentialRampToValueAtTime(1100, tempo + 0.25);
+      gain.gain.setValueAtTime(0.15, tempo);
+      gain.gain.exponentialRampToValueAtTime(0.01, tempo + 0.25);
+      osc.start(tempo);
+      osc.stop(tempo + 0.25);
+    }
+  } catch (err) {
+    console.warn('Erro ao reproduzir áudio:', err);
+  }
 };
 
 const PedraClassica = ({ 
@@ -112,6 +167,7 @@ const PedraClassica = ({
 
 export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby }: DominoTabuleiroProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const canalRef = useRef<any>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [jogador1Id, setJogador1Id] = useState<string | null>(null);
   const [jogador2Id, setJogador2Id] = useState<string | null>(null);
@@ -125,6 +181,13 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const [mesaPedras, setMesaPedras] = useState<PedraMesa[]>([]);
   const [pontaEsquerda, setPontaEsquerda] = useState<number | null>(null);
   const [pontaDireita, setPontaDireita] = useState<number | null>(null);
+
+  // Estados do temporizador de 10 segundos
+  const [tempoRestante, setTempoRestante] = useState(10);
+
+  // Estados das reações (provocações de emoji)
+  const [emojiAtivoJ1, setEmojiAtivoJ1] = useState<string | null>(null);
+  const [emojiAtivoJ2, setEmojiAtivoJ2] = useState<string | null>(null);
 
   // Estados para modais de jogo (Substitutos profissionais do alert)
   const [modalNotificacao, setModalNotificacao] = useState<{ visivel: boolean; titulo: string; mensagem: string; tipo: 'info' | 'erro' | 'fim' }>({
@@ -146,7 +209,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
         if (screen.orientation && (screen.orientation as any).lock) {
           await (screen.orientation as any).lock('landscape').catch(() => {
-            console.log("Rotação bloqueada.");
+            console.log("Rotação de tela não suportada.");
           });
         }
       }
@@ -182,7 +245,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     };
   }, []);
 
-  // Inicializa o lote sem duplicações
+  // Inicializa o lote de pedras
   const inicializarPedrasCompartilhadas = (userId: string, j1: string | null, j2: string | null) => {
     const totalVinteOitoPedras = [
       '0-0', '0-1', '0-2', '0-3', '0-4', '0-5', '0-6',
@@ -277,7 +340,9 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     carregarDadosPartida();
 
     const canalJogo = supabase
-      .channel(`jogo-realtime-${salaId}`)
+      .channel(`jogo-realtime-${salaId}`, {
+        config: { broadcast: { self: true } }
+      })
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'domino_salas', filter: `id=eq.${salaId}` },
@@ -300,6 +365,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
               : [];
               
             setMesaPedras(jogadasProcessadas);
+            tocarSom('jogar');
 
             if (newData.jogador_1_id === null || newData.jogador_2_id === null) {
               setModalNotificacao({
@@ -312,12 +378,27 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           }
         }
       )
+      // Listener do Broadcast em tempo real para os Emojis
+      .on('broadcast', { event: 'provocacao' }, (response) => {
+        const payload = response.payload;
+        if (payload.autorId === jogador1Id) {
+          setEmojiAtivoJ1(payload.emoji);
+          tocarSom('emoji');
+          setTimeout(() => setEmojiAtivoJ1(null), 2500);
+        } else if (payload.autorId === jogador2Id) {
+          setEmojiAtivoJ2(payload.emoji);
+          tocarSom('emoji');
+          setTimeout(() => setEmojiAtivoJ2(null), 2500);
+        }
+      })
       .subscribe();
+
+    canalRef.current = canalJogo;
 
     return () => {
       supabase.removeChannel(canalJogo);
     };
-  }, [salaId]);
+  }, [salaId, jogador1Id, jogador2Id]);
 
   const meuTurno = vezUsuarioId === usuarioId;
   const adversarioNome = usuarioId === jogador1Id ? nomeJ2 : nomeJ1;
@@ -328,6 +409,34 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     return ladoA === pontaEsquerda || ladoB === pontaEsquerda || ladoA === pontaDireita || ladoB === pontaDireita;
   };
 
+  // Temporizador Geral de 10 Segundos
+  useEffect(() => {
+    setTempoRestante(10);
+  }, [vezUsuarioId]);
+
+  useEffect(() => {
+    if (!vezUsuarioId) return;
+
+    const tick = setInterval(() => {
+      setTempoRestante((prev) => {
+        if (prev <= 1) {
+          if (meuTurno) {
+            passarVez();
+          }
+          return 10;
+        }
+        // Toca alerta sonoro nos últimos 3 segundos
+        if (prev === 4) {
+          tocarSom('alerta');
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(tick);
+  }, [vezUsuarioId, meuTurno]);
+
+  // Passar vez automática se não houver pedras jogáveis
   useEffect(() => {
     if (meuTurno && minhasPedras.length > 0 && mesaPedras.length > 0) {
       const temQualquerPecaJogavel = minhasPedras.some(pedra => isPedraJogavel(pedra));
@@ -344,6 +453,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   }, [meuTurno, minhasPedras, mesaPedras, pontaEsquerda, pontaDireita]);
 
+  // Monitora vitória
   useEffect(() => {
     if (minhasPedras.length === 0 && mesaPedras.length > 0) {
       setModalNotificacao({
@@ -434,7 +544,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   const passarVez = async () => {
     const proximoTurnoId = usuarioId === jogador1Id ? jogador2Id : jogador1Id;
-
+    tocarSom('passar');
     try {
       await supabase
         .from('domino_salas')
@@ -445,6 +555,17 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         .eq('id', salaId);
     } catch (err) {
       console.error('Erro ao passar a vez:', err);
+    }
+  };
+
+  // Disparar reação (Provocação) via Broadcast realtime
+  const enviarProvocacao = (emoji: string) => {
+    if (canalRef.current) {
+      canalRef.current.send({
+        type: 'broadcast',
+        event: 'provocacao',
+        payload: { autorId: usuarioId, emoji }
+      });
     }
   };
 
@@ -506,7 +627,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       )}
       
       {/* 1. HUD SUPERIOR */}
-      <div className="flex items-center justify-between bg-[#110D1A]/95 border border-purple-950/40 px-3 py-1.5 rounded-xl shadow-lg h-[10%]">
+      <div className="flex items-center justify-between bg-[#110D1A]/95 border border-purple-950/40 px-3 py-1.5 rounded-xl shadow-lg h-[10%] relative">
         <div className="flex items-center gap-2">
           <Button 
             variant="ghost" 
@@ -521,27 +642,47 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           </span>
         </div>
 
-        {/* HUD DOS JOGADORES COM FOTO DINÂMICA OU AVATARES PADRÕES DE BACKUP */}
+        {/* HUD DOS JOGADORES COM FOTO DINÂMICA OU AVATARES PADRÕES E REAÇÕES FLUTUANTES */}
         <div className="flex items-center gap-4 bg-purple-950/20 px-3 py-1 rounded-lg border border-purple-900/10 text-xs">
-          <div className="flex items-center gap-2">
+          {/* JOGADOR 1 */}
+          <div className="flex items-center gap-2 relative">
             <div className={`w-2 h-2 rounded-full ${vezUsuarioId === jogador1Id ? 'bg-green-500 animate-pulse' : 'bg-gray-600'}`} />
-            <img 
-              src={obterAvatarUsuario(fotoJ1, jogador1Id)} 
-              alt={nomeJ1} 
-              className="w-6 h-6 rounded-full border border-purple-500/50 object-cover bg-[#222]" 
-              onError={(e) => { (e.target as HTMLImageElement).src = AVATARES_PADROES[0]; }}
-            />
+            <div className="relative">
+              <img 
+                src={obterAvatarUsuario(fotoJ1, jogador1Id)} 
+                alt={nomeJ1} 
+                className="w-6 h-6 rounded-full border border-purple-500/50 object-cover bg-[#222]" 
+                onError={(e) => { (e.target as HTMLImageElement).src = AVATARES_PADROES[0]; }}
+              />
+              {/* Balão de Provocação J1 */}
+              {emojiAtivoJ1 && (
+                <div className="absolute -top-8 -left-2 bg-purple-600 text-white p-1 rounded-full text-base animate-bounce shadow-lg border border-purple-400 z-50">
+                  {emojiAtivoJ1}
+                </div>
+              )}
+            </div>
             <span className="max-w-[70px] truncate font-medium">{nomeJ1}</span>
           </div>
+
           <span className="text-purple-500 font-bold text-[10px]">VS</span>
-          <div className="flex items-center gap-2">
+
+          {/* JOGADOR 2 */}
+          <div className="flex items-center gap-2 relative">
             <span className="max-w-[70px] truncate font-medium">{nomeJ2}</span>
-            <img 
-              src={obterAvatarUsuario(fotoJ2, jogador2Id)} 
-              alt={nomeJ2} 
-              className="w-6 h-6 rounded-full border border-purple-500/50 object-cover bg-[#222]" 
-              onError={(e) => { (e.target as HTMLImageElement).src = AVATARES_PADROES[1]; }}
-            />
+            <div className="relative">
+              <img 
+                src={obterAvatarUsuario(fotoJ2, jogador2Id)} 
+                alt={nomeJ2} 
+                className="w-6 h-6 rounded-full border border-purple-500/50 object-cover bg-[#222]" 
+                onError={(e) => { (e.target as HTMLImageElement).src = AVATARES_PADROES[1]; }}
+              />
+              {/* Balão de Provocação J2 */}
+              {emojiAtivoJ2 && (
+                <div className="absolute -top-8 -right-2 bg-purple-600 text-white p-1 rounded-full text-base animate-bounce shadow-lg border border-purple-400 z-50">
+                  {emojiAtivoJ2}
+                </div>
+              )}
+            </div>
             <div className={`w-2 h-2 rounded-full ${vezUsuarioId === jogador2Id ? 'bg-green-500 animate-pulse' : 'bg-gray-600'}`} />
           </div>
         </div>
@@ -566,7 +707,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           </div>
         )}
 
-        {/* CONTAINER RE-ESPAÇADO: Alterado de gap-1.5 para gap-0 com margem negativa -ml-2 (-8px) */}
+        {/* CONTAINER RE-ESPAÇADO: Sem vão livre usando margem negativa -ml-2 (-8px) */}
         <div className="flex items-center justify-center gap-0 max-w-full overflow-x-auto px-4 py-2">
           {mesaPedras.length === 0 ? (
             <div className="text-center text-emerald-300/30 font-bold uppercase tracking-widest text-xs py-6">
@@ -593,30 +734,47 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           )}
         </div>
 
-        <div className="absolute bottom-2 bg-[#090610]/95 border border-purple-900/40 px-4 py-1 rounded-full text-[10px] font-bold tracking-wide">
-          {meuTurno ? (
-            <span className="text-green-400 animate-pulse flex items-center gap-1">
-              <RefreshCw className="w-3 h-3 animate-spin" /> SUA VEZ DE JOGAR!
-            </span>
-          ) : (
-            <span className="text-gray-400">Aguardando {adversarioNome}...</span>
-          )}
+        {/* DOCK FLUTUANTE DE PROVOCAÇÃO (EMOJIS) */}
+        <div className="absolute left-3 bottom-3 flex items-center gap-1.5 bg-black/60 border border-purple-900/30 p-1.5 rounded-full shadow-lg">
+          <Smile className="w-3.5 h-3.5 text-purple-400 ml-1" />
+          {LISTA_EMOJIS.map((emoji) => (
+            <button
+              key={emoji}
+              onClick={() => enviarProvocacao(emoji)}
+              className="hover:scale-125 transition-transform duration-100 text-sm active:scale-95"
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
+
+        {/* BARRA E PLACA DO TEMPO DE JOGO */}
+        <div className="absolute bottom-2 right-3 bg-[#090610]/95 border border-purple-900/40 px-4 py-1.5 rounded-2xl flex flex-col items-center justify-center gap-1 min-w-[130px]">
+          <div className="text-[10px] font-bold tracking-wide">
+            {meuTurno ? (
+              <span className="text-green-400 animate-pulse flex items-center gap-1">
+                <RefreshCw className="w-3 h-3 animate-spin" /> SUA VEZ ({tempoRestante}s)
+              </span>
+            ) : (
+              <span className="text-gray-400">Tempo de {adversarioNome}: {tempoRestante}s</span>
+            )}
+          </div>
+          {/* BARRA DE PROGRESSO DO TEMPO REGRESSIVO */}
+          <div className="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
+            <div 
+              className={`h-full transition-all duration-1000 ${
+                tempoRestante > 5 ? 'bg-green-500' : tempoRestante > 2 ? 'bg-amber-500' : 'bg-red-500'
+              }`} 
+              style={{ width: `${(tempoRestante / 10) * 100}%` }}
+            />
+          </div>
         </div>
       </div>
 
-      {/* 3. MINHA MÃO */}
+      {/* 3. MINHA MÃO (SEM BOTÃO MANUAL DE PASSAR) */}
       <div className="bg-[#110D1A]/95 border border-purple-950/40 p-2.5 rounded-2xl h-[30%] flex flex-col justify-between">
         <div className="flex items-center justify-between px-1 h-[25%]">
           <span className="text-[10px] text-purple-300 font-bold uppercase tracking-wider">Suas Pedras ({minhasPedras.length})</span>
-          {meuTurno && (
-            <Button 
-              onClick={passarVez} 
-              variant="outline" 
-              className="text-amber-500 border-amber-500/30 hover:bg-amber-500/10 font-bold h-6 text-[10px] px-2 py-0"
-            >
-              Passar Vez
-            </Button>
-          )}
         </div>
 
         <div className="flex justify-center items-center gap-1.5 overflow-x-auto h-[75%] py-1">
