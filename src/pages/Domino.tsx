@@ -13,7 +13,7 @@ interface JogadorLobby {
 
 interface MesaLobby {
   id: string;
-  numero: number;
+  numero: number; // Gerado dinamicamente para evitar erro de coluna inexistente
   jogador_1_id: string | null;
   jogador_2_id: string | null;
   jogador_1?: JogadorLobby;
@@ -21,6 +21,7 @@ interface MesaLobby {
   status: 'Disponível' | 'Em Partida';
 }
 
+// 5 Avatares padrão modernos de backup
 const AVATARES_PADROES = [
   "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix&backgroundColor=b6e3f4",
   "https://api.dicebear.com/7.x/adventurer/svg?seed=Aneka&backgroundColor=ffdfbf",
@@ -62,16 +63,15 @@ export default function Domino() {
 
   const carregarMesas = async () => {
     try {
-      // 1. Busca simplificada das mesas para blindar contra erros de relacionamento implícito
+      // Modificado para selecionar ID e jogadores, removendo a coluna 'numero' que não existe no seu Supabase
       const { data: salasData, error: salasError } = await supabase
         .from('domino_salas')
-        .select('id, numero, jogador_1_id, jogador_2_id')
-        .order('numero', { ascending: true });
+        .select('id, jogador_1_id, jogador_2_id');
 
       if (salasError) throw salasError;
 
       if (salasData) {
-        // Coleta todos os IDs únicos de jogadores ativos nas mesas para buscar as infos de perfil de uma vez
+        // Coleta todos os IDs de jogadores ativos
         const idsJogadores = Array.from(new Set(
           salasData.reduce((acc: string[], cur: any) => {
             if (cur.jogador_1_id) acc.push(cur.jogador_1_id);
@@ -83,7 +83,7 @@ export default function Domino() {
         let perfisMapeados: Record<string, JogadorLobby> = {};
 
         if (idsJogadores.length > 0) {
-          // Busca dados de perfil dos jogadores (ajuste o nome da tabela 'profiles' se for diferente)
+          // Busca dados dos perfis na tabela default
           const { data: perfisData, error: perfisError } = await supabase
             .from('profiles') 
             .select('id, nome, foto_url')
@@ -100,15 +100,15 @@ export default function Domino() {
           }
         }
 
-        // 2. Montagem final das mesas acoplando os objetos dos perfis
-        const mesasFormatadas: MesaLobby[] = salasData.map((mesa: any) => {
+        // Formatação final sem depender de campo faltante do banco
+        const mesasFormatadas: MesaLobby[] = salasData.map((mesa: any, index: number) => {
           const jogador1 = mesa.jogador_1_id ? perfisMapeados[mesa.jogador_1_id] : undefined;
           const jogador2 = mesa.jogador_2_id ? perfisMapeados[mesa.jogador_2_id] : undefined;
           const emPartida = mesa.jogador_1_id !== null && mesa.jogador_2_id !== null;
 
           return {
             id: mesa.id,
-            numero: mesa.numero,
+            numero: index + 1, // Atribui número dinamicamente (1, 2, 3...)
             jogador_1_id: mesa.jogador_1_id,
             jogador_2_id: mesa.jogador_2_id,
             jogador_1: jogador1,
@@ -219,8 +219,8 @@ export default function Domino() {
             <Trophy className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="font-black text-lg tracking-wide">Dominó do Paredão</h1>
-            <p className="text-xs text-slate-500 dark:text-gray-400">
+            <h1 className="font-black text-lg tracking-wide text-slate-900 dark:text-white">Dominó do Paredão</h1>
+            <p className="text-xs text-slate-700 dark:text-gray-300">
               Participe de partidas de dominó em tempo real com pessoas de Santo Antônio de Jesus!
             </p>
           </div>
@@ -238,15 +238,15 @@ export default function Domino() {
 
       <div className="max-w-6xl mx-auto space-y-6">
         
-        {/* 2. CARD DE FILA DE ESPERA - FIXADO NO TOPO */}
-        <div className="w-full bg-white dark:bg-[#110D1A]/95 border border-slate-200 dark:border-purple-950/40 rounded-2xl p-5 shadow-sm dark:shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4">
+        {/* 2. CARD DE FILA DE ESPERA - GARANTIDO NO TOPO */}
+        <div className="w-full bg-white dark:bg-[#110D1A]/95 border border-slate-300 dark:border-purple-950/40 rounded-2xl p-5 shadow-sm dark:shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4 text-center sm:text-left">
             <div className="p-3 bg-purple-100 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-900/30 rounded-full text-purple-600 dark:text-purple-400">
               <Users className="w-6 h-6" />
             </div>
             <div>
               <h2 className="font-bold text-md text-slate-900 dark:text-white">Fila de espera atual</h2>
-              <p className="text-xs text-slate-500 dark:text-gray-400">
+              <p className="text-xs text-slate-700 dark:text-gray-300">
                 {jogadoresNaFila === 0 
                   ? "Ninguém na fila de espera no momento." 
                   : `${jogadoresNaFila} jogador(es) aguardando partida.`}
@@ -274,7 +274,7 @@ export default function Domino() {
           </Button>
         </div>
 
-        {/* 3. GRID DE MESAS DE JOGO (TEXTOS E VERSUS TOTALMENTE LEGÍVEIS) */}
+        {/* 3. GRID DE MESAS DE JOGO (TEXTOS TOTALMENTE ESCUROS NO MODO CLARO) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {mesas.map((mesa) => {
             const jogador1 = mesa.jogador_1;
@@ -283,53 +283,53 @@ export default function Domino() {
             return (
               <div 
                 key={mesa.id} 
-                className="bg-white dark:bg-[#110D1A]/95 border border-slate-200 dark:border-purple-950/40 rounded-2xl p-5 shadow-sm dark:shadow-lg flex flex-col justify-between transition-transform duration-150 hover:scale-[1.01]"
+                className="bg-white dark:bg-[#110D1A]/95 border border-slate-300 dark:border-purple-950/40 rounded-2xl p-5 shadow-md dark:shadow-lg flex flex-col justify-between transition-transform duration-150 hover:scale-[1.01]"
               >
                 {/* Header da Mesa */}
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h3 className="font-extrabold text-md text-slate-900 dark:text-white">Mesa de Jogo {mesa.numero}</h3>
-                    <p className="text-[11px] text-slate-500 dark:text-gray-400">Limite: 2 jogadores</p>
+                    <p className="text-[11px] text-slate-600 dark:text-gray-300">Limite: 2 jogadores</p>
                   </div>
                   
                   {/* Status Badge */}
                   <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full border ${
                     mesa.status === 'Em Partida'
-                      ? 'bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900/30'
-                      : 'bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400 border-green-200 dark:border-green-900/30'
+                      ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 border-red-300 dark:border-red-900/30'
+                      : 'bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-400 border-green-300 dark:border-green-900/30'
                   }`}>
                     {mesa.status}
                   </span>
                 </div>
 
-                {/* Área do Versus com contraste perfeito para modo claro e escuro */}
-                <div className="flex items-center justify-around py-4 bg-slate-100 dark:bg-[#0c0814] border border-slate-200 dark:border-purple-950/20 rounded-xl mb-4">
+                {/* Área do Versus com contraste escuro para modo claro */}
+                <div className="flex items-center justify-around py-4 bg-slate-200 dark:bg-[#0c0814] border border-slate-300 dark:border-purple-950/20 rounded-xl mb-4">
                   {/* Jogador 1 */}
                   <div className="flex flex-col items-center gap-2 w-24">
                     <img
                       src={obterAvatarUsuario(jogador1 ? jogador1.foto_url : null, jogador1 ? jogador1.id : null)}
                       alt={jogador1 ? jogador1.nome : "Vago"}
-                      className={`w-12 h-12 rounded-full border-2 object-cover bg-slate-200 dark:bg-[#1c1230] ${
-                        jogador1 ? 'border-purple-500' : 'border-dashed border-slate-400 dark:border-purple-900/40'
+                      className={`w-12 h-12 rounded-full border-2 object-cover bg-slate-300 dark:bg-[#1c1230] ${
+                        jogador1 ? 'border-purple-600' : 'border-dashed border-slate-400 dark:border-purple-900/40'
                       }`}
                     />
-                    <span className="text-xs font-bold truncate max-w-full text-slate-700 dark:text-gray-300">
+                    <span className="text-xs font-bold truncate max-w-full text-slate-800 dark:text-gray-300">
                       {jogador1 ? jogador1.nome : "Vago"}
                     </span>
                   </div>
 
-                  <span className="text-purple-650 dark:text-purple-400 font-black text-sm">VS</span>
+                  <span className="text-purple-700 dark:text-purple-450 font-black text-sm">VS</span>
 
                   {/* Jogador 2 */}
                   <div className="flex flex-col items-center gap-2 w-24">
                     <img
                       src={obterAvatarUsuario(jogador2 ? jogador2.foto_url : null, jogador2 ? jogador2.id : null)}
                       alt={jogador2 ? jogador2.nome : "Vago"}
-                      className={`w-12 h-12 rounded-full border-2 object-cover bg-slate-200 dark:bg-[#1c1230] ${
-                        jogador2 ? 'border-purple-500' : 'border-dashed border-slate-400 dark:border-purple-900/40'
+                      className={`w-12 h-12 rounded-full border-2 object-cover bg-slate-300 dark:bg-[#1c1230] ${
+                        jogador2 ? 'border-purple-600' : 'border-dashed border-slate-400 dark:border-purple-900/40'
                       }`}
                     />
-                    <span className="text-xs font-bold truncate max-w-full text-slate-700 dark:text-gray-300">
+                    <span className="text-xs font-bold truncate max-w-full text-slate-800 dark:text-gray-300">
                       {jogador2 ? jogador2.nome : "Vago"}
                     </span>
                   </div>
@@ -341,7 +341,7 @@ export default function Domino() {
                   onClick={() => tentarEntrarNaMesa(mesa)}
                   className={`w-full font-bold text-xs h-10 rounded-xl transition-all ${
                     mesa.status === 'Em Partida'
-                      ? 'bg-slate-100 dark:bg-purple-950/20 text-slate-400 dark:text-gray-600 cursor-not-allowed border border-transparent dark:border-purple-950/30'
+                      ? 'bg-slate-200 dark:bg-purple-950/20 text-slate-500 dark:text-gray-600 cursor-not-allowed border border-transparent dark:border-purple-950/30'
                       : 'bg-purple-600 hover:bg-purple-700 text-white shadow-md hover:scale-[1.01]'
                   }`}
                 >
