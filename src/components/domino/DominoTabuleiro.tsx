@@ -207,8 +207,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   });
 
   const partidaJaIniciadaRef = useRef(false);
-
-  // Verificação em tempo real: Ambos os jogadores precisam estar na sala para o jogo rodar
   const ambosJogadoresPresentes = jogador1Id !== null && jogador2Id !== null;
 
   const entrarModoJogoReal = async () => {
@@ -220,12 +218,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           await (containerRef.current as any).webkitRequestFullscreen();
         }
         setIsFullscreen(true);
-
-        if (screen.orientation && (screen.orientation as any).lock) {
-          await (screen.orientation as any).lock('landscape').catch(() => {
-            console.log("Rotação de tela não suportada.");
-          });
-        }
       }
     } catch (err) {
       console.warn("Navegador não suporta rotação:", err);
@@ -237,24 +229,16 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       document.exitFullscreen();
     }
     setIsFullscreen(false);
-    if (screen.orientation && screen.orientation.unlock) {
-      screen.orientation.unlock();
-    }
   };
 
   useEffect(() => {
     entrarModoJogoReal();
-
     const monitorarTelaCheia = () => {
       setIsFullscreen(!!document.fullscreenElement);
     };
-
     document.addEventListener('fullscreenchange', monitorarTelaCheia);
-    document.addEventListener('webkitfullscreenchange', monitorarTelaCheia);
-
     return () => {
       document.removeEventListener('fullscreenchange', monitorarTelaCheia);
-      document.removeEventListener('webkitfullscreenchange', monitorarTelaCheia);
       sairModoJogoReal();
     };
   }, []);
@@ -301,9 +285,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           vez_usuario_id,
           mesa_ponta_esquerda,
           mesa_ponta_direita,
-          historico_jogadas,
-          jogador_1:jogador_1_id ( nome, foto_url ),
-          jogador_2:jogador_2_id ( nome, foto_url )
+          historico_jogadas
         `)
         .eq('id', salaId)
         .single();
@@ -314,15 +296,26 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         setJogador1Id(data.jogador_1_id);
         setJogador2Id(data.jogador_2_id);
         setVezUsuarioId(data.vez_usuario_id);
-        setNomeJ1(data.jogador_1 ? (data.jogador_1 as any).nome : 'Jogador 1');
-        setNomeJ2(data.jogador_2 ? (data.jogador_2 as any).nome : 'Jogador 2');
-        setFotoJ1(data.jogador_1 ? (data.jogador_1 as any).foto_url : null);
-        setFotoJ2(data.jogador_2 ? (data.jogador_2 as any).foto_url : null);
         setPontaEsquerda(data.mesa_ponta_esquerda);
         setPontaDireita(data.mesa_ponta_direita);
 
         if (data.jogador_1_id !== null && data.jogador_2_id !== null) {
           partidaJaIniciadaRef.current = true;
+        }
+
+        // Busca dados de exibição complementares
+        const ids = [];
+        if (data.jogador_1_id) ids.push(data.jogador_1_id);
+        if (data.jogador_2_id) ids.push(data.jogador_2_id);
+
+        if (ids.length > 0) {
+          const { data: userData } = await supabase.from('usuarios').select('id, nome, foto_url').in('id', ids);
+          if (userData) {
+            const p1 = userData.find(u => u.id === data.jogador_1_id);
+            const p2 = userData.find(u => u.id === data.jogador_2_id);
+            if (p1) { setNomeJ1(p1.nome); setFotoJ1(p1.foto_url); }
+            if (p2) { setNomeJ2(p2.nome); setFotoJ2(p2.foto_url); }
+          }
         }
 
         const jogadasRaw = data.historico_jogadas as any[];
@@ -338,14 +331,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
         setMesaPedras(jogadasProcessadas);
         inicializarPedrasCompartilhadas(usuarioId, data.jogador_1_id, data.jogador_2_id);
-
-        if (!data.vez_usuario_id && data.jogador_1_id) {
-          await supabase
-            .from('domino_salas')
-            .update({ vez_usuario_id: data.jogador_1_id })
-            .eq('id', salaId);
-          setVezUsuarioId(data.jogador_1_id);
-        }
       }
     } catch (err) {
       console.error('Erro ao buscar dados do tabuleiro:', err);
@@ -362,7 +347,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'domino_salas', filter: `id=eq.${salaId}` },
-        (payload) => {
+        async (payload) => {
           const newData = payload.new;
           if (newData) {
             setVezUsuarioId(newData.vez_usuario_id);
@@ -370,6 +355,22 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             setPontaDireita(newData.mesa_ponta_direita);
             setJogador1Id(newData.jogador_1_id);
             setJogador2Id(newData.jogador_2_id);
+
+            // Re-busca os perfis textuais para garantir sincronia na interface
+            const ids = [];
+            if (newData.jogador_1_id) ids.push(newData.jogador_1_id);
+            if (newData.jogador_2_id) ids.push(newData.jogador_2_id);
+            if (ids.length > 0) {
+              const { data: pData } = await supabase.from('usuarios').select('id, nome, foto_url').in('id', ids);
+              if (pData) {
+                const p1 = pData.find(u => u.id === newData.jogador_1_id);
+                const p2 = pData.find(u => u.id === newData.jogador_2_id);
+                setNomeJ1(p1 ? p1.nome : 'Jogador 1');
+                setFotoJ1(p1 ? p1.foto_url : null);
+                setNomeJ2(p2 ? p2.nome : 'Jogador 2');
+                setFotoJ2(p2 ? p2.foto_url : null);
+              }
+            }
 
             if (newData.jogador_1_id !== null && newData.jogador_2_id !== null) {
               partidaJaIniciadaRef.current = true;
@@ -437,7 +438,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   }, [vezUsuarioId, ambosJogadoresPresentes]);
 
-  // CORREÇÃO: O relógio e contagem regressiva só diminuem se os dois usuários estiverem na mesa
   useEffect(() => {
     if (!vezUsuarioId || !ambosJogadoresPresentes) return;
 
@@ -587,12 +587,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         jogador_2_id: null,
         historico_jogadas: []
       };
-      
-      await supabase
-        .from('domino_salas')
-        .update(updates)
-        .eq('id', salaId);
-
+      await supabase.from('domino_salas').update(updates).eq('id', salaId);
       sairModoJogoReal();
       onVoltarAoLobby();
     } catch (err) {
@@ -615,14 +610,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const fecharModalNotificacao = async () => {
     setModalNotificacao(prev => ({ ...prev, visivel: false }));
     try {
-      await supabase
-        .from('domino_salas')
-        .update({
-          jogador_1_id: null,
-          jogador_2_id: null,
-          historico_jogadas: []
-        })
-        .eq('id', salaId);
+      await supabase.from('domino_salas').update({ jogador_1_id: null, jogador_2_id: null, historico_jogadas: [] }).eq('id', salaId);
     } catch (err) {
       console.warn("Falha ao redefinir sala:", err);
     }
@@ -636,156 +624,48 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   };
 
   return (
-    <div 
-      ref={containerRef}
-      className="w-full h-screen bg-[#090610] text-white font-sans flex flex-col justify-between p-2 md:p-4 overflow-hidden select-none relative"
-    >
+    <div ref={containerRef} className="w-full h-screen bg-[#090610] text-white font-sans flex flex-col justify-between p-2 md:p-4 overflow-hidden select-none relative">
       {modalNotificacao.visivel && (
         <div className="absolute inset-0 bg-black/85 z-50 flex items-center justify-center p-4">
-          <div className="max-w-sm bg-[#110D1A] border border-purple-950/60 p-8 rounded-2xl shadow-2xl text-center space-y-5 animate-in fade-in zoom-in-95 duration-150 relative overflow-hidden">
+          <div className="max-w-sm bg-[#110D1A] border border-purple-950/60 p-8 rounded-2xl shadow-2xl text-center space-y-5 relative overflow-hidden">
             <div className="absolute -top-10 -left-10 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl" />
-            <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-yellow-500/10 rounded-full blur-2xl" />
-
             <div className="p-4 bg-purple-950/40 border border-purple-900/30 rounded-full w-fit mx-auto text-purple-400">
-              {modalNotificacao.tipo === 'fim' ? (
-                <Award className="w-12 h-12 text-yellow-500 drop-shadow-[0_0_8px_rgba(234,179,8,0.5)] animate-bounce" />
-              ) : (
-                <ShieldAlert className="w-12 h-12 text-purple-400" />
-              )}
+              {modalNotificacao.tipo === 'fim' ? <Award className="w-12 h-12 text-yellow-500 animate-bounce" /> : <ShieldAlert className="w-12 h-12 text-purple-400" />}
             </div>
-            
             <div className="space-y-2">
-              <h3 className="font-extrabold text-xl text-white tracking-wide">
-                {modalNotificacao.titulo}
-              </h3>
-              <p className="text-xs text-gray-300 leading-relaxed px-2">
-                {modalNotificacao.mensagem}
-              </p>
+              <h3 className="font-extrabold text-xl text-white tracking-wide">{modalNotificacao.titulo}</h3>
+              <p className="text-xs text-gray-300 leading-relaxed px-2">{modalNotificacao.mensagem}</p>
             </div>
-            
-            <Button 
-              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold h-11 text-xs rounded-xl shadow-lg shadow-purple-900/30 transition-all hover:scale-[1.02]"
-              onClick={fecharModalNotificacao}
-            >
-              Confirmar e Voltar ao Lobby
-            </Button>
+            <Button className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold h-11 text-xs rounded-xl" onClick={fecharModalNotificacao}>Confirmar e Voltar ao Lobby</Button>
           </div>
         </div>
       )}
 
-      {!isFullscreen && (
-        <div className="absolute inset-0 bg-[#090610]/98 z-50 flex flex-col items-center justify-center p-6 text-center">
-          <div className="max-w-sm space-y-6">
-            <div className="p-4 bg-purple-950/40 border border-purple-900/30 rounded-full w-fit mx-auto text-purple-400 animate-bounce">
-              <ShieldAlert className="w-12 h-12" />
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-xl font-black text-white">Modo Exclusivo Ativo</h2>
-              <p className="text-xs text-gray-400 leading-relaxed">
-                Para garantir a melhor experiência e usabilidade visual do dominó, você deve jogar em modo tela cheia.
-              </p>
-            </div>
-            <Button 
-              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold h-11 shadow-lg shadow-purple-900/20"
-              onClick={entrarModoJogoReal}
-            >
-              Ativar Tela Cheia / Jogar
-            </Button>
-          </div>
-        </div>
-      )}
-      
-      {/* 1. HUD SUPERIOR */}
+      {/* RENDERIZAÇÃO DO TABULO CONTEXTUAL DE JOGO */}
       <div className="flex items-center justify-between bg-[#110D1A]/95 border border-purple-950/40 px-3 py-1.5 rounded-xl shadow-lg h-[12%] relative gap-2">
         <div className="flex items-center gap-2">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={lidarComSaidaVoluntaria} 
-            className="text-gray-400 hover:text-white h-8 text-xs px-2"
-          >
-            <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Sair
-          </Button>
-          <span className="text-[10px] text-purple-300 font-bold bg-purple-950/50 px-2 py-0.5 rounded-full hidden sm:inline">
-            Mesa {numeroSala}
-          </span>
-        </div>
-
-        <div className="flex items-center">
-          <Button
-            size="sm"
-            onClick={alternarProcuraFila}
-            className={`font-bold text-[10px] h-8 px-3 rounded-lg shadow-md transition-all flex items-center gap-1.5 ${
-              procurandoFila 
-                ? 'bg-amber-600 hover:bg-amber-700 text-white animate-pulse' 
-                : 'bg-purple-600 hover:bg-purple-700 text-white'
-            }`}
-          >
-            {procurandoFila ? (
-              <>
-                <RefreshCw className="w-3 h-3 animate-spin" /> Buscando...
-              </>
-            ) : (
-              <>
-                <Search className="w-3 h-3" /> Procurar Partida
-              </>
-            )}
-          </Button>
+          <Button variant="ghost" size="sm" onClick={lidarComSaidaVoluntaria} className="text-gray-400 hover:text-white h-8 text-xs px-2"><ArrowLeft className="w-3.5 h-3.5 mr-1" /> Sair</Button>
+          <span className="text-[10px] text-purple-300 font-bold bg-purple-950/50 px-2 py-0.5 rounded-full hidden sm:inline">Mesa {numeroSala}</span>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-4 bg-purple-950/20 px-2 sm:px-3 py-1 rounded-lg border border-purple-900/10 text-[11px] sm:text-xs">
           <div className="flex items-center gap-1.5 sm:gap-2 relative">
             <div className={`w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full ${vezUsuarioId === jogador1Id && ambosJogadoresPresentes ? 'bg-green-500 animate-pulse' : 'bg-gray-600'}`} />
-            <div className="relative">
-              <img 
-                src={obterAvatarUsuario(fotoJ1, jogador1Id)} 
-                alt={nomeJ1} 
-                className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border border-purple-500/50 object-cover bg-[#222]" 
-                onError={(e) => { (e.target as HTMLImageElement).src = AVATARES_PADROES[0]; }}
-              />
-              {emojiAtivoJ1 && (
-                <div className="absolute -top-10 -left-2 bg-purple-600 text-white p-1.5 rounded-full text-lg animate-bounce shadow-lg border border-purple-400 z-50">
-                  {emojiAtivoJ1}
-                </div>
-              )}
-            </div>
+            <img src={obterAvatarUsuario(fotoJ1, jogador1Id)} alt={nomeJ1} className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border border-purple-500/50 object-cover bg-[#222]" onError={(e) => { (e.target as HTMLImageElement).src = AVATARES_PADROES[0]; }} />
+            {emojiAtivoJ1 && <div className="absolute -top-10 -left-2 bg-purple-600 text-white p-1.5 rounded-full text-lg animate-bounce z-50">{emojiAtivoJ1}</div>}
             <span className="max-w-[50px] sm:max-w-[70px] truncate font-medium">{nomeJ1}</span>
           </div>
-
           <span className="text-purple-500 font-bold text-[9px] sm:text-[10px]">VS</span>
-
           <div className="flex items-center gap-1.5 sm:gap-2 relative">
             <span className="max-w-[50px] sm:max-w-[70px] truncate font-medium">{nomeJ2}</span>
-            <div className="relative">
-              <img 
-                src={obterAvatarUsuario(fotoJ2, jogador2Id)} 
-                alt={nomeJ2} 
-                className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border border-purple-500/50 object-cover bg-[#222]" 
-                onError={(e) => { (e.target as HTMLImageElement).src = AVATARES_PADROES[1]; }}
-              />
-              {emojiAtivoJ2 && (
-                <div className="absolute -top-10 -right-2 bg-purple-600 text-white p-1.5 rounded-full text-lg animate-bounce shadow-lg border border-purple-400 z-50">
-                  {emojiAtivoJ2}
-                </div>
-              )}
-            </div>
+            <img src={obterAvatarUsuario(fotoJ2, jogador2Id)} alt={nomeJ2} className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border border-purple-500/50 object-cover bg-[#222]" onError={(e) => { (e.target as HTMLImageElement).src = AVATARES_PADROES[1]; }} />
+            {emojiAtivoJ2 && <div className="absolute -top-10 -right-2 bg-purple-600 text-white p-1.5 rounded-full text-lg animate-bounce z-50">{emojiAtivoJ2}</div>}
             <div className={`w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full ${vezUsuarioId === jogador2Id && ambosJogadoresPresentes ? 'bg-green-500 animate-pulse' : 'bg-gray-600'}`} />
           </div>
         </div>
-
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={isFullscreen ? sairModoJogoReal : entrarModoJogoReal} 
-          className="text-purple-400 hover:text-white w-8 h-8 hidden sm:flex"
-        >
-          {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-        </Button>
       </div>
 
-      {/* 2. MESA DE JOGO */}
       <div className="flex-grow my-1 bg-emerald-950 border-[4px] border-amber-950 rounded-[24px] shadow-[inset_0_4px_12px_rgba(0,0,0,0.6)] relative flex flex-col items-center justify-center h-[53%] overflow-hidden">
-        
         {mesaPedras.length > 0 && (
           <div className="absolute top-2 left-4 flex items-center gap-3 text-[10px] font-semibold text-emerald-300/60">
             <span>Esquerda: <strong className="text-white bg-emerald-900/60 px-1.5 py-0.5 rounded text-xs">{pontaEsquerda}</strong></span>
@@ -794,14 +674,10 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         )}
 
         <div className="flex items-center justify-center gap-0 max-w-full overflow-x-auto px-4 py-2">
-          {/* CORREÇÃO DA RENDERIZAÇÃO DAS PEDRAS (ServerValor removido) */}
           {mesaPedras.length === 0 ? (
             <div className="text-center text-emerald-300/30 font-bold uppercase tracking-widest text-xs py-6">
               {ambosJogadoresPresentes ? (
-                <>
-                  Mesa de Dominó Limpa<br />
-                  <span className="text-[10px] font-normal lowercase">Seu turno! Jogue a primeira pedra.</span>
-                </>
+                <>Mesa de Dominó Limpa<br /><span className="text-[10px] font-normal lowercase">Seu turno! Jogue a primeira pedra.</span></>
               ) : (
                 <span className="text-amber-500 animate-pulse">Aguardando oponente para iniciar...</span>
               )}
@@ -811,15 +687,9 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
               if (!pedra || !pedra.valorOriginal) return null;
               const [ladoA, ladoB] = pedra.valorOriginal.split('-').map(Number);
               const isBucha = ladoA === ladoB;
-
               return (
                 <div key={idx} className={`shrink-0 flex items-center justify-center ${idx > 0 ? '-ml-2' : ''}`}>
-                  <PedraClassica 
-                    valor={pedra.valorOriginal} 
-                    disabled={true} 
-                    menor={true} 
-                    deitada={!isBucha} 
-                  />
+                  <PedraClassica valor={pedra.valorOriginal} disabled={true} menor={true} deitada={!isBucha} />
                 </div>
               );
             })
@@ -829,59 +699,28 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         <div className="absolute left-3 bottom-3 flex items-center gap-1.5 bg-black/60 border border-purple-900/30 p-1.5 rounded-full shadow-lg">
           <Smile className="w-3.5 h-3.5 text-purple-400 ml-1" />
           {LISTA_EMOJIS.map((emoji) => (
-            <button
-              key={emoji}
-              onClick={() => enviarProvocacao(emoji)}
-              className="hover:scale-125 transition-transform duration-100 text-sm active:scale-95"
-            >
-              {emoji}
-            </button>
+            <button key={emoji} onClick={() => enviarProvocacao(emoji)} className="hover:scale-125 transition-transform duration-100 text-sm active:scale-95">{emoji}</button>
           ))}
         </div>
 
-        {/* BARRA DO TEMPO CONDICIONADA */}
         <div className="absolute bottom-2 right-3 bg-[#090610]/95 border border-purple-900/40 px-4 py-1.5 rounded-2xl flex flex-col items-center justify-center gap-1 min-w-[130px]">
           <div className="text-[10px] font-bold tracking-wide">
-            {!ambosJogadoresPresentes ? (
-              <span className="text-amber-500 animate-pulse">AGUARDANDO...</span>
-            ) : meuTurno ? (
-              <span className="text-green-400 animate-pulse flex items-center gap-1">
-                <RefreshCw className="w-3 h-3 animate-spin" /> SUA VEZ ({tempoRestante}s)
-              </span>
-            ) : (
-              <span className="text-gray-400">Tempo de {adversarioNome}: {tempoRestante}s</span>
-            )}
+            {!ambosJogadoresPresentes ? <span className="text-amber-500 animate-pulse">AGUARDANDO...</span> : meuTurno ? <span className="text-green-400 animate-pulse flex items-center gap-1"><RefreshCw className="w-3 h-3 animate-spin" /> SUA VEZ ({tempoRestante}s)</span> : <span className="text-gray-400">Tempo de {adversarioNome}: {tempoRestante}s</span>}
           </div>
           <div className="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
-            <div 
-              className={`h-full transition-all duration-1000 ${
-                !ambosJogadoresPresentes ? 'bg-gray-600' : tempoRestante > 10 ? 'bg-green-500' : tempoRestante > 4 ? 'bg-amber-500' : 'bg-red-500'
-              }`} 
-              style={{ width: `${!ambosJogadoresPresentes ? 100 : (tempoRestante / 20) * 100}%` }}
-            />
+            <div className={`h-full transition-all duration-1000 ${!ambosJogadoresPresentes ? 'bg-gray-600' : tempoRestante > 10 ? 'bg-green-500' : tempoRestante > 4 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${!ambosJogadoresPresentes ? 100 : (tempoRestante / 20) * 100}%` }} />
           </div>
         </div>
       </div>
 
-      {/* 3. MINHA MÃO */}
       <div className="bg-[#110D1A]/95 border border-purple-950/40 p-2.5 rounded-2xl h-[30%] flex flex-col justify-between">
-        <div className="flex items-center justify-between px-1 h-[25%]">
-          <span className="text-[10px] text-purple-300 font-bold uppercase tracking-wider">Suas Pedras ({minhasPedras.length})</span>
-        </div>
-
+        <div className="flex items-center justify-between px-1 h-[25%]"><span className="text-[10px] text-purple-300 font-bold uppercase tracking-wider">Suas Pedras ({minhasPedras.length})</span></div>
         <div className="flex justify-center items-center gap-1.5 overflow-x-auto h-[75%] py-1">
           {minhasPedras.map((pedra, idx) => {
             const jogavel = meuTurno && isPedraJogavel(pedra) && ambosJogadoresPresentes;
-
             return (
               <div key={idx} className="shrink-0 scale-90 md:scale-100">
-                <PedraClassica 
-                  valor={pedra} 
-                  onClick={() => tentarJogarPedra(pedra)}
-                  disabled={!jogavel}
-                  menor={true}
-                  destacada={jogavel}
-                />
+                <PedraClassica valor={pedra} onClick={() => tentarJogarPedra(pedra)} disabled={!jogavel} menor={true} destacada={jogavel} />
               </div>
             );
           })}
@@ -890,5 +729,3 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     </div>
   );
 };
-
-export default DominoTabuleiro;
