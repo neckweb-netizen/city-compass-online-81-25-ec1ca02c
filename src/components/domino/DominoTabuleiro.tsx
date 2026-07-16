@@ -40,7 +40,7 @@ const obterAvatarUsuario = (fotoUrl: string | null, idUsuario: string | null) =>
 };
 
 // Sintetizador de efeitos sonoros nativo do navegador para 100% de estabilidade
-const tocarSom = (tipo: 'jogar' | 'alerta' | 'passar' | 'emoji') => {
+const tocarSom = (tipo: 'jogar' | 'alerta' | 'passar' | 'emoji' | 'vitoria') => {
   try {
     const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioCtx) return;
@@ -85,6 +85,16 @@ const tocarSom = (tipo: 'jogar' | 'alerta' | 'passar' | 'emoji') => {
       gain.gain.exponentialRampToValueAtTime(0.01, tempo + 0.25);
       osc.start(tempo);
       osc.stop(tempo + 0.25);
+    } else if (tipo === 'vitoria') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(523.25, tempo); // C5
+      osc.frequency.setValueAtTime(659.25, tempo + 0.1); // E5
+      osc.frequency.setValueAtTime(783.99, tempo + 0.2); // G5
+      osc.frequency.setValueAtTime(1046.50, tempo + 0.3); // C6
+      gain.gain.setValueAtTime(0.2, tempo);
+      gain.gain.exponentialRampToValueAtTime(0.01, tempo + 0.6);
+      osc.start(tempo);
+      osc.stop(tempo + 0.6);
     }
   } catch (err) {
     console.warn('Erro ao reproduzir áudio:', err);
@@ -182,10 +192,10 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const [pontaEsquerda, setPontaEsquerda] = useState<number | null>(null);
   const [pontaDireita, setPontaDireita] = useState<number | null>(null);
 
-  // Estados do temporizador de 10 segundos
-  const [tempoRestante, setTempoRestante] = useState(10);
+  // Estados do temporizador de 20 segundos
+  const [tempoRestante, setTempoRestante] = useState(20);
 
-  // Estados das reações (provocações de emoji)
+  // Estados das reações (provocações de emoji) com 6 segundos de duração
   const [emojiAtivoJ1, setEmojiAtivoJ1] = useState<string | null>(null);
   const [emojiAtivoJ2, setEmojiAtivoJ2] = useState<string | null>(null);
 
@@ -367,28 +377,30 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             setMesaPedras(jogadasProcessadas);
             tocarSom('jogar');
 
+            // Se um dos jogadores abandonou a sala (id === null), quem sobrou ganha automaticamente
             if (newData.jogador_1_id === null || newData.jogador_2_id === null) {
+              tocarSom('vitoria');
               setModalNotificacao({
                 visivel: true,
-                titulo: 'Adversário Desconectado',
-                mensagem: 'A partida foi encerrada porque o seu oponente deixou a sala de dominó.',
-                tipo: 'erro'
+                titulo: 'Vitória por W.O.!',
+                mensagem: 'Seu adversário abandonou a partida de dominó. Você venceu o jogo automaticamente!',
+                tipo: 'fim'
               });
             }
           }
         }
       )
-      // Listener do Broadcast em tempo real para os Emojis
+      // Listener do Broadcast em tempo real para os Emojis (Duração estendida para 6 segundos)
       .on('broadcast', { event: 'provocacao' }, (response) => {
         const payload = response.payload;
         if (payload.autorId === jogador1Id) {
           setEmojiAtivoJ1(payload.emoji);
           tocarSom('emoji');
-          setTimeout(() => setEmojiAtivoJ1(null), 2500);
+          setTimeout(() => setEmojiAtivoJ1(null), 6000);
         } else if (payload.autorId === jogador2Id) {
           setEmojiAtivoJ2(payload.emoji);
           tocarSom('emoji');
-          setTimeout(() => setEmojiAtivoJ2(null), 2500);
+          setTimeout(() => setEmojiAtivoJ2(null), 6000);
         }
       })
       .subscribe();
@@ -409,9 +421,9 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     return ladoA === pontaEsquerda || ladoB === pontaEsquerda || ladoA === pontaDireita || ladoB === pontaDireita;
   };
 
-  // Temporizador Geral de 10 Segundos
+  // Temporizador Geral de 20 Segundos
   useEffect(() => {
-    setTempoRestante(10);
+    setTempoRestante(20);
   }, [vezUsuarioId]);
 
   useEffect(() => {
@@ -423,10 +435,10 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           if (meuTurno) {
             passarVez();
           }
-          return 10;
+          return 20;
         }
-        // Toca alerta sonoro nos últimos 3 segundos
-        if (prev === 4) {
+        // Alerta sonoro nos últimos 5 segundos para refletir a nova margem de 20s
+        if (prev === 6) {
           tocarSom('alerta');
         }
         return prev - 1;
@@ -453,9 +465,10 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   }, [meuTurno, minhasPedras, mesaPedras, pontaEsquerda, pontaDireita]);
 
-  // Monitora vitória
+  // Monitora vitória normal (jogou todas as pedras)
   useEffect(() => {
     if (minhasPedras.length === 0 && mesaPedras.length > 0) {
+      tocarSom('vitoria');
       setModalNotificacao({
         visivel: true,
         titulo: 'Parabéns, Você Venceu!',
@@ -558,6 +571,30 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
+  // Trata a saída do usuário fazendo o oponente ganhar automaticamente (Atualiza banco)
+  const lidarComSaidaVoluntaria = async () => {
+    try {
+      const updates: any = {};
+      if (usuarioId === jogador1Id) {
+        updates.jogador_1_id = null;
+      } else if (usuarioId === jogador2Id) {
+        updates.jogador_2_id = null;
+      }
+      
+      await supabase
+        .from('domino_salas')
+        .update(updates)
+        .eq('id', salaId);
+
+      sairModoJogoReal();
+      onVoltarAoLobby();
+    } catch (err) {
+      console.error('Erro ao processar abandono de partida:', err);
+      sairModoJogoReal();
+      onVoltarAoLobby();
+    }
+  };
+
   // Disparar reação (Provocação) via Broadcast realtime
   const enviarProvocacao = (emoji: string) => {
     if (canalRef.current) {
@@ -582,22 +619,37 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       ref={containerRef}
       className="w-full h-screen bg-[#090610] text-white font-sans flex flex-col justify-between p-2 md:p-4 overflow-hidden select-none relative"
     >
-      {/* MODAL CUSTOMIZADO (SUBSTITUTO DOS ALERTS NATIVOS) */}
+      {/* BANNER DE NOTIFICAÇÃO PROFISSIONAL EM TELA CHEIA (SEM ALERT NATIVO) */}
       {modalNotificacao.visivel && (
-        <div className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-          <div className="max-w-xs bg-[#110D1A] border border-purple-950/60 p-6 rounded-2xl shadow-2xl text-center space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="p-3 bg-purple-950/40 border border-purple-900/30 rounded-full w-fit mx-auto text-purple-400">
-              {modalNotificacao.tipo === 'fim' ? <Award className="w-8 h-8 text-yellow-500" /> : <ShieldAlert className="w-8 h-8" />}
+        <div className="absolute inset-0 bg-black/85 z-50 flex items-center justify-center p-4">
+          <div className="max-w-sm bg-[#110D1A] border border-purple-950/60 p-8 rounded-2xl shadow-2xl text-center space-y-5 animate-in fade-in zoom-in-95 duration-150 relative overflow-hidden">
+            
+            {/* Elemento de iluminação decorativa no fundo */}
+            <div className="absolute -top-10 -left-10 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl" />
+            <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-yellow-500/10 rounded-full blur-2xl" />
+
+            <div className="p-4 bg-purple-950/40 border border-purple-900/30 rounded-full w-fit mx-auto text-purple-400">
+              {modalNotificacao.tipo === 'fim' ? (
+                <Award className="w-12 h-12 text-yellow-500 drop-shadow-[0_0_8px_rgba(234,179,8,0.5)] animate-bounce" />
+              ) : (
+                <ShieldAlert className="w-12 h-12 text-purple-400" />
+              )}
             </div>
-            <div className="space-y-1">
-              <h3 className="font-bold text-md text-white">{modalNotificacao.titulo}</h3>
-              <p className="text-[11px] text-gray-400 leading-relaxed">{modalNotificacao.mensagem}</p>
+            
+            <div className="space-y-2">
+              <h3 className="font-extrabold text-xl text-white tracking-wide">
+                {modalNotificacao.titulo}
+              </h3>
+              <p className="text-xs text-gray-300 leading-relaxed px-2">
+                {modalNotificacao.mensagem}
+              </p>
             </div>
+            
             <Button 
-              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold h-9 text-xs"
+              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold h-11 text-xs rounded-xl shadow-lg shadow-purple-900/30 transition-all hover:scale-[1.02]"
               onClick={fecharModalNotificacao}
             >
-              OK, Entendi
+              Confirmar e Voltar ao Lobby
             </Button>
           </div>
         </div>
@@ -629,10 +681,11 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       {/* 1. HUD SUPERIOR */}
       <div className="flex items-center justify-between bg-[#110D1A]/95 border border-purple-950/40 px-3 py-1.5 rounded-xl shadow-lg h-[10%] relative">
         <div className="flex items-center gap-2">
+          {/* Botão de Sair com destruição de sessão ativa e vitória por abandono */}
           <Button 
             variant="ghost" 
             size="sm" 
-            onClick={() => { sairModoJogoReal(); onVoltarAoLobby(); }} 
+            onClick={lidarComSaidaVoluntaria} 
             className="text-gray-400 hover:text-white h-8 text-xs px-2"
           >
             <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Sair
@@ -642,7 +695,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           </span>
         </div>
 
-        {/* HUD DOS JOGADORES COM FOTO DINÂMICA OU AVATARES PADRÕES E REAÇÕES FLUTUANTES */}
+        {/* HUD DOS JOGADORES COM REAÇÕES DE LONGA DURAÇÃO (6s) */}
         <div className="flex items-center gap-4 bg-purple-950/20 px-3 py-1 rounded-lg border border-purple-900/10 text-xs">
           {/* JOGADOR 1 */}
           <div className="flex items-center gap-2 relative">
@@ -656,7 +709,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
               />
               {/* Balão de Provocação J1 */}
               {emojiAtivoJ1 && (
-                <div className="absolute -top-8 -left-2 bg-purple-600 text-white p-1 rounded-full text-base animate-bounce shadow-lg border border-purple-400 z-50">
+                <div className="absolute -top-10 -left-2 bg-purple-600 text-white p-1.5 rounded-full text-lg animate-bounce shadow-lg border border-purple-400 z-50">
                   {emojiAtivoJ1}
                 </div>
               )}
@@ -678,7 +731,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
               />
               {/* Balão de Provocação J2 */}
               {emojiAtivoJ2 && (
-                <div className="absolute -top-8 -right-2 bg-purple-600 text-white p-1 rounded-full text-base animate-bounce shadow-lg border border-purple-400 z-50">
+                <div className="absolute -top-10 -right-2 bg-purple-600 text-white p-1.5 rounded-full text-lg animate-bounce shadow-lg border border-purple-400 z-50">
                   {emojiAtivoJ2}
                 </div>
               )}
@@ -707,7 +760,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           </div>
         )}
 
-        {/* CONTAINER RE-ESPAÇADO: Sem vão livre usando margem negativa -ml-2 (-8px) */}
+        {/* CONTAINER RE-ESPAÇADO: Sem deitar ou deixar vãos (margem negativa -ml-2) */}
         <div className="flex items-center justify-center gap-0 max-w-full overflow-x-auto px-4 py-2">
           {mesaPedras.length === 0 ? (
             <div className="text-center text-emerald-300/30 font-bold uppercase tracking-widest text-xs py-6">
@@ -748,7 +801,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           ))}
         </div>
 
-        {/* BARRA E PLACA DO TEMPO DE JOGO */}
+        {/* BARRA E PLACA DO TEMPO DE JOGO DE 20s */}
         <div className="absolute bottom-2 right-3 bg-[#090610]/95 border border-purple-900/40 px-4 py-1.5 rounded-2xl flex flex-col items-center justify-center gap-1 min-w-[130px]">
           <div className="text-[10px] font-bold tracking-wide">
             {meuTurno ? (
@@ -759,19 +812,19 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
               <span className="text-gray-400">Tempo de {adversarioNome}: {tempoRestante}s</span>
             )}
           </div>
-          {/* BARRA DE PROGRESSO DO TEMPO REGRESSIVO */}
+          {/* BARRA DE PROGRESSO DO TEMPO REGRESSIVO (BASEADO NO NOVO TOTAL DE 20 SEGUNDOS) */}
           <div className="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
             <div 
               className={`h-full transition-all duration-1000 ${
-                tempoRestante > 5 ? 'bg-green-500' : tempoRestante > 2 ? 'bg-amber-500' : 'bg-red-500'
+                tempoRestante > 10 ? 'bg-green-500' : tempoRestante > 4 ? 'bg-amber-500' : 'bg-red-500'
               }`} 
-              style={{ width: `${(tempoRestante / 10) * 100}%` }}
+              style={{ width: `${(tempoRestante / 20) * 100}%` }}
             />
           </div>
         </div>
       </div>
 
-      {/* 3. MINHA MÃO (SEM BOTÃO MANUAL DE PASSAR) */}
+      {/* 3. MINHA MÃO */}
       <div className="bg-[#110D1A]/95 border border-purple-950/40 p-2.5 rounded-2xl h-[30%] flex flex-col justify-between">
         <div className="flex items-center justify-between px-1 h-[25%]">
           <span className="text-[10px] text-purple-300 font-bold uppercase tracking-wider">Suas Pedras ({minhasPedras.length})</span>
