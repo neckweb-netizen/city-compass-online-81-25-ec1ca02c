@@ -146,7 +146,6 @@ export default function Domino() {
     }
   }, [session]);
 
-  // MATCHMAKING BLINDADO CONTRA CLONES (ANTI-ANTI-GERAL)
   const ejecutarMatchmaking = async () => {
     if (!session || procurandoFila) {
       setProcurandoFila(false);
@@ -165,7 +164,6 @@ export default function Domino() {
       if (error) throw error;
       if (!salas || salas.length === 0) return;
 
-      // TRAVA 1: Se o usuário já estiver ativo e aguardando em qualquer mesa, redireciona ele direto para lá ao invés de duplicar
       const mesaOndeJaEstou = salas.find(s => s.jogador_1_id === session.user.id || s.jogador_2_id === session.user.id);
       if (mesaOndeJaEstou) {
         const mIndex = salas.findIndex(s => s.id === mesaOndeJaEstou.id);
@@ -176,7 +174,6 @@ export default function Domino() {
         return;
       }
 
-      // Procura uma mesa com 1 jogador, DESDE QUE NÃO SEJA VOCÊ MESMO
       const mesaAguardandoDesafiante = salas.find(
         s => ((s.jogador_1_id && s.jogador_1_id !== session.user.id) && !s.jogador_2_id) || 
              (!s.jogador_1_id && (s.jogador_2_id && s.jogador_2_id !== session.user.id))
@@ -207,9 +204,10 @@ export default function Domino() {
 
       const mesaVazia = salas.find(s => !s.jogador_1_id && !s.jogador_2_id);
       if (mesaVazia) {
+        // CORRIGIDO: Alterado de '=' para ':' corrigindo o erro de sintaxe do build
         const { error: joinError } = await supabase
           .from('domino_salas')
-          .update({ jogador_1_id = session.user.id })
+          .update({ jogador_1_id: session.user.id })
           .eq('id', mesaVazia.id);
 
         if (!joinError) {
@@ -229,11 +227,9 @@ export default function Domino() {
     }
   };
 
-  // BOTÃO MANUAL BLINDADO CONTRA DUPLICAÇÃO DE IDS
   const tentarEntrarNaMesa = async (mesa: MesaLobby) => {
     if (mesa.status === 'Em Partida' || !session) return;
 
-    // TRAVA 2: Se o usuário já está ocupando uma vaga na mesa, impede a segunda inserção de clone
     if (mesa.jogador_1_id === session.user.id || mesa.jogador_2_id === session.user.id) {
       setNumeroMesaAtiva(mesa.numero);
       setSalaAtivaId(mesa.id);
