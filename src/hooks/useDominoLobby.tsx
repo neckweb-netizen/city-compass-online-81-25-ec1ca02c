@@ -193,7 +193,7 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
           updates.vez_usuario_id = null;
           updates.mesa_ponta_esquerda = null;
           updates.mesa_ponta_direita = null;
-          updates.historico_jogadas = '[]'::jsonb;
+          updates.historico_jogadas = []; // CORRIGIDO: Agora enviando o array vazio diretamente sem a sintaxe de SQL ::jsonb
           updates.atualizado_em = new Date().toISOString();
 
           await supabase
