@@ -13,7 +13,7 @@ interface JogadorLobby {
 
 interface MesaLobby {
   id: string;
-  numero: number; // Gerado dinamicamente para evitar erro de coluna inexistente
+  numero: number; 
   jogador_1_id: string | null;
   jogador_2_id: string | null;
   jogador_1?: JogadorLobby;
@@ -21,7 +21,6 @@ interface MesaLobby {
   status: 'Disponível' | 'Em Partida';
 }
 
-// 5 Avatares padrão modernos de backup
 const AVATARES_PADROES = [
   "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix&backgroundColor=b6e3f4",
   "https://api.dicebear.com/7.x/adventurer/svg?seed=Aneka&backgroundColor=ffdfbf",
@@ -30,13 +29,21 @@ const AVATARES_PADROES = [
   "https://api.dicebear.com/7.x/adventurer/svg?seed=JD&backgroundColor=b1e2c6"
 ];
 
-const obterAvatarUsuario = (fotoUrl: string | null, idUsuario: string | null) => {
+// Função blindada contra crashes de valores nulos ou indefinidos
+const obterAvatarUsuario = (fotoUrl: string | null | undefined, idUsuario: string | null | undefined) => {
   if (fotoUrl && fotoUrl !== "" && fotoUrl !== "NULL") {
     return fotoUrl;
   }
-  const idNumerico = idUsuario ? idUsuario.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) : 0;
-  const indiceAvatar = idNumerico % 5;
-  return AVATARES_PADROES[indiceAvatar];
+  if (!idUsuario) {
+    return AVATARES_PADROES[0];
+  }
+  try {
+    const idNumerico = idUsuario.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const indiceAvatar = idNumerico % 5;
+    return AVATARES_PADROES[indiceAvatar];
+  } catch (err) {
+    return AVATARES_PADROES[0];
+  }
 };
 
 export default function Domino() {
@@ -63,7 +70,6 @@ export default function Domino() {
 
   const carregarMesas = async () => {
     try {
-      // Modificado para selecionar ID e jogadores, removendo a coluna 'numero' que não existe no seu Supabase
       const { data: salasData, error: salasError } = await supabase
         .from('domino_salas')
         .select('id, jogador_1_id, jogador_2_id');
@@ -71,7 +77,6 @@ export default function Domino() {
       if (salasError) throw salasError;
 
       if (salasData) {
-        // Coleta todos os IDs de jogadores ativos
         const idsJogadores = Array.from(new Set(
           salasData.reduce((acc: string[], cur: any) => {
             if (cur.jogador_1_id) acc.push(cur.jogador_1_id);
@@ -83,7 +88,6 @@ export default function Domino() {
         let perfisMapeados: Record<string, JogadorLobby> = {};
 
         if (idsJogadores.length > 0) {
-          // Busca dados dos perfis na tabela default
           const { data: perfisData, error: perfisError } = await supabase
             .from('profiles') 
             .select('id, nome, foto_url')
@@ -100,7 +104,6 @@ export default function Domino() {
           }
         }
 
-        // Formatação final sem depender de campo faltante do banco
         const mesasFormatadas: MesaLobby[] = salasData.map((mesa: any, index: number) => {
           const jogador1 = mesa.jogador_1_id ? perfisMapeados[mesa.jogador_1_id] : undefined;
           const jogador2 = mesa.jogador_2_id ? perfisMapeados[mesa.jogador_2_id] : undefined;
@@ -108,7 +111,7 @@ export default function Domino() {
 
           return {
             id: mesa.id,
-            numero: index + 1, // Atribui número dinamicamente (1, 2, 3...)
+            numero: index + 1, 
             jogador_1_id: mesa.jogador_1_id,
             jogador_2_id: mesa.jogador_2_id,
             jogador_1: jogador1,
@@ -238,7 +241,7 @@ export default function Domino() {
 
       <div className="max-w-6xl mx-auto space-y-6">
         
-        {/* 2. CARD DE FILA DE ESPERA - GARANTIDO NO TOPO */}
+        {/* 2. CARD DE FILA DE ESPERA */}
         <div className="w-full bg-white dark:bg-[#110D1A]/95 border border-slate-300 dark:border-purple-950/40 rounded-2xl p-5 shadow-sm dark:shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4 text-center sm:text-left">
             <div className="p-3 bg-purple-100 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-900/30 rounded-full text-purple-600 dark:text-purple-400">
@@ -274,7 +277,7 @@ export default function Domino() {
           </Button>
         </div>
 
-        {/* 3. GRID DE MESAS DE JOGO (TEXTOS TOTALMENTE ESCUROS NO MODO CLARO) */}
+        {/* 3. GRID DE MESAS */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {mesas.map((mesa) => {
             const jogador1 = mesa.jogador_1;
@@ -285,14 +288,12 @@ export default function Domino() {
                 key={mesa.id} 
                 className="bg-white dark:bg-[#110D1A]/95 border border-slate-300 dark:border-purple-950/40 rounded-2xl p-5 shadow-md dark:shadow-lg flex flex-col justify-between transition-transform duration-150 hover:scale-[1.01]"
               >
-                {/* Header da Mesa */}
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h3 className="font-extrabold text-md text-slate-900 dark:text-white">Mesa de Jogo {mesa.numero}</h3>
                     <p className="text-[11px] text-slate-600 dark:text-gray-300">Limite: 2 jogadores</p>
                   </div>
                   
-                  {/* Status Badge */}
                   <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full border ${
                     mesa.status === 'Em Partida'
                       ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 border-red-300 dark:border-red-900/30'
@@ -302,9 +303,7 @@ export default function Domino() {
                   </span>
                 </div>
 
-                {/* Área do Versus com contraste escuro para modo claro */}
                 <div className="flex items-center justify-around py-4 bg-slate-200 dark:bg-[#0c0814] border border-slate-300 dark:border-purple-950/20 rounded-xl mb-4">
-                  {/* Jogador 1 */}
                   <div className="flex flex-col items-center gap-2 w-24">
                     <img
                       src={obterAvatarUsuario(jogador1 ? jogador1.foto_url : null, jogador1 ? jogador1.id : null)}
@@ -320,7 +319,6 @@ export default function Domino() {
 
                   <span className="text-purple-700 dark:text-purple-450 font-black text-sm">VS</span>
 
-                  {/* Jogador 2 */}
                   <div className="flex flex-col items-center gap-2 w-24">
                     <img
                       src={obterAvatarUsuario(jogador2 ? jogador2.foto_url : null, jogador2 ? jogador2.id : null)}
@@ -335,7 +333,6 @@ export default function Domino() {
                   </div>
                 </div>
 
-                {/* Ação de Entrar na Mesa */}
                 <Button
                   disabled={mesa.status === 'Em Partida'}
                   onClick={() => tentarEntrarNaMesa(mesa)}
