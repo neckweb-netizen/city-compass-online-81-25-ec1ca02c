@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { DominoLobby } from '@/components/domino/DominoLobby';
 import { DominoTabuleiro } from '@/components/domino/DominoTabuleiro';
-import { Loader2, AlertCircle, Trophy, Users, Search, LogOut } from 'lucide-react';
+import { Loader2, AlertCircle, Trophy, Users, Search, LogOut, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface JogadorLobby {
@@ -21,6 +21,7 @@ interface MesaLobby {
   status: 'Disponível' | 'Em Partida';
 }
 
+// 5 Avatares padrão modernos de backup
 const AVATARES_PADROES = [
   "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix&backgroundColor=b6e3f4",
   "https://api.dicebear.com/7.x/adventurer/svg?seed=Aneka&backgroundColor=ffdfbf",
@@ -317,7 +318,7 @@ export default function Domino() {
                     </span>
                   </div>
 
-                  <span className="text-purple-700 dark:text-purple-450 font-black text-sm">VS</span>
+                  <span className="text-purple-700 dark:text-purple-455 font-black text-sm">VS</span>
 
                   <div className="flex flex-col items-center gap-2 w-24">
                     <img
