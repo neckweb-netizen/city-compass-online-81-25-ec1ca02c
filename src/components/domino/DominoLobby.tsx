@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Users, Hourglass, Gamepad2, ArrowRight, DoorOpen, Loader2 } from 'lucide-react';
 
 interface DominoLobbyProps {
-  usuarioId: string; // Passe o ID do usuário logado na sua aplicação
+  usuarioId: string; // ID do usuário logado na aplicação
 }
 
 export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
@@ -37,16 +37,16 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
       
       {/* Cabeçalho do Lobby */}
       <div className="text-center md:text-left space-y-2">
-        <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight text-foreground flex items-center justify-center md:justify-start gap-2">
-          <Gamepad2 className="w-8 h-8 text-purple-600" />
+        <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white flex items-center justify-center md:justify-start gap-2">
+          <Gamepad2 className="w-8 h-8 text-purple-500" />
           Dominó SAJ Online
         </h2>
-        <p className="text-muted-foreground text-sm">
+        <p className="text-gray-400 text-sm">
           Participe de partidas de dominó em tempo real com pessoas de Santo Antônio de Jesus!
         </p>
       </div>
 
-      {/* Painel do Meu Status (Mostra apenas se o usuário entrou no jogo ou na fila) */}
+      {/* PAINEL DE STATUS DO JOGADOR NO TOPO (RECUPERADO) */}
       {jaEstaParticipando && (
         <Card className="bg-[#1f1635] border-purple-900/60 shadow-xl text-white">
           <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-4">
@@ -107,15 +107,15 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
               className={`border transition-all duration-200 ${
                 isUserInThisSala 
                   ? 'border-purple-500 bg-[#171026] shadow-md shadow-purple-900/20' 
-                  : 'border-border bg-card'
+                  : 'border-[#221b30] bg-[#110d1a] text-white'
               }`}
             >
               <CardHeader className="pb-3 flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle className="text-md font-bold flex items-center gap-1.5">
+                  <CardTitle className="text-md font-bold flex items-center gap-1.5 text-white">
                     Mesa de Jogo {sala.numero_sala}
                   </CardTitle>
-                  <CardDescription className="text-xs">
+                  <CardDescription className="text-xs text-gray-400">
                     Limite: 2 jogadores
                   </CardDescription>
                 </div>
@@ -123,14 +123,14 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
                   {sala.status === 'jogando' ? (
                     <Badge variant="default" className="bg-red-600 text-white">Em Partida</Badge>
                   ) : (
-                    <Badge variant="secondary" className="bg-green-600 text-white">Disponível</Badge>
+                    <Badge variant="secondary" className="bg-green-600 text-white border-none">Disponível</Badge>
                   )}
                 </div>
               </CardHeader>
               
               <CardContent className="space-y-4">
                 {/* Visual dos dois Jogadores na mesa */}
-                <div className="flex items-center justify-around py-2 bg-[#090610]/40 rounded-xl border border-dashed border-muted-foreground/10">
+                <div className="flex items-center justify-around py-3 bg-[#090610]/60 rounded-xl border border-dashed border-purple-900/20">
                   {/* Jogador 1 */}
                   <div className="flex flex-col items-center space-y-1.5">
                     <Avatar className="w-10 h-10 border-2 border-purple-500">
@@ -138,12 +138,12 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
                         {sala.jogador_1 ? sala.jogador_1.nome.charAt(0).toUpperCase() : '?'}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="text-xs font-medium max-w-[90px] truncate text-center">
+                    <span className="text-xs font-medium max-w-[90px] truncate text-center text-gray-300">
                       {sala.jogador_1 ? sala.jogador_1.nome : 'Vago'}
                     </span>
                   </div>
 
-                  <span className="text-xs font-bold text-muted-foreground">VS</span>
+                  <span className="text-xs font-bold text-gray-500">VS</span>
 
                   {/* Jogador 2 */}
                   <div className="flex flex-col items-center space-y-1.5">
@@ -152,11 +152,21 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
                         {sala.jogador_2 ? sala.jogador_2.nome.charAt(0).toUpperCase() : '?'}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="text-xs font-medium max-w-[90px] truncate text-center">
+                    <span className="text-xs font-medium max-w-[90px] truncate text-center text-gray-300">
                       {sala.jogador_2 ? sala.jogador_2.nome : 'Vago'}
                     </span>
                   </div>
                 </div>
+
+                {/* BOTÕES DE ENTRAR DIRETAMENTE NA MESA (RECUPERADOS E CORRIGIDOS) */}
+                {!jaEstaParticipando && (sala.jogador_1_id === null || sala.jogador_2_id === null) && (
+                  <Button 
+                    className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold h-9 text-xs"
+                    onClick={entrarNoJogo}
+                  >
+                    Sentar na Mesa / Jogar
+                  </Button>
+                )}
               </CardContent>
             </Card>
           );
@@ -164,14 +174,14 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
       </div>
 
       {/* Seção Fila de Espera & Ação Principal */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 bg-muted/30 rounded-2xl border">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 bg-[#110d1a] rounded-2xl border border-purple-900/10">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-purple-100 dark:bg-purple-950/30 rounded-xl text-purple-600">
+          <div className="p-2.5 bg-purple-950/40 rounded-xl text-purple-500">
             <Users className="w-5 h-5" />
           </div>
           <div>
-            <h4 className="font-bold text-sm">Fila de espera atual</h4>
-            <p className="text-xs text-muted-foreground">
+            <h4 className="font-bold text-sm text-white">Fila de espera atual</h4>
+            <p className="text-xs text-gray-400">
               {fila.length === 0 
                 ? 'Ninguém na fila de espera no momento.' 
                 : `${fila.length} jogador(es) na fila aguardando liberação de mesa.`}
@@ -179,7 +189,7 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
           </div>
         </div>
 
-        {/* Botão de participar principal */}
+        {/* Botão de participar principal se não estiver em nenhuma mesa */}
         {!jaEstaParticipando && (
           <Button 
             className="w-full md:w-auto bg-purple-600 hover:bg-purple-700 text-white font-bold px-8 py-5 rounded-xl shadow-lg shadow-purple-900/10 active:scale-[0.98] transition-all"
