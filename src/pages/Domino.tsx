@@ -146,9 +146,77 @@ export default function Domino() {
     }
   }, [session]);
 
-  const alternarFilaEspera = () => {
-    setProcurandoFila(!procurandoFila);
-    setJogadoresNaFila(prev => !procurandoFila ? prev + 1 : Math.max(0, prev - 1));
+  // SISTEMA INTELIGENTE DE MATCHMAKING (PAREAMENTO)
+  const executarMatchmaking = async () => {
+    if (!session || procurandoFila) {
+      setProcurandoFila(false);
+      setJogadoresNaFila(0);
+      return;
+    }
+
+    setProcurandoFila(true);
+    setJogadoresNaFila(1);
+
+    try {
+      // Pega o estado mais fresco possível das mesas direto do banco
+      const { data: salas, error } = await supabase
+        .from('domino_salas')
+        .select('id, jogador_1_id, jogador_2_id');
+
+      if (error) throw error;
+      if (!salas || salas.length === 0) return;
+
+      // 1. CRITÉRIO: Procura uma mesa que já tenha EXATAMENTE 1 jogador esperando desafiante
+      const mesaAguardandoDesafiante = salas.find(
+        s => (s.jogador_1_id && !s.jogador_2_id) || (!s.jogador_1_id && s.jogador_2_id)
+      );
+
+      if (mesaAguardandoDesafiante) {
+        let updateData: any = {};
+        if (!mesaAguardandoDesafiante.jogador_1_id) {
+          updateData.jogador_1_id = session.user.id;
+        } else {
+          updateData.jogador_2_id = session.user.id;
+        }
+
+        const { error: joinError } = await supabase
+          .from('domino_salas')
+          .update(updateData)
+          .eq('id', mesaAguardandoDesafiante.id);
+
+        if (!joinError) {
+          const mIndex = salas.findIndex(s => s.id === mesaAguardandoDesafiante.id);
+          setProcurandoFila(false);
+          setJogadoresNaFila(0);
+          setNumeroMesaAtiva(mIndex !== -1 ? mIndex + 1 : 1);
+          setSalaAtivaId(mesaAguardandoDesafiante.id);
+          return;
+        }
+      }
+
+      // 2. CRITÉRIO: Se não tinha ninguém esperando, senta na primeira mesa TOTALMENTE vazia
+      const mesaVazia = salas.find(s => !s.jogador_1_id && !s.jogador_2_id);
+      if (mesaVazia) {
+        const { error: joinError } = await supabase
+          .from('domino_salas')
+          .update({ jogador_1_id: session.user.id })
+          .eq('id', mesaVazia.id);
+
+        if (!joinError) {
+          const mIndex = salas.findIndex(s => s.id === mesaVazia.id);
+          setProcurandoFila(false);
+          setJogadoresNaFila(0);
+          setNumeroMesaAtiva(mIndex !== -1 ? mIndex + 1 : 1);
+          setSalaAtivaId(mesaVazia.id);
+          return;
+        }
+      }
+
+    } catch (err) {
+      console.error("Erro no pareamento da fila:", err);
+      setProcurandoFila(false);
+      setJogadoresNaFila(0);
+    }
   };
 
   const tentarEntrarNaMesa = async (mesa: MesaLobby) => {
@@ -167,7 +235,6 @@ export default function Domino() {
         return;
       }
 
-      // O SEGREDO: Aguarda a gravação no banco terminar 100% com o await antes de setar o ID
       const { error } = await supabase
         .from('domino_salas')
         .update(updateData)
@@ -175,7 +242,6 @@ export default function Domino() {
 
       if (error) throw error;
 
-      // Atualiza o estado local das mesas para garantir consistência imediata
       await carregarMesas();
 
       setNumeroMesaAtiva(mesa.numero);
@@ -225,7 +291,7 @@ export default function Domino() {
           </div>
           <div>
             <h1 className="font-black text-lg tracking-wide text-slate-900 dark:text-white">Dominó do Paredão</h1>
-            <p className="text-xs text-slate-700 dark:text-gray-300">
+            <p className="text-xs text-slate-700 dark:text-gray-300 text-left">
               Participe de partidas de dominó em tempo real com pessoas de Santo Antônio de Jesus!
             </p>
           </div>
@@ -243,7 +309,7 @@ export default function Domino() {
 
       <div className="max-w-6xl mx-auto space-y-6">
         
-        {/* 2. CARD DE FILA DE ESPERA */}
+        {/* 2. CARD DE FILA DE ESPERA COM MATCHMAKING INTERATIVO */}
         <div className="w-full bg-white dark:bg-[#110D1A]/95 border border-slate-300 dark:border-purple-950/40 rounded-2xl p-5 shadow-sm dark:shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4 text-center sm:text-left">
             <div className="p-3 bg-purple-100 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-900/30 rounded-full text-purple-600 dark:text-purple-400">
@@ -260,7 +326,7 @@ export default function Domino() {
           </div>
 
           <Button
-            onClick={alternarFilaEspera}
+            onClick={executarMatchmaking}
             className={`w-full sm:w-auto font-bold text-xs h-11 px-6 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 ${
               procurandoFila 
                 ? 'bg-amber-600 hover:bg-amber-700 text-white animate-pulse' 
