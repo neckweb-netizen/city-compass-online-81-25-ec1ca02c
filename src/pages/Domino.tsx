@@ -89,8 +89,9 @@ export default function Domino() {
         let perfisMapeados: Record<string, JogadorLobby> = {};
 
         if (idsJogadores.length > 0) {
+          // CORRIGIDO: Alterado de 'profiles' para 'usuarios' para sanar o erro 404 de tabela inexistente
           const { data: perfisData, error: perfisError } = await supabase
-            .from('profiles') 
+            .from('usuarios') 
             .select('id, nome, foto_url')
             .in('id', idsJogadores);
 
@@ -107,7 +108,7 @@ export default function Domino() {
 
         const mesasFormatadas: MesaLobby[] = salasData.map((mesa: any, index: number) => {
           const jogador1 = mesa.jogador_1_id ? perfisMapeados[mesa.jogador_1_id] : undefined;
-          const jogador2 = mesa.jogador_2_id ? perfisMapeados[mesa.jogador_2_id] : undefined;
+          const map2 = mesa.jogador_2_id ? perfisMapeados[mesa.jogador_2_id] : undefined;
           const emPartida = mesa.jogador_1_id !== null && mesa.jogador_2_id !== null;
 
           return {
@@ -116,7 +117,7 @@ export default function Domino() {
             jogador_1_id: mesa.jogador_1_id,
             jogador_2_id: mesa.jogador_2_id,
             jogador_1: jogador1,
-            jogador_2: jogador2,
+            jogador_2: map2,
             status: emPartida ? 'Em Partida' : 'Disponível'
           };
         });
