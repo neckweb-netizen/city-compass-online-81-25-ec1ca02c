@@ -52,6 +52,7 @@ export default function Domino() {
   const [mesas, setMesas] = useState<MesaLobby[]>([]);
   const [procurandoFila, setProcurandoFila] = useState(false);
   const [jogadoresNaFila, setJogadoresNaFila] = useState<number>(0);
+  const [erroBanco, setErroBanco] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -68,7 +69,6 @@ export default function Domino() {
 
   const carregarMesas = async () => {
     try {
-      // Busca o estado bruto atualizado das salas
       const { data: salasData, error: salasError } = await supabase
         .from('domino_salas')
         .select('id, jogador_1_id, jogador_2_id');
@@ -126,7 +126,6 @@ export default function Domino() {
     }
   };
 
-  // Garante a escuta em tempo real em qualquer aba ativa ou anônima
   useEffect(() => {
     if (session) {
       carregarMesas();
@@ -142,10 +141,9 @@ export default function Domino() {
         )
         .subscribe();
 
-      // Fallback de polling agressivo de 1.5s para zerar qualquer delay visual entre navegadores
       const intervaloSincronia = setInterval(() => {
         carregarMesas();
-      }, 1500);
+      }, 2000);
 
       return () => {
         supabase.removeChannel(canalLobby);
@@ -163,6 +161,7 @@ export default function Domino() {
 
     setProcurandoFila(true);
     setJogadoresNaFila(1);
+    setErroBanco(null);
 
     try {
       const { data: salas, error } = await supabase
@@ -190,14 +189,18 @@ export default function Domino() {
           .update(updateData)
           .eq('id', mesaAguardandoDesafiante.id);
 
-        if (!joinError) {
-          const mIndex = salas.findIndex(s => s.id === mesaAguardandoDesafiante.id);
+        if (joinError) {
+          setErroBanco(`Erro ao registrar vaga no Supabase: ${joinError.message}`);
           setProcurandoFila(false);
-          setJogadoresNaFila(0);
-          setNumeroMesaAtiva(mIndex !== -1 ? mIndex + 1 : 1);
-          setSalaAtivaId(mesaAguardandoDesafiante.id);
           return;
         }
+
+        const mIndex = salas.findIndex(s => s.id === mesaAguardandoDesafiante.id);
+        setProcurandoFila(false);
+        setJogadoresNaFila(0);
+        setNumeroMesaAtiva(mIndex !== -1 ? mIndex + 1 : 1);
+        setSalaAtivaId(mesaAguardandoDesafiante.id);
+        return;
       }
 
       const mesaVazia = salas.find(s => !s.jogador_1_id && !s.jogador_2_id);
@@ -207,18 +210,22 @@ export default function Domino() {
           .update({ jogador_1_id: session.user.id })
           .eq('id', mesaVazia.id);
 
-        if (!joinError) {
-          const mIndex = salas.findIndex(s => s.id === mesaVazia.id);
+        if (joinError) {
+          setErroBanco(`Erro ao sentar na mesa vazia: ${joinError.message}`);
           setProcurandoFila(false);
-          setJogadoresNaFila(0);
-          setNumeroMesaAtiva(mIndex !== -1 ? mIndex + 1 : 1);
-          setSalaAtivaId(mesaVazia.id);
           return;
         }
+
+        const mIndex = salas.findIndex(s => s.id === mesaVazia.id);
+        setProcurandoFila(false);
+        setJogadoresNaFila(0);
+        setNumeroMesaAtiva(mIndex !== -1 ? mIndex + 1 : 1);
+        setSalaAtivaId(mesaVazia.id);
+        return;
       }
 
-    } catch (err) {
-      console.error("Erro no pareamento:", err);
+    } catch (err: any) {
+      setErroBanco(`Falha de rede/execução: ${err.message || err}`);
       setProcurandoFila(false);
       setJogadoresNaFila(0);
     }
@@ -226,11 +233,11 @@ export default function Domino() {
 
   const tentarEntrarNaMesa = async (mesa: MesaLobby) => {
     if (!session) return;
+    setErroBanco(null);
 
     try {
       let updateData: any = {};
       
-      // Validação estrita de cadeira vazia baseada no estado atualizado
       if (!mesa.jogador_1_id) {
         updateData.jogador_1_id = session.user.id;
       } else if (!mesa.jogador_2_id && mesa.jogador_1_id !== session.user.id) {
@@ -246,14 +253,18 @@ export default function Domino() {
         .update(updateData)
         .eq('id', mesa.id);
 
-      if (error) throw error;
+      if (error) {
+        // Exibe o erro na tela para sabermos se o RLS bloqueou o update
+        setErroBanco(`O Supabase recusou a gravação! Código: ${error.code} - Mensagem: ${error.message}`);
+        return;
+      }
 
       await carregarMesas();
 
       setNumeroMesaAtiva(mesa.numero);
       setSalaAtivaId(mesa.id);
-    } catch (err) {
-      console.error('Erro ao entrar na mesa:', err);
+    } catch (err: any) {
+      setErroBanco(`Erro inesperado ao tentar sentar: ${err.message || err}`);
     }
   };
 
@@ -288,6 +299,15 @@ export default function Domino() {
 
   return (
     <div className="w-full min-h-screen bg-slate-50 dark:bg-[#090610] text-slate-900 dark:text-white transition-colors duration-200 font-sans p-4 md:p-6 select-none">
+      
+      {/* BANNER DE DIAGNÓSTICO DE ERROS DO BANCO DE DADOS */}
+      {erroBanco && (
+        <div className="max-w-6xl mx-auto mb-4 p-3 bg-red-100 border border-red-300 text-red-800 rounded-xl flex items-center gap-2 text-xs font-semibold animate-bounce">
+          <AlertCircle className="w-5 h-5 shrink-0 text-red-600" />
+          <span>{erroBanco} (Verifique as Policies de RLS da tabela <strong>domino_salas</strong> no painel do Supabase).</span>
+        </div>
+      )}
+
       <div className="max-w-6xl mx-auto flex items-center justify-between mb-6 bg-white dark:bg-[#110D1A]/95 border border-slate-200 dark:border-purple-950/40 p-4 rounded-2xl shadow-sm dark:shadow-lg">
         <div className="flex items-center gap-3">
           <div className="p-2.5 bg-purple-100 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-900/30 rounded-xl text-purple-600 dark:text-purple-400">
