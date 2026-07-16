@@ -303,11 +303,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           partidaJaIniciadaRef.current = true;
         }
 
-        // Busca dados de exibição complementares
-        const ids = [];
-        if (data.jogador_1_id) ids.push(data.jogador_1_id);
-        if (data.jogador_2_id) ids.push(data.jogador_2_id);
-
+        const ids = [data.jogador_1_id, data.jogador_2_id].filter(Boolean) as string[];
         if (ids.length > 0) {
           const { data: userData } = await supabase.from('usuarios').select('id, nome, foto_url').in('id', ids);
           if (userData) {
@@ -331,6 +327,14 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
         setMesaPedras(jogadasProcessadas);
         inicializarPedrasCompartilhadas(usuarioId, data.jogador_1_id, data.jogador_2_id);
+
+        if (!data.vez_usuario_id && data.jogador_1_id) {
+          await supabase
+            .from('domino_salas')
+            .update({ vez_usuario_id: data.jogador_1_id })
+            .eq('id', salaId);
+          setVezUsuarioId(data.jogador_1_id);
+        }
       }
     } catch (err) {
       console.error('Erro ao buscar dados do tabuleiro:', err);
@@ -356,10 +360,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             setJogador1Id(newData.jogador_1_id);
             setJogador2Id(newData.jogador_2_id);
 
-            // Re-busca os perfis textuais para garantir sincronia na interface
-            const ids = [];
-            if (newData.jogador_1_id) ids.push(newData.jogador_1_id);
-            if (newData.jogador_2_id) ids.push(newData.jogador_2_id);
+            const ids = [newData.jogador_1_id, newData.jogador_2_id].filter(Boolean) as string[];
             if (ids.length > 0) {
               const { data: pData } = await supabase.from('usuarios').select('id, nome, foto_url').in('id', ids);
               if (pData) {
@@ -419,7 +420,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     canalRef.current = canalJogo;
 
     return () => {
-      supabase.removeChannel(canalJogo);
+      supabase.removeChannel(canalRef.current);
     };
   }, [salaId, jogador1Id, jogador2Id]);
 
@@ -466,7 +467,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       if (!temQualquerPecaJogavel) {
         setModalNotificacao({
           visivel: true,
-          titulo: 'Sem Peças Compatíveis!',
+          titulo: 'Sem Peças Compartíveis!',
           mensagem: 'Você não tem peças jogáveis para as pontas disponíveis. Sua vez foi passada para o oponente automaticamente.',
           tipo: 'info'
         });
@@ -587,6 +588,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         jogador_2_id: null,
         historico_jogadas: []
       };
+      partidaJaIniciadaRef.current = false;
       await supabase.from('domino_salas').update(updates).eq('id', salaId);
       sairModoJogoReal();
       onVoltarAoLobby();
@@ -618,11 +620,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     onVoltarAoLobby();
   };
 
-  const alternarProcuraFila = () => {
-    setProcurandoFila(!procurandoFila);
-    tocarSom('emoji');
-  };
-
   return (
     <div ref={containerRef} className="w-full h-screen bg-[#090610] text-white font-sans flex flex-col justify-between p-2 md:p-4 overflow-hidden select-none relative">
       {modalNotificacao.visivel && (
@@ -641,7 +638,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </div>
       )}
 
-      {/* RENDERIZAÇÃO DO TABULO CONTEXTUAL DE JOGO */}
+      {/* HUD SUPERIOR */}
       <div className="flex items-center justify-between bg-[#110D1A]/95 border border-purple-950/40 px-3 py-1.5 rounded-xl shadow-lg h-[12%] relative gap-2">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={lidarComSaidaVoluntaria} className="text-gray-400 hover:text-white h-8 text-xs px-2"><ArrowLeft className="w-3.5 h-3.5 mr-1" /> Sair</Button>
@@ -665,6 +662,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </div>
       </div>
 
+      {/* MESA DE JOGO */}
       <div className="flex-grow my-1 bg-emerald-950 border-[4px] border-amber-950 rounded-[24px] shadow-[inset_0_4px_12px_rgba(0,0,0,0.6)] relative flex flex-col items-center justify-center h-[53%] overflow-hidden">
         {mesaPedras.length > 0 && (
           <div className="absolute top-2 left-4 flex items-center gap-3 text-[10px] font-semibold text-emerald-300/60">
@@ -708,11 +706,15 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             {!ambosJogadoresPresentes ? <span className="text-amber-500 animate-pulse">AGUARDANDO...</span> : meuTurno ? <span className="text-green-400 animate-pulse flex items-center gap-1"><RefreshCw className="w-3 h-3 animate-spin" /> SUA VEZ ({tempoRestante}s)</span> : <span className="text-gray-400">Tempo de {adversarioNome}: {tempoRestante}s</span>}
           </div>
           <div className="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
-            <div className={`h-full transition-all duration-1000 ${!ambosJogadoresPresentes ? 'bg-gray-600' : tempoRestante > 10 ? 'bg-green-500' : tempoRestante > 4 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${!ambosJogadoresPresentes ? 100 : (tempoRestante / 20) * 100}%` }} />
+            <div 
+              className={`h-full transition-all duration-1000 ${!ambosJogadoresPresentes ? 'bg-gray-600' : tempoRestante > 10 ? 'bg-green-500' : tempoRestante > 4 ? 'bg-amber-500' : 'bg-red-500'}`} 
+              style={{ width: `${!ambosJogadoresPresentes ? 100 : (tempoRestante / 20) * 100}%` }} 
+            />
           </div>
         </div>
       </div>
 
+      {/* MINHA MÃO */}
       <div className="bg-[#110D1A]/95 border border-purple-950/40 p-2.5 rounded-2xl h-[30%] flex flex-col justify-between">
         <div className="flex items-center justify-between px-1 h-[25%]"><span className="text-[10px] text-purple-300 font-bold uppercase tracking-wider">Suas Pedras ({minhasPedras.length})</span></div>
         <div className="flex justify-center items-center gap-1.5 overflow-x-auto h-[75%] py-1">
@@ -729,3 +731,5 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     </div>
   );
 };
+
+export default DominoTabuleiro;
