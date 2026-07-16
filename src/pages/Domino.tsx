@@ -68,6 +68,7 @@ export default function Domino() {
 
   const carregarMesas = async () => {
     try {
+      // Busca o estado bruto atualizado das salas
       const { data: salasData, error: salasError } = await supabase
         .from('domino_salas')
         .select('id, jogador_1_id, jogador_2_id');
@@ -125,12 +126,13 @@ export default function Domino() {
     }
   };
 
+  // Garante a escuta em tempo real em qualquer aba ativa ou anônima
   useEffect(() => {
     if (session) {
       carregarMesas();
 
       const canalLobby = supabase
-        .channel('public:domino_salas')
+        .channel('schema-db-changes')
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'domino_salas' },
@@ -140,13 +142,14 @@ export default function Domino() {
         )
         .subscribe();
 
-      const pollingRedundancia = setInterval(() => {
+      // Fallback de polling agressivo de 1.5s para zerar qualquer delay visual entre navegadores
+      const intervaloSincronia = setInterval(() => {
         carregarMesas();
-      }, 2000);
+      }, 1500);
 
       return () => {
         supabase.removeChannel(canalLobby);
-        clearInterval(pollingRedundancia);
+        clearInterval(intervaloSincronia);
       };
     }
   }, [session]);
@@ -227,6 +230,7 @@ export default function Domino() {
     try {
       let updateData: any = {};
       
+      // Validação estrita de cadeira vazia baseada no estado atualizado
       if (!mesa.jogador_1_id) {
         updateData.jogador_1_id = session.user.id;
       } else if (!mesa.jogador_2_id && mesa.jogador_1_id !== session.user.id) {
@@ -338,7 +342,7 @@ export default function Domino() {
                   </div>
                 </div>
 
-                <Button onClick={() => tentarEntrarNaMesa(mesa)} className="w-full font-bold text-xs h-10 rounded-xl bg-purple-600 text-white shadow-md">Sentar na Mesa / Jogar</Button>
+                <Button onClick={() => tentarEntrarNaMesa(mesa)} className="w-full font-bold text-xs h-10 rounded-xl bg-purple-600 text-white shadow-md hover:bg-purple-700 transition-all">Sentar na Mesa / Jogar</Button>
               </div>
             );
           })}
