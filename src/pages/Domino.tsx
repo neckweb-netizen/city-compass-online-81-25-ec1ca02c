@@ -146,8 +146,8 @@ export default function Domino() {
     }
   }, [session]);
 
-  // SISTEMA INTELIGENTE DE MATCHMAKING (PAREAMENTO)
-  const executarMatchmaking = async () => {
+  // MATCHMAKING BLINDADO CONTRA CLONES (ANTI-ANTI-GERAL)
+  const ejecutarMatchmaking = async () => {
     if (!session || procurandoFila) {
       setProcurandoFila(false);
       setJogadoresNaFila(0);
@@ -158,7 +158,6 @@ export default function Domino() {
     setJogadoresNaFila(1);
 
     try {
-      // Pega o estado mais fresco possível das mesas direto do banco
       const { data: salas, error } = await supabase
         .from('domino_salas')
         .select('id, jogador_1_id, jogador_2_id');
@@ -166,9 +165,21 @@ export default function Domino() {
       if (error) throw error;
       if (!salas || salas.length === 0) return;
 
-      // 1. CRITÉRIO: Procura uma mesa que já tenha EXATAMENTE 1 jogador esperando desafiante
+      // TRAVA 1: Se o usuário já estiver ativo e aguardando em qualquer mesa, redireciona ele direto para lá ao invés de duplicar
+      const mesaOndeJaEstou = salas.find(s => s.jogador_1_id === session.user.id || s.jogador_2_id === session.user.id);
+      if (mesaOndeJaEstou) {
+        const mIndex = salas.findIndex(s => s.id === mesaOndeJaEstou.id);
+        setProcurandoFila(false);
+        setJogadoresNaFila(0);
+        setNumeroMesaAtiva(mIndex !== -1 ? mIndex + 1 : 1);
+        setSalaAtivaId(mesaOndeJaEstou.id);
+        return;
+      }
+
+      // Procura uma mesa com 1 jogador, DESDE QUE NÃO SEJA VOCÊ MESMO
       const mesaAguardandoDesafiante = salas.find(
-        s => (s.jogador_1_id && !s.jogador_2_id) || (!s.jogador_1_id && s.jogador_2_id)
+        s => ((s.jogador_1_id && s.jogador_1_id !== session.user.id) && !s.jogador_2_id) || 
+             (!s.jogador_1_id && (s.jogador_2_id && s.jogador_2_id !== session.user.id))
       );
 
       if (mesaAguardandoDesafiante) {
@@ -194,12 +205,11 @@ export default function Domino() {
         }
       }
 
-      // 2. CRITÉRIO: Se não tinha ninguém esperando, senta na primeira mesa TOTALMENTE vazia
       const mesaVazia = salas.find(s => !s.jogador_1_id && !s.jogador_2_id);
       if (mesaVazia) {
         const { error: joinError } = await supabase
           .from('domino_salas')
-          .update({ jogador_1_id: session.user.id })
+          .update({ jogador_1_id = session.user.id })
           .eq('id', mesaVazia.id);
 
         if (!joinError) {
@@ -219,20 +229,24 @@ export default function Domino() {
     }
   };
 
+  // BOTÃO MANUAL BLINDADO CONTRA DUPLICAÇÃO DE IDS
   const tentarEntrarNaMesa = async (mesa: MesaLobby) => {
     if (mesa.status === 'Em Partida' || !session) return;
+
+    // TRAVA 2: Se o usuário já está ocupando uma vaga na mesa, impede a segunda inserção de clone
+    if (mesa.jogador_1_id === session.user.id || mesa.jogador_2_id === session.user.id) {
+      setNumeroMesaAtiva(mesa.numero);
+      setSalaAtivaId(mesa.id);
+      return;
+    }
 
     try {
       let updateData: any = {};
       
       if (!mesa.jogador_1_id) {
         updateData.jogador_1_id = session.user.id;
-      } else if (!mesa.jogador_2_id && mesa.jogador_1_id !== session.user.id) {
+      } else if (!mesa.jogador_2_id) {
         updateData.jogador_2_id = session.user.id;
-      } else {
-        setNumeroMesaAtiva(mesa.numero);
-        setSalaAtivaId(mesa.id);
-        return;
       }
 
       const { error } = await supabase
@@ -309,7 +323,7 @@ export default function Domino() {
 
       <div className="max-w-6xl mx-auto space-y-6">
         
-        {/* 2. CARD DE FILA DE ESPERA COM MATCHMAKING INTERATIVO */}
+        {/* 2. CARD DE FILA DE ESPERA */}
         <div className="w-full bg-white dark:bg-[#110D1A]/95 border border-slate-300 dark:border-purple-950/40 rounded-2xl p-5 shadow-sm dark:shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4 text-center sm:text-left">
             <div className="p-3 bg-purple-100 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-900/30 rounded-full text-purple-600 dark:text-purple-400">
