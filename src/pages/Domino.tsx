@@ -29,7 +29,7 @@ const AVATARES_PADROES = [
 ];
 
 const obterAvatarUsuario = (fotoUrl: string | null | undefined, idUsuario: string | null | undefined) => {
-  if (fotoUrl && photoUrl !== "" && photoUrl !== "NULL") {
+  if (fotoUrl && fotoUrl !== "" && fotoUrl !== "NULL") {
     return fotoUrl;
   }
   if (!idUsuario) {
@@ -103,8 +103,8 @@ export default function Domino() {
         }
 
         const mesasFormatadas: MesaLobby[] = salasData.map((mesa: any, index: number) => {
-          const jogador1 = mesa.jogador_1_id ? perfisMapeados[mesa.jogador_1_id] : undefined;
-          const map2 = mesa.jogador_2_id ? perfisMapeados[mesa.jogador_2_id] : undefined;
+          const j1 = mesa.jogador_1_id ? perfisMapeados[mesa.jogador_1_id] : undefined;
+          const j2 = mesa.jogador_2_id ? perfisMapeados[mesa.jogador_2_id] : undefined;
           const emPartida = mesa.jogador_1_id !== null && mesa.jogador_2_id !== null;
 
           return {
@@ -112,8 +112,8 @@ export default function Domino() {
             numero: index + 1, 
             jogador_1_id: mesa.jogador_1_id,
             jogador_2_id: mesa.jogador_2_id,
-            jogador_1: jogador1,
-            jogador_2: map2,
+            jogador_1: j1,
+            jogador_2: j2,
             status: emPartida ? 'Em Partida' : 'Disponível'
           };
         });
@@ -129,9 +129,8 @@ export default function Domino() {
     if (session) {
       carregarMesas();
 
-      // Sincronia Realtime do Lobby
       const canalLobby = supabase
-        .channel('lobby-domino')
+        .channel('public:domino_salas')
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'domino_salas' },
@@ -141,14 +140,13 @@ export default function Domino() {
         )
         .subscribe();
 
-      // Polling de redundância a cada 3 segundos para travar sincronia em abas em segundo plano/anônimas
-      const intervaloRedundancia = setInterval(() => {
+      const pollingRedundancia = setInterval(() => {
         carregarMesas();
-      }, 3000);
+      }, 2000);
 
       return () => {
         supabase.removeChannel(canalLobby);
-        clearInterval(intervaloRedundancia);
+        clearInterval(pollingRedundancia);
       };
     }
   }, [session]);
@@ -171,19 +169,9 @@ export default function Domino() {
       if (error) throw error;
       if (!salas || salas.length === 0) return;
 
-      const mesaOndeJaEstou = salas.find(s => s.jogador_1_id === session.user.id || s.jogador_2_id === session.user.id);
-      if (mesaOndeJaEstou) {
-        const mIndex = salas.findIndex(s => s.id === mesaOndeJaEstou.id);
-        setProcurandoFila(false);
-        setJogadoresNaFila(0);
-        setNumeroMesaAtiva(mIndex !== -1 ? mIndex + 1 : 1);
-        setSalaAtivaId(mesaOndeJaEstou.id);
-        return;
-      }
-
       const mesaAguardandoDesafiante = salas.find(
-        s => ((s.jogador_1_id && s.jogador_1_id !== session.user.id) && !s.jogador_2_id) || 
-             (!s.jogador_1_id && (s.jogador_2_id && s.jogador_2_id !== session.user.id))
+        s => (s.jogador_1_id && s.jogador_1_id !== session.user.id && !s.jogador_2_id) || 
+             (!s.jogador_1_id && s.jogador_2_id && s.jogador_2_id !== session.user.id)
       );
 
       if (mesaAguardandoDesafiante) {
@@ -227,28 +215,26 @@ export default function Domino() {
       }
 
     } catch (err) {
-      console.error("Erro no pareamento da fila:", err);
+      console.error("Erro no pareamento:", err);
       setProcurandoFila(false);
       setJogadoresNaFila(0);
     }
   };
 
   const tentarEntrarNaMesa = async (mesa: MesaLobby) => {
-    if (mesa.status === 'Em Partida' || !session) return;
-
-    if (mesa.jogador_1_id === session.user.id || mesa.jogador_2_id === session.user.id) {
-      setNumeroMesaAtiva(mesa.numero);
-      setSalaAtivaId(mesa.id);
-      return;
-    }
+    if (!session) return;
 
     try {
       let updateData: any = {};
       
       if (!mesa.jogador_1_id) {
         updateData.jogador_1_id = session.user.id;
-      } else if (!mesa.jogador_2_id) {
+      } else if (!mesa.jogador_2_id && mesa.jogador_1_id !== session.user.id) {
         updateData.jogador_2_id = session.user.id;
+      } else {
+        setNumeroMesaAtiva(mesa.numero);
+        setSalaAtivaId(mesa.id);
+        return;
       }
 
       const { error } = await supabase
@@ -280,7 +266,7 @@ export default function Domino() {
       <div className="w-full h-screen flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-[#090610] text-center gap-4">
         <AlertCircle className="w-12 h-12 text-red-500" />
         <h2 className="text-xl font-bold">Acesso não autorizado</h2>
-        <p className="text-xs text-slate-500 max-w-xs">Por favor, faça login no site para acessar as salas de dominó.</p>
+        <p className="text-xs text-slate-500 max-w-xs">Por favor, faça login para jogar.</p>
       </div>
     );
   }
@@ -298,7 +284,6 @@ export default function Domino() {
 
   return (
     <div className="w-full min-h-screen bg-slate-50 dark:bg-[#090610] text-slate-900 dark:text-white transition-colors duration-200 font-sans p-4 md:p-6 select-none">
-      
       <div className="max-w-6xl mx-auto flex items-center justify-between mb-6 bg-white dark:bg-[#110D1A]/95 border border-slate-200 dark:border-purple-950/40 p-4 rounded-2xl shadow-sm dark:shadow-lg">
         <div className="flex items-center gap-3">
           <div className="p-2.5 bg-purple-100 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-900/30 rounded-xl text-purple-600 dark:text-purple-400">
@@ -306,125 +291,54 @@ export default function Domino() {
           </div>
           <div>
             <h1 className="font-black text-lg tracking-wide text-slate-900 dark:text-white">Dominó do Paredão</h1>
-            <p className="text-xs text-slate-700 dark:text-gray-300 text-left">
-              Participe de partidas de dominó em tempo real com pessoas de Santo Antônio de Jesus!
-            </p>
+            <p className="text-xs text-slate-700 dark:text-gray-300 text-left">Participe de partidas de dominó em tempo real com pessoas de Santo Antônio de Jesus!</p>
           </div>
         </div>
-        
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={() => supabase.auth.signOut()}
-          className="text-slate-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20"
-        >
-          <LogOut className="w-4 h-4 mr-1.5" /> Sair do Jogo
-        </Button>
+        <Button variant="ghost" size="sm" onClick={() => supabase.auth.signOut()} className="text-slate-500 dark:text-gray-400 hover:text-red-500"><LogOut className="w-4 h-4 mr-1.5" /> Sair do Jogo</Button>
       </div>
 
       <div className="max-w-6xl mx-auto space-y-6">
-        
         <div className="w-full bg-white dark:bg-[#110D1A]/95 border border-slate-300 dark:border-purple-950/40 rounded-2xl p-5 shadow-sm dark:shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4 text-center sm:text-left">
-            <div className="p-3 bg-purple-100 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-900/30 rounded-full text-purple-600 dark:text-purple-400">
-              <Users className="w-6 h-6" />
-            </div>
+            <div className="p-3 bg-purple-100 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-900/30 rounded-full text-purple-600 dark:text-purple-400"><Users className="w-6 h-6" /></div>
             <div>
               <h2 className="font-bold text-md text-slate-900 dark:text-white">Fila de espera atual</h2>
-              <p className="text-xs text-slate-700 dark:text-gray-300">
-                {jogadoresNaFila === 0 
-                  ? "Ninguém na fila de espera no momento." 
-                  : `${jogadoresNaFila} jogador(es) aguardando partida.`}
-              </p>
+              <p className="text-xs text-slate-700 dark:text-gray-300">{jogadoresNaFila === 0 ? "Ninguém na fila de espera no momento." : `${jogadoresNaFila} jogador(es) aguardando partida.`}</p>
             </div>
           </div>
-
-          <Button
-            onClick={executarMatchmaking}
-            className={`w-full sm:w-auto font-bold text-xs h-11 px-6 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 ${
-              procurandoFila 
-                ? 'bg-amber-600 hover:bg-amber-700 text-white animate-pulse' 
-                : 'bg-purple-600 hover:bg-purple-700 text-white'
-            }`}
-          >
-            {procurandoFila ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin" /> Cancelar Busca
-              </>
-            ) : (
-              <>
-                <Search className="w-4 h-4" /> Entrar na Fila / Procurar Mesa
-              </>
-            )}
+          <Button onClick={executarMatchmaking} className={`w-full sm:w-auto font-bold text-xs h-11 px-6 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 ${procurandoFila ? 'bg-amber-600 text-white animate-pulse' : 'bg-purple-600 text-white'}`}>
+            {procurandoFila ? <><RefreshCw className="w-4 h-4 animate-spin" /> Cancelar Busca</> : <><Search className="w-4 h-4" /> Entrar na Fila / Procurar Mesa</>}
           </Button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {mesas.map((mesa) => {
-            const jogador1 = mesa.jogador_1;
-            const jogador2 = mesa.jogador_2;
+            const j1 = mesa.jogador_1;
+            const j2 = mesa.jogador_2;
 
             return (
-              <div 
-                key={mesa.id} 
-                className="bg-white dark:bg-[#110D1A]/95 border border-slate-300 dark:border-purple-950/40 rounded-2xl p-5 shadow-md dark:shadow-lg flex flex-col justify-between transition-transform duration-150 hover:scale-[1.01]"
-              >
+              <div key={mesa.id} className="bg-white dark:bg-[#110D1A]/95 border border-slate-300 dark:border-purple-950/40 rounded-2xl p-5 shadow-md dark:shadow-lg flex flex-col justify-between transition-transform duration-150 hover:scale-[1.01]">
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h3 className="font-extrabold text-md text-slate-900 dark:text-white">Mesa de Jogo {mesa.numero}</h3>
                     <p className="text-[11px] text-slate-600 dark:text-gray-300">Limite: 2 jogadores</p>
                   </div>
-                  
-                  <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full border ${
-                    mesa.status === 'Em Partida'
-                      ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 border-red-300 dark:border-red-900/30'
-                      : 'bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-400 border-green-300 dark:border-green-900/30'
-                  }`}>
-                    {mesa.status}
-                  </span>
+                  <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full border ${mesa.status === 'Em Partida' ? 'bg-red-50 text-red-700 border-red-300' : 'bg-green-50 text-green-700 border-green-300'}`}>{mesa.status}</span>
                 </div>
 
                 <div className="flex items-center justify-around py-4 bg-slate-200 dark:bg-[#0c0814] border border-slate-300 dark:border-purple-950/20 rounded-xl mb-4">
                   <div className="flex flex-col items-center gap-2 w-24">
-                    <img
-                      src={obterAvatarUsuario(jogador1 ? jogador1.foto_url : null, jogador1 ? jogador1.id : null)}
-                      alt={jogador1 ? jogador1.nome : "Vago"}
-                      className={`w-12 h-12 rounded-full border-2 object-cover bg-slate-300 dark:bg-[#1c1230] ${
-                        jogador1 ? 'border-purple-600' : 'border-dashed border-slate-400 dark:border-purple-900/40'
-                      }`}
-                    />
-                    <span className="text-xs font-bold truncate max-w-full text-slate-800 dark:text-gray-300">
-                      {jogador1 ? jogador1.nome : "Vago"}
-                    </span>
+                    <img src={obterAvatarUsuario(j1 ? j1.foto_url : null, j1 ? j1.id : null)} alt={j1 ? j1.nome : "Vago"} className={`w-12 h-12 rounded-full border-2 object-cover bg-slate-300 ${j1 ? 'border-purple-600' : 'border-dashed border-slate-400'}`} />
+                    <span className="text-xs font-bold truncate max-w-full text-slate-800 dark:text-gray-300">{j1 ? j1.nome : "Vago"}</span>
                   </div>
-
                   <span className="text-purple-700 dark:text-purple-455 font-black text-sm">VS</span>
-
                   <div className="flex flex-col items-center gap-2 w-24">
-                    <img
-                      src={obterAvatarUsuario(jogador2 ? jogador2.foto_url : null, jogador2 ? grandfather => jogador2.id : null)}
-                      alt={jogador2 ? jogador2.nome : "Vago"}
-                      className={`w-12 h-12 rounded-full border-2 object-cover bg-slate-300 dark:bg-[#1c1230] ${
-                        jogador2 ? 'border-purple-600' : 'border-dashed border-slate-400 dark:border-purple-900/40'
-                      }`}
-                    />
-                    <span className="text-xs font-bold truncate max-w-full text-slate-800 dark:text-gray-300">
-                      {jogador2 ? jogador2.nome : "Vago"}
-                    </span>
+                    <img src={obterAvatarUsuario(j2 ? j2.foto_url : null, j2 ? j2.id : null)} alt={j2 ? j2.nome : "Vago"} className={`w-12 h-12 rounded-full border-2 object-cover bg-slate-300 ${j2 ? 'border-purple-600' : 'border-dashed border-slate-400'}`} />
+                    <span className="text-xs font-bold truncate max-w-full text-slate-800 dark:text-gray-300">{j2 ? j2.nome : "Vago"}</span>
                   </div>
                 </div>
 
-                <Button
-                  disabled={mesa.status === 'Em Partida'}
-                  onClick={() => tentarEntrarNaMesa(mesa)}
-                  className={`w-full font-bold text-xs h-10 rounded-xl transition-all ${
-                    mesa.status === 'Em Partida'
-                      ? 'bg-slate-200 dark:bg-purple-950/20 text-slate-500 dark:text-gray-600 cursor-not-allowed border border-transparent dark:border-purple-950/30'
-                      : 'bg-purple-600 hover:bg-purple-700 text-white shadow-md hover:scale-[1.01]'
-                  }`}
-                >
-                  {mesa.status === 'Em Partida' ? 'Mesa Ocupada' : 'Sentar na Mesa / Jogar'}
-                </Button>
+                <Button onClick={() => tentarEntrarNaMesa(mesa)} className="w-full font-bold text-xs h-10 rounded-xl bg-purple-600 text-white shadow-md">Sentar na Mesa / Jogar</Button>
               </div>
             );
           })}
