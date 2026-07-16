@@ -653,7 +653,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
               <Timer className="w-3.5 h-3.5 animate-spin" /> {tempoRestante}s - SUA VEZ DE JOGAR!
             </span>
           ) : (
-            <span className="text-gray-400">Aguardando: {adversarioNome}...</span>
+            <span className="text-gray-400">Aguardando {adversarioNome}...</span>
           )}
         </div>
       </div>
