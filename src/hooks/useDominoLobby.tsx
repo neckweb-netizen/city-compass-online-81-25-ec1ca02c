@@ -26,8 +26,8 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
 
   // Busca o estado inicial das salas e da fila
   const carregarDados = async () => {
+    if (!usuarioId) return;
     try {
-      // AJUSTADO: Removido o campo de imagem para evitar quebras de coluna inexistente
       const { data: dataSalas, error: errorSalas } = await supabase
         .from('domino_salas')
         .select(`
@@ -51,7 +51,7 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
       if (dataSalas) {
         setSalas(dataSalas as any);
         
-        // Verifica se eu estou jogando em alguma sala ativa
+        // Localiza se o usuário já está registrado em alguma mesa ativa
         const salaAtiva = (dataSalas as any[]).find(
           (s) => s.jogador_1_id === usuarioId || s.jogador_2_id === usuarioId
         );
@@ -68,7 +68,6 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
       if (dataFila) {
         setFila(dataFila);
 
-        // Calcula minha posição atual na fila
         const index = dataFila.findIndex((f) => f.usuario_id === usuarioId);
         setMinhaPosicaoFila(index !== -1 ? index + 1 : null);
       }
@@ -84,9 +83,9 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
 
     carregarDados();
 
-    // Inscrição em Tempo Real (Realtime) para alterações nas salas e fila
+    // Sincronização em tempo real das tabelas do lobby
     const canalRealtime = supabase
-      .channel('realtime-domino')
+      .channel('realtime-domino-lobby')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'domino_salas' },
@@ -108,15 +107,18 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
     };
   }, [usuarioId]);
 
-  // Função para entrar no jogo (Tenta sala livre ou vai para a fila)
+  // Função robusta para entrar no jogo sem duplicidades
   const entrarNoJogo = async () => {
     if (!usuarioId) return;
 
     try {
-      // 1. Verifica se já está em alguma sala ou fila para evitar duplicados
+      // 1. Defesa absoluta: Verifica se o usuário já está em alguma sala para bloquear cliques rápidos
       if (minhaSala || minhaPosicaoFila !== null) return;
 
-      // 2. Procura uma sala que tenha pelo menos uma vaga vazia
+      // 2. Garante a limpeza de qualquer resíduo do ID deste jogador antes de registrá-lo de novo
+      await limparResiduosUsuario();
+
+      // 3. Procura uma sala disponível
       const { data: salasLivres, error: errorSalas } = await supabase
         .from('domino_salas')
         .select('*')
@@ -130,28 +132,30 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
         const salaAlvo = salasLivres[0];
 
         if (!salaAlvo.jogador_1_id) {
-          // Preenche vaga 1
+          // Registra como Jogador 1 (Ainda aguardando oponente)
           await supabase
             .from('domino_salas')
             .update({
               jogador_1_id: usuarioId,
               status: salaAlvo.jogador_2_id ? 'jogando' : 'aguardando',
+              vez_usuario_id: salaAlvo.jogador_2_id ? salaAlvo.jogador_2_id : null, // Configura a vez se o J2 já estava lá
               atualizado_em: new Date().toISOString(),
             })
             .eq('id', salaAlvo.id);
         } else {
-          // Preenche vaga 2
+          // Registra como Jogador 2 (Mesa cheia, define a vez inicial do jogador 1 imediatamente)
           await supabase
             .from('domino_salas')
             .update({
               jogador_2_id: usuarioId,
               status: 'jogando',
+              vez_usuario_id: salaAlvo.jogador_1_id, // Define a vez como jogador 1 no ato da entrada!
               atualizado_em: new Date().toISOString(),
             })
             .eq('id', salaAlvo.id);
         }
       } else {
-        // 3. Se todas as 4 salas estiverem lotadas, vai para a fila de espera
+        // Se todas as mesas estiverem ocupadas, coloca na fila
         await supabase
           .from('domino_fila')
           .insert([{ usuario_id: usuarioId }]);
@@ -163,37 +167,51 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
     }
   };
 
-  // Função para sair do jogo (Desistir da fila ou sair da sala atual)
+  // Limpa qualquer resíduo fantasma do jogador em todas as mesas
+  const limparResiduosUsuario = async () => {
+    if (!usuarioId) return;
+    try {
+      // Remove da fila de espera caso esteja nela
+      await supabase
+        .from('domino_fila')
+        .delete()
+        .eq('usuario_id', usuarioId);
+
+      // Busca todas as salas em que o usuário possa estar ocupando alguma vaga
+      const { data } = await supabase
+        .from('domino_salas')
+        .select('id, jogador_1_id, jogador_2_id')
+        .or(`jogador_1_id.eq.${usuarioId},jogador_2_id.eq.${usuarioId}`);
+
+      if (data && data.length > 0) {
+        for (const sala of data) {
+          const updates: any = {};
+          if (sala.jogador_1_id === usuarioId) updates.jogador_1_id = null;
+          if (sala.jogador_2_id === usuarioId) updates.jogador_2_id = null;
+          
+          updates.status = 'aguardando';
+          updates.vez_usuario_id = null;
+          updates.mesa_ponta_esquerda = null;
+          updates.mesa_ponta_direita = null;
+          updates.historico_jogadas = '[]'::jsonb;
+          updates.atualizado_em = new Date().toISOString();
+
+          await supabase
+            .from('domino_salas')
+            .update(updates)
+            .eq('id', sala.id);
+        }
+      }
+    } catch (err) {
+      console.error('Erro ao limpar resíduos de mesas antigas:', err);
+    }
+  };
+
+  // Função para sair do jogo e liberar as vagas corretamente
   const sairDoJogo = async () => {
     if (!usuarioId) return;
-
     try {
-      // Se estiver na fila de espera, apenas remove dela
-      if (minhaPosicaoFila !== null) {
-        await supabase
-          .from('domino_fila')
-          .delete()
-          .eq('usuario_id', usuarioId);
-      }
-
-      // Se estiver em uma sala de jogo activa, remove o ID e redefine a sala
-      if (minhaSala) {
-        const atualizacoes: any = {};
-        if (minhaSala.jogador_1_id === usuarioId) {
-          atualizacoes.jogador_1_id = null;
-        } else if (minhaSala.jogador_2_id === usuarioId) {
-          atualizacoes.jogador_2_id = null;
-        }
-        
-        atualizacoes.status = 'aguardando';
-        atualizacoes.atualizado_em = new Date().toISOString();
-
-        await supabase
-          .from('domino_salas')
-          .update(atualizacoes)
-          .eq('id', minhaSala.id);
-      }
-
+      await limparResiduosUsuario();
       await carregarDados();
     } catch (err) {
       console.error('Erro ao sair do jogo:', err);
