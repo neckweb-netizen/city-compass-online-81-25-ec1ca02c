@@ -21,7 +21,6 @@ interface MesaLobby {
   status: 'Disponível' | 'Em Partida';
 }
 
-// 5 Avatares padrão modernos de backup
 const AVATARES_PADROES = [
   "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix&backgroundColor=b6e3f4",
   "https://api.dicebear.com/7.x/adventurer/svg?seed=Aneka&backgroundColor=ffdfbf",
@@ -63,33 +62,61 @@ export default function Domino() {
 
   const carregarMesas = async () => {
     try {
-      const { data, error } = await supabase
+      // 1. Busca simplificada das mesas para blindar contra erros de relacionamento implícito
+      const { data: salasData, error: salasError } = await supabase
         .from('domino_salas')
-        .select(`
-          id,
-          numero,
-          jogador_1_id,
-          jogador_2_id,
-          jogador_1:jogador_1_id ( id, nome, foto_url ),
-          jogador_2:jogador_2_id ( id, nome, foto_url )
-        `)
+        .select('id, numero, jogador_1_id, jogador_2_id')
         .order('numero', { ascending: true });
 
-      if (error) throw error;
+      if (salasError) throw salasError;
 
-      if (data) {
-        const mesasFormatadas: MesaLobby[] = data.map((mesa: any) => {
+      if (salasData) {
+        // Coleta todos os IDs únicos de jogadores ativos nas mesas para buscar as infos de perfil de uma vez
+        const idsJogadores = Array.from(new Set(
+          salasData.reduce((acc: string[], cur: any) => {
+            if (cur.jogador_1_id) acc.push(cur.jogador_1_id);
+            if (cur.jogador_2_id) acc.push(cur.jogador_2_id);
+            return acc;
+          }, [])
+        ));
+
+        let perfisMapeados: Record<string, JogadorLobby> = {};
+
+        if (idsJogadores.length > 0) {
+          // Busca dados de perfil dos jogadores (ajuste o nome da tabela 'profiles' se for diferente)
+          const { data: perfisData, error: perfisError } = await supabase
+            .from('profiles') 
+            .select('id, nome, foto_url')
+            .in('id', idsJogadores);
+
+          if (!perfisError && perfisData) {
+            perfisData.forEach((perfil: any) => {
+              perfisMapeados[perfil.id] = {
+                id: perfil.id,
+                nome: perfil.nome || 'Jogador',
+                foto_url: perfil.foto_url
+              };
+            });
+          }
+        }
+
+        // 2. Montagem final das mesas acoplando os objetos dos perfis
+        const mesasFormatadas: MesaLobby[] = salasData.map((mesa: any) => {
+          const jogador1 = mesa.jogador_1_id ? perfisMapeados[mesa.jogador_1_id] : undefined;
+          const jogador2 = mesa.jogador_2_id ? perfisMapeados[mesa.jogador_2_id] : undefined;
           const emPartida = mesa.jogador_1_id !== null && mesa.jogador_2_id !== null;
+
           return {
             id: mesa.id,
             numero: mesa.numero,
             jogador_1_id: mesa.jogador_1_id,
             jogador_2_id: mesa.jogador_2_id,
-            jogador_1: mesa.jogador_1,
-            jogador_2: mesa.jogador_2,
+            jogador_1: jogador1,
+            jogador_2: jogador2,
             status: emPartida ? 'Em Partida' : 'Disponível'
           };
         });
+
         setMesas(mesasFormatadas);
       }
     } catch (err) {
@@ -171,7 +198,6 @@ export default function Domino() {
     );
   }
 
-  // Se o usuário entrou em alguma mesa ativa, carrega o tabuleiro
   if (salaAtivaId) {
     return (
       <DominoTabuleiro
@@ -212,7 +238,7 @@ export default function Domino() {
 
       <div className="max-w-6xl mx-auto space-y-6">
         
-        {/* 2. CARD DE FILA DE ESPERA - FIXADO NO TOPO ABSOLUTO */}
+        {/* 2. CARD DE FILA DE ESPERA - FIXADO NO TOPO */}
         <div className="w-full bg-white dark:bg-[#110D1A]/95 border border-slate-200 dark:border-purple-950/40 rounded-2xl p-5 shadow-sm dark:shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4 text-center sm:text-left">
             <div className="p-3 bg-purple-100 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-900/30 rounded-full text-purple-600 dark:text-purple-400">
@@ -248,7 +274,7 @@ export default function Domino() {
           </Button>
         </div>
 
-        {/* 3. GRID DE MESAS DE JOGO (COMPATÍVEL COM MODO CLARO/ESCURO) */}
+        {/* 3. GRID DE MESAS DE JOGO (TEXTOS E VERSUS TOTALMENTE LEGÍVEIS) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {mesas.map((mesa) => {
             const jogador1 = mesa.jogador_1;
@@ -276,7 +302,7 @@ export default function Domino() {
                   </span>
                 </div>
 
-                {/* Área do Versus (VS) com fundos dinâmicos para legibilidade clara */}
+                {/* Área do Versus com contraste perfeito para modo claro e escuro */}
                 <div className="flex items-center justify-around py-4 bg-slate-100 dark:bg-[#0c0814] border border-slate-200 dark:border-purple-950/20 rounded-xl mb-4">
                   {/* Jogador 1 */}
                   <div className="flex flex-col items-center gap-2 w-24">
@@ -292,7 +318,7 @@ export default function Domino() {
                     </span>
                   </div>
 
-                  <span className="text-purple-600 dark:text-purple-400 font-black text-sm">VS</span>
+                  <span className="text-purple-650 dark:text-purple-400 font-black text-sm">VS</span>
 
                   {/* Jogador 2 */}
                   <div className="flex flex-col items-center gap-2 w-24">
