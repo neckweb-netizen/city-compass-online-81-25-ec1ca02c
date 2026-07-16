@@ -152,6 +152,12 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const [emojiAtivoJ1, setEmojiAtivoJ1] = useState<string | null>(null);
   const [emojiAtivoJ2, setEmojiAtivoJ2] = useState<string | null>(null);
 
+  // Sistema de alertas temporários flutuantes na tela
+  const [alertaTemporario, setAlertaTemporario] = useState<string | null>(null);
+
+  // Contador persistente de inatividade consecutiva (3 turnos)
+  const turnosPassadosSeguidosRef = useRef<number>(0);
+
   const [modalNotificacao, setModalNotificacao] = useState<{ visivel: boolean; titulo: string; message: string; tipo: 'info' | 'erro' | 'fim' | 'passe' }>({ 
     visivel: false, 
     titulo: '', 
@@ -160,70 +166,35 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   });
 
   const partidaJaIniciadaRef = useRef(false);
-  const ambosJogadoresPresentes = jogador1Id !== null && jogador2Id !== null;
+  const ambosJogadoresPresentes = jogador1Id !== null && bandwidth2Id !== null;
+  const ambosJogadoresPresentesLocal = jogador1Id !== null && jogador2Id !== null;
 
   const entrarModoJogoReal = async () => {
-    try {
-      if (containerRef.current) {
-        if (containerRef.current.requestFullscreen) {
-          await containerRef.current.requestFullscreen();
-        } else if ((containerRef.current as any).webkitRequestFullscreen) {
-          await (containerRef.current as any).webkitRequestFullscreen();
-        }
-        setIsFullscreen(true);
-      }
-    } catch (e) {}
+    try { if (containerRef.current?.requestFullscreen) await containerRef.current.requestFullscreen(); setIsFullscreen(true); } catch (e) {}
   };
 
-  const sairModoJogoReal = () => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen();
-    }
-    setIsFullscreen(false);
-  };
+  const sairModoJogoReal = () => { if (document.fullscreenElement) document.exitFullscreen(); setIsFullscreen(false); };
 
   useEffect(() => {
     entrarModoJogoReal();
-    const monitorarTelaCheia = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
+    const monitorarTelaCheia = () => { setIsFullscreen(!!document.fullscreenElement); };
     document.addEventListener('fullscreenchange', monitorarTelaCheia);
-    return () => {
-      document.removeEventListener('fullscreenchange', monitorarTelaCheia);
-      sairModoJogoReal();
-    };
+    return () => { document.removeEventListener('fullscreenchange', monitorarTelaCheia); sairModoJogoReal(); };
   }, []);
 
-  // RESTAURADO: Geração matemática estrita sem repetição de pedras entre os dois lados
   const inicializarPedrasCompartilhadas = (userId: string, j1: string | null, j2: string | null) => {
-    const totalVinteOitoPedras = [
-      '0-0', '0-1', '0-2', '0-3', '0-4', '0-5', '0-6',
-      '1-1', '1-2', '1-3', '1-4', '1-5', '1-6',
-      '2-2', '2-3', '2-4', '2-5', '2-6',
-      '3-3', '3-4', '3-5', '3-6',
-      '4-4', '4-5', '4-6',
-      '5-5', '5-6',
-      '6-6'
-    ];
-
+    const pool = ['0-0', '0-1', '0-2', '0-3', '0-4', '0-5', '0-6', '1-1', '1-2', '1-3', '1-4', '1-5', '1-6', '2-2', '2-3', '2-4', '2-5', '2-6', '3-3', '3-4', '3-5', '3-6', '4-4', '4-5', '4-6', '5-5', '5-6', '6-6'];
     const salaHash = salaId.replace(/[^0-9]/g, '');
     const seed = salaHash ? parseInt(salaHash.substring(0, 5)) : 12345;
-    
-    let pool = [...totalVinteOitoPedras];
+    let localPool = [...pool];
     let tempSeed = seed;
-    for (let i = pool.length - 1; i > 0; i--) {
+    for (let i = localPool.length - 1; i > 0; i--) {
       tempSeed = (tempSeed * 9301 + 49297) % 233280;
       const j = Math.floor((tempSeed / 233280) * (i + 1));
-      const temp = pool[i];
-      pool[i] = pool[j];
-      pool[j] = temp;
+      const temp = localPool[i]; localPool[i] = localPool[j]; localPool[j] = temp;
     }
-
-    if (userId === j1) {
-      setMinhasPedras(pool.slice(0, 7));
-    } else if (userId === j2) {
-      setMinhasPedras(pool.slice(7, 14));
-    }
+    if (userId === j1) setMinhasPedras(localPool.slice(0, 7));
+    else if (userId === j2) setMinhasPedras(localPool.slice(7, 14));
   };
 
   const carregarDadosPartida = async () => {
@@ -236,9 +207,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         setPontaEsquerda(data.mesa_ponta_esquerda);
         setPontaDireita(data.mesa_ponta_direita);
 
-        if (data.jogador_1_id && data.jogador_2_id) {
-          partidaJaIniciadaRef.current = true;
-        }
+        if (data.jogador_1_id && data.jogador_2_id) partidaJaIniciadaRef.current = true;
 
         const ids = [data.jogador_1_id, data.jogador_2_id].filter(Boolean) as string[];
         if (ids.length > 0) {
@@ -250,16 +219,12 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         }
 
         const jogadasRaw = data.historico_jogadas as any[];
-        const jogadasProcessadas: PedraMesa[] = Array.isArray(jogadasRaw) 
-          ? jogadasRaw.map((jogada: any) => {
-              if (typeof jogada === 'string') {
-                const [lA, lB] = jogada.split('-').map(Number);
-                return { valorOriginal: jogada, ladoEsquerdo: lA, ladoDireito: lB };
-              }
-              return jogada as PedraMesa;
-            })
-          : [];
-
+        const jogadasProcessadas: PedraMesa[] = Array.isArray(jogadasRaw) ? jogadasRaw.map((jogada: any) => {
+          if (typeof jogada === 'string') {
+            const [lA, lB] = jogada.split('-').map(Number); return { valorOriginal: jogada, ladoEsquerdo: lA, ladoDireito: lB };
+          }
+          return jogada as PedraMesa;
+        }) : [];
         setMesaPedras(jogadasProcessadas);
         inicializarPedrasCompartilhadas(usuarioId, data.jogador_1_id, data.jogador_2_id);
       }
@@ -269,70 +234,83 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   useEffect(() => {
     carregarDadosPartida();
 
-    const canalJogo = supabase.channel(`jogo-realtime-${salaId}`)
+    // IMPLEMENTAÇÃO DE SUPABASE PRESENCE (Limpa jogador da mesa se ele fechar a aba/site)
+    const canalJogo = supabase.channel(`jogo-realtime-${salaId}`, { config: { broadcast: { self: true }, presence: { key: usuarioId } } })
+      .on('presence', { event: 'sync' }, async () => {
+        const estadoPresenca = canalJogo.presenceState();
+        const chavesPresencas = Object.keys(estadoPresenca);
+        
+        // Se a partida começou e um dos dois sumir do presence da rede, força abandono de vaga
+        if (partidaJaIniciadaRef.current && chavesPresencas.length < 2) {
+          let updates: any = {};
+          if (jogador1Id && !chavesPresencas.includes(jogador1Id)) updates.jogador_1_id = null;
+          if (jogador2Id && !chavesPresencas.includes(jogador2Id)) updates.jogador_2_id = null;
+          
+          if (Object.keys(updates).length > 0) {
+            await supabase.from('domino_salas').update(updates).eq('id', salaId);
+          }
+        }
+      })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'domino_salas', filter: `id=eq.${salaId}` }, async (payload) => {
         const newData = payload.new;
         if (newData) {
+          // Monitora se a vez mudou para exibir o alerta temporário sem botão
+          if (newData.vez_usuario_id !== vezUsuarioId && newData.jogador_1_id && newData.jogador_2_id) {
+            if (newData.vez_usuario_id === usuarioId) {
+              setAlertaTemporario("SUA VEZ!");
+            } else {
+              setAlertaTemporario("PASSE / VEZ DO OPONENTE");
+            }
+            setTimeout(() => setAlertaTemporario(null), 2500);
+          }
+
           setJogador1Id(newData.jogador_1_id);
           setJogador2Id(newData.jogador_2_id);
           setVezUsuarioId(newData.vez_usuario_id);
           setPontaEsquerda(newData.mesa_ponta_esquerda);
           setPontaDireita(newData.mesa_ponta_direita);
 
-          const ids = [newData.jogador_1_id, newData.jogador_2_id].filter(Boolean) as string[];
-          if (ids.length > 0) {
-            const { data: pData } = await supabase.from('usuarios').select('id, nome, foto_url').in('id', ids);
-            const p1 = pData?.find(u => u.id === newData.jogador_1_id);
-            const p2 = pData?.find(u => u.id === newData.jogador_2_id);
-            setNomeJ1(p1 ? p1.nome : 'Jogador 1');
-            setFotoJ1(p1 ? p1.foto_url : null);
-            setNomeJ2(p2 ? p2.nome : 'Jogador 2');
-            setFotoJ2(p2 ? p2.foto_url : null);
-          }
+          if (newData.jogador_1_id && newData.jogador_2_id) partidaJaIniciadaRef.current = true;
 
-          if (newData.jogador_1_id && newData.jogador_2_id) {
-            partidaJaIniciadaRef.current = true;
+          // Se a partida foi cancelada por inatividade via trigger externo do banco
+          if (newData.jogador_1_id === null && newData.jogador_2_id === null && partidaJaIniciadaRef.current) {
+            setModalNotificacao({ visivel: true, titulo: 'Partida Anulada!', message: 'O jogo foi cancelado devido ao excesso de turnos sem jogar por inatividade.', tipo: 'erro' });
+            return;
           }
-
-          const jogadasRaw = newData.historico_jogadas as any[];
-          const jogadasProcessadas: PedraMesa[] = Array.isArray(jogadasRaw) 
-            ? jogadasRaw.map((jogada: any) => {
-                if (typeof jogada === 'string') {
-                  const [lA, lB] = jogada.split('-').map(Number);
-                  return { valorOriginal: jogada, ladoEsquerdo: lA, ladoDireito: lB };
-                }
-                return jogada as PedraMesa;
-              })
-            : [];
-            
-          setMesaPedras(jogadasProcessadas);
-          tocarSom('jogar');
 
           if (partidaJaIniciadaRef.current && (!newData.jogador_1_id || !newData.jogador_2_id)) {
             tocarSom('vitoria');
-            setModalNotificacao({ visivel: true, titulo: 'Vitória por W.O.!', message: 'Seu adversário abandonou a partida.', tipo: 'fim' });
+            setModalNotificacao({ visivel: true, titulo: 'Vitória por W.O.!', message: 'Seu oponente fechou o navegador ou abandonou a partida.', tipo: 'fim' });
           }
+
+          const jogadasRaw = newData.historico_jogadas as any[];
+          const jogadasProcessadas: PedraMesa[] = Array.isArray(jogadasRaw) ? jogadasRaw.map((jogada: any) => {
+            if (typeof jogada === 'string') {
+              const [lA, lB] = jogada.split('-').map(Number); return { valorOriginal: jogada, ladoEsquerdo: lA, ladoDireito: lB };
+            }
+            return jogada as PedraMesa;
+          }) : [];
+          setMesaPedras(jogadasProcessadas);
+          tocarSom('jogar');
         }
       })
       .on('broadcast', { event: 'provocacao' }, (response) => {
         const payload = response.payload;
-        if (payload.autorId === Math.floor(1)) { // Evita erro se o id sumir
-          setEmojiAtivoJ1(payload.emoji);
-          tocarSom('emoji');
-          setTimeout(() => setEmojiAtivoJ1(null), 6000);
-        } else {
-          setEmojiAtivoJ2(payload.emoji);
-          tocarSom('emoji');
-          setTimeout(() => setEmojiAtivoJ2(null), 6000);
-        }
-      })
-      .subscribe();
+        if (payload.autorId === jogador1Id) { setEmojiAtivoJ1(payload.emoji); tocarSom('emoji'); setTimeout(() => setEmojiAtivoJ1(null), 6000); }
+        else { setEmojiAtivoJ2(payload.emoji); tocarSom('emoji'); setTimeout(() => setEmojiAtivoJ2(null), 6000); }
+      });
+
+    canalJogo.subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        await canalJogo.track({ online_at: new Date().toISOString() });
+      }
+    });
 
     canalRef.current = canalJogo;
     return () => { supabase.removeChannel(canalJogo); };
-  }, [salaId, jogador1Id, jogador2Id]);
+  }, [salaId, vezUsuarioId, jogador1Id, jogador2Id]);
 
-  const meuTurno = vezUsuarioId === usuarioId && ambosJogadoresPresentes;
+  const meuTurno = vezUsuarioId === usuarioId && ambosJogadoresPresentesLocal;
   const adversarioNome = usuarioId === jogador1Id ? nomeJ2 : nomeJ1;
 
   const isPedraJogavel = (pedra: string) => {
@@ -341,51 +319,60 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     return ladoA === pontaEsquerda || ladoB === pontaEsquerda || ladoA === pontaDireita || ladoB === pontaDireita;
   };
 
-  useEffect(() => { if (ambosJogadoresPresentes) setTempoRestante(20); }, [vezUsuarioId, ambosJogadoresPresentes]);
+  useEffect(() => { if (ambosJogadoresPresentesLocal) setTempoRestante(20); }, [vezUsuarioId, ambosJogadoresPresentesLocal]);
 
-  // RESTAURADO: Temporizador funcional decrementando a cada 1 segundo
   useEffect(() => {
-    if (!vezUsuarioId || !ambosJogadoresPresentes) return;
+    if (!vezUsuarioId || !ambosJogadoresPresentesLocal) return;
     const tick = setInterval(() => {
       setTempoRestante((prev) => {
-        if (prev <= 1) { if (meuTurno) passarVez(); return 20; }
+        if (prev <= 1) { 
+          if (meuTurno) {
+            const temPecaCompativel = minhasPedras.some(p => isPedraJogavel(p));
+            // REGRA: Se o tempo esgotar tendo peças válidas na mão, conta como turno perdido por inatividade
+            if (temPecaCompativel) {
+              turnosPassadosSeguidosRef.current += 1;
+              if (turnosPassadosSeguidosRef.current >= 3) {
+                anularPartidaPorInatividade();
+                return 20;
+              }
+            }
+            passarVez(); 
+          }
+          return 20; 
+        }
         if (prev === 6) tocarSom('alerta');
         return prev - 1;
       });
     }, 1000);
     return () => clearInterval(tick);
-  }, [vezUsuarioId, meuTurno, ambosJogadoresPresentes]);
+  }, [vezUsuarioId, meuTurno, ambosJogadoresPresentesLocal, minhasPedras, mesaPedras]);
 
+  // Alerta de passe reativo limpo sem quebrar layout
   useEffect(() => {
     if (meuTurno && minhasPedras.length > 0 && mesaPedras.length > 0) {
       const temQualquerPecaJogavel = minhasPedras.some(pedra => isPedraJogavel(pedra));
-
       if (!temQualquerPecaJogavel) {
-        setModalNotificacao({
-          visivel: true,
-          titulo: 'PASSE',
-          message: 'Você não possui pedras compatíveis com as pontas da mesa! Sua vez foi passada.',
-          tipo: 'passe'
-        });
         passarVez();
       }
     }
-  }, [meuTurno, minhasPedras, mesaPedras, pontaEsquerda, pontaDireita]);
+  }, [meuTurno, minhasPedras, mesaPedras]);
 
   useEffect(() => {
     if (minhasPedras.length === 0 && mesaPedras.length > 0) {
       tocarSom('vitoria');
-      setModalNotificacao({
-        visivel: true,
-        titulo: 'Parabéns, Você Venceu!',
-        message: 'Você bateu o jogo e jogou todas as suas pedras na mesa de dominó.',
-        tipo: 'fim'
-      });
+      setModalNotificacao({ visivel: true, titulo: 'Parabéns, Você Venceu!', message: 'Você bateu o jogo de dominó!', tipo: 'fim' });
     }
   }, [minhasPedras]);
 
+  const anularPartidaPorInatividade = async () => {
+    try {
+      await supabase.from('domino_salas').update({ jogador_1_id: null, jogador_2_id: null, historico_jogadas: [] }).eq('id', salaId);
+      setModalNotificacao({ visivel: true, titulo: 'Partida Anulada!', message: 'Você ficou 3 turnos seguidos sem jogar possuindo peças compatíveis. O jogo foi encerrado por inatividade.', tipo: 'erro' });
+    } catch (e) {}
+  };
+
   const tentarJogarPedra = async (pedra: string) => {
-    if (!meuTurno || !ambosJogadoresPresentes) return;
+    if (!meuTurno || !ambosJogadoresPresentesLocal) return;
 
     const [ladoA, ladoB] = pedra.split('-').map(Number);
     let novaMesa = [...mesaPedras];
@@ -394,28 +381,19 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
     if (mesaPedras.length === 0) {
       novaMesa.push({ valorOriginal: pedra, ladoEsquerdo: ladoA, ladoDireito: ladoB });
-      novaPontaE = ladoA;
-      novaPontaD = ladoB;
+      novaPontaE = ladoA; novaPontaD = ladoB;
     } else {
-      if (ladoA === pontaEsquerda) {
-        novaMesa.unshift({ valorOriginal: `${ladoB}-${ladoA}`, ladoEsquerdo: ladoB, ladoDireito: ladoA });
-        novaPontaE = ladoB;
-      } else if (ladoB === pontaEsquerda) {
-        novaMesa.unshift({ valorOriginal: `${ladoA}-${ladoB}`, ladoEsquerdo: ladoA, ladoDireito: ladoB });
-        novaPontaE = ladoA;
-      } else if (ladoA === pontaDireita) {
-        novaMesa.push({ valorOriginal: `${ladoA}-${ladoB}`, ladoEsquerdo: ladoA, ladoDireito: ladoB });
-        novaPontaD = ladoB;
-      } else if (ladoB === pontaDireita) {
-        novaMesa.push({ valorOriginal: `${ladoB}-${ladoA}`, ladoEsquerdo: ladoB, ladoDireito: ladoA });
-        novaPontaD = ladoA;
-      } else {
-        return;
-      }
+      if (ladoA === pontaEsquerda) { novaMesa.unshift({ valorOriginal: `${ladoB}-${ladoA}`, ladoEsquerdo: ladoB, ladoDireito: ladoA }); novaPontaE = ladoB; }
+      else if (ladoB === pontaEsquerda) { novaMesa.unshift({ valorOriginal: `${ladoA}-${ladoB}`, ladoEsquerdo: ladoA, ladoDireito: ladoB }); novaPontaE = ladoA; }
+      else if (ladoA === pontaDireita) { novaMesa.push({ valorOriginal: `${ladoA}-${ladoB}`, ladoEsquerdo: ladoA, ladoDireito: ladoB }); novaPontaD = ladoB; }
+      else if (ladoB === pontaDireita) { novaMesa.push({ valorOriginal: `${ladoB}-${ladoA}`, ladoEsquerdo: ladoB, ladoDireito: ladoA }); novaPontaD = ladoA; }
+      else return;
     }
 
     const proximoTurnoId = usuarioId === jogador1Id ? jogador2Id : jogador1Id;
     try {
+      // Zera o contador já que o usuário efetuou uma ação válida
+      turnosPassadosSeguidosRef.current = 0;
       await supabase.from('domino_salas').update({ historico_jogadas: novaMesa as any, mesa_ponta_esquerda: novaPontaE, mesa_ponta_direita: novaPontaD, vez_usuario_id: proximoTurnoId }).eq('id', salaId);
       setMinhasPedras(prev => prev.filter(p => p !== pedra));
     } catch (e) {}
@@ -430,89 +408,46 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   };
 
   const lidarComSaidaVoluntaria = async () => {
-    try {
-      const updates: any = {
-        jogador_1_id: null,
-        jogador_2_id: null,
-        historico_jogadas: []
-      };
-      partidaJaIniciadaRef.current = false;
-      await supabase.from('domino_salas').update(updates).eq('id', salaId);
-      sairModoJogoReal();
-      onVoltarAoLobby();
-    } catch (err) {
-      sairModoJogoReal();
-      onVoltarAoLobby();
-    }
+    partidaJaIniciadaRef.current = false;
+    await supabase.from('domino_salas').update({ jogador_1_id: null, jogador_2_id: null, historico_jogadas: [] }).eq('id', salaId);
+    onVoltarAoLobby();
   };
 
   const enviarProvocacao = (emoji: string) => {
     if (canalRef.current) canalRef.current.send({ type: 'broadcast', event: 'provocacao', payload: { autorId: usuarioId, emoji } });
   };
 
-  const fecharModalNotificacao = async () => {
-    if (modalNotificacao.tipo === 'passe') {
-      setModalNotificacao(prev => ({ ...prev, visivel: false }));
-      return;
-    }
-    
-    setModalNotificacao(prev => ({ ...prev, visivel: false }));
-    try {
-      await supabase.from('domino_salas').update({ jogador_1_id: null, jogador_2_id: null, historico_jogadas: [] }).eq('id', salaId);
-    } catch (e) {}
-    sairModoJogoReal();
-    onVoltarAoLobby();
-  };
-
   return (
     <div ref={containerRef} className="w-full h-screen bg-[#090610] text-white font-sans flex flex-col justify-between p-2 md:p-4 overflow-hidden select-none relative">
+      
+      {/* BANNER NOTIFICAÇÃO FLUTUANTE TEMPORÁRIA (SEM BOTÃO) */}
+      {alertaTemporario && (
+        <div className="absolute top-[20%] left-1/2 -translate-x-1/2 bg-purple-600/90 border border-purple-400 text-white font-black tracking-widest text-sm md:text-md px-8 py-3 rounded-full shadow-[0_0_30px_rgba(147,51,234,0.6)] z-50 transition-all animate-in fade-in zoom-in duration-200 uppercase">
+          {alertaTemporario}
+        </div>
+      )}
+
       {modalNotificacao.visivel && (
         <div className="absolute inset-0 bg-black/85 z-50 flex items-center justify-center p-4">
-          <div className="max-w-sm bg-[#110D1A] border border-purple-950/60 p-8 rounded-2xl shadow-2xl text-center space-y-5 relative overflow-hidden">
-            <div className="absolute -top-10 -left-10 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl" />
-            <div className="p-4 bg-purple-950/40 border border-purple-900/30 rounded-full w-fit mx-auto text-purple-400">
-              {modalNotificacao.tipo === 'fim' ? (
-                <Award className="w-12 h-12 text-yellow-500 animate-bounce" />
-              ) : modalNotificacao.tipo === 'passe' ? (
-                <RefreshCw className="w-12 h-12 text-amber-500 animate-spin" />
-              ) : (
-                <ShieldAlert className="w-12 h-12 text-purple-400" />
-              )}
+          <div className="max-w-sm bg-[#110D1A] border border-purple-950/60 p-8 rounded-2xl shadow-2xl text-center space-y-5">
+            <div className="p-4 bg-purple-950/40 border border-purple-900/30 rounded-full w-fit mx-auto">
+              {modalNotificacao.tipo === 'fim' ? <Award className="w-12 h-12 text-yellow-500 animate-bounce" /> : <ShieldAlert className="w-12 h-12 text-red-500" />}
             </div>
             <div className="space-y-2">
-              <h3 className={`font-black text-2xl tracking-widest ${modalNotificacao.tipo === 'passe' ? 'text-amber-500 font-extrabold animate-pulse' : 'text-white'}`}>
-                {modalNotificacao.titulo}
-              </h3>
-              <p className="text-xs text-gray-300 leading-relaxed px-2">{modalNotificacao.message}</p>
+              <h3 className="font-extrabold text-xl text-white">{modalNotificacao.titulo}</h3>
+              <p className="text-xs text-gray-300 leading-relaxed">{modalNotificacao.message}</p>
             </div>
-            <Button 
-              className={`w-full font-bold h-11 text-xs rounded-xl ${modalNotificacao.tipo === 'passe' ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-purple-600 hover:bg-purple-700 text-white'}`} 
-              onClick={fecharModalNotificacao}
-            >
-              {modalNotificacao.tipo === 'passe' ? 'Fechar Alerta' : 'Voltar ao Lobby'}
-            </Button>
+            <Button className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold h-11 text-xs rounded-xl" onClick={lidarComSaidaVoluntaria}>Voltar ao Lobby</Button>
           </div>
         </div>
       )}
 
       <div className="flex items-center justify-between bg-[#110D1A]/95 border border-purple-950/40 px-3 py-1.5 rounded-xl shadow-lg h-[12%] relative gap-2">
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={lidarComSaidaVoluntaria} className="text-gray-400 hover:text-white h-8 text-xs px-2"><ArrowLeft className="w-3.5 h-3.5 mr-1" /> Sair</Button>
-          <span className="text-[10px] text-purple-300 font-bold bg-purple-950/50 px-2 py-0.5 rounded-full hidden sm:inline">Mesa {numeroSala}</span>
-        </div>
-
-        <div className="flex items-center gap-2 sm:gap-4 bg-purple-950/20 px-2 sm:px-3 py-1 rounded-lg border border-purple-900/10 text-[11px] sm:text-xs">
-          <div className="flex items-center gap-1.5 sm:gap-2 relative">
-            <div className={`w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full ${vezUsuarioId === jogador1Id && ambosJogadoresPresentes ? 'bg-green-500 animate-pulse' : 'bg-gray-600'}`} />
-            <img src={obterAvatarUsuario(fotoJ1, jogador1Id)} alt={nomeJ1} className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border border-purple-500/50 object-cover bg-[#222]" onError={(e) => { (e.target as HTMLImageElement).src = AVATARES_PADROES[0]; }} />
-            <span className="max-w-[50px] sm:max-w-[70px] truncate font-medium">{nomeJ1}</span>
-          </div>
-          <span className="text-purple-500 font-bold text-[9px] sm:text-[10px]">VS</span>
-          <div className="flex items-center gap-1.5 sm:gap-2 relative">
-            <span className="max-w-[50px] sm:max-w-[70px] truncate font-medium">{nomeJ2}</span>
-            <img src={obterAvatarUsuario(fotoJ2, jogador2Id)} alt={nomeJ2} className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border border-purple-500/50 object-cover bg-[#222]" onError={(e) => { (e.target as HTMLImageElement).src = AVATARES_PADROES[1]; }} />
-            <div className={`w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full ${vezUsuarioId === jogador2Id && ambosJogadoresPresentes ? 'bg-green-500 animate-pulse' : 'bg-gray-600'}`} />
-          </div>
+        <Button variant="ghost" size="sm" onClick={lidarComSaidaVoluntaria} className="text-gray-400 hover:text-white h-8 text-xs px-2"><ArrowLeft className="w-3.5 h-3.5 mr-1" /> Sair</Button>
+        <div className="flex items-center gap-4 bg-purple-950/20 px-3 py-1 rounded-lg text-xs">
+          <span className="font-medium">{nomeJ1}</span>
+          <span className="text-purple-500 font-bold">VS</span>
+          <span className="font-medium">{nomeJ2}</span>
         </div>
       </div>
 
@@ -527,11 +462,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         <div className="flex items-center justify-center gap-0 max-w-full overflow-x-auto px-4 py-2">
           {mesaPedras.length === 0 ? (
             <div className="text-center text-emerald-300/30 font-bold uppercase tracking-widest text-xs py-6">
-              {ambosJogadoresPresentes ? (
-                <>Mesa de Dominó Limpa<br /><span className="text-[10px] font-normal lowercase">Seu turno! Jogue a primeira pedra.</span></>
-              ) : (
-                <span className="text-amber-500 animate-pulse">Aguardando oponente para iniciar...</span>
-              )}
+              {ambosJogadoresPresentesLocal ? <>Mesa de Dominó Limpa<br /><span className="text-[10px] font-normal lowercase">Seu turno! Jogue a primeira pedra.</span></> : <span className="text-amber-500 animate-pulse">Aguardando oponente para iniciar...</span>}
             </div>
           ) : (
             <div className="flex items-center justify-center gap-0 max-w-full overflow-x-auto px-4 py-2">
@@ -554,16 +485,12 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           ))}
         </div>
 
-        {/* RESTAURADO: Barra de progresso visual do temporizador e contagem de segundos */}
         <div className="absolute bottom-2 right-3 bg-[#090610]/95 border border-purple-900/40 px-4 py-1.5 rounded-2xl flex flex-col items-center justify-center gap-1 min-w-[130px]">
           <div className="text-[10px] font-bold tracking-wide">
-            {!ambosJogadoresPresentes ? <span className="text-amber-500 animate-pulse">AGUARDANDO...</span> : meuTurno ? <span className="text-green-400 animate-pulse flex items-center gap-1"><RefreshCw className="w-3 h-3 animate-spin" /> SUA VEZ ({tempoRestante}s)</span> : <span className="text-gray-400">Tempo de {adversarioNome}: {tempoRestante}s</span>}
+            {!ambosJogadoresPresentesLocal ? <span className="text-amber-500 animate-pulse">AGUARDANDO...</span> : meuTurno ? <span className="text-green-400 animate-pulse flex items-center gap-1"><RefreshCw className="w-3 h-3 animate-spin" /> SUA VEZ ({tempoRestante}s)</span> : <span className="text-gray-400">Tempo de {adversarioNome}: {tempoRestante}s</span>}
           </div>
           <div className="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
-            <div 
-              className={`h-full transition-all duration-1000 ${!ambosJogadoresPresentes ? 'bg-gray-600' : tempoRestante > 10 ? 'bg-green-500' : tempoRestante > 4 ? 'bg-amber-500' : 'bg-red-500'}`} 
-              style={{ width: `${!ambosJogadoresPresentes ? 100 : (tempoRestante / 20) * 100}%` }} 
-            />
+            <div className={`h-full transition-all duration-1000 ${!ambosJogadoresPresentesLocal ? 'bg-gray-600' : tempoRestante > 10 ? 'bg-green-500' : tempoRestante > 4 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${!ambosJogadoresPresentesLocal ? 100 : (tempoRestante / 20) * 100}%` }} />
           </div>
         </div>
       </div>
@@ -572,7 +499,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         <div className="flex items-center justify-between px-1 h-[25%]"><span className="text-[10px] text-purple-300 font-bold uppercase tracking-wider">Suas Pedras ({minhasPedras.length})</span></div>
         <div className="flex justify-center items-center gap-1.5 overflow-x-auto h-[75%] py-1">
           {minhasPedras.map((pedra, idx) => {
-            const jogavel = meuTurno && isPedraJogavel(pedra) && ambosJogadoresPresentes;
+            const jogavel = meuTurno && isPedraJogavel(pedra) && ambosJogadoresPresentesLocal;
             return (
               <div key={idx} className="shrink-0 scale-90 md:scale-100">
                 <PedraClassica valor={pedra} onClick={() => tentarJogarPedra(pedra)} disabled={!jogavel} menor={true} destacada={jogavel} />
