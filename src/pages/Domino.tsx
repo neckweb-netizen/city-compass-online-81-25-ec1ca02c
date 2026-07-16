@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { DominoLobby } from '@/components/domino/DominoLobby';
 import { DominoTabuleiro } from '@/components/domino/DominoTabuleiro';
 import { Loader2, AlertCircle, Trophy, Users, Search, LogOut, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -21,7 +20,6 @@ interface MesaLobby {
   status: 'Disponível' | 'Em Partida';
 }
 
-// 5 Avatares padrão modernos de backup
 const AVATARES_PADROES = [
   "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix&backgroundColor=b6e3f4",
   "https://api.dicebear.com/7.x/adventurer/svg?seed=Aneka&backgroundColor=ffdfbf",
@@ -30,7 +28,6 @@ const AVATARES_PADROES = [
   "https://api.dicebear.com/7.x/adventurer/svg?seed=JD&backgroundColor=b1e2c6"
 ];
 
-// Função blindada contra crashes de valores nulos ou indefinidos
 const obterAvatarUsuario = (fotoUrl: string | null | undefined, idUsuario: string | null | undefined) => {
   if (fotoUrl && fotoUrl !== "" && fotoUrl !== "NULL") {
     return fotoUrl;
@@ -89,7 +86,6 @@ export default function Domino() {
         let perfisMapeados: Record<string, JogadorLobby> = {};
 
         if (idsJogadores.length > 0) {
-          // CORRIGIDO: Alterado de 'profiles' para 'usuarios' para sanar o erro 404 de tabela inexistente
           const { data: perfisData, error: perfisError } = await supabase
             .from('usuarios') 
             .select('id, nome, foto_url')
@@ -166,11 +162,12 @@ export default function Domino() {
       } else if (!mesa.jogador_2_id && mesa.jogador_1_id !== session.user.id) {
         updateData.jogador_2_id = session.user.id;
       } else {
-        setSalaAtivaId(mesa.id);
         setNumeroMesaAtiva(mesa.numero);
+        setSalaAtivaId(mesa.id);
         return;
       }
 
+      // O SEGREDO: Aguarda a gravação no banco terminar 100% com o await antes de setar o ID
       const { error } = await supabase
         .from('domino_salas')
         .update(updateData)
@@ -178,8 +175,11 @@ export default function Domino() {
 
       if (error) throw error;
 
-      setSalaAtivaId(mesa.id);
+      // Atualiza o estado local das mesas para garantir consistência imediata
+      await carregarMesas();
+
       setNumeroMesaAtiva(mesa.numero);
+      setSalaAtivaId(mesa.id);
     } catch (err) {
       console.error('Erro ao entrar na mesa:', err);
     }
