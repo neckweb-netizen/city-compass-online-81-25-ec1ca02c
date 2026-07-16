@@ -29,7 +29,7 @@ const AVATARES_PADROES = [
 ];
 
 const obterAvatarUsuario = (fotoUrl: string | null | undefined, idUsuario: string | null | undefined) => {
-  if (fotoUrl && fotoUrl !== "" && fotoUrl !== "NULL") {
+  if (fotoUrl && photoUrl !== "" && photoUrl !== "NULL") {
     return fotoUrl;
   }
   if (!idUsuario) {
@@ -129,6 +129,7 @@ export default function Domino() {
     if (session) {
       carregarMesas();
 
+      // Sincronia Realtime do Lobby
       const canalLobby = supabase
         .channel('lobby-domino')
         .on(
@@ -140,8 +141,14 @@ export default function Domino() {
         )
         .subscribe();
 
+      // Polling de redundância a cada 3 segundos para travar sincronia em abas em segundo plano/anônimas
+      const intervaloRedundancia = setInterval(() => {
+        carregarMesas();
+      }, 3000);
+
       return () => {
         supabase.removeChannel(canalLobby);
+        clearInterval(intervaloRedundancia);
       };
     }
   }, [session]);
@@ -272,7 +279,7 @@ export default function Domino() {
     return (
       <div className="w-full h-screen flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-[#090610] text-center gap-4">
         <AlertCircle className="w-12 h-12 text-red-500" />
-        <h2 className="text-xl font-bold">Acesso não authorized</h2>
+        <h2 className="text-xl font-bold">Acesso não autorizado</h2>
         <p className="text-xs text-slate-500 max-w-xs">Por favor, faça login no site para acessar as salas de dominó.</p>
       </div>
     );
@@ -292,7 +299,6 @@ export default function Domino() {
   return (
     <div className="w-full min-h-screen bg-slate-50 dark:bg-[#090610] text-slate-900 dark:text-white transition-colors duration-200 font-sans p-4 md:p-6 select-none">
       
-      {/* 1. HEADER DO LOBBY */}
       <div className="max-w-6xl mx-auto flex items-center justify-between mb-6 bg-white dark:bg-[#110D1A]/95 border border-slate-200 dark:border-purple-950/40 p-4 rounded-2xl shadow-sm dark:shadow-lg">
         <div className="flex items-center gap-3">
           <div className="p-2.5 bg-purple-100 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-900/30 rounded-xl text-purple-600 dark:text-purple-400">
@@ -318,7 +324,6 @@ export default function Domino() {
 
       <div className="max-w-6xl mx-auto space-y-6">
         
-        {/* 2. CARD DE FILA DE ESPERA */}
         <div className="w-full bg-white dark:bg-[#110D1A]/95 border border-slate-300 dark:border-purple-950/40 rounded-2xl p-5 shadow-sm dark:shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4 text-center sm:text-left">
             <div className="p-3 bg-purple-100 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-900/30 rounded-full text-purple-600 dark:text-purple-400">
@@ -354,7 +359,6 @@ export default function Domino() {
           </Button>
         </div>
 
-        {/* 3. GRID DE MESAS */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {mesas.map((mesa) => {
             const jogador1 = mesa.jogador_1;
@@ -398,14 +402,13 @@ export default function Domino() {
 
                   <div className="flex flex-col items-center gap-2 w-24">
                     <img
-                      src={obterAvatarUsuario(jogador2 ? jogador2.foto_url : null, jogador2 ? jogador2.id : null)}
+                      src={obterAvatarUsuario(jogador2 ? jogador2.foto_url : null, jogador2 ? grandfather => jogador2.id : null)}
                       alt={jogador2 ? jogador2.nome : "Vago"}
                       className={`w-12 h-12 rounded-full border-2 object-cover bg-slate-300 dark:bg-[#1c1230] ${
                         jogador2 ? 'border-purple-600' : 'border-dashed border-slate-400 dark:border-purple-900/40'
                       }`}
                     />
                     <span className="text-xs font-bold truncate max-w-full text-slate-800 dark:text-gray-300">
-                      {/* CORRIGIDO: Removido o erro de sintaxe 'presidential =>' gerado no passo anterior */}
                       {jogador2 ? jogador2.nome : "Vago"}
                     </span>
                   </div>
