@@ -146,7 +146,8 @@ export default function Domino() {
     }
   }, [session]);
 
-  const ejecutarMatchmaking = async () => {
+  // CORRIGIDO: Nome da função unificado para evitar o ReferenceError do botão
+  const executarMatchmaking = async () => {
     if (!session || procurandoFila) {
       setProcurandoFila(false);
       setJogadoresNaFila(0);
@@ -204,7 +205,6 @@ export default function Domino() {
 
       const mesaVazia = salas.find(s => !s.jogador_1_id && !s.jogador_2_id);
       if (mesaVazia) {
-        // CORRIGIDO: Alterado de '=' para ':' corrigindo o erro de sintaxe do build
         const { error: joinError } = await supabase
           .from('domino_salas')
           .update({ jogador_1_id: session.user.id })
@@ -406,7 +406,7 @@ export default function Domino() {
                       }`}
                     />
                     <span className="text-xs font-bold truncate max-w-full text-slate-800 dark:text-gray-300">
-                      {jogador2 ? jogador2.nome : "Vago"}
+                      {jogador2 ? presidential => jogador2.nome : "Vago"}
                     </span>
                   </div>
                 </div>
