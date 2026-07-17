@@ -157,6 +157,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       updates.mesa_ponta_esquerda = null;
       updates.mesa_ponta_direita = null;
       updates.historico_jogadas = [];
+      updates.passadas_count = 0;
       updates.atualizado_em = new Date().toISOString();
 
       await supabase
@@ -183,13 +184,42 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     const proximoTurnoId = usuarioId === jogador1Id ? jogador2Id : jogador1Id;
 
     try {
-      await supabase
+      // 1. Busca as passadas_count atuais no banco de dados para sincronizar de forma rígida
+      const { data: salaAtual } = await supabase
         .from('domino_salas')
-        .update({
-          vez_usuario_id: proximoTurnoId,
-          atualizado_em: new Date().toISOString()
-        })
-        .eq('id', salaId);
+        .select('passadas_count')
+        .eq('id', salaId)
+        .single();
+
+      const novasPassadas = (salaAtual?.passadas_count || 0) + 1;
+
+      if (novasPassadas >= 3) {
+        // 2. Se bateu 3 passadas, anula a mesa inteira e remove ambos os jogadores
+        await supabase
+          .from('domino_salas')
+          .update({
+            jogador_1_id: null,
+            jogador_2_id: null,
+            status: 'aguardando',
+            vez_usuario_id: null,
+            mesa_ponta_esquerda: null,
+            mesa_ponta_direita: null,
+            historico_jogadas: [],
+            passadas_count: 0,
+            atualizado_em: new Date().toISOString()
+          })
+          .eq('id', salaId);
+      } else {
+        // 3. Caso contrário, apenas incrementa a contagem e passa a vez normalmente
+        await supabase
+          .from('domino_salas')
+          .update({
+            vez_usuario_id: proximoTurnoId,
+            passadas_count: novasPassadas,
+            atualizado_em: new Date().toISOString()
+          })
+          .eq('id', salaId);
+      }
     } catch (err) {
       console.error('Erro ao passar a vez:', err);
     }
@@ -261,6 +291,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           mesa_ponta_esquerda: novaPontaE,
           mesa_ponta_direita: novaPontaD,
           vez_usuario_id: proximoTurnoId,
+          passadas_count: 0, // Reinicia o contador de passadas pois uma pedra válida foi jogada
           atualizado_em: new Date().toISOString()
         })
         .eq('id', salaId);
@@ -392,6 +423,17 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             const vezAntigaId = oldData ? oldData.vez_usuario_id : vezUsuarioId;
             const novaVezId = newData.vez_usuario_id;
             
+            // Detecta em tempo real se a partida foi anulada pelo servidor por estouro de limite de passadas
+            if (newData.jogador_1_id === null && newData.jogador_2_id === null && newData.status === 'aguardando') {
+              setModalNotificacao({
+                visivel: true,
+                titulo: 'Partida Anulada!',
+                mensagem: 'O limite máximo de 3 passadas automáticas seguidas foi atingido. O jogo encerrou.',
+                tipo: 'erro'
+              });
+              return;
+            }
+
             setVezUsuarioId(novaVezId);
             setPontaEsquerda(newData.mesa_ponta_esquerda);
             setPontaDireita(newData.mesa_ponta_direita);
@@ -429,7 +471,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
               }
             }
 
-            if (newData.jogador_1_id === null || newData.jogador_2_id === null) {
+            if ((newData.jogador_1_id === null || newData.jogador_2_id === null) && newData.status !== 'aguardando') {
               setModalNotificacao({
                 visivel: true,
                 titulo: 'Adversário Desconectado',
@@ -509,9 +551,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   const fecharModalNotificacao = () => {
     setModalNotificacao(prev => ({ ...prev, visivel: false }));
-    if (modalNotificacao.tipo === 'erro' || modalNotificacao.tipo === 'fim') {
-      sairDaPartida();
-    }
+    sairDaPartida();
   };
 
   return (
