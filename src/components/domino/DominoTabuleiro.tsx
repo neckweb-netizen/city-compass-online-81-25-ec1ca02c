@@ -315,14 +315,9 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   useEffect(() => {
     entrarModoJogoReal();
-
-    const monitorarTelaCheia = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-
+    const monitorarTelaCheia = () => { setIsFullscreen(!!document.fullscreenElement); };
     document.addEventListener('fullscreenchange', monitorarTelaCheia);
     document.addEventListener('webkitfullscreenchange', monitorarTelaCheia);
-
     return () => {
       document.removeEventListener('fullscreenchange', monitorarTelaCheia);
       document.removeEventListener('webkitfullscreenchange', monitorarTelaCheia);
@@ -428,17 +423,16 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         { event: 'UPDATE', schema: 'public', table: 'domino_salas', filter: `id=eq.${salaId}` },
         (payload) => {
           const newData = payload.new;
-          const oldData = payload.old;
           if (newData) {
-            // DETECTA SE A SALA FOI ANULADA POR ESTOURO DE PASSADAS NO BANCO
-            if (newData.jogador_1_id === null && newData.jogador_2_id === null && newData.status === 'aguardando') {
+            // DETECTA SE A SALA FOI ANULADA POR ESTOURO DE PASSADAS
+            if (newData.status === 'aguardando' && newData.jogador_1_id === null && newData.jogador_2_id === null) {
               setPartidaAnuladaAtiva(true);
-              supabase.removeChannel(canalJogo); // Para o escutador para evitar re-renderizações infinitas
+              supabase.removeChannel(canalJogo);
               
               setModalNotificacao({
                 visivel: true,
                 titulo: 'Partida Anulada!',
-                message: 'O limite máximo de 3 passadas seguidas foi atingido. O jogo foi encerrado e a sala foi liberada.',
+                message: 'O limite máximo de 3 passadas seguidas foi atingido. O jogo foi encerrado.',
                 tipo: 'erro'
               });
               return;
@@ -446,10 +440,19 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
             if (partidaAnuladaAtiva) return;
 
-            const vezAntigaId = oldData ? oldData.vez_usuario_id : vezUsuarioId;
-            const novaVezId = newData.vez_usuario_id;
-            
-            setVezUsuarioId(novaVezId);
+            // DETECTA DESCONEXÃO APENAS SE A PARTIDA AINDA ESTIVER "JOGANDO"
+            if ((newData.jogador_1_id === null || newData.jogador_2_id === null) && newData.status === 'jogando') {
+              supabase.removeChannel(canalJogo);
+              setModalNotificacao({
+                visivel: true,
+                titulo: 'Adversário Desconectado',
+                message: 'A partida foi encerrada porque o seu oponente deixou a sala.',
+                tipo: 'erro'
+              });
+              return;
+            }
+
+            setVezUsuarioId(newData.vez_usuario_id);
             setPontaEsquerda(newData.mesa_ponta_esquerda);
             setPontaDireita(newData.mesa_ponta_direita);
 
@@ -464,36 +467,8 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
                 })
               : [];
               
-            const mesaAntigaLength = mesaPedras.length;
-            const mesaNovaLength = jogadasProcessadas.length;
-
             setMesaPedras(jogadasProcessadas);
             setTempoRestante(30);
-
-            if (novaVezId === usuarioId && vezAntigaId !== usuarioId) {
-              if (mesaNovaLength === mesaAntigaLength && mesaNovaLength > 0) {
-                const nomeAdv = usuarioId === newData.jogador_1_id ? (newData.jogador_2 as any)?.nome || 'Adversário' : (newData.jogador_1 as any)?.nome || 'Adversário';
-                setAlertaTemporario({
-                  visivel: true,
-                  mensagem: `⚠️ ${nomeAdv} passou a vez (ou esgotou o tempo)! Seu turno.`
-                });
-              } else {
-                setAlertaTemporario({
-                  visivel: true,
-                  mensagem: '🟢 Sua vez de jogar! Faça a sua jogada na mesa.'
-                });
-              }
-            }
-
-            if ((newData.jogador_1_id === null || newData.jogador_2_id === null) && newData.status !== 'aguardando') {
-              supabase.removeChannel(canalJogo);
-              setModalNotificacao({
-                visivel: true,
-                titulo: 'Adversário Desconectado',
-                message: 'A partida foi encerrada porque o seu oponente deixou a sala de dominó.',
-                tipo: 'erro'
-              });
-            }
           }
         }
       )
@@ -516,7 +491,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           clearInterval(cronometro);
           setAlertaTemporario({
             visivel: true,
-            mensagem: '⏱️ Seu tempo esgotou! A vez foi passada para o adversário.'
+            mensagem: '⏱️ Seu tempo esgotou! A vez foi passada.'
           });
           passarVez();
           return 30;
@@ -530,26 +505,20 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   useEffect(() => {
     if (alertaTemporario && alertaTemporario.visivel) {
-      const timer = setTimeout(() => {
-        setAlertaTemporario(null);
-      }, 3500);
+      const timer = setTimeout(() => { setAlertaTemporario(null); }, 3500);
       return () => clearTimeout(timer);
     }
   }, [alertaTemporario]);
 
-  // VERIFICA SE NÃO TEM PEÇAS JOGÁVEIS E PASSA A VEZ COM AVISO TEMPORÁRIO (SEM EXPULSAR NINGUÉM!)
   useEffect(() => {
     if (meuTurno && minhasPedras.length > 0 && mesaPedras.length > 0 && !partidaAnuladaAtiva) {
       const temQualquerPecaJogavel = minhasPedras.some(pedra => isPedraJogavel(pedra));
 
       if (!temQualquerPecaJogavel) {
-        // Exibe o Toast temporário que some sozinho para o jogador atual
         setAlertaTemporario({
           visivel: true,
-          mensagem: '⚠️ Você não tem peças compatíveis! Passando a vez automaticamente...'
+          mensagem: '⚠️ Sem peças! Passando a vez automaticamente...'
         });
-        
-        // Executa a passagem de vez silenciosa e sincronizada no banco
         passarVez();
       }
     }
@@ -560,7 +529,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       setModalNotificacao({
         visivel: true,
         titulo: 'Parabéns, Você Venceu!',
-        message: 'Você bateu o jogo e jogou todas as suas pedras na mesa de dominó.',
+        message: 'Você bateu o jogo!',
         tipo: 'fim'
       });
     }
@@ -572,10 +541,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   };
 
   return (
-    <div 
-      ref={containerRef}
-      className="w-full h-screen bg-[#090610] text-white font-sans flex flex-col justify-between p-2 md:p-4 overflow-hidden select-none relative"
-    >
+    <div ref={containerRef} className="w-full h-screen bg-[#090610] text-white font-sans flex flex-col justify-between p-2 md:p-4 overflow-hidden select-none relative">
       {alertaTemporario && alertaTemporario.visivel && !partidaAnuladaAtiva && (
         <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[60] bg-purple-950/95 border-2 border-purple-500 text-white px-5 py-2 rounded-2xl shadow-[0_4px_15px_rgba(147,51,234,0.4)] flex items-center gap-2 text-xs font-bold animate-in fade-in slide-in-from-top-4 duration-200">
           <MessageSquare className="w-4 h-4 text-purple-400 animate-pulse" />
@@ -593,12 +559,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
               <h3 className="font-bold text-md text-white">{modalNotificacao.titulo}</h3>
               <p className="text-[11px] text-gray-400 leading-relaxed">{modalNotificacao.message}</p>
             </div>
-            <Button 
-              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold h-9 text-xs"
-              onClick={fecharModalNotificacao}
-            >
-              OK, Entendi
-            </Button>
+            <Button className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold h-9 text-xs" onClick={fecharModalNotificacao}>OK, Entendi</Button>
           </div>
         </div>
       )}
@@ -611,127 +572,32 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             </div>
             <div className="space-y-2">
               <h2 className="text-xl font-black text-white">Modo Exclusivo Ativo</h2>
-              <p className="text-xs text-gray-400 leading-relaxed">
-                Para garantir a melhor experiência e usabilidade visual do dominó, você deve jogar em modo tela cheia.
-              </p>
+              <p className="text-xs text-gray-400 leading-relaxed">Para garantir a melhor experiência, jogue em modo tela cheia.</p>
             </div>
-            <Button 
-              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold h-11 shadow-lg shadow-purple-900/20"
-              onClick={entrarModoJogoReal}
-            >
-              Ativar Tela Cheia / Jogar
-            </Button>
+            <Button className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold h-11 shadow-lg shadow-purple-900/20" onClick={entrarModoJogoReal}>Ativar Tela Cheia</Button>
           </div>
         </div>
       )}
       
-      {/* 1. HUD SUPERIOR */}
       <div className="flex items-center justify-between bg-[#110D1A]/95 border border-purple-950/40 px-3 py-1.5 rounded-xl shadow-lg h-[10%]">
-        <div className="flex items-center gap-2">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={sairDaPartida} 
-            className="text-gray-400 hover:text-white h-8 text-xs px-2"
-          >
-            <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Sair
-          </Button>
-          <span className="text-[10px] text-purple-300 font-bold bg-purple-950/50 px-2 py-0.5 rounded-full">
-            Mesa {numeroSala}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-4 bg-purple-950/20 px-3 py-1 rounded-lg border border-purple-900/10 text-xs">
-          <div className="flex items-center gap-1.5">
-            <div className={`w-1.5 h-1.5 rounded-full ${vezUsuarioId === jogador1Id && !partidaAnuladaAtiva ? 'bg-green-500 animate-pulse' : 'bg-gray-600'}`} />
-            <span className="max-w-[70px] truncate font-medium">{nomeJ1}</span>
-          </div>
-          <span className="text-purple-500 font-bold">VS</span>
-          <div className="flex items-center gap-1.5">
-            <span className="max-w-[70px] truncate font-medium">{nomeJ2}</span>
-            <div className={`w-1.5 h-1.5 rounded-full ${vezUsuarioId === jogador2Id && !partidaAnuladaAtiva ? 'bg-green-500 animate-pulse' : 'bg-gray-600'}`} />
-          </div>
-        </div>
-
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={isFullscreen ? sairModoJogoReal : entrarModoJogoReal} 
-          className="text-purple-400 hover:text-white w-8 h-8"
-        >
-          {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-        </Button>
+        <Button variant="ghost" size="sm" onClick={sairDaPartida} className="text-gray-400 hover:text-white h-8 text-xs px-2"><ArrowLeft className="w-3.5 h-3.5 mr-1" /> Sair</Button>
+        <span className="text-[10px] text-purple-300 font-bold bg-purple-950/50 px-2 py-0.5 rounded-full">Mesa {numeroSala}</span>
+        <Button variant="ghost" size="icon" onClick={isFullscreen ? sairModoJogoReal : entrarModoJogoReal} className="text-purple-400 hover:text-white w-8 h-8">{isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}</Button>
       </div>
 
-      {/* 2. MESA DE JOGO */}
       <div className="flex-grow my-2 bg-emerald-950 border-[4px] border-amber-950 rounded-[24px] shadow-[inset_0_4px_12px_rgba(0,0,0,0.6)] relative flex flex-col items-center justify-center h-[55%] overflow-hidden">
-        
-        {mesaPedras.length > 0 && (
-          <div className="absolute top-2 left-4 flex items-center gap-3 text-[10px] font-semibold text-emerald-300/60">
-            <span>Esquerda: <strong className="text-white bg-emerald-900/60 px-1.5 py-0.5 rounded text-xs">{pontaEsquerda}</strong></span>
-            <span>Direita: <strong className="text-white bg-emerald-900/60 px-1.5 py-0.5 rounded text-xs">{pontaDireita}</strong></span>
-          </div>
-        )}
-
         <div className="flex items-center justify-center gap-[2px] max-w-full overflow-x-auto px-4 py-2">
-          {mesaPedras.length === 0 ? (
-            <div className="text-center text-emerald-300/30 font-bold uppercase tracking-widest text-xs py-6">
-              Mesa de Dominó Limpa<br />
-              <span className="text-[10px] font-normal lowercase">Seu turno! Jogue a primeira pedra.</span>
-            </div>
-          ) : (
-            mesaPedras.map((pedra, idx) => {
-              if (!pedra || !pedra.valorOriginal) return null;
-              const [ladoA, ladoB] = pedra.valorOriginal.split('-').map(Number);
-              const isBucha = ladoA === ladoB;
-
-              return (
-                <div key={idx} className="shrink-0 flex items-center justify-center">
-                  <PedraClassica 
-                    valor={pedra.valorOriginal} 
-                    disabled={true} 
-                    menor={true} 
-                    deitada={!isBucha} 
-                  />
-                </div>
-              );
-            })
-          )}
+          {mesaPedras.length === 0 ? <div className="text-center text-emerald-300/30 font-bold uppercase tracking-widest text-xs py-6">Mesa de Dominó Limpa</div> : mesaPedras.map((pedra, idx) => (<div key={idx} className="shrink-0 flex items-center justify-center"><PedraClassica valor={pedra.valorOriginal} disabled={true} menor={true} deitada={pedra.ladoEsquerdo !== pedra.ladoDireito} /></div>))}
         </div>
-
         <div className="absolute bottom-2 bg-[#090610]/95 border border-purple-900/40 px-4 py-1 rounded-full text-[10px] font-bold tracking-wide">
-          {meuTurno ? (
-            <span className="text-green-400 animate-pulse flex items-center gap-1.5">
-              <Timer className="w-3.5 h-3.5 animate-spin" /> {tempoRestante}s - SUA VEZ DE JOGAR!
-            </span>
-          ) : (
-            <span className="text-gray-400">Aguardando {adversarioNome}...</span>
-          )}
+          {meuTurno ? <span className="text-green-400 animate-pulse flex items-center gap-1.5"><Timer className="w-3.5 h-3.5" /> {tempoRestante}s - SUA VEZ!</span> : <span className="text-gray-400">Aguardando {adversarioNome}...</span>}
         </div>
       </div>
 
-      {/* 3. MINHA MÃO */}
       <div className="bg-[#110D1A]/95 border border-purple-950/40 p-2.5 rounded-2xl h-[30%] flex flex-col justify-between">
-        <div className="flex items-center justify-between px-1 h-[25%]">
-          <span className="text-[10px] text-purple-300 font-bold uppercase tracking-wider">Suas Pedras ({minhasPedras.length})</span>
-        </div>
-
+        <div className="flex items-center justify-between px-1 h-[25%]"><span className="text-[10px] text-purple-300 font-bold uppercase tracking-wider">Suas Pedras ({minhasPedras.length})</span></div>
         <div className="flex justify-center items-center gap-1.5 overflow-x-auto h-[75%] py-1">
-          {minhasPedras.map((pedra, idx) => {
-            const jogavel = meuTurno && isPedraJogavel(pedra);
-
-            return (
-              <div key={idx} className="shrink-0 scale-90 md:scale-100">
-                <PedraClassica 
-                  valor={pedra} 
-                  onClick={() => tentarJogarPedra(pedra)}
-                  disabled={!jogavel}
-                  menor={true}
-                  destacada={jogavel}
-                />
-              </div>
-            );
-          })}
+          {minhasPedras.map((pedra, idx) => (<div key={idx} className="shrink-0 scale-90 md:scale-100"><PedraClassica valor={pedra} onClick={() => tentarJogarPedra(pedra)} disabled={!(meuTurno && isPedraJogavel(pedra))} menor={true} destacada={meuTurno && isPedraJogavel(pedra)} /></div>))}
         </div>
       </div>
     </div>
