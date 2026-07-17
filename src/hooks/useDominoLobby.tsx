@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface Sala {
@@ -83,14 +83,26 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
 
     carregarDados();
 
-    // Sincronização em tempo real das tabelas do lobby
+    // Sincronização em tempo real ultra responsiva das tabelas do lobby
     const canalRealtime = supabase
       .channel('realtime-domino-lobby')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'domino_salas' },
-        () => {
-          carregarDados();
+        async (payload) => {
+          // Se for uma atualização na tabela de salas, fazemos a atualização local imediata antes da requisição para evitar atrasos na interface
+          if (payload.eventType === 'UPDATE') {
+            const salaAtualizada = payload.new as any;
+            setSalas((prevSalas) => 
+              prevSalas.map((s) => 
+                s.id === salaAtualizada.id 
+                  ? { ...s, ...salaAtualizada } 
+                  : s
+              )
+            );
+          }
+          // Atualiza as referências completas (incluindo relacionamentos do nome do jogador via select)
+          await carregarDados();
         }
       )
       .on(
@@ -139,6 +151,8 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
               jogador_1_id: usuarioId,
               status: salaAlvo.jogador_2_id ? 'jogando' : 'aguardando',
               vez_usuario_id: salaAlvo.jogador_2_id ? salaAlvo.jogador_2_id : null, // Configura a vez se o J2 já estava lá
+              passadas_count: 0,
+              last_emoji: null,
               atualizado_em: new Date().toISOString(),
             })
             .eq('id', salaAlvo.id);
@@ -150,6 +164,8 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
               jogador_2_id: usuarioId,
               status: 'jogando',
               vez_usuario_id: salaAlvo.jogador_1_id, // Define a vez como jogador 1 no ato da entrada!
+              passadas_count: 0,
+              last_emoji: null,
               atualizado_em: new Date().toISOString(),
             })
             .eq('id', salaAlvo.id);
@@ -193,6 +209,8 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
           updates.vez_usuario_id = null;
           updates.mesa_ponta_esquerda = null;
           updates.mesa_ponta_direita = null;
+          updates.passadas_count = 0;
+          updates.last_emoji = null;
           updates.historico_jogadas = []; // CORRIGIDO: Agora enviando o array vazio diretamente sem a sintaxe de SQL ::jsonb
           updates.atualizado_em = new Date().toISOString();
 
