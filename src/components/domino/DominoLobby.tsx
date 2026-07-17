@@ -46,9 +46,9 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
         </p>
       </div>
 
-      {/* PAINEL DE STATUS DO JOGADOR NO TOPO (RECUPERADO) */}
+      {/* PAINEL DE STATUS DO JOGADOR NO TOPO */}
       {jaEstaParticipando && (
-        <Card className="bg-[#1f1635] border-purple-900/60 shadow-xl text-white">
+        <Card className="bg-[#1f1635] border-purple-900/60 shadow-xl text-white animate-in fade-in slide-in-from-top-4 duration-200">
           <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-4 text-center md:text-left">
               <div className="p-3 bg-purple-900/50 rounded-full">
@@ -78,7 +78,7 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
             <div className="flex gap-3 w-full md:w-auto">
               {minhaSala?.status === 'jogando' && (
                 <Button 
-                  className="flex-1 md:flex-none bg-green-600 hover:bg-green-700 text-white font-bold"
+                  className="flex-1 md:flex-none bg-green-600 hover:bg-green-700 text-white font-bold transition-all duration-150"
                   onClick={() => window.location.reload()}
                 >
                   Ir para o Jogo <ArrowRight className="w-4 h-4 ml-1.5" />
@@ -86,7 +86,7 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
               )}
               <Button 
                 variant="destructive" 
-                className="flex-1 md:flex-none font-semibold"
+                className="flex-1 md:flex-none font-semibold transition-all duration-150"
                 onClick={sairDoJogo}
               >
                 <DoorOpen className="w-4 h-4 mr-1.5" /> Sair da Fila / Sala
@@ -96,7 +96,7 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
         </Card>
       )}
 
-      {/* Grade de Exibição das 4 Salas */}
+      {/* Grade de Exibição das Salas */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {salas.map((sala) => {
           const isUserInThisSala = sala.jogador_1_id === usuarioId || sala.jogador_2_id === usuarioId;
@@ -121,7 +121,7 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
                 </div>
                 <div>
                   {sala.status === 'jogando' ? (
-                    <Badge variant="default" className="bg-red-600 text-white">Em Partida</Badge>
+                    <Badge variant="default" className="bg-red-600 text-white border-none">Em Partida</Badge>
                   ) : (
                     <Badge variant="secondary" className="bg-green-600 text-white border-none">Disponível</Badge>
                   )}
@@ -158,10 +158,10 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
                   </div>
                 </div>
 
-                {/* BOTÕES DE ENTRAR DIRETAMENTE NA MESA (RECUPERADOS E CORRIGIDOS) */}
+                {/* BOTÕES DE AÇÃO INTERNA DA SALA */}
                 {!jaEstaParticipando && (sala.jogador_1_id === null || sala.jogador_2_id === null) && (
                   <Button 
-                    className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold h-9 text-xs"
+                    className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold h-9 text-xs transition-all duration-150"
                     onClick={entrarNoJogo}
                   >
                     Sentar na Mesa / Jogar
