@@ -104,7 +104,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const [pontaEsquerda, setPontaEsquerda] = useState<number | null>(null);
   const [pontaDireita, setPontaDireita] = useState<number | null>(null);
 
-  // Controle de Tempo do Turno (30 segundos de limite para jogar)
   const [tempoRestante, setTempoRestante] = useState<number>(30);
 
   const [modalNotificacao, setModalNotificacao] = useState<{ visivel: boolean; titulo: string; mensagem: string; tipo: 'info' | 'erro' | 'fim' }>({
@@ -147,7 +146,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
-  // LIMPA A MESA E ATUALIZA O BANCO DE DADOS DE VERDADE AO SAIR
   const sairDaPartida = async () => {
     try {
       const updates: any = {};
@@ -414,7 +412,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
             setMesaPedras(jogadasProcessadas);
 
-            // Reseta o contador local de tempo sempre que o turno mudar
             setTempoRestante(30);
 
             if (novaVezId === usuarioId && vezAntigaId !== usuarioId) {
@@ -453,7 +450,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const meuTurno = vezUsuarioId === usuarioId;
   const adversarioNome = usuarioId === jogador1Id ? nomeJ2 : nomeJ1;
 
-  // Lógica do cronômetro de turno (Passa a vez automaticamente ao zerar)
   useEffect(() => {
     if (!meuTurno) return;
 
@@ -610,7 +606,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </Button>
       </div>
 
-      {/* 2. MESA DE JOGO (PEDRAS MAIS COLADAS) */}
+      {/* 2. MESA DE JOGO */}
       <div className="flex-grow my-2 bg-emerald-950 border-[4px] border-amber-950 rounded-[24px] shadow-[inset_0_4px_12px_rgba(0,0,0,0.6)] relative flex flex-col items-center justify-center h-[55%] overflow-hidden">
         
         {mesaPedras.length > 0 && (
@@ -646,7 +642,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           )}
         </div>
 
-        {/* Banner do Turno com Cronômetro Visual */}
         <div className="absolute bottom-2 bg-[#090610]/95 border border-purple-900/40 px-4 py-1 rounded-full text-[10px] font-bold tracking-wide">
           {meuTurno ? (
             <span className="text-green-400 animate-pulse flex items-center gap-1.5">
