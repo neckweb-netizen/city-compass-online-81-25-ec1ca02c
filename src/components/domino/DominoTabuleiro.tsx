@@ -36,7 +36,13 @@ const PedraClassica = ({
 
   const renderBolinhas = (pontos: number) => {
     const posicoes: Record<number, number[]> = {
-      0: [], 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8],
+      0: [],
+      1: [4],
+      2: [0, 8],
+      3: [0, 4, 8],
+      4: [0, 2, 6, 8],
+      5: [0, 2, 4, 6, 8],
+      6: [0, 2, 3, 5, 6, 8],
     };
 
     const ativas = posicoes[pontos] || [];
@@ -100,10 +106,12 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   const [tempoRestante, setTempoRestante] = useState<number>(30);
   const [partidaAnuladaAtiva, setPartidaAnuladaAtiva] = useState(false);
-  const pedrasInicializadas = useRef(false);
 
   const [modalNotificacao, setModalNotificacao] = useState<{ visivel: boolean; titulo: string; message: string; tipo: 'info' | 'erro' | 'fim' }>({
-    visivel: false, titulo: '', message: '', tipo: 'info'
+    visivel: false,
+    titulo: '',
+    message: '',
+    tipo: 'info'
   });
 
   const [alertaTemporario, setAlertaTemporario] = useState<{ visivel: boolean; mensagem: string } | null>(null);
@@ -117,18 +125,26 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           await (containerRef.current as any).webkitRequestFullscreen();
         }
         setIsFullscreen(true);
+
         if (screen.orientation && (screen.orientation as any).lock) {
-          await (screen.orientation as any).lock('landscape').catch(() => {});
+          await (screen.orientation as any).lock('landscape').catch(() => {
+            console.log("Rotação bloqueada.");
+          });
         }
       }
     } catch (err) {
-      console.warn(err);
+      console.warn("Navegador não suporta rotação:", err);
     }
   };
 
   const sairModoJogoReal = () => {
-    if (document.fullscreenElement) document.exitFullscreen();
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    }
     setIsFullscreen(false);
+    if (screen.orientation && screen.orientation.unlock) {
+      screen.orientation.unlock();
+    }
   };
 
   const sairDaPartidaLocal = () => {
@@ -148,12 +164,16 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       updates.mesa_ponta_direita = null;
       updates.historico_jogadas = [];
       updates.passadas_count = 0;
-      updates.last_emoji = null;
       updates.atualizado_em = new Date().toISOString();
 
-      await supabase.from('domino_salas').update(updates).eq('id', salaId);
+      await supabase
+        .from('domino_salas')
+        .update(updates)
+        .eq('id', salaId);
+
       sairDaPartidaLocal();
     } catch (err) {
+      console.error('Erro ao sair da partida:', err);
       sairDaPartidaLocal();
     }
   };
@@ -162,20 +182,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     if (mesaPedras.length === 0) return true;
     const [ladoA, ladoB] = pedra.split('-').map(Number);
     return ladoA === pontaEsquerda || ladoB === pontaEsquerda || ladoA === pontaDireita || ladoB === pontaDireita;
-  };
-
-  const enviarEmoji = async (emoji: string) => {
-    try {
-      await supabase
-        .from('domino_salas')
-        .update({ 
-          last_emoji: `${usuarioId}:${emoji}`, 
-          atualizado_em: new Date().toISOString() 
-        })
-        .eq('id', salaId);
-    } catch (err) {
-      console.error(err);
-    }
   };
 
   const passarVez = async () => {
@@ -204,7 +210,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             mesa_ponta_direita: null,
             historico_jogadas: [],
             passadas_count: 0,
-            last_emoji: null,
             atualizado_em: new Date().toISOString()
           })
           .eq('id', salaId);
@@ -226,7 +231,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           .eq('id', salaId);
       }
     } catch (err) {
-      console.error(err);
+      console.error('Erro ao passar a vez:', err);
     }
   };
 
@@ -239,25 +244,46 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     let novaPontaD = pontaDireita;
 
     if (mesaPedras.length === 0) {
-      const novaPedra: PedraMesa = { valorOriginal: pedra, ladoEsquerdo: ladoA, ladoDireito: ladoB };
+      const novaPedra: PedraMesa = {
+        valorOriginal: pedra,
+        ladoEsquerdo: ladoA,
+        ladoDireito: ladoB
+      };
       novaMesa.push(novaPedra);
       novaPontaE = ladoA;
       novaPontaD = ladoB;
     } else {
       if (ladoA === pontaEsquerda) {
-        const novaPedra: PedraMesa = { valorOriginal: `${ladoB}-${ladoA}`, ladoEsquerdo: ladoB, ladoDireito: ladoA };
+        const novaPedra: PedraMesa = {
+          valorOriginal: `${ladoB}-${ladoA}`,
+          ladoEsquerdo: ladoB,
+          ladoDireito: ladoA
+        };
         novaMesa.unshift(novaPedra);
         novaPontaE = ladoB;
       } else if (ladoB === pontaEsquerda) {
-        const novaPedra: PedraMesa = { valorOriginal: `${ladoA}-${ladoB}`, ladoEsquerdo: ladoA, ladoDireito: ladoB };
+        const novaPedra: PedraMesa = {
+          valorOriginal: `${ladoA}-${ladoB}`,
+          ladoEsquerdo: ladoA,
+          ladoDireito: ladoB
+        };
         novaMesa.unshift(novaPedra);
         novaPontaE = ladoA;
-      } else if (ladoA === pontaDireita) {
-        const novaPedra: PedraMesa = { valorOriginal: `${ladoA}-${ladoB}`, ladoEsquerdo: ladoA, ladoDireito: ladoB };
+      }
+      else if (ladoA === pontaDireita) {
+        const novaPedra: PedraMesa = {
+          valorOriginal: `${ladoA}-${ladoB}`,
+          ladoEsquerdo: ladoA,
+          ladoDireito: ladoB
+        };
         novaMesa.push(novaPedra);
         novaPontaD = ladoB;
       } else if (ladoB === pontaDireita) {
-        const novaPedra: PedraMesa = { valorOriginal: `${ladoB}-${ladoA}`, ladoEsquerdo: ladoB, ladoDireito: ladoA };
+        const novaPedra: PedraMesa = {
+          valorOriginal: `${ladoB}-${ladoA}`,
+          ladoEsquerdo: ladoB,
+          ladoDireito: ladoA
+        };
         novaMesa.push(novaPedra);
         novaPontaD = ladoA;
       } else {
@@ -283,15 +309,23 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       if (error) throw error;
       setMinhasPedras(prev => prev.filter(p => p !== pedra));
     } catch (err) {
-      console.error(err);
+      console.error('Erro ao processar jogada:', err);
     }
   };
 
-  const inicializarPedrasCompartilhadas = (userId: string, j1: string | null, j2: string | null) => {
-    // Garante que só inicializa se ambos os jogadores estiverem definidos para evitar set incompleto
-    if (pedrasInicializadas.current || !j1 || !j2) return;
-    pedrasInicializadas.current = true;
+  useEffect(() => {
+    entrarModoJogoReal();
+    const monitorarTelaCheia = () => { setIsFullscreen(!!document.fullscreenElement); };
+    document.addEventListener('fullscreenchange', monitorarTelaCheia);
+    document.addEventListener('webkitfullscreenchange', monitorarTelaCheia);
+    return () => {
+      document.removeEventListener('fullscreenchange', monitorarTelaCheia);
+      document.removeEventListener('webkitfullscreenchange', monitorarTelaCheia);
+      sairModoJogoReal();
+    };
+  }, []);
 
+  const inicializarPedrasCompartilhadas = (userId: string, j1: string | null, j2: string | null) => {
     const totalVinteOitoPedras = [
       '0-0', '0-1', '0-2', '0-3', '0-4', '0-5', '0-6',
       '1-1', '1-2', '1-3', '1-4', '1-5', '1-6',
@@ -327,9 +361,15 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       const { data, error } = await supabase
         .from('domino_salas')
         .select(`
-          id, jogador_1_id, jogador_2_id, vez_usuario_id,
-          mesa_ponta_esquerda, mesa_ponta_direita, historico_jogadas,
-          jogador_1:jogador_1_id ( nome ), jogador_2:jogador_2_id ( nome )
+          id,
+          jogador_1_id,
+          jogador_2_id,
+          vez_usuario_id,
+          mesa_ponta_esquerda,
+          mesa_ponta_direita,
+          historico_jogadas,
+          jogador_1:jogador_1_id ( nome ),
+          jogador_2:jogador_2_id ( nome )
         `)
         .eq('id', salaId)
         .single();
@@ -357,15 +397,19 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           : [];
 
         setMesaPedras(jogadasProcessadas);
+
         inicializarPedrasCompartilhadas(usuarioId, data.jogador_1_id, data.jogador_2_id);
 
         if (!data.vez_usuario_id && data.jogador_1_id) {
-          await supabase.from('domino_salas').update({ vez_usuario_id: data.jogador_1_id }).eq('id', salaId);
+          await supabase
+            .from('domino_salas')
+            .update({ vez_usuario_id: data.jogador_1_id })
+            .eq('id', salaId);
           setVezUsuarioId(data.jogador_1_id);
         }
       }
     } catch (err) {
-      console.error(err);
+      console.error('Erro ao buscar dados do tabuleiro:', err);
     }
   };
 
@@ -377,7 +421,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'domino_salas', filter: `id=eq.${salaId}` },
-        async (payload) => {
+        (payload) => {
           const newData = payload.new;
           if (newData) {
             // DETECTA SE A SALA FOI ANULADA POR ESTOURO DE PASSADAS
@@ -396,7 +440,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
             if (partidaAnuladaAtiva) return;
 
-            // DETECTA DESCONEXÃO APENAS SE A PARTIDA ESTIVER ATIVA
+            // DETECTA DESCONEXÃO APENAS SE A PARTIDA AINDA ESTIVER "JOGANDO"
             if ((newData.jogador_1_id === null || newData.jogador_2_id === null) && newData.status === 'jogando') {
               supabase.removeChannel(canalJogo);
               setModalNotificacao({
@@ -406,28 +450,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
                 tipo: 'erro'
               });
               return;
-            }
-
-            // ATUALIZA OS IDS LOCAIS DOS JOGADORES EM TEMPO REAL PARA EVITAR CRASH
-            setJogador1Id(newData.jogador_1_id);
-            setJogador2Id(newData.jogador_2_id);
-
-            // Se as pedras ainda não foram dadas por falta de oponente, inicializa agora
-            if (newData.jogador_1_id && newData.jogador_2_id && !pedrasInicializadas.current) {
-              inicializarPedrasCompartilhadas(usuarioId, newData.jogador_1_id, newData.jogador_2_id);
-            }
-
-            // ESCUTA E EXIBE EMOJI DO OPONENTE
-            if (newData.last_emoji) {
-              const [remetenteId, emoji] = newData.last_emoji.split(':');
-              if (remetenteId !== usuarioId) {
-                // Sincroniza nome de forma segura
-                const nomeRemetente = remetenteId === newData.jogador_1_id ? nomeJ1 : nomeJ2;
-                setAlertaTemporario({
-                  visivel: true,
-                  mensagem: `💬 ${nomeRemetente} enviou: ${emoji}`
-                });
-              }
             }
 
             setVezUsuarioId(newData.vez_usuario_id);
@@ -455,7 +477,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     return () => {
       supabase.removeChannel(canalJogo);
     };
-  }, [salaId, mesaPedras.length, partidaAnuladaAtiva, nomeJ1, nomeJ2]);
+  }, [salaId, mesaPedras.length, partidaAnuladaAtiva]);
 
   const meuTurno = vezUsuarioId === usuarioId && !partidaAnuladaAtiva;
   const adversarioNome = usuarioId === jogador1Id ? nomeJ2 : nomeJ1;
@@ -467,7 +489,10 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       setTempoRestante((tempo) => {
         if (tempo <= 1) {
           clearInterval(cronometro);
-          setAlertaTemporario({ visivel: true, mensagem: '⏱️ Seu tempo esgotou! A vez foi passada.' });
+          setAlertaTemporario({
+            visivel: true,
+            mensagem: '⏱️ Seu tempo esgotou! A vez foi passada.'
+          });
           passarVez();
           return 30;
         }
@@ -490,7 +515,10 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       const temQualquerPecaJogavel = minhasPedras.some(pedra => isPedraJogavel(pedra));
 
       if (!temQualquerPecaJogavel) {
-        setAlertaTemporario({ visivel: true, mensagem: '⚠️ Sem peças! Passando a vez automaticamente...' });
+        setAlertaTemporario({
+          visivel: true,
+          mensagem: '⚠️ Sem peças! Passando a vez automaticamente...'
+        });
         passarVez();
       }
     }
@@ -551,61 +579,13 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </div>
       )}
       
-      {/* 1. HUD SUPERIOR */}
       <div className="flex items-center justify-between bg-[#110D1A]/95 border border-purple-950/40 px-3 py-1.5 rounded-xl shadow-lg h-[10%]">
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={sairDaPartida} className="text-gray-400 hover:text-white h-8 text-xs px-2">
-            <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Sair
-          </Button>
-          <span className="text-[10px] text-purple-300 font-bold bg-purple-950/50 px-2 py-0.5 rounded-full">Mesa {numeroSala}</span>
-        </div>
-
-        {/* HUD DOS JOGADORES COM EMOJIS INTEGRADOS NO CENTRO */}
-        <div className="flex items-center gap-4 bg-purple-950/20 px-4 py-1.5 rounded-xl border border-purple-900/20 text-xs">
-          <div className="flex items-center gap-2">
-            <div className="p-1 bg-purple-950/40 rounded-full border border-purple-900/30 text-purple-400">
-              <User className="w-3.5 h-3.5" />
-            </div>
-            <span className="max-w-[80px] truncate font-semibold text-gray-200">{nomeJ1}</span>
-            <span>{vezUsuarioId === jogador1Id ? '🟢' : '⚫'}</span>
-          </div>
-          
-          {/* SELETOR DE EMOJIS RÁPIDOS */}
-          <div className="flex items-center gap-1 bg-[#161024] border border-purple-950/60 px-2 py-1 rounded-lg">
-            {['😀', '🔥', '😡', '😂'].map((emoji) => (
-              <button 
-                key={emoji} 
-                onClick={() => enviarEmoji(emoji)} 
-                className="hover:scale-125 transition-transform text-sm cursor-pointer"
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <span>{vezUsuarioId === jogador2Id ? '🟢' : '⚫'}</span>
-            <span className="max-w-[80px] truncate font-semibold text-gray-200">{nomeJ2}</span>
-            <div className="p-1 bg-purple-950/40 rounded-full border border-purple-900/30 text-purple-400">
-              <User className="w-3.5 h-3.5" />
-            </div>
-          </div>
-        </div>
-
-        <Button variant="ghost" size="icon" onClick={isFullscreen ? sairModoJogoReal : entrarModoJogoReal} className="text-purple-400 hover:text-white w-8 h-8">
-          {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-        </Button>
+        <Button variant="ghost" size="sm" onClick={sairDaPartida} className="text-gray-400 hover:text-white h-8 text-xs px-2"><ArrowLeft className="w-3.5 h-3.5 mr-1" /> Sair</Button>
+        <span className="text-[10px] text-purple-300 font-bold bg-purple-950/50 px-2 py-0.5 rounded-full">Mesa {numeroSala}</span>
+        <Button variant="ghost" size="icon" onClick={isFullscreen ? sairModoJogoReal : entrarModoJogoReal} className="text-purple-400 hover:text-white w-8 h-8">{isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}</Button>
       </div>
 
-      {/* 2. MESA DE JOGO */}
       <div className="flex-grow my-2 bg-emerald-950 border-[4px] border-amber-950 rounded-[24px] shadow-[inset_0_4px_12px_rgba(0,0,0,0.6)] relative flex flex-col items-center justify-center h-[55%] overflow-hidden">
-        {mesaPedras.length > 0 && (
-          <div className="absolute top-2 left-4 flex items-center gap-3 text-[10px] font-semibold text-emerald-300/60">
-            <span>Esquerda: <strong className="text-white bg-emerald-900/60 px-1.5 py-0.5 rounded text-xs">{pontaEsquerda}</strong></span>
-            <span>Direita: <strong className="text-white bg-emerald-900/60 px-1.5 py-0.5 rounded text-xs">{pontaDireita}</strong></span>
-          </div>
-        )}
-
         <div className="flex items-center justify-center gap-[2px] max-w-full overflow-x-auto px-4 py-2">
           {mesaPedras.length === 0 ? <div className="text-center text-emerald-300/30 font-bold uppercase tracking-widest text-xs py-6">Mesa de Dominó Limpa</div> : mesaPedras.map((pedra, idx) => (<div key={idx} className="shrink-0 flex items-center justify-center"><PedraClassica valor={pedra.valorOriginal} disabled={true} menor={true} deitada={pedra.ladoEsquerdo !== pedra.ladoDireito} /></div>))}
         </div>
@@ -614,7 +594,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </div>
       </div>
 
-      {/* 3. MINHA MÃO */}
       <div className="bg-[#110D1A]/95 border border-purple-950/40 p-2.5 rounded-2xl h-[30%] flex flex-col justify-between">
         <div className="flex items-center justify-between px-1 h-[25%]"><span className="text-[10px] text-purple-300 font-bold uppercase tracking-wider">Suas Pedras ({minhasPedras.length})</span></div>
         <div className="flex justify-center items-center gap-1.5 overflow-x-auto h-[75%] py-1">
