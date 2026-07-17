@@ -146,7 +146,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
-  // Executa apenas o encerramento visual e volta para o lobby no frontend
   const sairDaPartidaLocal = () => {
     sairModoJogoReal();
     onVoltarAoLobby();
@@ -197,7 +196,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       const novasPassadas = (salaAtual?.passadas_count || 0) + 1;
 
       if (novasPassadas >= 3) {
-        // Envia o comando de reset total e limpa o banco de dados
+        // Envia o comando de reset total no banco de dados e remove ambos os jogadores
         await supabase
           .from('domino_salas')
           .update({
@@ -213,11 +212,11 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           })
           .eq('id', salaId);
 
-        // Notifica e ejeta localmente na hora quem realizou a última passada
+        // Mostra o modal de anulação para quem realizou a última passada sem ejetar antes da confirmação
         setModalNotificacao({
           visivel: true,
           titulo: 'Partida Anulada!',
-          mensagem: 'O limite máximo de 3 passadas seguidas foi atingido. O jogo foi encerrado.',
+          mensagem: 'O limite máximo de 3 passadas seguidas foi atingido. O jogo foi encerrado e a sala foi liberada.',
           tipo: 'erro'
         });
       } else {
@@ -430,13 +429,15 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           const newData = payload.new;
           const oldData = payload.old;
           if (newData) {
-            // DETECTA SE A SALA FOI ZERADA/ANULADA PELO SUPABASE
+            // DETECTA SE A SALA FOI ANULADA POR ESTOURO DE PASSADAS NO BANCO
             if (newData.jogador_1_id === null && newData.jogador_2_id === null && newData.status === 'aguardando') {
-              supabase.removeChannel(canalJogo); // Desliga o listener imediatamente para evitar loops de renderização
+              supabase.removeChannel(canalJogo); // Desliga a sincronização na hora para congelar a interface
+              
+              // Mostra o modal explicativo para o oponente, deixando ele sair apenas ao clicar em "OK, Entendi"
               setModalNotificacao({
                 visivel: true,
                 titulo: 'Partida Anulada!',
-                mensagem: 'O limite máximo de 3 passadas automáticas seguidas foi atingido. O jogo foi encerrado.',
+                mensagem: 'O limite máximo de 3 passadas automáticas seguidas foi atingido. O jogo foi encerrado e a sala foi liberada.',
                 tipo: 'erro'
               });
               return;
