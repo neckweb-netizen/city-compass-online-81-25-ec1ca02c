@@ -623,7 +623,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         <div className="flex items-center justify-center gap-[2px] max-w-full overflow-x-auto px-4 py-2">
           {mesaPedras.length === 0 ? (
             <div className="text-center text-emerald-300/30 font-bold uppercase tracking-widest text-xs py-6">
-              Mesa de Dominó Limpa.<br />
+              Mesa de Dominó Limpa<br />
               <span className="text-[10px] font-normal lowercase">Seu turno! Jogue a primeira pedra.</span>
             </div>
           ) : (
