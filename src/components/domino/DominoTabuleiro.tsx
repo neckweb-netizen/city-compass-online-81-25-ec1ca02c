@@ -107,6 +107,9 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const [tempoRestante, setTempoRestante] = useState<number>(30);
   const [partidaAnuladaAtiva, setPartidaAnuladaAtiva] = useState(false);
 
+  // Evita que o embaralhamento de início seja executado mais de uma vez na partida
+  const pedrasInicializadas = useRef(false);
+
   const [modalNotificacao, setModalNotificacao] = useState<{ visivel: boolean; titulo: string; message: string; tipo: 'info' | 'erro' | 'fim' }>({
     visivel: false,
     titulo: '',
@@ -307,6 +310,8 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         .eq('id', salaId);
 
       if (error) throw error;
+
+      // Remove estritamente apenas a peça jogada da mão atual, sem resetar a lista
       setMinhasPedras(prev => prev.filter(p => p !== pedra));
     } catch (err) {
       console.error('Erro ao processar jogada:', err);
@@ -325,7 +330,11 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     };
   }, []);
 
+  // ESSA FUNÇÃO SÓ DEVE SER EXECUTADA UMA VEZ NO INÍCIO DA PARTIDA
   const inicializarPedrasCompartilhadas = (userId: string, j1: string | null, j2: string | null) => {
+    if (pedrasInicializadas.current) return;
+    pedrasInicializadas.current = true;
+
     const totalVinteOitoPedras = [
       '0-0', '0-1', '0-2', '0-3', '0-4', '0-5', '0-6',
       '1-1', '1-2', '1-3', '1-4', '1-5', '1-6',
@@ -398,6 +407,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
         setMesaPedras(jogadasProcessadas);
 
+        // Gera a mão de pedras inicial do jogador uma única vez
         inicializarPedrasCompartilhadas(usuarioId, data.jogador_1_id, data.jogador_2_id);
 
         if (!data.vez_usuario_id && data.jogador_1_id) {
@@ -579,25 +589,108 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </div>
       )}
       
+      {/* 1. HUD SUPERIOR RECUPERADO COM OS ÍCONES, AVATARES E EMOJIS */}
       <div className="flex items-center justify-between bg-[#110D1A]/95 border border-purple-950/40 px-3 py-1.5 rounded-xl shadow-lg h-[10%]">
-        <Button variant="ghost" size="sm" onClick={sairDaPartida} className="text-gray-400 hover:text-white h-8 text-xs px-2"><ArrowLeft className="w-3.5 h-3.5 mr-1" /> Sair</Button>
-        <span className="text-[10px] text-purple-300 font-bold bg-purple-950/50 px-2 py-0.5 rounded-full">Mesa {numeroSala}</span>
-        <Button variant="ghost" size="icon" onClick={isFullscreen ? sairModoJogoReal : entrarModoJogoReal} className="text-purple-400 hover:text-white w-8 h-8">{isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}</Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={sairDaPartida} 
+            className="text-gray-400 hover:text-white h-8 text-xs px-2"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Sair
+          </Button>
+          <span className="text-[10px] text-purple-300 font-bold bg-purple-950/50 px-2 py-0.5 rounded-full">
+            Mesa {numeroSala}
+          </span>
+        </div>
+
+        {/* HUD DE JOGADORES COM SEUS ÍCONES E STATUS DE TURNO EM EMOJI */}
+        <div className="flex items-center gap-4 bg-purple-950/20 px-4 py-1.5 rounded-xl border border-purple-900/20 text-xs">
+          <div className="flex items-center gap-2">
+            <div className="p-1 bg-purple-950/40 rounded-full border border-purple-900/30 text-purple-400">
+              <User className="w-3.5 h-3.5" />
+            </div>
+            <span className="max-w-[80px] truncate font-semibold text-gray-200">{nomeJ1}</span>
+            <span>{vezUsuarioId === jogador1Id ? '🟢' : '⚫'}</span>
+          </div>
+          
+          <span className="text-purple-500 font-black tracking-widest text-[10px] bg-purple-950/60 px-2 py-0.5 rounded-md">VS</span>
+          
+          <div className="flex items-center gap-2">
+            <span>{vezUsuarioId === jogador2Id ? '🟢' : '⚫'}</span>
+            <span className="max-w-[80px] truncate font-semibold text-gray-200">{nomeJ2}</span>
+            <div className="p-1 bg-purple-950/40 rounded-full border border-purple-900/30 text-purple-400">
+              <User className="w-3.5 h-3.5" />
+            </div>
+          </div>
+        </div>
+
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={isFullscreen ? sairModoJogoReal : entrarModoJogoReal} 
+          className="text-purple-400 hover:text-white w-8 h-8"
+        >
+          {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+        </Button>
       </div>
 
+      {/* 2. MESA DE JOGO */}
       <div className="flex-grow my-2 bg-emerald-950 border-[4px] border-amber-950 rounded-[24px] shadow-[inset_0_4px_12px_rgba(0,0,0,0.6)] relative flex flex-col items-center justify-center h-[55%] overflow-hidden">
+        {mesaPedras.length > 0 && (
+          <div className="absolute top-2 left-4 flex items-center gap-3 text-[10px] font-semibold text-emerald-300/60">
+            <span>Esquerda: <strong className="text-white bg-emerald-900/60 px-1.5 py-0.5 rounded text-xs">{pontaEsquerda}</strong></span>
+            <span>Direita: <strong className="text-white bg-emerald-900/60 px-1.5 py-0.5 rounded text-xs">{pontaDireita}</strong></span>
+          </div>
+        )}
+
         <div className="flex items-center justify-center gap-[2px] max-w-full overflow-x-auto px-4 py-2">
-          {mesaPedras.length === 0 ? <div className="text-center text-emerald-300/30 font-bold uppercase tracking-widest text-xs py-6">Mesa de Dominó Limpa</div> : mesaPedras.map((pedra, idx) => (<div key={idx} className="shrink-0 flex items-center justify-center"><PedraClassica valor={pedra.valorOriginal} disabled={true} menor={true} deitada={pedra.ladoEsquerdo !== pedra.ladoDireito} /></div>))}
+          {mesaPedras.length === 0 ? (
+            <div className="text-center text-emerald-300/30 font-bold uppercase tracking-widest text-xs py-6">
+              Mesa de Dominó Limpa
+            </div>
+          ) : (
+            mesaPedras.map((pedra, idx) => (
+              <div key={idx} className="shrink-0 flex items-center justify-center">
+                <PedraClassica 
+                  valor={pedra.valorOriginal} 
+                  disabled={true} 
+                  menor={true} 
+                  deitada={pedra.ladoEsquerdo !== pedra.ladoDireito} 
+                />
+              </div>
+            ))
+          )}
         </div>
         <div className="absolute bottom-2 bg-[#090610]/95 border border-purple-900/40 px-4 py-1 rounded-full text-[10px] font-bold tracking-wide">
-          {meuTurno ? <span className="text-green-400 animate-pulse flex items-center gap-1.5"><Timer className="w-3.5 h-3.5" /> {tempoRestante}s - SUA VEZ!</span> : <span className="text-gray-400">Aguardando {adversarioNome}...</span>}
+          {meuTurno ? (
+            <span className="text-green-400 animate-pulse flex items-center gap-1.5">
+              <Timer className="w-3.5 h-3.5" /> {tempoRestante}s - SUA VEZ!
+            </span>
+          ) : (
+            <span className="text-gray-400">Aguardando {adversarioNome}...</span>
+          )}
         </div>
       </div>
 
+      {/* 3. MINHA MÃO */}
       <div className="bg-[#110D1A]/95 border border-purple-950/40 p-2.5 rounded-2xl h-[30%] flex flex-col justify-between">
-        <div className="flex items-center justify-between px-1 h-[25%]"><span className="text-[10px] text-purple-300 font-bold uppercase tracking-wider">Suas Pedras ({minhasPedras.length})</span></div>
+        <div className="flex items-center justify-between px-1 h-[25%]">
+          <span className="text-[10px] text-purple-300 font-bold uppercase tracking-wider">Suas Pedras ({minhasPedras.length})</span>
+        </div>
         <div className="flex justify-center items-center gap-1.5 overflow-x-auto h-[75%] py-1">
-          {minhasPedras.map((pedra, idx) => (<div key={idx} className="shrink-0 scale-90 md:scale-100"><PedraClassica valor={pedra} onClick={() => tentarJogarPedra(pedra)} disabled={!(meuTurno && isPedraJogavel(pedra))} menor={true} destacada={meuTurno && isPedraJogavel(pedra)} /></div>))}
+          {minhasPedras.map((pedra, idx) => (
+            <div key={idx} className="shrink-0 scale-90 md:scale-100">
+              <PedraClassica 
+                valor={pedra} 
+                onClick={() => tentarJogarPedra(pedra)} 
+                disabled={!(meuTurno && isPedraJogavel(pedra))} 
+                menor={true} 
+                destacada={meuTurno && isPedraJogavel(pedra)} 
+              />
+            </div>
+          ))}
         </div>
       </div>
     </div>
