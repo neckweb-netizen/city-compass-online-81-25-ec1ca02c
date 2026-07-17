@@ -146,6 +146,12 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
+  // Executa apenas o encerramento visual e volta para o lobby no frontend
+  const sairDaPartidaLocal = () => {
+    sairModoJogoReal();
+    onVoltarAoLobby();
+  };
+
   const sairDaPartida = async () => {
     try {
       const updates: any = {};
@@ -165,12 +171,10 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         .update(updates)
         .eq('id', salaId);
 
-      sairModoJogoReal();
-      onVoltarAoLobby();
+      sairDaPartidaLocal();
     } catch (err) {
       console.error('Erro ao sair da partida:', err);
-      sairModoJogoReal();
-      onVoltarAoLobby();
+      sairDaPartidaLocal();
     }
   };
 
@@ -184,7 +188,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     const proximoTurnoId = usuarioId === jogador1Id ? jogador2Id : jogador1Id;
 
     try {
-      // 1. Busca as passadas_count atuais no banco de dados para sincronizar de forma rígida
       const { data: salaAtual } = await supabase
         .from('domino_salas')
         .select('passadas_count')
@@ -194,7 +197,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       const novasPassadas = (salaAtual?.passadas_count || 0) + 1;
 
       if (novasPassadas >= 3) {
-        // 2. Se bateu 3 passadas, anula a mesa inteira e remove ambos os jogadores
+        // Envia o comando de reset total e limpa o banco de dados
         await supabase
           .from('domino_salas')
           .update({
@@ -209,8 +212,15 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             atualizado_em: new Date().toISOString()
           })
           .eq('id', salaId);
+
+        // Notifica e ejeta localmente na hora quem realizou a última passada
+        setModalNotificacao({
+          visivel: true,
+          titulo: 'Partida Anulada!',
+          mensagem: 'O limite máximo de 3 passadas seguidas foi atingido. O jogo foi encerrado.',
+          tipo: 'erro'
+        });
       } else {
-        // 3. Caso contrário, apenas incrementa a contagem e passa a vez normalmente
         await supabase
           .from('domino_salas')
           .update({
@@ -291,7 +301,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           mesa_ponta_esquerda: novaPontaE,
           mesa_ponta_direita: novaPontaD,
           vez_usuario_id: proximoTurnoId,
-          passadas_count: 0, // Reinicia o contador de passadas pois uma pedra válida foi jogada
+          passadas_count: 0,
           atualizado_em: new Date().toISOString()
         })
         .eq('id', salaId);
@@ -420,20 +430,21 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           const newData = payload.new;
           const oldData = payload.old;
           if (newData) {
-            const vezAntigaId = oldData ? oldData.vez_usuario_id : vezUsuarioId;
-            const novaVezId = newData.vez_usuario_id;
-            
-            // Detecta em tempo real se a partida foi anulada pelo servidor por estouro de limite de passadas
+            // DETECTA SE A SALA FOI ZERADA/ANULADA PELO SUPABASE
             if (newData.jogador_1_id === null && newData.jogador_2_id === null && newData.status === 'aguardando') {
+              supabase.removeChannel(canalJogo); // Desliga o listener imediatamente para evitar loops de renderização
               setModalNotificacao({
                 visivel: true,
                 titulo: 'Partida Anulada!',
-                mensagem: 'O limite máximo de 3 passadas automáticas seguidas foi atingido. O jogo encerrou.',
+                mensagem: 'O limite máximo de 3 passadas automáticas seguidas foi atingido. O jogo foi encerrado.',
                 tipo: 'erro'
               });
               return;
             }
 
+            const vezAntigaId = oldData ? oldData.vez_usuario_id : vezUsuarioId;
+            const novaVezId = newData.vez_usuario_id;
+            
             setVezUsuarioId(novaVezId);
             setPontaEsquerda(newData.mesa_ponta_esquerda);
             setPontaDireita(newData.mesa_ponta_direita);
@@ -453,7 +464,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             const mesaNovaLength = jogadasProcessadas.length;
 
             setMesaPedras(jogadasProcessadas);
-
             setTempoRestante(30);
 
             if (novaVezId === usuarioId && vezAntigaId !== usuarioId) {
@@ -472,6 +482,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             }
 
             if ((newData.jogador_1_id === null || newData.jogador_2_id === null) && newData.status !== 'aguardando') {
+              supabase.removeChannel(canalJogo);
               setModalNotificacao({
                 visivel: true,
                 titulo: 'Adversário Desconectado',
@@ -551,7 +562,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   const fecharModalNotificacao = () => {
     setModalNotificacao(prev => ({ ...prev, visivel: false }));
-    sairDaPartida();
+    sairDaPartidaLocal();
   };
 
   return (
