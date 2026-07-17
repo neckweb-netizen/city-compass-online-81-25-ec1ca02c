@@ -50,7 +50,7 @@ if ('serviceWorker' in navigator) {
         });
       })
       .catch((error) => {
-        console.error('Erro ao registrar SW:', error);
+        console.error('obs: Erro ao registrar SW:', error);
       });
   });
 }
