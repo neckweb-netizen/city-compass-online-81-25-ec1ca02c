@@ -106,10 +106,13 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   const [tempoRestante, setTempoRestante] = useState<number>(30);
 
-  const [modalNotificacao, setModalNotificacao] = useState<{ visivel: boolean; titulo: string; mensagem: string; tipo: 'info' | 'erro' | 'fim' }>({
+  // Evita que o componente tente atualizar dados de forma inconsistente após ser anulado
+  const [partidaAnuladaAtiva, setPartidaAnuladaAtiva] = useState(false);
+
+  const [modalNotificacao, setModalNotificacao] = useState<{ visivel: boolean; titulo: string; message: string; tipo: 'info' | 'erro' | 'fim' }>({
     visivel: false,
     titulo: '',
-    mensagem: '',
+    message: '',
     tipo: 'info'
   });
 
@@ -184,6 +187,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   };
 
   const passarVez = async () => {
+    if (partidaAnuladaAtiva) return;
     const proximoTurnoId = usuarioId === jogador1Id ? jogador2Id : jogador1Id;
 
     try {
@@ -196,7 +200,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       const novasPassadas = (salaAtual?.passadas_count || 0) + 1;
 
       if (novasPassadas >= 3) {
-        // Envia o comando de reset total no banco de dados e remove ambos os jogadores
+        setPartidaAnuladaAtiva(true);
         await supabase
           .from('domino_salas')
           .update({
@@ -212,11 +216,10 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           })
           .eq('id', salaId);
 
-        // Mostra o modal de anulação para quem realizou a última passada sem ejetar antes da confirmação
         setModalNotificacao({
           visivel: true,
           titulo: 'Partida Anulada!',
-          mensagem: 'O limite máximo de 3 passadas seguidas foi atingido. O jogo foi encerrado e a sala foi liberada.',
+          message: 'O limite máximo de 3 passadas seguidas foi atingido. O jogo foi encerrado e a sala foi liberada.',
           tipo: 'erro'
         });
       } else {
@@ -235,7 +238,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   };
 
   const tentarJogarPedra = async (pedra: string) => {
-    if (!meuTurno) return;
+    if (!meuTurno || partidaAnuladaAtiva) return;
 
     const [ladoA, ladoB] = pedra.split('-').map(Number);
     let novaMesa = [...mesaPedras];
@@ -431,17 +434,19 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           if (newData) {
             // DETECTA SE A SALA FOI ANULADA POR ESTOURO DE PASSADAS NO BANCO
             if (newData.jogador_1_id === null && newData.jogador_2_id === null && newData.status === 'aguardando') {
-              supabase.removeChannel(canalJogo); // Desliga a sincronização na hora para congelar a interface
+              setPartidaAnuladaAtiva(true);
+              supabase.removeChannel(canalJogo); // Para o escutador para evitar re-renderizações infinitas
               
-              // Mostra o modal explicativo para o oponente, deixando ele sair apenas ao clicar em "OK, Entendi"
               setModalNotificacao({
                 visivel: true,
                 titulo: 'Partida Anulada!',
-                mensagem: 'O limite máximo de 3 passadas automáticas seguidas foi atingido. O jogo foi encerrado e a sala foi liberada.',
+                message: 'O limite máximo de 3 passadas automáticas seguidas foi atingido. O jogo foi encerrado e a sala foi liberada.',
                 tipo: 'erro'
               });
               return;
             }
+
+            if (partidaAnuladaAtiva) return;
 
             const vezAntigaId = oldData ? oldData.vez_usuario_id : vezUsuarioId;
             const novaVezId = newData.vez_usuario_id;
@@ -487,7 +492,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
               setModalNotificacao({
                 visivel: true,
                 titulo: 'Adversário Desconectado',
-                mensagem: 'A partida foi encerrada porque o seu oponente deixou a sala de dominó.',
+                message: 'A partida foi encerrada porque o seu oponente deixou a sala de dominó.',
                 tipo: 'erro'
               });
             }
@@ -499,13 +504,13 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     return () => {
       supabase.removeChannel(canalJogo);
     };
-  }, [salaId, mesaPedras.length]);
+  }, [salaId, mesaPedras.length, partidaAnuladaAtiva]);
 
-  const meuTurno = vezUsuarioId === usuarioId;
+  const meuTurno = vezUsuarioId === usuarioId && !partidaAnuladaAtiva;
   const adversarioNome = usuarioId === jogador1Id ? nomeJ2 : nomeJ1;
 
   useEffect(() => {
-    if (!meuTurno) return;
+    if (!meuTurno || partidaAnuladaAtiva) return;
 
     const cronometro = setInterval(() => {
       setTempoRestante((tempo) => {
@@ -523,7 +528,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }, 1000);
 
     return () => clearInterval(cronometro);
-  }, [meuTurno, vezUsuarioId]);
+  }, [meuTurno, vezUsuarioId, partidaAnuladaAtiva]);
 
   useEffect(() => {
     if (alertaTemporario && alertaTemporario.visivel) {
@@ -535,31 +540,31 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   }, [alertaTemporario]);
 
   useEffect(() => {
-    if (meuTurno && minhasPedras.length > 0 && mesaPedras.length > 0) {
+    if (meuTurno && minhasPedras.length > 0 && mesaPedras.length > 0 && !partidaAnuladaAtiva) {
       const temQualquerPecaJogavel = minhasPedras.some(pedra => isPedraJogavel(pedra));
 
       if (!temQualquerPecaJogavel) {
         setModalNotificacao({
           visivel: true,
           titulo: 'Sem Peças Compatíveis!',
-          mensagem: 'Você não tem peças jogáveis para as pontas disponíveis. Sua vez foi passada para o oponente automaticamente.',
+          message: 'Você não tem peças jogáveis para as pontas disponíveis. Sua vez foi passada para o oponente automaticamente.',
           tipo: 'info'
         });
         passarVez();
       }
     }
-  }, [meuTurno, minhasPedras, mesaPedras, pontaEsquerda, pontaDireita]);
+  }, [meuTurno, minhasPedras, mesaPedras, pontaEsquerda, pontaDireita, partidaAnuladaAtiva]);
 
   useEffect(() => {
-    if (minhasPedras.length === 0 && mesaPedras.length > 0) {
+    if (minhasPedras.length === 0 && mesaPedras.length > 0 && !partidaAnuladaAtiva) {
       setModalNotificacao({
         visivel: true,
         titulo: 'Parabéns, Você Venceu!',
-        mensagem: 'Você bateu o jogo e jogou todas as suas pedras na mesa de dominó.',
+        message: 'Você bateu o jogo e jogou todas as suas pedras na mesa de dominó.',
         tipo: 'fim'
       });
     }
-  }, [minhasPedras]);
+  }, [minhasPedras, partidaAnuladaAtiva]);
 
   const fecharModalNotificacao = () => {
     setModalNotificacao(prev => ({ ...prev, visivel: false }));
@@ -571,7 +576,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       ref={containerRef}
       className="w-full h-screen bg-[#090610] text-white font-sans flex flex-col justify-between p-2 md:p-4 overflow-hidden select-none relative"
     >
-      {alertaTemporario && alertaTemporario.visivel && (
+      {alertaTemporario && alertaTemporario.visivel && !partidaAnuladaAtiva && (
         <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[60] bg-purple-950/95 border-2 border-purple-500 text-white px-5 py-2 rounded-2xl shadow-[0_4px_15px_rgba(147,51,234,0.4)] flex items-center gap-2 text-xs font-bold animate-in fade-in slide-in-from-top-4 duration-200">
           <MessageSquare className="w-4 h-4 text-purple-400 animate-pulse" />
           <span>{alertaTemporario.mensagem}</span>
@@ -586,7 +591,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             </div>
             <div className="space-y-1">
               <h3 className="font-bold text-md text-white">{modalNotificacao.titulo}</h3>
-              <p className="text-[11px] text-gray-400 leading-relaxed">{modalNotificacao.mensagem}</p>
+              <p className="text-[11px] text-gray-400 leading-relaxed">{modalNotificacao.message}</p>
             </div>
             <Button 
               className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold h-9 text-xs"
@@ -598,7 +603,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </div>
       )}
 
-      {!isFullscreen && (
+      {!isFullscreen && !partidaAnuladaAtiva && (
         <div className="absolute inset-0 bg-[#090610]/98 z-50 flex flex-col items-center justify-center p-6 text-center">
           <div className="max-w-sm space-y-6">
             <div className="p-4 bg-purple-950/40 border border-purple-900/30 rounded-full w-fit mx-auto text-purple-400 animate-bounce">
@@ -638,13 +643,13 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
         <div className="flex items-center gap-4 bg-purple-950/20 px-3 py-1 rounded-lg border border-purple-900/10 text-xs">
           <div className="flex items-center gap-1.5">
-            <div className={`w-1.5 h-1.5 rounded-full ${vezUsuarioId === jogador1Id ? 'bg-green-500 animate-pulse' : 'bg-gray-600'}`} />
+            <div className={`w-1.5 h-1.5 rounded-full ${vezUsuarioId === jogador1Id && !partidaAnuladaAtiva ? 'bg-green-500 animate-pulse' : 'bg-gray-600'}`} />
             <span className="max-w-[70px] truncate font-medium">{nomeJ1}</span>
           </div>
           <span className="text-purple-500 font-bold">VS</span>
           <div className="flex items-center gap-1.5">
             <span className="max-w-[70px] truncate font-medium">{nomeJ2}</span>
-            <div className={`w-1.5 h-1.5 rounded-full ${vezUsuarioId === jogador2Id ? 'bg-green-500 animate-pulse' : 'bg-gray-600'}`} />
+            <div className={`w-1.5 h-1.5 rounded-full ${vezUsuarioId === jogador2Id && !partidaAnuladaAtiva ? 'bg-green-500 animate-pulse' : 'bg-gray-600'}`} />
           </div>
         </div>
 
