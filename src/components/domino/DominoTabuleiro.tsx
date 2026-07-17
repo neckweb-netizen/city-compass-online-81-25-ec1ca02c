@@ -105,8 +105,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const [pontaDireita, setPontaDireita] = useState<number | null>(null);
 
   const [tempoRestante, setTempoRestante] = useState<number>(30);
-
-  // Evita que o componente tente atualizar dados de forma inconsistente após ser anulado
   const [partidaAnuladaAtiva, setPartidaAnuladaAtiva] = useState(false);
 
   const [modalNotificacao, setModalNotificacao] = useState<{ visivel: boolean; titulo: string; message: string; tipo: 'info' | 'erro' | 'fim' }>({
@@ -440,7 +438,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
               setModalNotificacao({
                 visivel: true,
                 titulo: 'Partida Anulada!',
-                message: 'O limite máximo de 3 passadas automáticas seguidas foi atingido. O jogo foi encerrado e a sala foi liberada.',
+                message: 'O limite máximo de 3 passadas seguidas foi atingido. O jogo foi encerrado e a sala foi liberada.',
                 tipo: 'erro'
               });
               return;
@@ -539,17 +537,19 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   }, [alertaTemporario]);
 
+  // VERIFICA SE NÃO TEM PEÇAS JOGÁVEIS E PASSA A VEZ COM AVISO TEMPORÁRIO (SEM EXPULSAR NINGUÉM!)
   useEffect(() => {
     if (meuTurno && minhasPedras.length > 0 && mesaPedras.length > 0 && !partidaAnuladaAtiva) {
       const temQualquerPecaJogavel = minhasPedras.some(pedra => isPedraJogavel(pedra));
 
       if (!temQualquerPecaJogavel) {
-        setModalNotificacao({
+        // Exibe o Toast temporário que some sozinho para o jogador atual
+        setAlertaTemporario({
           visivel: true,
-          titulo: 'Sem Peças Compatíveis!',
-          message: 'Você não tem peças jogáveis para as pontas disponíveis. Sua vez foi passada para o oponente automaticamente.',
-          tipo: 'info'
+          mensagem: '⚠️ Você não tem peças compatíveis! Passando a vez automaticamente...'
         });
+        
+        // Executa a passagem de vez silenciosa e sincronizada no banco
         passarVez();
       }
     }
