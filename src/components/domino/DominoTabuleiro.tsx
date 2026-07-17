@@ -288,7 +288,8 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   };
 
   const inicializarPedrasCompartilhadas = (userId: string, j1: string | null, j2: string | null) => {
-    if (pedrasInicializadas.current) return;
+    // Garante que só inicializa se ambos os jogadores estiverem definidos para evitar set incompleto
+    if (pedrasInicializadas.current || !j1 || !j2) return;
     pedrasInicializadas.current = true;
 
     const totalVinteOitoPedras = [
@@ -376,13 +377,14 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'domino_salas', filter: `id=eq.${salaId}` },
-        (payload) => {
+        async (payload) => {
           const newData = payload.new;
           if (newData) {
-            // ANULAÇÃO POR 3 PASSADAS
+            // DETECTA SE A SALA FOI ANULADA POR ESTOURO DE PASSADAS
             if (newData.status === 'aguardando' && newData.jogador_1_id === null && newData.jogador_2_id === null) {
               setPartidaAnuladaAtiva(true);
               supabase.removeChannel(canalJogo);
+              
               setModalNotificacao({
                 visivel: true,
                 titulo: 'Partida Anulada!',
@@ -394,7 +396,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
             if (partidaAnuladaAtiva) return;
 
-            // DETECTA DESCONEXÃO APENAS SE ESTIVER ATIVO
+            // DETECTA DESCONEXÃO APENAS SE A PARTIDA ESTIVER ATIVA
             if ((newData.jogador_1_id === null || newData.jogador_2_id === null) && newData.status === 'jogando') {
               supabase.removeChannel(canalJogo);
               setModalNotificacao({
@@ -406,11 +408,21 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
               return;
             }
 
+            // ATUALIZA OS IDS LOCAIS DOS JOGADORES EM TEMPO REAL PARA EVITAR CRASH
+            setJogador1Id(newData.jogador_1_id);
+            setJogador2Id(newData.jogador_2_id);
+
+            // Se as pedras ainda não foram dadas por falta de oponente, inicializa agora
+            if (newData.jogador_1_id && newData.jogador_2_id && !pedrasInicializadas.current) {
+              inicializarPedrasCompartilhadas(usuarioId, newData.jogador_1_id, newData.jogador_2_id);
+            }
+
             // ESCUTA E EXIBE EMOJI DO OPONENTE
             if (newData.last_emoji) {
               const [remetenteId, emoji] = newData.last_emoji.split(':');
               if (remetenteId !== usuarioId) {
-                const nomeRemetente = remetenteId === newData.jogador_1_id ? (newData.jogador_1 as any)?.nome || 'Oponente' : (newData.jogador_2 as any)?.nome || 'Oponente';
+                // Sincroniza nome de forma segura
+                const nomeRemetente = remetenteId === newData.jogador_1_id ? nomeJ1 : nomeJ2;
                 setAlertaTemporario({
                   visivel: true,
                   mensagem: `💬 ${nomeRemetente} enviou: ${emoji}`
@@ -443,7 +455,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     return () => {
       supabase.removeChannel(canalJogo);
     };
-  }, [salaId, mesaPedras.length, partidaAnuladaAtiva]);
+  }, [salaId, mesaPedras.length, partidaAnuladaAtiva, nomeJ1, nomeJ2]);
 
   const meuTurno = vezUsuarioId === usuarioId && !partidaAnuladaAtiva;
   const adversarioNome = usuarioId === jogador1Id ? nomeJ2 : nomeJ1;
