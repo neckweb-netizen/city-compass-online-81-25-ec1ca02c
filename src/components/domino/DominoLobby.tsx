@@ -1,13 +1,14 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDominoLobby } from '@/hooks/useDominoLobby';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Users, Hourglass, Gamepad2, ArrowRight, DoorOpen, Loader2 } from 'lucide-react';
+import { Users, Hourglass, Gamepad2, ArrowRight, DoorOpen, Loader2, Radio } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface DominoLobbyProps {
-  usuarioId: string; // ID do usuário logado na aplicação
+  usuarioId: string;
 }
 
 export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
@@ -21,6 +22,20 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
     sairDoJogo,
   } = useDominoLobby(usuarioId);
 
+  const [wsStatus, setWsStatus] = useState<string>('CONECTANDO...');
+
+  // Escuta o status do canal em tempo real para te mostrar o diagnóstico na tela do celular
+  useEffect(() => {
+    const channel = supabase
+      .channel('ws-diagnostico')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'domino_salas' }, () => {})
+      .subscribe((status) => {
+        setWsStatus(status.toUpperCase());
+      });
+
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
   if (carregando) {
     return (
       <div className="flex flex-col items-center justify-center py-20 space-y-4">
@@ -33,8 +48,14 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
   const jaEstaParticipando = minhaSala !== null || minhaPosicaoFila !== null;
 
   return (
-    <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-6">
+    <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-6 relative">
       
+      {/* INDICADOR DE DIAGNÓSTICO DO REALTIME NO TOPO DA TELA */}
+      <div className="fixed bottom-4 right-4 z-50 bg-black/90 border border-purple-500 px-3 py-1.5 rounded-xl text-[10px] font-mono flex items-center gap-2 shadow-2xl">
+        <Radio className={`w-3 h-3 ${wsStatus === 'SUBSCRIBED' ? 'text-green-400 animate-pulse' : 'text-red-500'}`} />
+        <span>REALTIME: <strong className={wsStatus === 'SUBSCRIBED' ? 'text-green-400' : 'text-red-400'}>{wsStatus}</strong></span>
+      </div>
+
       {/* Cabeçalho do Lobby */}
       <div className="text-center md:text-left space-y-2">
         <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white flex items-center justify-center md:justify-start gap-2">
@@ -123,7 +144,6 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
                   </CardDescription>
                 </div>
                 <div>
-                  {/* SINCRONIZAÇÃO COMPLETA DO STATUS DO BADGE SEM LIMITES DE ANULAÇÃO */}
                   {mesaCheia ? (
                     <Badge variant="default" className="bg-red-600 text-white border-none">Em Partida</Badge>
                   ) : temJ1 || temJ2 ? (
@@ -135,7 +155,6 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
               </CardHeader>
               
               <CardContent className="space-y-4">
-                {/* Visual dos dois Jogadores na mesa */}
                 <div className="flex items-center justify-around py-3 bg-[#090610]/60 rounded-xl border border-dashed border-purple-900/20">
                   {/* Jogador 1 */}
                   <div className="flex flex-col items-center space-y-1.5">
@@ -164,7 +183,6 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
                   </div>
                 </div>
 
-                {/* BOTÕES DE AÇÃO INTERNA DA SALA */}
                 {!jaEstaParticipando && !mesaCheia && (
                   <Button 
                     className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold h-9 text-xs transition-all duration-150"
@@ -195,7 +213,6 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
           </div>
         </div>
 
-        {/* Botão de participar principal se não estiver em nenhuma mesa */}
         {!jaEstaParticipando && (
           <Button 
             className="w-full md:w-auto bg-purple-600 hover:bg-purple-700 text-white font-bold px-8 py-5 rounded-xl shadow-lg shadow-purple-900/10 active:scale-[0.98] transition-all"
