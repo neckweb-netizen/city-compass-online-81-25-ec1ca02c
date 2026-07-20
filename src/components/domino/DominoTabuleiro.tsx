@@ -100,9 +100,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const [pontaDireita, setPontaDireita] = useState<number | null>(null);
 
   const [tempoRestante, setTempoRestante] = useState<number>(30);
-  const [partidaAnuladaAtiva, setPartidaAnuladaAtiva] = useState(false);
   
-  // Evita falsos positivos de "Sem peças!" durante a transição assíncrona de turnos
   const processandoJogadaLocal = useRef(false);
   const pedrasInicializadas = useRef(false);
 
@@ -167,7 +165,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     return ladoA === pontaEsquerda || ladoB === pontaEsquerda || ladoA === pontaDireita || ladoB === pontaDireita;
   };
 
-  // BROADCAST IMEDIATO CONFIGURADO CORRETAMENTE PARA AMBOS VEREM A PROVOCAÇÃO
   const enviarEmoji = (emoji: string) => {
     if (canalRef.current) {
       canalRef.current.send({
@@ -184,61 +181,25 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   };
 
   const passarVez = async () => {
-    if (partidaAnuladaAtiva) return;
     const proximoTurnoId = usuarioId === jogador1Id ? jogador2Id : jogador1Id;
 
     try {
-      const { data: salaAtual } = await supabase
+      // SISTEMA DE ANULAÇÃO COMPLETAMENTE REMOVIDO DAQUI. APENAS PASSA A VEZ INFINITAMENTE.
+      await supabase
         .from('domino_salas')
-        .select('passadas_count')
-        .eq('id', salaId)
-        .single();
-
-      const novasPassadas = (salaAtual?.passadas_count || 0) + 1;
-
-      if (novasPassadas >= 3) {
-        setPartidaAnuladaAtiva(true);
-        if (canalRef.current) supabase.removeChannel(canalRef.current);
-        
-        await supabase
-          .from('domino_salas')
-          .update({
-            jogador_1_id: null,
-            jogador_2_id: null,
-            status: 'aguardando',
-            vez_usuario_id: null,
-            mesa_ponta_esquerda: null,
-            mesa_ponta_direita: null,
-            historico_jogadas: [],
-            passadas_count: 0,
-            atualizado_em: new Date().toISOString()
-          })
-          .eq('id', salaId);
-
-        setModalNotificacao({
-          visivel: true,
-          titulo: 'Partida Anulada!',
-          message: 'O limite máximo de 3 passadas seguidas foi atingido. O jogo foi encerrado e a sala foi liberada.',
-          tipo: 'erro'
-        });
-      } else {
-        await supabase
-          .from('domino_salas')
-          .update({
-            vez_usuario_id: proximoTurnoId,
-            passadas_count: novasPassadas,
-            atualizado_em: new Date().toISOString()
-          })
-          .eq('id', salaId);
-      }
+        .update({
+          vez_usuario_id: proximoTurnoId,
+          atualizado_em: new Date().toISOString()
+        })
+        .eq('id', salaId);
     } catch (err) {
       console.error(err);
     }
   };
 
   const tentarJogarPedra = async (pedra: string) => {
-    if (!meuTurno || partidaAnuladaAtiva || processandoJogadaLocal.current) return;
-    processandoJogadaLocal.current = true; // Trava a verificação de "Sem peças!" temporariamente
+    if (!meuTurno || processandoJogadaLocal.current) return;
+    processandoJogadaLocal.current = true;
 
     const [ladoA, ladoB] = pedra.split('-').map(Number);
     let novaMesa = [...mesaPedras];
@@ -276,7 +237,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     const proximoTurnoId = usuarioId === jogador1Id ? jogador2Id : jogador1Id;
 
     try {
-      // Remove localmente antes de enviar para garantir a responsividade visual fluida
       setMinhasPedras(prev => prev.filter(p => p !== pedra));
 
       const { error } = await supabase
@@ -294,7 +254,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       if (error) throw error;
     } catch (err) {
       console.error(err);
-      carregarDadosPartida(); // Recarrega em caso de erro crítico no banco
+      carregarDadosPartida();
     }
   };
 
@@ -382,7 +342,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   useEffect(() => {
     carregarDadosPartida();
 
-    // CANAL CONFIGURADO COM A FLAG DE BROADCAST ATIVADA PERFEITAMENTE
     const canalJogo = supabase
       .channel(`jogo-realtime-${salaId}`, {
         config: { broadcast: { self: false } }
@@ -393,20 +352,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         async (payload) => {
           const newData = payload.new;
           if (newData) {
-            if (newData.status === 'aguardando' && newData.jogador_1_id === null && newData.jogador_2_id === null) {
-              setPartidaAnuladaAtiva(true);
-              supabase.removeChannel(canalJogo);
-              setModalNotificacao({
-                visivel: true,
-                titulo: 'Partida Anulada!',
-                message: 'O limite máximo de 3 passadas seguidas foi atingido. O jogo foi encerrado.',
-                tipo: 'erro'
-              });
-              return;
-            }
-
-            if (partidaAnuladaAtiva) return;
-
             if ((newData.jogador_1_id === null || newData.jogador_2_id === null) && newData.status === 'jogando') {
               supabase.removeChannel(canalJogo);
               setModalNotificacao({
@@ -442,13 +387,10 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
               
             setMesaPedras(jogadasProcessadas);
             setTempoRestante(30);
-            
-            // Destrava a verificação de peças locais porque o banco já sincronizou a jogada
             processandoJogadaLocal.current = false;
           }
         }
       )
-      // ESCUTADOR DO BROADCAST CAPTURANDO AS PROVOCAÇÕES DE EMOJI EM TEMPO REAL
       .on('broadcast', { event: 'emoji' }, (payload) => {
         const { remetenteId, emoji } = payload.payload;
         if (remetenteId !== usuarioId) {
@@ -466,13 +408,13 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     return () => {
       supabase.removeChannel(canalJogo);
     };
-  }, [salaId, mesaPedras.length, partidaAnuladaAtiva, nomeJ1, nomeJ2, jogador1Id, jogador2Id]);
+  }, [salaId, mesaPedras.length, nomeJ1, nomeJ2, jogador1Id, jogador2Id]);
 
-  const meuTurno = vezUsuarioId === usuarioId && !partidaAnuladaAtiva;
+  const meuTurno = vezUsuarioId === usuarioId;
   const adversarioNome = usuarioId === jogador1Id ? nomeJ2 : nomeJ1;
 
   useEffect(() => {
-    if (!meuTurno || partidaAnuladaAtiva) return;
+    if (!meuTurno) return;
 
     const cronometro = setInterval(() => {
       setTempoRestante((tempo) => {
@@ -487,7 +429,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }, 1000);
 
     return () => clearInterval(cronometro);
-  }, [meuTurno, vezUsuarioId, partidaAnuladaAtiva]);
+  }, [meuTurno, vezUsuarioId]);
 
   useEffect(() => {
     if (alertaTemporario && alertaTemporario.visivel) {
@@ -496,9 +438,8 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   }, [alertaTemporario]);
 
-  // VERIFICA SE NÃO HÁ PEÇAS COMPATÍVEIS (TOTALMENTE PROTEGIDO DE FALSOS POSITIVOS!)
   useEffect(() => {
-    if (meuTurno && minhasPedras.length > 0 && mesaPedras.length > 0 && !partidaAnuladaAtiva && !processandoJogadaLocal.current) {
+    if (meuTurno && minhasPedras.length > 0 && mesaPedras.length > 0 && !processandoJogadaLocal.current) {
       const temQualquerPecaJogavel = minhasPedras.some(pedra => isPedraJogavel(pedra));
 
       if (!temQualquerPecaJogavel) {
@@ -506,10 +447,10 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         passarVez();
       }
     }
-  }, [meuTurno, minhasPedras, mesaPedras, pontaEsquerda, pontaDireita, partidaAnuladaAtiva]);
+  }, [meuTurno, minhasPedras, mesaPedras, pontaEsquerda, pontaDireita]);
 
   useEffect(() => {
-    if (minhasPedras.length === 0 && mesaPedras.length > 0 && !partidaAnuladaAtiva) {
+    if (minhasPedras.length === 0 && mesaPedras.length > 0) {
       setModalNotificacao({
         visivel: true,
         titulo: 'Parabéns, Você Venceu!',
@@ -517,7 +458,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         tipo: 'fim'
       });
     }
-  }, [minhasPedras, partidaAnuladaAtiva]);
+  }, [minhasPedras]);
 
   const fecharModalNotificacao = () => {
     setModalNotificacao(prev => ({ ...prev, visivel: false }));
@@ -526,7 +467,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   return (
     <div ref={containerRef} className="w-full h-screen bg-[#090610] text-white font-sans flex flex-col justify-between p-2 md:p-4 overflow-hidden select-none relative">
-      {alertaTemporario && alertaTemporario.visivel && !partidaAnuladaAtiva && (
+      {alertaTemporario && alertaTemporario.visivel && (
         <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[60] bg-purple-950/95 border-2 border-purple-500 text-white px-5 py-2 rounded-2xl shadow-[0_4px_15px_rgba(147,51,234,0.4)] flex items-center gap-2 text-xs font-bold animate-in fade-in slide-in-from-top-4 duration-200">
           <MessageSquare className="w-4 h-4 text-purple-400 animate-pulse" />
           <span>{alertaTemporario.mensagem}</span>
@@ -548,7 +489,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </div>
       )}
 
-      {!isFullscreen && !partidaAnuladaAtiva && (
+      {!isFullscreen && (
         <div className="absolute inset-0 bg-[#090610]/98 z-50 flex flex-col items-center justify-center p-6 text-center">
           <div className="max-w-sm space-y-6">
             <div className="p-4 bg-purple-950/40 border border-purple-900/30 rounded-full w-fit mx-auto text-purple-400 animate-bounce">
@@ -563,7 +504,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </div>
       )}
       
-      {/* 1. HUD SUPERIOR */}
       <div className="flex items-center justify-between bg-[#110D1A]/95 border border-purple-950/40 px-3 py-1.5 rounded-xl shadow-lg h-[12%] z-30">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={sairDaPartida} className="text-gray-400 hover:text-white h-8 text-xs px-2">
@@ -572,7 +512,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           <span className="text-[10px] text-purple-300 font-bold bg-purple-950/50 px-2 py-0.5 rounded-full">Mesa {numeroSala}</span>
         </div>
 
-        {/* HUD DOS JOGADORES COM SELETOR DE EMOJIS OTIMIZADO PARA CELULAR */}
         <div className="flex items-center gap-2 md:gap-4 bg-purple-950/20 px-2 md:px-4 py-1 rounded-xl border border-purple-900/20 text-xs">
           <div className="flex items-center gap-1.5">
             <div className="p-1 bg-purple-950/40 rounded-full border border-purple-900/30 text-purple-400">
@@ -582,7 +521,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             <span>{vezUsuarioId === jogador1Id ? '🟢' : '⚫'}</span>
           </div>
           
-          {/* BARRA DE EMOJIS REDESENHADA PARA TOQUE ACESSÍVEL NO TOUCHSCREEN */}
           <div className="flex items-center gap-2 bg-[#170f2c] border border-purple-500/30 px-3 py-1.5 rounded-xl shadow-inner mx-1">
             {['😀', '🔥', '😡', '😂'].map((emoji) => (
               <button 
@@ -609,7 +547,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </Button>
       </div>
 
-      {/* 2. MESA DE JOGO */}
       <div className="flex-grow my-2 bg-emerald-950 border-[4px] border-amber-950 rounded-[24px] shadow-[inset_0_4px_12px_rgba(0,0,0,0.6)] relative flex flex-col items-center justify-center h-[53%] overflow-hidden">
         {mesaPedras.length > 0 && (
           <div className="absolute top-2 left-4 flex items-center gap-3 text-[10px] font-semibold text-emerald-300/60">
@@ -626,7 +563,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </div>
       </div>
 
-      {/* 3. MINHA MÃO */}
       <div className="bg-[#110D1A]/95 border border-purple-950/40 p-2.5 rounded-2xl h-[30%] flex flex-col justify-between">
         <div className="flex items-center justify-between px-1 h-[25%]"><span className="text-[10px] text-purple-300 font-bold uppercase tracking-wider">Suas Pedras ({minhasPedras.length})</span></div>
         <div className="flex justify-center items-center gap-1.5 overflow-x-auto h-[75%] py-1">
