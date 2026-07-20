@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface Sala {
@@ -24,7 +24,6 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
   const [minhaSala, setMinhaSala] = useState<Sala | null>(null);
   const [carregando, setCarregando] = useState(true);
 
-  // Busca o estado inicial das salas e da fila
   const carregarDados = async () => {
     if (!usuarioId) return;
     try {
@@ -38,12 +37,8 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
           jogador_2_id,
           criado_em,
           atualizado_em,
-          jogador_1:jogador_1_id (
-            nome
-          ),
-          jogador_2:jogador_2_id (
-            nome
-          )
+          jogador_1:jogador_1_id ( nome ),
+          jogador_2:jogador_2_id ( nome )
         `)
         .order('numero_sala', { ascending: true });
 
@@ -51,14 +46,12 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
       if (dataSalas) {
         setSalas(dataSalas as any);
         
-        // Localiza se o usuário já está registrado em alguma mesa ativa
         const salaAtiva = (dataSalas as any[]).find(
           (s) => s.jogador_1_id === usuarioId || s.jogador_2_id === usuarioId
         );
         setMinhaSala(salaAtiva || null);
       }
 
-      // Busca a fila de espera
       const { data: dataFila, error: errorFila } = await supabase
         .from('domino_fila')
         .select('*')
@@ -67,7 +60,6 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
       if (errorFila) throw errorFila;
       if (dataFila) {
         setFila(dataFila);
-
         const index = dataFila.findIndex((f) => f.usuario_id === usuarioId);
         setMinhaPosicaoFila(index !== -1 ? index + 1 : null);
       }
@@ -83,31 +75,21 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
 
     carregarDados();
 
-    // Sincronização em tempo real ultra responsiva das tabelas do lobby
+    // ESCUTA REALTIME OTIMIZADA PARA DISPARAR CARREGARDADOS IMEDIATO E TRAZER OS NOMES SEM F5
     const canalRealtime = supabase
       .channel('realtime-domino-lobby')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'domino_salas' },
-        async (payload) => {
-          if (payload.eventType === 'UPDATE') {
-            const salaAtualizada = payload.new as any;
-            setSalas((prevSalas) => 
-              prevSalas.map((s) => 
-                s.id === salaAtualizada.id 
-                  ? { ...s, ...salaAtualizada } 
-                  : s
-              )
-            );
-          }
-          await carregarDados();
+        async () => {
+          await carregarDados(); // Dispara recarga assíncrona instantânea para atualizar jogadores, vagas e nomes na tela
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'domino_fila' },
-        () => {
-          carregarDados();
+        async () => {
+          await carregarDados();
         }
       )
       .subscribe();
@@ -117,18 +99,13 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
     };
   }, [usuarioId]);
 
-  // Função robusta para entrar no jogo sem duplicidades
   const entrarNoJogo = async () => {
     if (!usuarioId) return;
 
     try {
-      // 1. Defesa absoluta: Verifica se o usuário já está em alguma sala para bloquear cliques rápidos
       if (minhaSala || minhaPosicaoFila !== null) return;
-
-      // 2. Garante a limpeza de qualquer resíduo do ID deste jogador antes de registrá-lo de novo
       await limparResiduosUsuario();
 
-      // 3. Procura uma sala disponível
       const { data: salasLivres, error: errorSalas } = await supabase
         .from('domino_salas')
         .select('*')
@@ -142,7 +119,6 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
         const salaAlvo = salasLivres[0];
 
         if (!salaAlvo.jogador_1_id) {
-          // Registra como Jogador 1 (Ainda aguardando oponente)
           await supabase
             .from('domino_salas')
             .update({
@@ -154,7 +130,6 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
             })
             .eq('id', salaAlvo.id);
         } else {
-          // Registra como Jogador 2 (Mesa cheia, define a vez inicial do jogador 1 imediatamente)
           await supabase
             .from('domino_salas')
             .update({
@@ -167,7 +142,6 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
             .eq('id', salaAlvo.id);
         }
       } else {
-        // Se todas as mesas estiverem ocupadas, coloca na fila
         await supabase
           .from('domino_fila')
           .insert([{ usuario_id: usuarioId }]);
@@ -179,17 +153,14 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
     }
   };
 
-  // Limpa qualquer resíduo fantasma do jogador em todas as mesas
   const limparResiduosUsuario = async () => {
     if (!usuarioId) return;
     try {
-      // Remove da fila de espera caso esteja nela
       await supabase
         .from('domino_fila')
         .delete()
         .eq('usuario_id', usuarioId);
 
-      // Busca todas as salas em que o usuário possa estar ocupando alguma vaga
       const { data } = await supabase
         .from('domino_salas')
         .select('id, jogador_1_id, jogador_2_id')
@@ -209,7 +180,6 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
           updates.historico_jogadas = [];
           updates.atualizado_em = new Date().toISOString();
 
-          // AGORA REMOVI COMPLETAMENTE A COLUNA INEXISTENTE DAQUI! ZERO ERRO 400!
           await supabase
             .from('domino_salas')
             .update(updates)
@@ -221,7 +191,6 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
     }
   };
 
-  // Função para sair do jogo e liberar as vagas corretamente
   const sairDoJogo = async () => {
     if (!usuarioId) return;
     try {
