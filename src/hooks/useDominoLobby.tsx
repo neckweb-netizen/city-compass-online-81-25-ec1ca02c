@@ -27,6 +27,9 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
   const carregarDados = async () => {
     if (!usuarioId) return;
     try {
+      // QUEBRA DE CACHE REATIVA: Adiciona um carimbo de tempo único para forçar o servidor a entregar dados novos no celular
+      const timestampUnico = new Date().getTime().toString();
+
       const { data: dataSalas, error: errorSalas } = await supabase
         .from('domino_salas')
         .select(`
@@ -40,6 +43,7 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
           jogador_1:jogador_1_id ( nome ),
           jogador_2:jogador_2_id ( nome )
         `)
+        .neq('id', timestampUnico) // Filtro inofensivo apenas para mudar a assinatura da query e burlar o cache
         .order('numero_sala', { ascending: true });
 
       if (errorSalas) throw errorSalas;
@@ -55,6 +59,7 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
       const { data: dataFila, error: errorFila } = await supabase
         .from('domino_fila')
         .select('*')
+        .neq('id', timestampUnico) // Burlar cache na fila também
         .order('entrou_em', { ascending: true });
 
       if (errorFila) throw errorFila;
@@ -75,24 +80,28 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
 
     carregarDados();
 
-    // ESCUTA REALTIME OTIMIZADA PARA DISPARAR CARREGARDADOS IMEDIATO E TRAZER OS NOMES SEM F5
+    // CANAL COM O LOG INLINE PARA TERMOS CERTEZA DE QUE O GATILHO ESTÁ CHEGANDO NO CLIENTE
     const canalRealtime = supabase
       .channel('realtime-domino-lobby')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'domino_salas' },
-        async () => {
-          await carregarDados(); // Dispara recarga assíncrona instantânea para atualizar jogadores, vagas e nomes na tela
+        async (payload) => {
+          console.log('🔄 Atualização de sala detectada via Realtime:', payload);
+          await carregarDados(); // Força a busca instantânea ignorando o cache
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'domino_fila' },
-        async () => {
+        async (payload) => {
+          console.log('🔄 Atualização de fila detectada via Realtime:', payload);
           await carregarDados();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('📡 Status da conexão WebSocket do Lobby:', status);
+      });
 
     return () => {
       supabase.removeChannel(canalRealtime);
