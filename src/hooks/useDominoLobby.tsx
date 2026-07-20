@@ -23,13 +23,14 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
   const [minhaPosicaoFila, setMinhaPosicaoFila] = useState<number | null>(null);
   const [minhaSala, setMinhaSala] = useState<Sala | null>(null);
   const [carregando, setCarregando] = useState(true);
+  
+  // Estado controlador para forçar o React a re-renderizar e quebrar cache assíncrono legitimamente
+  const [versaoDados, setVersaoDados] = useState(0);
 
   const carregarDados = async () => {
     if (!usuarioId) return;
     try {
-      // QUEBRA DE CACHE REATIVA: Adiciona um carimbo de tempo único para forçar o servidor a entregar dados novos no celular
-      const timestampUnico = new Date().getTime().toString();
-
+      // Query limpa e sem gambiarras que quebram o UUID do banco
       const { data: dataSalas, error: errorSalas } = await supabase
         .from('domino_salas')
         .select(`
@@ -43,7 +44,6 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
           jogador_1:jogador_1_id ( nome ),
           jogador_2:jogador_2_id ( nome )
         `)
-        .neq('id', timestampUnico) // Filtro inofensivo apenas para mudar a assinatura da query e burlar o cache
         .order('numero_sala', { ascending: true });
 
       if (errorSalas) throw errorSalas;
@@ -59,7 +59,6 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
       const { data: dataFila, error: errorFila } = await supabase
         .from('domino_fila')
         .select('*')
-        .neq('id', timestampUnico) // Burlar cache na fila também
         .order('entrou_em', { ascending: true });
 
       if (errorFila) throw errorFila;
@@ -75,33 +74,35 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
     }
   };
 
+  // Efeito responsável por recarregar a busca sempre que a versão mudar via Realtime
+  useEffect(() => {
+    if (!usuarioId) return;
+    carregarDados();
+  }, [usuarioId, versaoDados]);
+
+  // Inscrição reativa do Realtime
   useEffect(() => {
     if (!usuarioId) return;
 
-    carregarDados();
-
-    // CANAL COM O LOG INLINE PARA TERMOS CERTEZA DE QUE O GATILHO ESTÁ CHEGANDO NO CLIENTE
     const canalRealtime = supabase
       .channel('realtime-domino-lobby')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'domino_salas' },
-        async (payload) => {
-          console.log('🔄 Atualização de sala detectada via Realtime:', payload);
-          await carregarDados(); // Força a busca instantânea ignorando o cache
+        (payload) => {
+          console.log('🔄 Update na mesa detectado:', payload);
+          setVersaoDados(prev => prev + 1); // Incrementa a versão para forçar releitura imediata
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'domino_fila' },
-        async (payload) => {
-          console.log('🔄 Atualização de fila detectada via Realtime:', payload);
-          await carregarDados();
+        (payload) => {
+          console.log('🔄 Update na fila detectado:', payload);
+          setVersaoDados(prev => prev + 1);
         }
       )
-      .subscribe((status) => {
-        console.log('📡 Status da conexão WebSocket do Lobby:', status);
-      });
+      .subscribe();
 
     return () => {
       supabase.removeChannel(canalRealtime);
@@ -156,7 +157,7 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
           .insert([{ usuario_id: usuarioId }]);
       }
 
-      await carregarDados();
+      setVersaoDados(prev => prev + 1);
     } catch (err) {
       console.error('Erro ao tentar entrar no jogo:', err);
     }
@@ -204,7 +205,7 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
     if (!usuarioId) return;
     try {
       await limparResiduosUsuario();
-      await carregarDados();
+      setVersaoDados(prev => prev + 1);
     } catch (err) {
       console.error('Erro ao sair do jogo:', err);
     }
