@@ -101,6 +101,9 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   const [tempoRestante, setTempoRestante] = useState<number>(30);
   const [partidaAnuladaAtiva, setPartidaAnuladaAtiva] = useState(false);
+  
+  // Evita falsos positivos de "Sem peças!" durante a transição assíncrona de turnos
+  const processandoJogadaLocal = useRef(false);
   const pedrasInicializadas = useRef(false);
 
   const [modalNotificacao, setModalNotificacao] = useState<{ visivel: boolean; titulo: string; message: string; tipo: 'info' | 'erro' | 'fim' }>({
@@ -164,7 +167,8 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     return ladoA === pontaEsquerda || ladoB === pontaEsquerda || ladoA === pontaDireita || ladoB === pontaDireita;
   };
 
-  const enviarEmoji = async (emoji: string) => {
+  // BROADCAST IMEDIATO CONFIGURADO CORRETAMENTE PARA AMBOS VEREM A PROVOCAÇÃO
+  const enviarEmoji = (emoji: string) => {
     if (canalRef.current) {
       canalRef.current.send({
         type: 'broadcast',
@@ -172,10 +176,9 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         payload: { remetenteId: usuarioId, emoji }
       });
       
-      // Feedback visual rápido local para quem clicou saber que enviou
       setAlertaTemporario({
         visivel: true,
-        mensagem: `Você enviou: ${emoji}`
+        mensagem: `Você provocou com: ${emoji}`
       });
     }
   };
@@ -234,7 +237,8 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   };
 
   const tentarJogarPedra = async (pedra: string) => {
-    if (!meuTurno || partidaAnuladaAtiva) return;
+    if (!meuTurno || partidaAnuladaAtiva || processandoJogadaLocal.current) return;
+    processandoJogadaLocal.current = true; // Trava a verificação de "Sem peças!" temporariamente
 
     const [ladoA, ladoB] = pedra.split('-').map(Number);
     let novaMesa = [...mesaPedras];
@@ -252,7 +256,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         novaMesa.unshift(novaPedra);
         novaPontaE = ladoB;
       } else if (ladoB === pontaEsquerda) {
-        const novaPedra: PedraMesa = { valorOriginal: `${ladoA}-${ladoB}`, ladoEsquerdo: ladoA, ladoDireito: ...[ladoB] };
+        const novaPedra: PedraMesa = { valorOriginal: `${ladoA}-${ladoB}`, ladoEsquerdo: ladoA, ladoDireito: ladoB };
         novaMesa.unshift(novaPedra);
         novaPontaE = ladoA;
       } else if (ladoA === pontaDireita) {
@@ -264,6 +268,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         novaMesa.push(novaPedra);
         novaPontaD = ladoA;
       } else {
+        processandoJogadaLocal.current = false;
         return;
       }
     }
@@ -271,6 +276,9 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     const proximoTurnoId = usuarioId === jogador1Id ? jogador2Id : jogador1Id;
 
     try {
+      // Remove localmente antes de enviar para garantir a responsividade visual fluida
+      setMinhasPedras(prev => prev.filter(p => p !== pedra));
+
       const { error } = await supabase
         .from('domino_salas')
         .update({
@@ -284,9 +292,9 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         .eq('id', salaId);
 
       if (error) throw error;
-      setMinhasPedras(prev => prev.filter(p => p !== pedra));
     } catch (err) {
       console.error(err);
+      carregarDadosPartida(); // Recarrega em caso de erro crítico no banco
     }
   };
 
@@ -374,8 +382,11 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   useEffect(() => {
     carregarDadosPartida();
 
+    // CANAL CONFIGURADO COM A FLAG DE BROADCAST ATIVADA PERFEITAMENTE
     const canalJogo = supabase
-      .channel(`jogo-realtime-${salaId}`)
+      .channel(`jogo-realtime-${salaId}`, {
+        config: { broadcast: { self: false } }
+      })
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'domino_salas', filter: `id=eq.${salaId}` },
@@ -431,16 +442,20 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
               
             setMesaPedras(jogadasProcessadas);
             setTempoRestante(30);
+            
+            // Destrava a verificação de peças locais porque o banco já sincronizou a jogada
+            processandoJogadaLocal.current = false;
           }
         }
       )
+      // ESCUTADOR DO BROADCAST CAPTURANDO AS PROVOCAÇÕES DE EMOJI EM TEMPO REAL
       .on('broadcast', { event: 'emoji' }, (payload) => {
         const { remetenteId, emoji } = payload.payload;
         if (remetenteId !== usuarioId) {
           const nomeRemetente = remetenteId === jogador1Id ? nomeJ1 : nomeJ2;
           setAlertaTemporario({
             visivel: true,
-            mensagem: `💬 ${nomeRemetente} enviou: ${emoji}`
+            mensagem: `💥 ${nomeRemetente} provocou você com: ${emoji}`
           });
         }
       })
@@ -451,7 +466,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     return () => {
       supabase.removeChannel(canalJogo);
     };
-  }, [salaId, mesaPedras.length, partidaAnuladaAtiva, nomeJ1, nomeJ2, jogador1Id, ...[jogador2Id]]);
+  }, [salaId, mesaPedras.length, partidaAnuladaAtiva, nomeJ1, nomeJ2, jogador1Id, jogador2Id]);
 
   const meuTurno = vezUsuarioId === usuarioId && !partidaAnuladaAtiva;
   const adversarioNome = usuarioId === jogador1Id ? nomeJ2 : nomeJ1;
@@ -481,8 +496,9 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   }, [alertaTemporario]);
 
+  // VERIFICA SE NÃO HÁ PEÇAS COMPATÍVEIS (TOTALMENTE PROTEGIDO DE FALSOS POSITIVOS!)
   useEffect(() => {
-    if (meuTurno && minhasPedras.length > 0 && mesaPedras.length > 0 && !partidaAnuladaAtiva) {
+    if (meuTurno && minhasPedras.length > 0 && mesaPedras.length > 0 && !partidaAnuladaAtiva && !processandoJogadaLocal.current) {
       const temQualquerPecaJogavel = minhasPedras.some(pedra => isPedraJogavel(pedra));
 
       if (!temQualquerPecaJogavel) {
