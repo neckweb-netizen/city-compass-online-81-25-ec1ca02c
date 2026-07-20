@@ -59,7 +59,7 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
                   <>
                     <h3 className="font-bold text-lg">Você está na Sala {minhaSala.numero_sala}!</h3>
                     <p className="text-xs text-purple-300">
-                      {minhaSala.status === 'jogando' 
+                      {minhaSala.jogador_1_id && minhaSala.jogador_2_id 
                         ? 'A partida começou! Prepare suas pedras.' 
                         : 'Aguardando outro jogador entrar na sua sala...'}
                     </p>
@@ -76,7 +76,7 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
             </div>
             
             <div className="flex gap-3 w-full md:w-auto">
-              {minhaSala?.status === 'jogando' && (
+              {minhaSala && minhaSala.jogador_1_id && minhaSala.jogador_2_id && (
                 <Button 
                   className="flex-1 md:flex-none bg-green-600 hover:bg-green-700 text-white font-bold transition-all duration-150"
                   onClick={() => window.location.reload()}
@@ -100,6 +100,9 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {salas.map((sala) => {
           const isUserInThisSala = sala.jogador_1_id === usuarioId || sala.jogador_2_id === usuarioId;
+          const temJ1 = !!sala.jogador_1_id;
+          const temJ2 = !!sala.jogador_2_id;
+          const mesaCheia = temJ1 && temJ2;
           
           return (
             <Card 
@@ -120,10 +123,13 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
                   </CardDescription>
                 </div>
                 <div>
-                  {sala.status === 'jogando' ? (
+                  {/* SINCRONIZAÇÃO COMPLETA DO STATUS DO BADGE SEM LIMITES DE ANULAÇÃO */}
+                  {mesaCheia ? (
                     <Badge variant="default" className="bg-red-600 text-white border-none">Em Partida</Badge>
+                  ) : temJ1 || temJ2 ? (
+                    <Badge variant="secondary" className="bg-amber-600 text-white border-none">Aguardando...</Badge>
                   ) : (
-                    <Badge variant="secondary" className="bg-green-600 text-white border-none">Disponível</Badge>
+                    <Badge variant="secondary" className="bg-green-600 text-white border-none">Vago</Badge>
                   )}
                 </div>
               </CardHeader>
@@ -133,7 +139,7 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
                 <div className="flex items-center justify-around py-3 bg-[#090610]/60 rounded-xl border border-dashed border-purple-900/20">
                   {/* Jogador 1 */}
                   <div className="flex flex-col items-center space-y-1.5">
-                    <Avatar className="w-10 h-10 border-2 border-purple-500">
+                    <Avatar className={`w-10 h-10 border-2 ${temJ1 ? 'border-purple-500' : 'border-gray-700'}`}>
                       <AvatarFallback className="text-xs bg-purple-900 text-white font-bold">
                         {sala.jogador_1 ? sala.jogador_1.nome.charAt(0).toUpperCase() : '?'}
                       </AvatarFallback>
@@ -147,7 +153,7 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
 
                   {/* Jogador 2 */}
                   <div className="flex flex-col items-center space-y-1.5">
-                    <Avatar className="w-10 h-10 border-2 border-purple-500">
+                    <Avatar className={`w-10 h-10 border-2 ${temJ2 ? 'border-purple-500' : 'border-gray-700'}`}>
                       <AvatarFallback className="text-xs bg-purple-900 text-white font-bold">
                         {sala.jogador_2 ? sala.jogador_2.nome.charAt(0).toUpperCase() : '?'}
                       </AvatarFallback>
@@ -159,7 +165,7 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
                 </div>
 
                 {/* BOTÕES DE AÇÃO INTERNA DA SALA */}
-                {!jaEstaParticipando && (sala.jogador_1_id === null || sala.jogador_2_id === null) && (
+                {!jaEstaParticipando && !mesaCheia && (
                   <Button 
                     className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold h-9 text-xs transition-all duration-150"
                     onClick={entrarNoJogo}
