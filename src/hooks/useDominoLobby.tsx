@@ -90,7 +90,6 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'domino_salas' },
         async (payload) => {
-          // Se for uma atualização na tabela de salas, fazemos a atualização local imediata antes da requisição para evitar atrasos na interface
           if (payload.eventType === 'UPDATE') {
             const salaAtualizada = payload.new as any;
             setSalas((prevSalas) => 
@@ -101,7 +100,6 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
               )
             );
           }
-          // Atualiza as referências completas (incluindo relacionamentos do nome do jogador via select)
           await carregarDados();
         }
       )
@@ -150,9 +148,8 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
             .update({
               jogador_1_id: usuarioId,
               status: salaAlvo.jogador_2_id ? 'jogando' : 'aguardando',
-              vez_usuario_id: salaAlvo.jogador_2_id ? salaAlvo.jogador_2_id : null, // Configura a vez se o J2 já estava lá
+              vez_usuario_id: salaAlvo.jogador_2_id ? salaAlvo.jogador_2_id : null,
               passadas_count: 0,
-              last_emoji: null,
               atualizado_em: new Date().toISOString(),
             })
             .eq('id', salaAlvo.id);
@@ -163,9 +160,8 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
             .update({
               jogador_2_id: usuarioId,
               status: 'jogando',
-              vez_usuario_id: salaAlvo.jogador_1_id, // Define a vez como jogador 1 no ato da entrada!
+              vez_usuario_id: salaAlvo.jogador_1_id,
               passadas_count: 0,
-              last_emoji: null,
               atualizado_em: new Date().toISOString(),
             })
             .eq('id', salaAlvo.id);
@@ -210,10 +206,10 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
           updates.mesa_ponta_esquerda = null;
           updates.mesa_ponta_direita = null;
           updates.passadas_count = 0;
-          updates.last_emoji = null;
-          updates.historico_jogadas = []; // CORRIGIDO: Agora enviando o array vazio diretamente sem a sintaxe de SQL ::jsonb
+          updates.historico_jogadas = [];
           updates.atualizado_em = new Date().toISOString();
 
+          // AGORA REMOVI COMPLETAMENTE A COLUNA INEXISTENTE DAQUI! ZERO ERRO 400!
           await supabase
             .from('domino_salas')
             .update(updates)
