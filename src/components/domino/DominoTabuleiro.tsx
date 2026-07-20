@@ -86,7 +86,7 @@ const PedraClassica = ({
 
 export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby }: DominoTabuleiroProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const canalRef = useRef<any>(null); // Referência persistente para o canal broadcast
+  const canalRef = useRef<any>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [jogador1Id, setJogador1Id] = useState<string | null>(null);
   const [jogador2Id, setJogador2Id] = useState<string | null>(null);
@@ -164,13 +164,18 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     return ladoA === pontaEsquerda || ladoB === pontaEsquerda || ladoA === pontaDireita || ladoB === pontaDireita;
   };
 
-  // ENVIA EMOJI USANDO BROADCAST EM TEMPO REAL (SEM TOCAR NO BANCO DE DADOS!)
   const enviarEmoji = async (emoji: string) => {
     if (canalRef.current) {
       canalRef.current.send({
         type: 'broadcast',
         event: 'emoji',
         payload: { remetenteId: usuarioId, emoji }
+      });
+      
+      // Feedback visual rápido local para quem clicou saber que enviou
+      setAlertaTemporario({
+        visivel: true,
+        mensagem: `Você enviou: ${emoji}`
       });
     }
   };
@@ -247,7 +252,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         novaMesa.unshift(novaPedra);
         novaPontaE = ladoB;
       } else if (ladoB === pontaEsquerda) {
-        const novaPedra: PedraMesa = { valorOriginal: `${ladoA}-${ladoB}`, ladoEsquerdo: ladoA, ladoDireito: ladoB };
+        const novaPedra: PedraMesa = { valorOriginal: `${ladoA}-${ladoB}`, ladoEsquerdo: ladoA, ladoDireito: ...[ladoB] };
         novaMesa.unshift(novaPedra);
         novaPontaE = ladoA;
       } else if (ladoA === pontaDireita) {
@@ -377,7 +382,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         async (payload) => {
           const newData = payload.new;
           if (newData) {
-            // ANULAÇÃO POR 3 PASSADAS
             if (newData.status === 'aguardando' && newData.jogador_1_id === null && newData.jogador_2_id === null) {
               setPartidaAnuladaAtiva(true);
               supabase.removeChannel(canalJogo);
@@ -392,7 +396,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
             if (partidaAnuladaAtiva) return;
 
-            // DETECTA DESCONEXÃO APENAS SE A PARTIDA ESTIVER ATIVA
             if ((newData.jogador_1_id === null || newData.jogador_2_id === null) && newData.status === 'jogando') {
               supabase.removeChannel(canalJogo);
               setModalNotificacao({
@@ -431,7 +434,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           }
         }
       )
-      // ESCUTA OS EMOJIS EM TEMPO REAL COMPARTILHADOS VIA BROADCAST
       .on('broadcast', { event: 'emoji' }, (payload) => {
         const { remetenteId, emoji } = payload.payload;
         if (remetenteId !== usuarioId) {
@@ -449,7 +451,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     return () => {
       supabase.removeChannel(canalJogo);
     };
-  }, [salaId, mesaPedras.length, partidaAnuladaAtiva, nomeJ1, nomeJ2, jogador1Id, jogador2Id]);
+  }, [salaId, mesaPedras.length, partidaAnuladaAtiva, nomeJ1, nomeJ2, jogador1Id, ...[jogador2Id]]);
 
   const meuTurno = vezUsuarioId === usuarioId && !partidaAnuladaAtiva;
   const adversarioNome = usuarioId === jogador1Id ? nomeJ2 : nomeJ1;
@@ -538,7 +540,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             </div>
             <div className="space-y-2">
               <h2 className="text-xl font-black text-white">Modo Exclusivo Ativo</h2>
-              <p className="text-xs text-gray-400 leading-relaxed">Para garantir a melhor experiência, jogue in modo tela cheia.</p>
+              <p className="text-xs text-gray-400 leading-relaxed">Para garantir a melhor experiência, jogue em modo tela cheia.</p>
             </div>
             <Button className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold h-11 shadow-lg shadow-purple-900/20" onClick={entrarModoJogoReal}>Ativar Tela Cheia</Button>
           </div>
@@ -546,7 +548,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       )}
       
       {/* 1. HUD SUPERIOR */}
-      <div className="flex items-center justify-between bg-[#110D1A]/95 border border-purple-950/40 px-3 py-1.5 rounded-xl shadow-lg h-[10%]">
+      <div className="flex items-center justify-between bg-[#110D1A]/95 border border-purple-950/40 px-3 py-1.5 rounded-xl shadow-lg h-[12%] z-30">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={sairDaPartida} className="text-gray-400 hover:text-white h-8 text-xs px-2">
             <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Sair
@@ -554,34 +556,34 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           <span className="text-[10px] text-purple-300 font-bold bg-purple-950/50 px-2 py-0.5 rounded-full">Mesa {numeroSala}</span>
         </div>
 
-        {/* HUD DOS JOGADORES COM EMOJIS INTEGRADOS NO CENTRO */}
-        <div className="flex items-center gap-4 bg-purple-950/20 px-4 py-1.5 rounded-xl border border-purple-900/20 text-xs">
-          <div className="flex items-center gap-2">
+        {/* HUD DOS JOGADORES COM SELETOR DE EMOJIS OTIMIZADO PARA CELULAR */}
+        <div className="flex items-center gap-2 md:gap-4 bg-purple-950/20 px-2 md:px-4 py-1 rounded-xl border border-purple-900/20 text-xs">
+          <div className="flex items-center gap-1.5">
             <div className="p-1 bg-purple-950/40 rounded-full border border-purple-900/30 text-purple-400">
-              <User className="w-3.5 h-3.5" />
+              <User className="w-3 h-3 md:w-3.5 md:h-3.5" />
             </div>
-            <span className="max-w-[80px] truncate font-semibold text-gray-200">{nomeJ1}</span>
+            <span className="max-w-[60px] md:max-w-[80px] truncate font-semibold text-gray-200">{nomeJ1}</span>
             <span>{vezUsuarioId === jogador1Id ? '🟢' : '⚫'}</span>
           </div>
           
-          {/* SELETOR DE EMOJIS RÁPIDOS */}
-          <div className="flex items-center gap-1 bg-[#161024] border border-purple-950/60 px-2 py-1 rounded-lg">
+          {/* BARRA DE EMOJIS REDESENHADA PARA TOQUE ACESSÍVEL NO TOUCHSCREEN */}
+          <div className="flex items-center gap-2 bg-[#170f2c] border border-purple-500/30 px-3 py-1.5 rounded-xl shadow-inner mx-1">
             {['😀', '🔥', '😡', '😂'].map((emoji) => (
               <button 
                 key={emoji} 
                 onClick={() => enviarEmoji(emoji)} 
-                className="hover:scale-125 transition-transform text-sm cursor-pointer"
+                className="hover:scale-125 active:scale-95 transition-all text-base p-1.5 md:p-1 cursor-pointer touch-manipulation select-none"
               >
                 {emoji}
               </button>
             ))}
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <span>{vezUsuarioId === jogador2Id ? '🟢' : '⚫'}</span>
-            <span className="max-w-[80px] truncate font-semibold text-gray-200">{nomeJ2}</span>
+            <span className="max-w-[60px] md:max-w-[80px] truncate font-semibold text-gray-200">{nomeJ2}</span>
             <div className="p-1 bg-purple-950/40 rounded-full border border-purple-900/30 text-purple-400">
-              <User className="w-3.5 h-3.5" />
+              <User className="w-3 h-3 md:w-3.5 md:h-3.5" />
             </div>
           </div>
         </div>
@@ -592,7 +594,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       </div>
 
       {/* 2. MESA DE JOGO */}
-      <div className="flex-grow my-2 bg-emerald-950 border-[4px] border-amber-950 rounded-[24px] shadow-[inset_0_4px_12px_rgba(0,0,0,0.6)] relative flex flex-col items-center justify-center h-[55%] overflow-hidden">
+      <div className="flex-grow my-2 bg-emerald-950 border-[4px] border-amber-950 rounded-[24px] shadow-[inset_0_4px_12px_rgba(0,0,0,0.6)] relative flex flex-col items-center justify-center h-[53%] overflow-hidden">
         {mesaPedras.length > 0 && (
           <div className="absolute top-2 left-4 flex items-center gap-3 text-[10px] font-semibold text-emerald-300/60">
             <span>Esquerda: <strong className="text-white bg-emerald-900/60 px-1.5 py-0.5 rounded text-xs">{pontaEsquerda}</strong></span>
