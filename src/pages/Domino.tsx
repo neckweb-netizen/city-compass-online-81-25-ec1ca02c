@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { DominoLobby } from '@/components/domino/DominoLobby';
 import { DominoTabuleiro } from '@/components/domino/DominoTabuleiro';
+import { useDominoLobby } from '@/hooks/useDominoLobby';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -9,10 +10,10 @@ import { useNavigate } from 'react-router-dom';
 export default function DominoPage() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [telaAtiva, setTelaAtiva] = useState<'lobby' | 'tabuleiro'>('lobby');
-  const [salaAtivaId, setSalaAtivaId] = useState<string | null>(null);
-  const [numeroSalaAtiva, setNumeroSalaAtiva] = useState<number>(1);
   const navigate = useNavigate();
+
+  // Instancia o hook de controle global na raiz da página para gerenciar os estados unificados
+  const lobbyData = useDominoLobby(user?.id || undefined);
 
   // Função centralizada para remover o usuário de qualquer mesa ativa (limpeza de segurança)
   const limparResiduosUsuarioLocal = async (userId: string) => {
@@ -59,7 +60,6 @@ export default function DominoPage() {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
           setUser(session.user);
-          verificarJogoEmAndamento(session.user.id);
         }
       } catch (err) {
         console.error("Erro ao verificar sessão:", err);
@@ -72,9 +72,6 @@ export default function DominoPage() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user || null);
-      if (session?.user) {
-        verificarJogoEmAndamento(session.user.id);
-      }
     });
 
     return () => {
@@ -87,24 +84,18 @@ export default function DominoPage() {
     if (!user) return;
 
     const lidarComFechamento = () => {
-      // Executa a limpeza imediata de forma síncrona ao fechar a janela
       limparResiduosUsuarioLocal(user.id);
     };
 
     window.addEventListener('beforeunload', lidarComFechamento);
     window.addEventListener('unload', lidarComFechamento);
 
-    // CANAL DE PRESENCE (Websocket ativa): Se o canal fechar, o banco detecta que ele saiu
-    const canalPresenca = supabase.channel(`online-domino-${user.id}`)
+    // CANAL DE PRESENCE (Websocket ativa): Se a conexão cair, garante a limpeza das mesas
+    const canalPresenca = supabase.channel(`online-domino-${user.id}`);
     canalPresenca
-      .on('presence', { event: 'sync' }, () => {
-        // Usuário sincronizado online
-      })
-      .on('presence', { event: 'join' }, ({ newPresences }) => {
-        // Entrou no canal
-      })
-      .on('presence', { event: 'leave' }, ({ leftPresences }) => {
-        // Se a conexão cair, garante a limpeza das mesas
+      .on('presence', { event: 'sync' }, () => {})
+      .on('presence', { event: 'join' }, () => {})
+      .on('presence', { event: 'leave' }, () => {
         limparResiduosUsuarioLocal(user.id);
       })
       .subscribe(async (status) => {
@@ -123,60 +114,7 @@ export default function DominoPage() {
     };
   }, [user]);
 
-  const verificarJogoEmAndamento = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('domino_salas')
-        .select('id, numero_sala, status')
-        .or(`jogador_1_id.eq.${userId},jogador_2_id.eq.${userId}`)
-        .eq('status', 'jogando')
-        .maybeSingle();
-
-      if (error) throw error;
-
-      if (data) {
-        setSalaAtivaId(data.id);
-        setNumeroSalaAtiva(data.numero_sala);
-        setTelaAtiva('tabuleiro');
-      } else {
-        setTelaAtiva('lobby');
-      }
-    } catch (err) {
-      console.error('Erro ao verificar jogo ativo:', err);
-    }
-  };
-
-  useEffect(() => {
-    if (!user) return;
-
-    const canalSincronizadorRoteador = supabase
-      .channel('roteador-realtime-domino')
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'domino_salas' },
-        (payload) => {
-          const sala = payload.new;
-          if (sala) {
-            const euEstouNaSala = sala.jogador_1_id === user.id || sala.jogador_2_id === user.id;
-            
-            if (euEstouNaSala && sala.status === 'jogando') {
-              setSalaAtivaId(sala.id);
-              setNumeroSalaAtiva(sala.numero_sala);
-              setTelaAtiva('tabuleiro');
-            } else if (euEstouNaSala && sala.status === 'aguardando') {
-              setTelaAtiva('lobby');
-            }
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(canalSincronizadorRoteador);
-    };
-  }, [user]);
-
-  if (loading) {
+  if (loading || (user && lobbyData.carregando)) {
     return (
       <div className="min-h-screen bg-[#090610] flex flex-col items-center justify-center space-y-4">
         <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
@@ -220,19 +158,21 @@ export default function DominoPage() {
     );
   }
 
-  if (telaAtiva === 'tabuleiro' && salaAtivaId) {
+  // DIRECIONAMENTO DE TELA INTEGRA EM TEMPO REAL: Se o usuário estiver associado a uma mesa ativa com dois jogadores, abre o tabuleiro
+  if (lobbyData.minhaSala && lobbyData.minhaSala.jogador_1_id && lobbyData.minhaSala.jogador_2_id) {
     return (
       <div className="min-h-screen bg-[#090610] text-white py-4">
         <DominoTabuleiro 
           usuarioId={user.id} 
-          salaId={salaAtivaId} 
-          numeroSala={numeroSalaAtiva} 
-          onVoltarAoLobby={() => setTelaAtiva('lobby')}
+          salaId={lobbyData.minhaSala.id} 
+          numeroSala={lobbyData.minhaSala.numero_sala} 
+          onVoltarAoLobby={() => lobbyData.sairDoJogo()}
         />
       </div>
     );
   }
 
+  // Caso contrário, renderiza o Lobby repassando o ID do usuário conectado
   return (
     <div className="min-h-screen bg-[#090610] text-white py-10">
       <DominoLobby usuarioId={user.id} />
