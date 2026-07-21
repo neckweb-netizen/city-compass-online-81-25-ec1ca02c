@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Users, Hourglass, Gamepad2, ArrowRight, DoorOpen, Loader2, Trophy } from 'lucide-react';
+import { Users, Hourglass, Gamepad2, ArrowRight, DoorOpen, Loader2, Radio, Trophy, Activity } from 'lucide-react';
 
 import {
   Dialog,
@@ -28,6 +28,8 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
     carregando,
     entrarNoJogo,
     sairDoJogo,
+    statusWs,
+    eventosCount,
   } = useDominoLobby(usuarioId);
 
   if (carregando) {
@@ -43,6 +45,28 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-6 relative">
+
+      {/* PAINEL DE MONITORAMENTO DE REALTIME NO CANTO DA TELA */}
+      <div className="fixed bottom-4 right-4 z-50 bg-[#090610]/95 border border-purple-500/50 p-3 rounded-2xl shadow-2xl backdrop-blur-md text-[11px] font-mono space-y-1 text-white min-w-[200px]">
+        <div className="flex items-center justify-between border-b border-purple-900/50 pb-1">
+          <span className="text-gray-400 font-bold flex items-center gap-1">
+            <Activity className="w-3.5 h-3.5 text-purple-400" /> TELEMETRIA WS
+          </span>
+          <Radio className={`w-3.5 h-3.5 ${statusWs === 'SUBSCRIBED' ? 'text-green-400 animate-pulse' : 'text-red-500'}`} />
+        </div>
+        
+        <div className="flex justify-between pt-1">
+          <span className="text-gray-400">STATUS:</span>
+          <strong className={statusWs === 'SUBSCRIBED' ? 'text-green-400' : 'text-red-400'}>
+            {statusWs}
+          </strong>
+        </div>
+
+        <div className="flex justify-between">
+          <span className="text-gray-400">PACOTES LOBBY:</span>
+          <strong className="text-amber-400">{eventosCount}</strong>
+        </div>
+      </div>
 
       {/* Cabeçalho do Lobby + Botão do Ranking */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left">
@@ -72,7 +96,6 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
               <DialogTitle>Ranking de Campeões de Dominó</DialogTitle>
             </DialogHeader>
 
-            {/* Renderiza o componente isolado de Ranking */}
             <DominoRanking />
           </DialogContent>
         </Dialog>
@@ -208,7 +231,7 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
         })}
       </div>
 
-      {/* Seção Fila de Espera & Ação Principal */}
+      {/* Seção Fila de Espera */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 bg-[#110d1a] rounded-2xl border border-purple-900/10">
         <div className="flex items-center gap-3">
           <div className="p-2.5 bg-purple-950/40 rounded-xl text-purple-500">
