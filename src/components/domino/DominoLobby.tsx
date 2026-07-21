@@ -4,8 +4,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Users, Hourglass, Gamepad2, ArrowRight, DoorOpen, Loader2, Radio } from 'lucide-react';
+import { Users, Hourglass, Gamepad2, ArrowRight, DoorOpen, Loader2, Radio, Trophy } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { DominoRanking } from '@/components/domino/DominoRanking';
 
 interface DominoLobbyProps {
   usuarioId: string;
@@ -56,15 +65,38 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
         <span>REALTIME: <strong className={wsStatus === 'SUBSCRIBED' ? 'text-green-400' : 'text-red-400'}>{wsStatus}</strong></span>
       </div>
 
-      {/* Cabeçalho do Lobby */}
-      <div className="text-center md:text-left space-y-2">
-        <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white flex items-center justify-center md:justify-start gap-2">
-          <Gamepad2 className="w-8 h-8 text-purple-500" />
-          Dominó SAJ Online
-        </h2>
-        <p className="text-gray-400 text-sm">
-          Participe de partidas de dominó em tempo real com pessoas de Santo Antônio de Jesus!
-        </p>
+      {/* Cabeçalho do Lobby + Botão do Ranking */}
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left">
+        <div className="space-y-1">
+          <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white flex items-center justify-center md:justify-start gap-2">
+            <Gamepad2 className="w-8 h-8 text-purple-500" />
+            Dominó SAJ Online
+          </h2>
+          <p className="text-gray-400 text-sm">
+            Participe de partidas de dominó em tempo real com pessoas de Santo Antônio de Jesus!
+          </p>
+        </div>
+
+        {/* BOTÃO ESTILIZADO DE RANKING COM DIALOG POP-UP */}
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button 
+              className="bg-gradient-to-r from-amber-500 via-purple-600 to-indigo-600 hover:from-amber-600 hover:via-purple-700 hover:to-indigo-700 text-white font-extrabold shadow-lg shadow-purple-950/50 border border-amber-400/30 rounded-xl px-4 py-2.5 flex items-center gap-2 transition-all transform hover:scale-105 active:scale-95 text-xs md:text-sm"
+            >
+              <Trophy className="w-4 h-4 text-amber-300 animate-pulse" />
+              <span>Ver Ranking de Campeões</span>
+            </Button>
+          </DialogTrigger>
+
+          <DialogContent className="bg-[#110d1a] border-[#2b213f] text-white max-w-md w-[92vw] p-0 rounded-2xl overflow-hidden shadow-2xl">
+            <DialogHeader className="sr-only">
+              <DialogTitle>Ranking de Campeões de Dominó</DialogTitle>
+            </DialogHeader>
+
+            {/* Renderiza o componente isolado de Ranking */}
+            <DominoRanking />
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* PAINEL DE STATUS DO JOGADOR NO TOPO */}
