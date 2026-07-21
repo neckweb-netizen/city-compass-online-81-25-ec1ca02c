@@ -23,8 +23,10 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
   const [minhaPosicaoFila, setMinhaPosicaoFila] = useState<number | null>(null);
   const [minhaSala, setMinhaSala] = useState<Sala | null>(null);
   const [carregando, setCarregando] = useState(true);
+  
+  // ESTADO GATILHO: Este contador força o React a redesenhar a tela assim que o sinal do WebSocket chega
+  const [versaoRealtime, setVersaoRealtime] = useState(0);
 
-  // Função centralizada para carregar dados das salas e da fila
   const carregarDados = useCallback(async () => {
     if (!usuarioId) return;
     try {
@@ -71,40 +73,42 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
     }
   }, [usuarioId]);
 
-  // Efeito responsável por manter a conexão ativa e recarregar os dados
+  // 1. Sempre que versaoRealtime mudar, busca os dados frescos do banco
+  useEffect(() => {
+    if (!usuarioId) return;
+    carregarDados();
+  }, [usuarioId, versaoRealtime, carregarDados]);
+
+  // 2. ESCUTADOR DE WEBSOCKET GLOBAL PURAMENTE REATIVO
   useEffect(() => {
     if (!usuarioId) return;
 
-    carregarDados();
-
-    // CANAL GLOBAL DO REALTIME: Inscrição direta na tabela domino_salas
-    const canalLobby = supabase
-      .channel('domino-lobby-room')
+    // Criamos um canal único e isolado no Supabase sem filtros que travem a escuta
+    const canalRealtimeLobby = supabase
+      .channel('canal-publico-domino-lobby')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'domino_salas' },
-        () => {
-          carregarDados();
+        (payload) => {
+          console.log('⚡ MUDANÇA NA MESA DETECTADA EM TEMPO REAL:', payload);
+          // Força a alteração do estado para disparar a re-renderização imediata da tela de QUEM ESTÁ SÓ OBSERVANDO
+          setVersaoRealtime((prev) => prev + 1);
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'domino_fila' },
-        () => {
-          carregarDados();
+        (payload) => {
+          console.log('⚡ MUDANÇA NA FILA DETECTADA EM TEMPO REAL:', payload);
+          setVersaoRealtime((prev) => prev + 1);
         }
       )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          // Garante busca atualizada logo após conectar
-          carregarDados();
-        }
-      });
+      .subscribe();
 
     return () => {
-      supabase.removeChannel(canalLobby);
+      supabase.removeChannel(canalRealtimeLobby);
     };
-  }, [usuarioId, carregarDados]);
+  }, [usuarioId]);
 
   const limparResiduosUsuario = async () => {
     if (!usuarioId) return;
@@ -192,7 +196,8 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
           .insert([{ usuario_id: usuarioId }]);
       }
 
-      await carregarDados();
+      // Incrementa a versão para forçar re-renderização no próprio aparelho que clicou
+      setVersaoRealtime((prev) => prev + 1);
     } catch (err) {
       console.error('Erro ao entrar no jogo:', err);
     }
@@ -202,7 +207,7 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
     if (!usuarioId) return;
     try {
       await limparResiduosUsuario();
-      await carregarDados();
+      setVersaoRealtime((prev) => prev + 1);
     } catch (err) {
       console.error('Erro ao sair do jogo:', err);
     }
