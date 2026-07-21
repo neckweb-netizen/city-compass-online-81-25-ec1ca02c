@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface Sala {
@@ -81,6 +81,12 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
     }
   }, [usuarioId]);
 
+  // Mantém a referência da função sempre atualizada para usar dentro do Realtime sem reiniciar o canal
+  const carregarDadosRef = useRef(carregarDados);
+  useEffect(() => {
+    carregarDadosRef.current = carregarDados;
+  }, [carregarDados]);
+
   // Carga inicial ao montar
   useEffect(() => {
     if (usuarioId) {
@@ -88,7 +94,7 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
     }
   }, [usuarioId, carregarDados]);
 
-  // INSCRIÇÃO WEBSOCKET COM LOGS DE DIAGNÓSTICO
+  // INSCRIÇÃO WEBSOCKET ESTÁTICA (Sem reconexões contínuas)
   useEffect(() => {
     if (!usuarioId) return;
 
@@ -127,8 +133,8 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
             });
           }
 
-          // Atualiza novamente para preencher os nomes via JOIN
-          await carregarDados();
+          // Chama a busca via ref para preencher os nomes via JOIN
+          await carregarDadosRef.current();
         }
       )
       .on(
@@ -136,7 +142,7 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
         { event: '*', schema: 'public', table: 'domino_fila' },
         async (payload) => {
           console.log('🚨 [DEBUG-LOBBY] EVENTO WEBSOCKET NA FILA:', payload);
-          await carregarDados();
+          await carregarDadosRef.current();
         }
       )
       .subscribe((status, err) => {
@@ -150,7 +156,7 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
       console.log('🔌 [DEBUG-LOBBY] Desconectando canal de Realtime do Lobby...');
       supabase.removeChannel(canal);
     };
-  }, [usuarioId, carregarDados]);
+  }, [usuarioId]); // APENAS usuarioId para o canal ser criado uma única vez e ficar PERMANENTE
 
   const limparResiduosUsuario = async () => {
     if (!usuarioId) return;
