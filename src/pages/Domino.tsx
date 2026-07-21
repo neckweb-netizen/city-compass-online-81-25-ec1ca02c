@@ -12,7 +12,7 @@ export default function DominoPage() {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Instancia o hook de controle global na raiz da página para gerenciar os estados unificados
+  // Instancia o hook global que gerencia as salas e a fila
   const lobbyData = useDominoLobby(user?.id || undefined);
 
   // Função centralizada para remover o usuário de qualquer mesa ativa (limpeza de segurança)
@@ -79,7 +79,7 @@ export default function DominoPage() {
     };
   }, []);
 
-  // Monitora o fechamento da aba/navegador (beforeunload) e desconexão física
+  // Monitora o fechamento da aba/navegador e queda de conexão física
   useEffect(() => {
     if (!user) return;
 
@@ -90,7 +90,6 @@ export default function DominoPage() {
     window.addEventListener('beforeunload', lidarComFechamento);
     window.addEventListener('unload', lidarComFechamento);
 
-    // CANAL DE PRESENCE (Websocket ativa): Se a conexão cair, garante a limpeza das mesas
     const canalPresenca = supabase.channel(`online-domino-${user.id}`);
     canalPresenca
       .on('presence', { event: 'sync' }, () => {})
@@ -113,6 +112,31 @@ export default function DominoPage() {
       supabase.removeChannel(canalPresenca);
     };
   }, [user]);
+
+  // CORREÇÃO MESTRA: Escuta ativa que força a interface a sincronizar no milissegundo do clique
+  useEffect(() => {
+    if (!user) return;
+
+    const canalSincronizadorRoteador = supabase
+      .channel('roteador-realtime-domino-page')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'domino_salas' },
+        (payload) => {
+          console.log("⚡ [Página] Mudança de estado da sala recebida:", payload.new);
+          
+          // Sempre que houver qualquer alteração na tabela de salas, nós re-sincronizamos os dados locais do hook imediatamente
+          if (typeof (lobbyData as any).carregarDados === 'function') {
+            (lobbyData as any).carregarDados();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(canalSincronizadorRoteador);
+    };
+  }, [user, lobbyData]);
 
   if (loading || (user && lobbyData.carregando)) {
     return (
@@ -158,7 +182,7 @@ export default function DominoPage() {
     );
   }
 
-  // DIRECIONAMENTO DE TELA INTEGRA EM TEMPO REAL: Se o usuário estiver associado a uma mesa ativa com dois jogadores, abre o tabuleiro
+  // Se a sala estiver cheia com ambos os IDs preenchidos, joga os usuários para dentro do tabuleiro
   if (lobbyData.minhaSala && lobbyData.minhaSala.jogador_1_id && lobbyData.minhaSala.jogador_2_id) {
     return (
       <div className="min-h-screen bg-[#090610] text-white py-4">
@@ -172,7 +196,7 @@ export default function DominoPage() {
     );
   }
 
-  // Caso contrário, renderiza o Lobby repassando o ID do usuário conectado
+  // Caso contrário, renderiza o lobby reativo
   return (
     <div className="min-h-screen bg-[#090610] text-white py-10">
       <DominoLobby usuarioId={user.id} />
