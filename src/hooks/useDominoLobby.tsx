@@ -24,7 +24,7 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
   const [minhaSala, setMinhaSala] = useState<Sala | null>(null);
   const [carregando, setCarregando] = useState(true);
 
-  // Função para buscar dados completos do banco
+  // Busca os dados completos no banco de dados
   const carregarDados = useCallback(async () => {
     if (!usuarioId) return;
     console.log('🔍 [LOBBY-DEBUG] Buscando dados atualizados das salas...');
@@ -84,22 +84,21 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
     carregarDadosRef.current = carregarDados;
   }, [carregarDados]);
 
-  // Carga inicial ao montar o componente
+  // Executa busca inicial ao carregar o ID
   useEffect(() => {
     if (usuarioId) {
       carregarDados();
     }
   }, [usuarioId, carregarDados]);
 
-  // Conexão do WebSocket ajustada sem erro de binding
+  // ASSINATURA REALTIME CORRIGIDA SEM MISMETCH DE BINDINGS
   useEffect(() => {
     if (!usuarioId) return;
 
     console.log('🔌 [LOBBY-DEBUG] Inscrevendo no canal limpo do Realtime...');
 
-    const channelName = `realtime-domino-lobby-${usuarioId}`;
-    const canal = supabase
-      .channel(channelName)
+    const canalLobby = supabase
+      .channel(`canal-domino-lobby-v2-${usuarioId}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'domino_salas' },
@@ -125,7 +124,7 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
 
     return () => {
       console.log('🔌 [LOBBY-DEBUG] Desconectando canal Realtime...');
-      supabase.removeChannel(canal);
+      supabase.removeChannel(canalLobby);
     };
   }, [usuarioId]);
 
