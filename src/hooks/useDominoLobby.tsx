@@ -24,6 +24,7 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
   const [minhaSala, setMinhaSala] = useState<Sala | null>(null);
   const [carregando, setCarregando] = useState(true);
 
+  // Função centralizada para carregar dados das salas e da fila
   const carregarDados = useCallback(async () => {
     if (!usuarioId) return;
     try {
@@ -70,20 +71,19 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
     }
   }, [usuarioId]);
 
+  // Efeito responsável por manter a conexão ativa e recarregar os dados
   useEffect(() => {
     if (!usuarioId) return;
 
-    // Busca inicial
     carregarDados();
 
-    // CANAL ÚNICO DE REALTIME LIGADO DIRETO AO ESTADO DO REACT
-    const canalRealtime = supabase
-      .channel('realtime-domino-global')
+    // CANAL GLOBAL DO REALTIME: Inscrição direta na tabela domino_salas
+    const canalLobby = supabase
+      .channel('domino-lobby-room')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'domino_salas' },
         () => {
-          // Sempre que houver qualquer alteração na tabela de salas, recarrega os dados imediatamente
           carregarDados();
         }
       )
@@ -94,10 +94,15 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
           carregarDados();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          // Garante busca atualizada logo após conectar
+          carregarDados();
+        }
+      });
 
     return () => {
-      supabase.removeChannel(canalRealtime);
+      supabase.removeChannel(canalLobby);
     };
   }, [usuarioId, carregarDados]);
 
