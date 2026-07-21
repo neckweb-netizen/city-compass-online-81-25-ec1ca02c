@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface Sala {
@@ -23,14 +23,10 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
   const [minhaPosicaoFila, setMinhaPosicaoFila] = useState<number | null>(null);
   const [minhaSala, setMinhaSala] = useState<Sala | null>(null);
   const [carregando, setCarregando] = useState(true);
-  
-  // Estado controlador para forçar o React a re-renderizar e quebrar cache assíncrono legitimamente
-  const [versaoDados, setVersaoDados] = useState(0);
 
-  const carregarDados = async () => {
+  const carregarDados = useCallback(async () => {
     if (!usuarioId) return;
     try {
-      // Query limpa e sem gambiarras que quebram o UUID do banco
       const { data: dataSalas, error: errorSalas } = await supabase
         .from('domino_salas')
         .select(`
@@ -72,34 +68,30 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
     } finally {
       setCarregando(false);
     }
-  };
+  }, [usuarioId]);
 
-  // Efeito responsável por recarregar a busca sempre que a versão mudar via Realtime
   useEffect(() => {
     if (!usuarioId) return;
+
+    // Busca inicial
     carregarDados();
-  }, [usuarioId, versaoDados]);
 
-  // Inscrição reativa do Realtime
-  useEffect(() => {
-    if (!usuarioId) return;
-
+    // CANAL ÚNICO DE REALTIME LIGADO DIRETO AO ESTADO DO REACT
     const canalRealtime = supabase
-      .channel('realtime-domino-lobby')
+      .channel('realtime-domino-global')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'domino_salas' },
-        (payload) => {
-          console.log('🔄 Update na mesa detectado:', payload);
-          setVersaoDados(prev => prev + 1); // Incrementa a versão para forçar releitura imediata
+        () => {
+          // Sempre que houver qualquer alteração na tabela de salas, recarrega os dados imediatamente
+          carregarDados();
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'domino_fila' },
-        (payload) => {
-          console.log('🔄 Update na fila detectado:', payload);
-          setVersaoDados(prev => prev + 1);
+        () => {
+          carregarDados();
         }
       )
       .subscribe();
@@ -107,7 +99,45 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
     return () => {
       supabase.removeChannel(canalRealtime);
     };
-  }, [usuarioId]);
+  }, [usuarioId, carregarDados]);
+
+  const limparResiduosUsuario = async () => {
+    if (!usuarioId) return;
+    try {
+      await supabase
+        .from('domino_fila')
+        .delete()
+        .eq('usuario_id', usuarioId);
+
+      const { data } = await supabase
+        .from('domino_salas')
+        .select('id, jogador_1_id, jogador_2_id')
+        .or(`jogador_1_id.eq.${usuarioId},jogador_2_id.eq.${usuarioId}`);
+
+      if (data && data.length > 0) {
+        for (const sala of data) {
+          const updates: any = {};
+          if (sala.jogador_1_id === usuarioId) updates.jogador_1_id = null;
+          if (sala.jogador_2_id === usuarioId) updates.jogador_2_id = null;
+          
+          updates.status = 'aguardando';
+          updates.vez_usuario_id = null;
+          updates.mesa_ponta_esquerda = null;
+          updates.mesa_ponta_direita = null;
+          updates.passadas_count = 0;
+          updates.historico_jogadas = [];
+          updates.atualizado_em = new Date().toISOString();
+
+          await supabase
+            .from('domino_salas')
+            .update(updates)
+            .eq('id', sala.id);
+        }
+      }
+    } catch (err) {
+      console.error('Erro ao limpar resíduos:', err);
+    }
+  };
 
   const entrarNoJogo = async () => {
     if (!usuarioId) return;
@@ -157,47 +187,9 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
           .insert([{ usuario_id: usuarioId }]);
       }
 
-      setVersaoDados(prev => prev + 1);
+      await carregarDados();
     } catch (err) {
-      console.error('Erro ao tentar entrar no jogo:', err);
-    }
-  };
-
-  const limparResiduosUsuario = async () => {
-    if (!usuarioId) return;
-    try {
-      await supabase
-        .from('domino_fila')
-        .delete()
-        .eq('usuario_id', usuarioId);
-
-      const { data } = await supabase
-        .from('domino_salas')
-        .select('id, jogador_1_id, jogador_2_id')
-        .or(`jogador_1_id.eq.${usuarioId},jogador_2_id.eq.${usuarioId}`);
-
-      if (data && data.length > 0) {
-        for (const sala of data) {
-          const updates: any = {};
-          if (sala.jogador_1_id === usuarioId) updates.jogador_1_id = null;
-          if (sala.jogador_2_id === usuarioId) updates.jogador_2_id = null;
-          
-          updates.status = 'aguardando';
-          updates.vez_usuario_id = null;
-          updates.mesa_ponta_esquerda = null;
-          updates.mesa_ponta_direita = null;
-          updates.passadas_count = 0;
-          updates.historico_jogadas = [];
-          updates.atualizado_em = new Date().toISOString();
-
-          await supabase
-            .from('domino_salas')
-            .update(updates)
-            .eq('id', sala.id);
-        }
-      }
-    } catch (err) {
-      console.error('Erro ao limpar resíduos de mesas antigas:', err);
+      console.error('Erro ao entrar no jogo:', err);
     }
   };
 
@@ -205,7 +197,7 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
     if (!usuarioId) return;
     try {
       await limparResiduosUsuario();
-      setVersaoDados(prev => prev + 1);
+      await carregarDados();
     } catch (err) {
       console.error('Erro ao sair do jogo:', err);
     }
@@ -219,5 +211,6 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
     carregando,
     entrarNoJogo,
     sairDoJogo,
+    carregarDados,
   };
 };
