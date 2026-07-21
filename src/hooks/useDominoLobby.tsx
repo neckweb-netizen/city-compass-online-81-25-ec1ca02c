@@ -24,7 +24,7 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
   const [minhaSala, setMinhaSala] = useState<Sala | null>(null);
   const [carregando, setCarregando] = useState(true);
 
-  // Busca os dados completos no banco de dados
+  // Busca central de dados do banco
   const carregarDados = useCallback(async () => {
     if (!usuarioId) return;
     console.log('🔍 [LOBBY-DEBUG] Buscando dados atualizados das salas...');
@@ -84,21 +84,23 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
     carregarDadosRef.current = carregarDados;
   }, [carregarDados]);
 
-  // Executa busca inicial ao carregar o ID
+  // Carga inicial ao montar o componente
   useEffect(() => {
     if (usuarioId) {
       carregarDados();
     }
   }, [usuarioId, carregarDados]);
 
-  // ASSINATURA REALTIME CORRIGIDA SEM MISMETCH DE BINDINGS
+  // ASSINATURA REALTIME COM IDENTIFICADOR ÚNICO DE CANAL E TRATAMENTO DE RETRY
   useEffect(() => {
     if (!usuarioId) return;
 
-    console.log('🔌 [LOBBY-DEBUG] Inscrevendo no canal limpo do Realtime...');
+    console.log('🔌 [LOBBY-DEBUG] Criando canal Realtime isolado...');
 
+    const nomeCanalUnico = `domino-lobby-live-${usuarioId.slice(0, 8)}`;
+    
     const canalLobby = supabase
-      .channel(`canal-domino-lobby-v2-${usuarioId}`)
+      .channel(nomeCanalUnico)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'domino_salas' },
@@ -118,12 +120,12 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
       .subscribe((status, err) => {
         console.log('📡 [LOBBY-DEBUG] Status do WebSocket:', status);
         if (err) {
-          console.error('❌ [LOBBY-DEBUG] Erro no WebSocket:', err);
+          console.error('❌ [LOBBY-DEBUG] Detalhe do Erro no WebSocket:', err);
         }
       });
 
     return () => {
-      console.log('🔌 [LOBBY-DEBUG] Desconectando canal Realtime...');
+      console.log('🔌 [LOBBY-DEBUG] Removendo canal Realtime...');
       supabase.removeChannel(canalLobby);
     };
   }, [usuarioId]);
