@@ -24,7 +24,7 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
   const [minhaSala, setMinhaSala] = useState<Sala | null>(null);
   const [carregando, setCarregando] = useState(true);
 
-  // Busca central de dados do banco
+  // Busca centralizada dos dados no banco
   const carregarDados = useCallback(async () => {
     if (!usuarioId) return;
     console.log('🔍 [LOBBY-DEBUG] Buscando dados atualizados das salas...');
@@ -46,7 +46,7 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
         .order('numero_sala', { ascending: true });
 
       if (errorSalas) {
-        console.error('❌ [LOBBY-DEBUG] Erro SQL ao buscar domino_salas:', errorSalas);
+        console.error('❌ [LOBBY-DEBUG] Erro SQL em domino_salas:', errorSalas);
         throw errorSalas;
       }
 
@@ -84,48 +84,54 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
     carregarDadosRef.current = carregarDados;
   }, [carregarDados]);
 
-  // Carga inicial ao montar o componente
+  // Carga inicial
   useEffect(() => {
     if (usuarioId) {
       carregarDados();
     }
   }, [usuarioId, carregarDados]);
 
-  // ASSINATURA REALTIME COM IDENTIFICADOR ÚNICO DE CANAL E TRATAMENTO DE RETRY
+  // ASSINATURA REALTIME AJUSTADA PARA EVITAR MISMATCH DE BINDINGS
   useEffect(() => {
     if (!usuarioId) return;
 
-    console.log('🔌 [LOBBY-DEBUG] Criando canal Realtime isolado...');
+    console.log('🔌 [LOBBY-DEBUG] Inscrevendo no canal de Realtime...');
 
-    const nomeCanalUnico = `domino-lobby-live-${usuarioId.slice(0, 8)}`;
-    
     const canalLobby = supabase
-      .channel(nomeCanalUnico)
+      .channel(`domino-lobby-room-${usuarioId}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'domino_salas' },
+        {
+          event: '*',
+          schema: 'public',
+          table: 'domino_salas',
+        },
         async (payload: any) => {
-          console.log('⚡ [LOBBY-DEBUG] WEBSOCKET DISPAROU (domino_salas):', payload);
+          console.log('⚡ [LOBBY-DEBUG] EVENTO REALTIME EM DOMINO_SALAS:', payload);
           await carregarDadosRef.current();
         }
       )
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'domino_fila' },
+        {
+          event: '*',
+          schema: 'public',
+          table: 'domino_fila',
+        },
         async (payload: any) => {
-          console.log('⚡ [LOBBY-DEBUG] WEBSOCKET DISPAROU (domino_fila):', payload);
+          console.log('⚡ [LOBBY-DEBUG] EVENTO REALTIME EM DOMINO_FILA:', payload);
           await carregarDadosRef.current();
         }
       )
       .subscribe((status, err) => {
-        console.log('📡 [LOBBY-DEBUG] Status do WebSocket:', status);
+        console.log('📡 [LOBBY-DEBUG] Status da conexão WebSocket:', status);
         if (err) {
-          console.error('❌ [LOBBY-DEBUG] Detalhe do Erro no WebSocket:', err);
+          console.error('❌ [LOBBY-DEBUG] Erro ao conectar no WebSocket:', err);
         }
       });
 
     return () => {
-      console.log('🔌 [LOBBY-DEBUG] Removendo canal Realtime...');
+      console.log('🔌 [LOBBY-DEBUG] Encerrando canal de Realtime...');
       supabase.removeChannel(canalLobby);
     };
   }, [usuarioId]);
@@ -208,7 +214,7 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
 
       await carregarDados();
     } catch (err) {
-      console.error('❌ [LOBBY-DEBUG] Erro em entrarNoJogo:', err);
+      console.error('❌ [LOBBY-DEBUG] Erro ao entrar no jogo:', err);
     }
   };
 
@@ -218,7 +224,7 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
       await limparResiduosUsuario();
       await carregarDados();
     } catch (err) {
-      console.error('❌ [LOBBY-DEBUG] Erro em sairDoJogo:', err);
+      console.error('❌ [LOBBY-DEBUG] Erro ao sair do jogo:', err);
     }
   };
 
