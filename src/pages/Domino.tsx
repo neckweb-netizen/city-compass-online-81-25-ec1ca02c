@@ -12,47 +12,8 @@ export default function DominoPage() {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Instancia o hook global que gerencia as salas e a fila
+  // Hook central que controla todas as salas
   const lobbyData = useDominoLobby(user?.id || undefined);
-
-  // Função centralizada para remover o usuário de qualquer mesa ativa (limpeza de segurança)
-  const limparResiduosUsuarioLocal = async (userId: string) => {
-    try {
-      // 1. Remove da fila
-      await supabase
-        .from('domino_fila')
-        .delete()
-        .eq('usuario_id', userId);
-
-      // 2. Busca e limpa vagas ocupadas por ele nas salas
-      const { data } = await supabase
-        .from('domino_salas')
-        .select('id, jogador_1_id, jogador_2_id')
-        .or(`jogador_1_id.eq.${userId},jogador_2_id.eq.${userId}`);
-
-      if (data && data.length > 0) {
-        for (const sala of data) {
-          const updates: any = {};
-          if (sala.jogador_1_id === userId) updates.jogador_1_id = null;
-          if (sala.jogador_2_id === userId) updates.jogador_2_id = null;
-          
-          updates.status = 'aguardando';
-          updates.vez_usuario_id = null;
-          updates.mesa_ponta_esquerda = null;
-          updates.mesa_ponta_direita = null;
-          updates.historico_jogadas = [];
-          updates.atualizado_em = new Date().toISOString();
-
-          await supabase
-            .from('domino_salas')
-            .update(updates)
-            .eq('id', sala.id);
-        }
-      }
-    } catch (err) {
-      console.error('Erro ao limpar dados na saída do navegador:', err);
-    }
-  };
 
   useEffect(() => {
     const obterUsuario = async () => {
@@ -79,66 +40,7 @@ export default function DominoPage() {
     };
   }, []);
 
-  // Monitora o fechamento da aba/navegador e queda de conexão física
-  useEffect(() => {
-    if (!user) return;
-
-    const lidarComFechamento = () => {
-      limparResiduosUsuarioLocal(user.id);
-    };
-
-    window.addEventListener('beforeunload', lidarComFechamento);
-    window.addEventListener('unload', lidarComFechamento);
-
-    const canalPresenca = supabase.channel(`online-domino-${user.id}`);
-    canalPresenca
-      .on('presence', { event: 'sync' }, () => {})
-      .on('presence', { event: 'join' }, () => {})
-      .on('presence', { event: 'leave' }, () => {
-        limparResiduosUsuarioLocal(user.id);
-      })
-      .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          await canalPresenca.track({
-            online_at: new Date().toISOString(),
-            user_id: user.id
-          });
-        }
-      });
-
-    return () => {
-      window.removeEventListener('beforeunload', lidarComFechamento);
-      window.removeEventListener('unload', lidarComFechamento);
-      supabase.removeChannel(canalPresenca);
-    };
-  }, [user]);
-
-  // CORREÇÃO MESTRA: Escuta ativa que força a interface a sincronizar no milissegundo do clique
-  useEffect(() => {
-    if (!user) return;
-
-    const canalSincronizadorRoteador = supabase
-      .channel('roteador-realtime-domino-page')
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'domino_salas' },
-        (payload) => {
-          console.log("⚡ [Página] Mudança de estado da sala recebida:", payload.new);
-          
-          // Sempre que houver qualquer alteração na tabela de salas, nós re-sincronizamos os dados locais do hook imediatamente
-          if (typeof (lobbyData as any).carregarDados === 'function') {
-            (lobbyData as any).carregarDados();
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(canalSincronizadorRoteador);
-    };
-  }, [user, lobbyData]);
-
-  if (loading || (user && lobbyData.carregando)) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-[#090610] flex flex-col items-center justify-center space-y-4">
         <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
@@ -182,7 +84,7 @@ export default function DominoPage() {
     );
   }
 
-  // Se a sala estiver cheia com ambos os IDs preenchidos, joga os usuários para dentro do tabuleiro
+  // Se a sala estiver totalmente ocupada pelos dois jogadores, abre o jogo de tabuleiro
   if (lobbyData.minhaSala && lobbyData.minhaSala.jogador_1_id && lobbyData.minhaSala.jogador_2_id) {
     return (
       <div className="min-h-screen bg-[#090610] text-white py-4">
@@ -196,7 +98,7 @@ export default function DominoPage() {
     );
   }
 
-  // Caso contrário, renderiza o lobby reativo
+  // Caso contrário, renderiza o lobby passando as props prontas para evitar duplicação do WebSocket
   return (
     <div className="min-h-screen bg-[#090610] text-white py-10">
       <DominoLobby usuarioId={user.id} />
