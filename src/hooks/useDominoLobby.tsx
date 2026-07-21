@@ -24,10 +24,12 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
   const [minhaSala, setMinhaSala] = useState<Sala | null>(null);
   const [carregando, setCarregando] = useState(true);
 
+  const canalRef = useRef<any>(null);
+
   // Busca centralizada dos dados no banco
   const carregarDados = useCallback(async () => {
     if (!usuarioId) return;
-    console.log('🔍 [LOBBY-DEBUG] Buscando dados atualizados das salas...');
+    console.log('🔍 [LOBBY-BROADCAST] Buscando salas do banco para o usuário:', usuarioId);
 
     try {
       const { data: dataSalas, error: errorSalas } = await supabase
@@ -46,7 +48,7 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
         .order('numero_sala', { ascending: true });
 
       if (errorSalas) {
-        console.error('❌ [LOBBY-DEBUG] Erro SQL em domino_salas:', errorSalas);
+        console.error('❌ [LOBBY-BROADCAST] Erro no SELECT de domino_salas:', errorSalas);
         throw errorSalas;
       }
 
@@ -73,7 +75,7 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
         setMinhaPosicaoFila(index !== -1 ? index + 1 : null);
       }
     } catch (err: any) {
-      console.error('❌ [LOBBY-DEBUG] Exceção em carregarDados:', err.message || err);
+      console.error('❌ [LOBBY-BROADCAST] Exceção em carregarDados:', err.message || err);
     } finally {
       setCarregando(false);
     }
@@ -84,6 +86,18 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
     carregarDadosRef.current = carregarDados;
   }, [carregarDados]);
 
+  // Função para avisar a todos os navegadores na rede sobre uma mudança
+  const notificarOutrosUsuarios = () => {
+    if (canalRef.current) {
+      console.log('📢 [LOBBY-BROADCAST] Emitindo aviso via WebSocket para a sala...');
+      canalRef.current.send({
+        type: 'broadcast',
+        event: 'MUDANCA_LOBBY',
+        payload: { acao: 'MUDANCA_ESTADO', timestamp: Date.now() },
+      });
+    }
+  };
+
   // Carga inicial
   useEffect(() => {
     if (usuarioId) {
@@ -91,48 +105,33 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
     }
   }, [usuarioId, carregarDados]);
 
-  // ASSINATURA REALTIME CORRIGIDA SEM ERRO DE BINDINGS
+  // CANAL DE WEBSOCKET BROADCAST (Sem erro de Postgres Change Bindings!)
   useEffect(() => {
     if (!usuarioId) return;
 
-    console.log('🔌 [LOBBY-DEBUG] Inscrevendo no canal de Realtime...');
+    console.log('🔌 [LOBBY-BROADCAST] Conectando no canal Broadcast do Realtime...');
 
-    const canalLobby = supabase
-      .channel(`canal-domino-lobby-clean-${usuarioId}`)
-      .on(
-        'postgres_changes' as any,
-        {
-          event: 'ALL',
-          schema: 'public',
-          table: 'domino_salas',
-        },
-        async (payload: any) => {
-          console.log('⚡ [LOBBY-DEBUG] EVENTO REALTIME EM DOMINO_SALAS:', payload);
-          await carregarDadosRef.current();
-        }
-      )
-      .on(
-        'postgres_changes' as any,
-        {
-          event: 'ALL',
-          schema: 'public',
-          table: 'domino_fila',
-        },
-        async (payload: any) => {
-          console.log('⚡ [LOBBY-DEBUG] EVENTO REALTIME EM DOMINO_FILA:', payload);
-          await carregarDadosRef.current();
-        }
-      )
-      .subscribe((status, err) => {
-        console.log('📡 [LOBBY-DEBUG] Status da conexão WebSocket:', status);
-        if (err) {
-          console.error('❌ [LOBBY-DEBUG] Erro ao conectar no WebSocket:', err);
-        }
+    const canal = supabase.channel('sala-global-domino-broadcast', {
+      config: {
+        broadcast: { self: false }, // Não precisa escutar a própria mensagem
+      },
+    });
+
+    canal
+      .on('broadcast', { event: 'MUDANCA_LOBBY' }, async (payload) => {
+        console.log('⚡ [LOBBY-BROADCAST] AVISO DE MUDANÇA RECEBIDO!', payload);
+        await carregarDadosRef.current();
+      })
+      .subscribe((status) => {
+        console.log('📡 [LOBBY-BROADCAST] Status da Conexão WebSocket:', status);
       });
 
+    canalRef.current = canal;
+
     return () => {
-      console.log('🔌 [LOBBY-DEBUG] Encerrando canal de Realtime...');
-      supabase.removeChannel(canalLobby);
+      console.log('🔌 [LOBBY-BROADCAST] Fechando canal Broadcast...');
+      supabase.removeChannel(canal);
+      canalRef.current = null;
     };
   }, [usuarioId]);
 
@@ -162,7 +161,7 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
         }
       }
     } catch (err) {
-      console.error('❌ [LOBBY-DEBUG] Erro ao limpar resíduos:', err);
+      console.error('❌ [LOBBY-BROADCAST] Erro ao limpar resíduos:', err);
     }
   };
 
@@ -213,8 +212,9 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
       }
 
       await carregarDados();
+      notificarOutrosUsuarios(); // Dispara o sinal via WebSocket para todos
     } catch (err) {
-      console.error('❌ [LOBBY-DEBUG] Erro ao entrar no jogo:', err);
+      console.error('❌ [LOBBY-BROADCAST] Erro ao entrar no jogo:', err);
     }
   };
 
@@ -223,8 +223,9 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
     try {
       await limparResiduosUsuario();
       await carregarDados();
+      notificarOutrosUsuarios(); // Dispara o sinal via WebSocket para todos
     } catch (err) {
-      console.error('❌ [LOBBY-DEBUG] Erro ao sair do jogo:', err);
+      console.error('❌ [LOBBY-BROADCAST] Erro ao sair do jogo:', err);
     }
   };
 
