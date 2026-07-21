@@ -80,29 +80,181 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
     }
   }, [usuarioId]);
 
+  // CARGA INICIAL
+  useEffect(() => {
+    if (usuarioId) {
+      carregarDados();
+    }
+  }, [usuarioId, carregarDados]);
+
+  // CANAL DE REALTIME FIXO (Roda uma única vez quando o usuário entra na tela)
   useEffect(() => {
     if (!usuarioId) return;
 
-    carregarDados();
+    console.log('🔌 [LOBBY DEBUG] Inscrevendo no canal estático de Realtime...');
 
-    console.log('🔌 [LOBBY DEBUG] Inscrevendo no canal de Realtime do Supabase...');
-
-    // CANAL FIXO DE REALTIME REATIVO COM LOGS
     const canalRealtime = supabase
-      .channel('canal-global-domino-lobby')
+      .channel('canal-estatico-domino-lobby')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'domino_salas' },
         async (payload: any) => {
-          console.log('⚡ [LOBBY DEBUG] EVENTO WEBSOCKET CHEGOU (domino_salas):', payload);
+          console.log('⚡ [LOBBY DEBUG] EVENTO WEBSOCKET CHEGOU! Payload:', payload);
           const salaAtualizada = payload.new;
           if (!salaAtualizada) return;
 
-          // 1. Atualização IMEDIATA da lista de salas no React com o payload bruto
+          // 1. Atualiza na hora o estado local de salas
           setSalas((salasAntigas) => {
             const novasSalas = salasAntigas.map((s) => {
               if (s.id === salaAtualizada.id) {
                 return {
+                  ...s,
+                  jogador_1_id: salaAtualizada.jogador_1_id,
+                  jogador_2_id: salaAtualizada.jogador_2_id,
+                  status: salaAtualizada.status,
+                };
+              }
+              return s;
+            });
+
+            // 2. Atualiza a referência de 'minhaSala'
+            const salaAtivaAtualizada = novasSalas.find(
+              (s) => s.jogador_1_id === usuarioId || s.jogador_2_id === usuarioId
+            );
+            setMinhaSala(salaAtivaAtualizada || null);
+
+            return novasSalas;
+          });
+
+          // 3. Busca nomes e perfis completos
+          await carregarDados();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'domino_fila' },
+        (payload) => {
+          console.log('⚡ [LOBBY DEBUG] EVENTO WEBSOCKET FILA:', payload);
+          carregarDados();
+        }
+      )
+      .subscribe((status) => {
+        console.log('📡 [LOBBY DEBUG] Status FIXO da conexão WebSocket:', status);
+      });
+
+    return () => {
+      console.log('🔌 [LOBBY DEBUG] Fechando canal estático...');
+      supabase.removeChannel(canalRealtime);
+    };
+  }, [usuarioId]); // Dependência apenas do usuarioId para MANTER o WebSocket vivo!
+
+  const limparResiduosUsuario = async () => {
+    if (!usuarioId) return;
+    try {
+      console.log('🧹 [LOBBY DEBUG] Limpando resíduos do usuário:', usuarioId);
+      await supabase.from('domino_fila').delete().eq('usuario_id', usuarioId);
+      const { data } = await supabase
+        .from('domino_salas')
+        .select('id, jogador_1_id, jogador_2_id')
+        .or(`jogador_1_id.eq.${usuarioId},jogador_2_id.eq.${usuarioId}`);
+
+      if (data && data.length > 0) {
+        for (const sala of data) {
+          const updates: any = {};
+          if (sala.jogador_1_id === usuarioId) updates.jogador_1_id = null;
+          if (sala.jogador_2_id === usuarioId) updates.jogador_2_id = null;
+          updates.status = 'aguardando';
+          updates.vez_usuario_id = null;
+          updates.mesa_ponta_esquerda = null;
+          updates.mesa_ponta_direita = null;
+          updates.passadas_count = 0;
+          updates.historico_jogadas = [];
+          updates.atualizado_em = new Date().toISOString();
+
+          await supabase.from('domino_salas').update(updates).eq('id', sala.id);
+        }
+      }
+    } catch (err) {
+      console.error('❌ [LOBBY DEBUG] Erro ao limpar resíduos:', err);
+    }
+  };
+
+  const entrarNoJogo = async () => {
+    if (!usuarioId) return;
+    console.log('🖱️ [LOBBY DEBUG] Botão "Entrar no Jogo" acionado');
+
+    try {
+      if (minhaSala || minhaPosicaoFila !== null) return;
+      await limparResiduosUsuario();
+
+      const { data: salasLivres, error: errorSalas } = await supabase
+        .from('domino_salas')
+        .select('*')
+        .or('jogador_1_id.is.null,jogador_2_id.is.null')
+        .order('numero_sala', { ascending: true })
+        .limit(1);
+
+      if (errorSalas) throw errorSalas;
+
+      if (salasLivres && salasLivres.length > 0) {
+        const salaAlvo = salasLivres[0];
+        console.log('🎯 [LOBBY DEBUG] Ocupando mesa:', salaAlvo.numero_sala);
+
+        if (!salaAlvo.jogador_1_id) {
+          await supabase
+            .from('domino_salas')
+            .update({
+              jogador_1_id: usuarioId,
+              status: salaAlvo.jogador_2_id ? 'jogando' : 'aguardando',
+              vez_usuario_id: salaAlvo.jogador_2_id ? salaAlvo.jogador_2_id : null,
+              passadas_count: 0,
+              atualizado_em: new Date().toISOString(),
+            })
+            .eq('id', salaAlvo.id);
+        } else {
+          await supabase
+            .from('domino_salas')
+            .update({
+              jogador_2_id: usuarioId,
+              status: 'jogando',
+              vez_usuario_id: salaAlvo.jogador_1_id,
+              passadas_count: 0,
+              atualizado_em: new Date().toISOString(),
+            })
+            .eq('id', salaAlvo.id);
+        }
+      } else {
+        await supabase.from('domino_fila').insert([{ usuario_id: usuarioId }]);
+      }
+
+      await carregarDados();
+    } catch (err) {
+      console.error('❌ [LOBBY DEBUG] Erro ao entrar no jogo:', err);
+    }
+  };
+
+  const sairDoJogo = async () => {
+    if (!usuarioId) return;
+    console.log('🚪 [LOBBY DEBUG] Saindo...');
+    try {
+      await limparResiduosUsuario();
+      await carregarDados();
+    } catch (err) {
+      console.error('❌ [LOBBY DEBUG] Erro ao sair do jogo:', err);
+    }
+  };
+
+  return {
+    salas,
+    fila,
+    minhaPosicaoFila,
+    minhaSala,
+    carregando,
+    entrarNoJogo,
+    sairDoJogo,
+    carregarDados,
+  };
+};
                   ...s,
                   jogador_1_id: salaAtualizada.jogador_1_id,
                   jogador_2_id: salaAtualizada.jogador_2_id,
