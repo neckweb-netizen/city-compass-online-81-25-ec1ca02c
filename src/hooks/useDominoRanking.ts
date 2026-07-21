@@ -44,9 +44,9 @@ export const useDominoRanking = (limite: number = 10) => {
   useEffect(() => {
     carregarRanking();
 
-    // Sincroniza em tempo real: assim que o jogo atualizar o banco com uma vitória, o ranking atualiza na hora
+    // Inscrição em canal totalmente diferente e com ID único para impedir colisão com o lobby
     const canalRanking = supabase
-      .channel('realtime-domino-ranking')
+      .channel('canal-ranking-dedicado-v1')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'domino_estatisticas' },
