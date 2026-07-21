@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useDominoLobby } from '@/hooks/useDominoLobby';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Users, Hourglass, Gamepad2, ArrowRight, DoorOpen, Loader2, Radio, Trophy } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { Users, Hourglass, Gamepad2, ArrowRight, DoorOpen, Loader2, Trophy } from 'lucide-react';
 
 import {
   Dialog,
@@ -31,20 +30,6 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
     sairDoJogo,
   } = useDominoLobby(usuarioId);
 
-  const [wsStatus, setWsStatus] = useState<string>('CONECTANDO...');
-
-  // Escuta o status do canal em tempo real para te mostrar o diagnóstico na tela do celular
-  useEffect(() => {
-    const channel = supabase
-      .channel('ws-diagnostico')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'domino_salas' }, () => {})
-      .subscribe((status) => {
-        setWsStatus(status.toUpperCase());
-      });
-
-    return () => { supabase.removeChannel(channel); };
-  }, []);
-
   if (carregando) {
     return (
       <div className="flex flex-col items-center justify-center py-20 space-y-4">
@@ -58,12 +43,6 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-6 relative">
-      
-      {/* INDICADOR DE DIAGNÓSTICO DO REALTIME NO TOPO DA TELA */}
-      <div className="fixed bottom-4 right-4 z-50 bg-black/90 border border-purple-500 px-3 py-1.5 rounded-xl text-[10px] font-mono flex items-center gap-2 shadow-2xl">
-        <Radio className={`w-3 h-3 ${wsStatus === 'SUBSCRIBED' ? 'text-green-400 animate-pulse' : 'text-red-500'}`} />
-        <span>REALTIME: <strong className={wsStatus === 'SUBSCRIBED' ? 'text-green-400' : 'text-red-400'}>{wsStatus}</strong></span>
-      </div>
 
       {/* Cabeçalho do Lobby + Botão do Ranking */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left">
