@@ -24,9 +24,10 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
   const [minhaSala, setMinhaSala] = useState<Sala | null>(null);
   const [carregando, setCarregando] = useState(true);
 
-  // Busca de dados com carimbo de tempo para garantir dados novos
   const carregarDados = useCallback(async () => {
     if (!usuarioId) return;
+    console.log('🔄 [DEBUG] Buscando dados do banco para o usuário:', usuarioId);
+    
     try {
       const { data: dataSalas, error: errorSalas } = await supabase
         .from('domino_salas')
@@ -43,10 +44,14 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
         `)
         .order('numero_sala', { ascending: true });
 
-      if (errorSalas) throw errorSalas;
+      if (errorSalas) {
+        console.error('❌ [DEBUG] Erro ao buscar salas:', errorSalas);
+        throw errorSalas;
+      }
+
+      console.log('✅ [DEBUG] Salas carregadas com sucesso:', dataSalas);
       if (dataSalas) {
         setSalas(dataSalas as any);
-        
         const salaAtiva = (dataSalas as any[]).find(
           (s) => s.jogador_1_id === usuarioId || s.jogador_2_id === usuarioId
         );
@@ -58,14 +63,18 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
         .select('*')
         .order('entrou_em', { ascending: true });
 
-      if (errorFila) throw errorFila;
+      if (errorFila) {
+        console.error('❌ [DEBUG] Erro ao buscar fila:', errorFila);
+        throw errorFila;
+      }
+
       if (dataFila) {
         setFila(dataFila);
         const index = dataFila.findIndex((f) => f.usuario_id === usuarioId);
         setMinhaPosicaoFila(index !== -1 ? index + 1 : null);
       }
     } catch (err: any) {
-      console.error('Erro ao carregar dados do lobby:', err.message || err);
+      console.error('❌ [DEBUG] Exceção capturada em carregarDados:', err.message || err);
     } finally {
       setCarregando(false);
     }
@@ -74,39 +83,37 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
   useEffect(() => {
     if (!usuarioId) return;
 
-    // Carga inicial
     carregarDados();
 
-    // CANAL DE REALTIME COM BROADCAST HABILITADO
-    const canalRealtime = supabase.channel('lobby-changes-global', {
-      config: {
-        broadcast: { self: true },
-        presence: { key: usuarioId },
-      },
-    });
-
-    canalRealtime
+    console.log('🔌 [DEBUG] Tentando abrir canal WebSocket no Supabase...');
+    
+    const canalRealtime = supabase
+      .channel('debug-lobby-channel-' + Math.random())
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'domino_salas' },
-        () => {
+        (payload) => {
+          console.log('🚨 [WEBSOCKET DISPAROU!] Pacote recebido de domino_salas:', payload);
           carregarDados();
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'domino_fila' },
-        () => {
+        (payload) => {
+          console.log('🚨 [WEBSOCKET DISPAROU!] Pacote recebido de domino_fila:', payload);
           carregarDados();
         }
       )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          carregarDados();
+      .subscribe((status, err) => {
+        console.log('📡 [DEBUG] Status da conexão WebSocket:', status);
+        if (err) {
+          console.error('❌ [DEBUG] Erro crítico no WebSocket do Supabase:', err);
         }
       });
 
     return () => {
+      console.log('🔌 [DEBUG] Fechando canal WebSocket...');
       supabase.removeChannel(canalRealtime);
     };
   }, [usuarioId, carregarDados]);
@@ -114,11 +121,7 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
   const limparResiduosUsuario = async () => {
     if (!usuarioId) return;
     try {
-      await supabase
-        .from('domino_fila')
-        .delete()
-        .eq('usuario_id', usuarioId);
-
+      await supabase.from('domino_fila').delete().eq('usuario_id', usuarioId);
       const { data } = await supabase
         .from('domino_salas')
         .select('id, jogador_1_id, jogador_2_id')
@@ -129,7 +132,6 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
           const updates: any = {};
           if (sala.jogador_1_id === usuarioId) updates.jogador_1_id = null;
           if (sala.jogador_2_id === usuarioId) updates.jogador_2_id = null;
-          
           updates.status = 'aguardando';
           updates.vez_usuario_id = null;
           updates.mesa_ponta_esquerda = null;
@@ -138,10 +140,7 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
           updates.historico_jogadas = [];
           updates.atualizado_em = new Date().toISOString();
 
-          await supabase
-            .from('domino_salas')
-            .update(updates)
-            .eq('id', sala.id);
+          await supabase.from('domino_salas').update(updates).eq('id', sala.id);
         }
       }
     } catch (err) {
@@ -151,6 +150,7 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
 
   const entrarNoJogo = async () => {
     if (!usuarioId) return;
+    console.log('🖱️ [DEBUG] Botão "Entrar no Jogo" clicado!');
 
     try {
       if (minhaSala || minhaPosicaoFila !== null) return;
@@ -167,6 +167,7 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
 
       if (salasLivres && salasLivres.length > 0) {
         const salaAlvo = salasLivres[0];
+        console.log('🪑 [DEBUG] Sentando na sala:', salaAlvo.numero_sala);
 
         if (!salaAlvo.jogador_1_id) {
           await supabase
@@ -192,24 +193,24 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
             .eq('id', salaAlvo.id);
         }
       } else {
-        await supabase
-          .from('domino_fila')
-          .insert([{ usuario_id: usuarioId }]);
+        console.log('👥 [DEBUG] Nenhuma sala livre, entrando na fila...');
+        await supabase.from('domino_fila').insert([{ usuario_id: usuarioId }]);
       }
 
       await carregarDados();
     } catch (err) {
-      console.error('Erro ao tentar entrar no jogo:', err);
+      console.error('❌ [DEBUG] Erro ao entrar no jogo:', err);
     }
   };
 
   const sairDoJogo = async () => {
     if (!usuarioId) return;
+    console.log('🚪 [DEBUG] Saindo do jogo...');
     try {
       await limparResiduosUsuario();
       await carregarDados();
     } catch (err) {
-      console.error('Erro ao sair do jogo:', err);
+      console.error('❌ [DEBUG] Erro ao sair do jogo:', err);
     }
   };
 
