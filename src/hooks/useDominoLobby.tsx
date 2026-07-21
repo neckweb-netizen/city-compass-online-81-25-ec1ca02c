@@ -91,18 +91,18 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
     }
   }, [usuarioId, carregarDados]);
 
-  // ASSINATURA REALTIME AJUSTADA PARA EVITAR MISMATCH DE BINDINGS
+  // ASSINATURA REALTIME CORRIGIDA SEM ERRO DE BINDINGS
   useEffect(() => {
     if (!usuarioId) return;
 
     console.log('🔌 [LOBBY-DEBUG] Inscrevendo no canal de Realtime...');
 
     const canalLobby = supabase
-      .channel(`domino-lobby-room-${usuarioId}`)
+      .channel(`canal-domino-lobby-clean-${usuarioId}`)
       .on(
-        'postgres_changes',
+        'postgres_changes' as any,
         {
-          event: '*',
+          event: 'ALL',
           schema: 'public',
           table: 'domino_salas',
         },
@@ -112,9 +112,9 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
         }
       )
       .on(
-        'postgres_changes',
+        'postgres_changes' as any,
         {
-          event: '*',
+          event: 'ALL',
           schema: 'public',
           table: 'domino_fila',
         },
