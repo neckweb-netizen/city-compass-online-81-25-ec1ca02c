@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface Sala {
@@ -24,10 +24,15 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
   const [minhaSala, setMinhaSala] = useState<Sala | null>(null);
   const [carregando, setCarregando] = useState(true);
 
-  // Busca inicial e centralizada de dados do banco
+  // Estados de Telemetria/Debug
+  const [statusWs, setStatusWs] = useState<string>('INICIANDO');
+  const [eventosCount, setEventosCount] = useState<number>(0);
+  const canalRef = useRef<any>(null);
+
   const carregarDados = useCallback(async () => {
     if (!usuarioId) return;
     try {
+      console.log('🔍 [DEBUG] Buscando estado atualizado do banco...');
       const { data: dataSalas, error: errorSalas } = await supabase
         .from('domino_salas')
         .select(`
@@ -46,7 +51,6 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
       if (errorSalas) throw errorSalas;
 
       if (dataSalas) {
-        // Gera novas referências de memória para garantir re-renderização no React
         const novasSalas = dataSalas.map((s: any) => ({ ...s }));
         setSalas(novasSalas);
 
@@ -69,33 +73,37 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
         setMinhaPosicaoFila(index !== -1 ? index + 1 : null);
       }
     } catch (err: any) {
-      console.error('Erro ao carregar dados do lobby:', err.message || err);
+      console.error('❌ [DEBUG] Erro em carregarDados:', err.message || err);
     } finally {
       setCarregando(false);
     }
   }, [usuarioId]);
 
-  // Executa busca inicial ao carregar o usuário
+  // Carga inicial
   useEffect(() => {
     if (usuarioId) {
       carregarDados();
     }
   }, [usuarioId, carregarDados]);
 
-  // CANAL DE REALTIME ISOLADO E ESTÁTICO (Nunca é destruído durante a navegação/modal)
+  // ASSINATURA DE WEBSOCKET ISOLADA E PROTEGIDA CONTRA DESCONEXÕES
   useEffect(() => {
     if (!usuarioId) return;
 
-    const canalRealtimeLobby = supabase
-      .channel('canal-estatico-domino-lobby')
+    console.log('🔌 [DEBUG-LOBBY] Criando inscrição isolada de Realtime...');
+    setStatusWs('CONECTANDO...');
+
+    const canal = supabase
+      .channel('canal-lobby-isolado-v1')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'domino_salas' },
         async (payload: any) => {
+          console.log('⚡ [DEBUG-LOBBY] PACOTE DISPARADO EM DOMINO_SALAS:', payload);
+          setEventosCount((prev) => prev + 1);
+
           const salaAtualizada = payload.new;
-          
           if (salaAtualizada) {
-            // Atualiza o estado local imediatamente com o payload recebido
             setSalas((salasAntigas) => {
               const novasSalas = salasAntigas.map((s) => {
                 if (s.id === salaAtualizada.id) {
@@ -118,7 +126,6 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
             });
           }
 
-          // Busca dados completos com o JOIN dos nomes
           await carregarDados();
         }
       )
@@ -126,15 +133,25 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'domino_fila' },
         async () => {
+          console.log('⚡ [DEBUG-LOBBY] PACOTE DISPARADO EM DOMINO_FILA');
+          setEventosCount((prev) => prev + 1);
           await carregarDados();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('📡 [DEBUG-LOBBY] Status da Conexão:', status);
+        setStatusWs(status.toUpperCase());
+      });
+
+    canalRef.current = canal;
 
     return () => {
-      supabase.removeChannel(canalRealtimeLobby);
+      console.log('🔌 [DEBUG-LOBBY] Encerrando canal de Realtime do Lobby...');
+      if (canalRef.current) {
+        supabase.removeChannel(canalRef.current);
+      }
     };
-  }, [usuarioId]); // Dependência apenas de usuarioId para impedir desconexões contínuas
+  }, [usuarioId]);
 
   const limparResiduosUsuario = async () => {
     if (!usuarioId) return;
@@ -237,5 +254,7 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
     entrarNoJogo,
     sairDoJogo,
     carregarDados,
+    statusWs,
+    eventosCount,
   };
 };
