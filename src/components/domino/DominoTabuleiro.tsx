@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, RefreshCw, Trophy, User, ShieldAlert, Award, MessageSquare, Timer, Move } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Trophy, User, Maximize2, Minimize2, ShieldAlert, Award, MessageSquare, Timer, Move } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface DominoTabuleiroProps {
@@ -16,7 +16,7 @@ interface PedraMesa {
   ladoDireito: number;
 }
 
-// SINTETIZADOR WEB AUDIO API
+// SINTETIZADOR WEB AUDIO API PARA EFEITOS SONOROS
 const tocarEfeitoSonoro = (tipo: 'jogar' | 'passar' | 'vitoria' | 'empate') => {
   try {
     const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
@@ -154,6 +154,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const containerRef = useRef<HTMLDivElement>(null);
   const canalRef = useRef<any>(null);
 
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [jogador1Id, setJogador1Id] = useState<string | null>(null);
   const [jogador2Id, setJogador2Id] = useState<string | null>(null);
   const [nomeJ1, setNomeJ1] = useState('Jogador 1');
@@ -181,7 +182,31 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   const [alertaTemporario, setAlertaTemporario] = useState<{ visivel: boolean; mensagem: string } | null>(null);
 
+  // ENTRAR EM FULLSCREEN (SEM LOCK DE ROTAÇÃO)
+  const entrarModoJogoReal = async () => {
+    try {
+      if (containerRef.current) {
+        if (containerRef.current.requestFullscreen) {
+          await containerRef.current.requestFullscreen();
+        } else if ((containerRef.current as any).webkitRequestFullscreen) {
+          await (containerRef.current as any).webkitRequestFullscreen();
+        }
+        setIsFullscreen(true);
+      }
+    } catch (err) {
+      console.warn('Erro ao entrar em fullscreen:', err);
+    }
+  };
+
+  const sairModoJogoReal = () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    }
+    setIsFullscreen(false);
+  };
+
   const sairDaPartidaLocal = () => {
+    sairModoJogoReal();
     onVoltarAoLobby();
   };
 
@@ -227,7 +252,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
-  // LÓGICA DE PASSE INSTANTÂNEO COM CHECAGEM DE TRANCADO
+  // PASSE INSTANTÂNEO
   const passarVez = async () => {
     if (processandoJogadaLocal.current) return;
     processandoJogadaLocal.current = true;
@@ -361,7 +386,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
-  // TOUCH SENSÍVEL
+  // TOUCH MOBILE
   const handleTouchStart = (pedra: string, e: React.TouchEvent) => {
     if (!meuTurno || !isPedraJogavel(pedra)) return;
     const touch = e.touches[0];
@@ -548,7 +573,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             setPontaEsquerda(newData.mesa_ponta_esquerda);
             setPontaDireita(newData.mesa_ponta_direita);
 
-            // CHECA JOGO TRANCADO NO REALTIME INSTANTANEAMENTE
             if (passadas >= 2) {
               tocarEfeitoSonoro('empate');
               setModalNotificacao({
@@ -625,7 +649,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   }, [alertaTemporario]);
 
-  // PASSE INSTANTÂNEO NA HORA DA VEZ SE NÃO TIVER PEÇA JOGÁVEL (SEM ESPERAR CRONÔMETRO)
+  // AUTO-PASSE INSTANTÂNEO
   useEffect(() => {
     if (meuTurno && minhasPedras.length > 0 && mesaPedras.length > 0 && !processandoJogadaLocal.current) {
       const temQualquerPecaJogavel = minhasPedras.some(pedra => isPedraJogavel(pedra));
@@ -655,9 +679,18 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     sairDaPartidaLocal();
   };
 
+  // CÁLCULO DE ESCALONAMENTO DINÂMICO PARA AS PEÇAS DA MESA NÃO ESTOURAREM A BORDA
+  const getEscalaMesa = () => {
+    const qtd = mesaPedras.length;
+    if (qtd <= 5) return 'scale-100';
+    if (qtd <= 8) return 'scale-90';
+    if (qtd <= 12) return 'scale-75';
+    return 'scale-65';
+  };
+
   return (
     <div ref={containerRef} className="w-full h-screen bg-[#090610] text-white font-sans flex flex-col justify-between p-2 md:p-4 overflow-hidden select-none relative">
-      {/* ELEMENTO FLUTUANTE QUE SEGUE O DEDO NO TOUCH */}
+      {/* ELEMENTO FLUTUANTE SEGUINDO O DEDO NO TOUCH */}
       {touchPosicao && pedraArrastando && (
         <div 
           className="fixed z-[100] pointer-events-none transform -translate-x-1/2 -translate-y-1/2 scale-110 shadow-[0_0_20px_rgba(168,85,247,0.9)] rounded-lg bg-purple-900 border-2 border-purple-400"
@@ -689,6 +722,22 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </div>
       )}
 
+      {/* TELA DE SOLICITAÇÃO DE FULLSCREEN */}
+      {!isFullscreen && (
+        <div className="absolute inset-0 bg-[#090610]/98 z-50 flex flex-col items-center justify-center p-6 text-center">
+          <div className="max-w-sm space-y-6">
+            <div className="p-4 bg-purple-950/40 border border-purple-900/30 rounded-full w-fit mx-auto text-purple-400 animate-bounce">
+              <ShieldAlert className="w-12 h-12" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-xl font-black text-white">Modo Fullscreen Requerido</h2>
+              <p className="text-xs text-gray-400 leading-relaxed">Para uma melhor experiência no tabuleiro sem cortes, ative a tela cheia.</p>
+            </div>
+            <Button className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold h-11 shadow-lg shadow-purple-900/20" onClick={entrarModoJogoReal}>Ativar Tela Cheia</Button>
+          </div>
+        </div>
+      )}
+      
       {/* CABEÇALHO */}
       <div className="flex items-center justify-between bg-[#110D1A]/95 border border-purple-950/40 px-3 py-1.5 rounded-xl shadow-lg h-[12%] z-30">
         <div className="flex items-center gap-2">
@@ -727,9 +776,13 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             </div>
           </div>
         </div>
+
+        <Button variant="ghost" size="icon" onClick={isFullscreen ? sairModoJogoReal : entrarModoJogoReal} className="text-purple-400 hover:text-white w-8 h-8">
+          {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+        </Button>
       </div>
 
-      {/* TABULEIRO / MESA - RENDERIZAÇÃO ADAPTÁVEL EM L DE QUINA */}
+      {/* TABULEIRO / MESA */}
       <div className="flex-grow my-2 bg-emerald-950 border-[4px] border-amber-950 rounded-[24px] shadow-[inset_0_4px_12px_rgba(0,0,0,0.6)] relative flex flex-col items-center justify-center h-[53%] overflow-hidden">
         {mesaPedras.length > 0 && (
           <div className="absolute top-2 left-4 flex items-center gap-3 text-[10px] font-semibold text-emerald-300/60">
@@ -745,7 +798,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           </div>
         )}
 
-        <div className="flex items-center justify-center gap-[2px] max-w-full overflow-x-auto px-4 py-2 relative w-full h-full">
+        <div className="flex items-center justify-center gap-[2px] max-w-full px-2 py-2 relative w-full h-full overflow-hidden">
           {mesaPedras.length === 0 ? (
             <div 
               data-dropzone="esquerda"
@@ -761,7 +814,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
               <span>Arraste e solte a primeira pedra aqui</span>
             </div>
           ) : (
-            <>
+            <div className={`flex items-center justify-center transition-all duration-300 transform ${getEscalaMesa()}`}>
               {/* DROP ZONE PONTA ESQUERDA */}
               <div
                 data-dropzone="esquerda"
@@ -777,17 +830,15 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
                 SOLTAR ESQ
               </div>
 
-              {/* RENDERIZAÇÃO DAS PEDRAS COM DOBRA REAL DE CANTO NAS EXTREMIDADES */}
-              <div className="flex items-center justify-center gap-1 overflow-x-auto max-w-full py-2">
+              {/* RENDERIZAÇÃO COM ESCALA E CURVA AJUSTADAS */}
+              <div className="flex items-center justify-center gap-1">
                 {mesaPedras.map((pedra, idx) => {
                   const ehBucha = pedra.ladoEsquerdo === pedra.ladoDireito;
-                  const maxHorizontal = 6;
+                  const maxHorizontal = 5;
                   
-                  // Se a mesa passar de 6 pedras, as extremidades dobram no canto do tabuleiro
                   const ehPontaEsqDobra = mesaPedras.length > maxHorizontal && idx === 0;
                   const ehPontaDirDobra = mesaPedras.length > maxHorizontal && idx === mesaPedras.length - 1;
 
-                  // Se for bucha ou ponta dobrada de canto, renderiza em pé (vertical); caso contrário, deitada
                   const deveFicarDeitada = !ehBucha && !ehPontaEsqDobra && !ehPontaDirDobra;
 
                   return (
@@ -824,7 +875,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
               >
                 SOLTAR DIR
               </div>
-            </>
+            </div>
           )}
         </div>
 
