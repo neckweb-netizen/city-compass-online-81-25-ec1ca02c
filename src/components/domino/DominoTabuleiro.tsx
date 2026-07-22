@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, RefreshCw, Trophy, User, Maximize2, Minimize2, ShieldAlert, Award, MessageSquare, Timer, Move } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Trophy, User, Maximize2, Minimize2, ShieldAlert, Award, MessageSquare, Timer, Move, Volume2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface DominoTabuleiroProps {
@@ -15,6 +15,69 @@ interface PedraMesa {
   ladoEsquerdo: number;
   ladoDireito: number;
 }
+
+// SINTETIZADOR WEB AUDIO API PARA EFEITOS SONOROS
+const tocarEfeitoSonoro = (tipo: 'jogar' | 'passar' | 'vitoria' | 'empate') => {
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+
+    if (tipo === 'jogar') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(180, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.8, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.08);
+    } else if (tipo === 'passar') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(300, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(150, ctx.currentTime + 0.2);
+      gain.gain.setValueAtTime(0.4, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.2);
+    } else if (tipo === 'vitoria') {
+      const notas = [261.63, 329.63, 392.00, 523.25];
+      notas.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.3, ctx.currentTime + idx * 0.12);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + idx * 0.12 + 0.3);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + idx * 0.12);
+        osc.stop(ctx.currentTime + idx * 0.12 + 0.3);
+      });
+    } else if (tipo === 'empate') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(200, ctx.currentTime);
+      osc.frequency.linearRampToValueAtTime(100, ctx.currentTime + 0.4);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.4);
+    }
+  } catch (err) {
+    console.warn('Erro ao tocar efeito sonoro:', err);
+  }
+};
 
 const PedraClassica = ({ 
   valor, 
@@ -97,6 +160,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const [nomeJ1, setNomeJ1] = useState('Jogador 1');
   const [nomeJ2, setNomeJ2] = useState('Jogador 2');
   const [vezUsuarioId, setVezUsuarioId] = useState<string | null>(null);
+  const [passadasCount, setPassadasCount] = useState<number>(0);
   
   const [minhasPedras, setMinhasPedras] = useState<string[]>([]);
   const [mesaPedras, setMesaPedras] = useState<PedraMesa[]>([]);
@@ -185,14 +249,37 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
+  // LÓGICA REUTILIZADA DE PASSE COM CONTAGEM DE JOGO TRANCADO
   const passarVez = async () => {
     const proximoTurnoId = usuarioId === jogador1Id ? jogador2Id : jogador1Id;
+    const novaContagemPassadas = passadasCount + 1;
+
+    tocarEfeitoSonoro('passar');
 
     try {
+      if (novaContagemPassadas >= 2) {
+        // TRANCADO / FECHADO: NENHUM DOS DOIS JOGADORES TEM PEÇA
+        tocarEfeitoSonoro('empate');
+        setModalNotificacao({
+          visivel: true,
+          titulo: 'Jogo Trancado!',
+          message: 'Ambos os jogadores passaram a vez. A partida empatou/fechou!',
+          tipo: 'info'
+        });
+        
+        await supabase.from('domino_salas').update({
+          passadas_count: novaContagemPassadas,
+          atualizado_em: new Date().toISOString()
+        }).eq('id', salaId);
+
+        return;
+      }
+
       await supabase
         .from('domino_salas')
         .update({
           vez_usuario_id: proximoTurnoId,
+          passadas_count: novaContagemPassadas,
           atualizado_em: new Date().toISOString()
         })
         .eq('id', salaId);
@@ -206,6 +293,8 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     if (!meuTurno || processandoJogadaLocal.current) return;
     processandoJogadaLocal.current = true;
     setPedraArrastando(null);
+
+    tocarEfeitoSonoro('jogar');
 
     const [ladoA, ladoB] = pedra.split('-').map(Number);
     let novaMesa = [...mesaPedras];
@@ -251,7 +340,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           mesa_ponta_esquerda: novaPontaE,
           mesa_ponta_direita: novaPontaD,
           vez_usuario_id: proximoTurnoId,
-          passadas_count: 0,
+          passadas_count: 0, // Reseta contagem de passadas ao jogar
           atualizado_em: new Date().toISOString()
         })
         .eq('id', salaId);
@@ -300,7 +389,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
-  // CLIQUE SIMPLES COMO OPÇÃO SECUNDÁRIA
+  // CLIQUE SIMPLES
   const tentarJogarPedraClique = (pedra: string) => {
     if (!meuTurno || processandoJogadaLocal.current) return;
 
@@ -337,7 +426,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       '6-6'
     ];
 
-    // Converte o UUID da sala em uma Seed Numérica Robusta
     let hashNum = 0;
     for (let i = 0; i < salaId.length; i++) {
       hashNum = (hashNum << 5) - hashNum + salaId.charCodeAt(i);
@@ -348,7 +436,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     let pool = [...totalVinteOitoPedras];
     let tempSeed = seed;
 
-    // Algoritmo Fisher-Yates com PRNG
     for (let i = pool.length - 1; i > 0; i--) {
       tempSeed = (tempSeed * 1103515245 + 12345) & 0x7fffffff;
       const j = Math.floor((tempSeed / 0x7fffffff) * (i + 1));
@@ -358,9 +445,9 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
 
     if (userId === j1) {
-      setMinhasPedras(pool.slice(0, 7)); // Jogador 1 recebe as 7 primeiras
+      setMinhasPedras(pool.slice(0, 7));
     } else if (userId === j2) {
-      setMinhasPedras(pool.slice(7, 14)); // Jogador 2 recebe as 7 seguintes (SEM REPETIÇÃO)
+      setMinhasPedras(pool.slice(7, 14));
     }
   };
 
@@ -369,7 +456,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       const { data, error } = await supabase
         .from('domino_salas')
         .select(`
-          id, jogador_1_id, jogador_2_id, vez_usuario_id,
+          id, jogador_1_id, jogador_2_id, vez_usuario_id, passadas_count,
           mesa_ponta_esquerda, mesa_ponta_direita, historico_jogadas,
           jogador_1:jogador_1_id ( nome ), jogador_2:jogador_2_id ( nome )
         `)
@@ -382,6 +469,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         setJogador1Id(data.jogador_1_id);
         setJogador2Id(data.jogador_2_id);
         setVezUsuarioId(data.vez_usuario_id);
+        setPassadasCount(data.passadas_count || 0);
         setNomeJ1(data.jogador_1 ? (data.jogador_1 as any).nome : 'Jogador 1');
         setNomeJ2(data.jogador_2 ? (data.jogador_2 as any).nome : 'Jogador 2');
         setPontaEsquerda(data.mesa_ponta_esquerda);
@@ -443,6 +531,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             }
 
             setVezUsuarioId(newData.vez_usuario_id);
+            setPassadasCount(newData.passadas_count || 0);
             setPontaEsquerda(newData.mesa_ponta_esquerda);
             setPontaDireita(newData.mesa_ponta_direita);
 
@@ -511,19 +600,22 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   }, [alertaTemporario]);
 
+  // AUTO-PASSAR QUANDO NÃO TEM PEDRA JOGÁVEL
   useEffect(() => {
     if (meuTurno && minhasPedras.length > 0 && mesaPedras.length > 0 && !processandoJogadaLocal.current) {
       const temQualquerPecaJogavel = minhasPedras.some(pedra => isPedraJogavel(pedra));
 
       if (!temQualquerPecaJogavel) {
-        setAlertaTemporario({ visivel: true, mensagem: '⚠️ Sem peças! Passando a vez automaticamente...' });
+        setAlertaTemporario({ visivel: true, mensagem: '⚠️ Sem peças jogáveis! Passando a vez...' });
         passarVez();
       }
     }
   }, [meuTurno, minhasPedras, mesaPedras, pontaEsquerda, pontaDireita]);
 
+  // VITÓRIA AO BATER O JOGO
   useEffect(() => {
     if (minhasPedras.length === 0 && mesaPedras.length > 0) {
+      tocarEfeitoSonoro('vitoria');
       setModalNotificacao({
         visivel: true,
         titulo: 'Parabéns, Você Venceu!',
