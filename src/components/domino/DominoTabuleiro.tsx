@@ -314,7 +314,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     const daNaDireita = ladoA === pontaDireita || ladoB === pontaDireita;
 
     if (daNaEsquerda && daNaDireita) {
-      setPedraArrastando(pedra); // Ativa as zonas de soltura para o jogador escolher a ponta
+      setPedraArrastando(pedra);
     } else if (daNaEsquerda) {
       executarJogadaNaPonta(pedra, 'esquerda');
     } else if (daNaDireita) {
@@ -322,6 +322,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
+  // EMBARALHAMENTO REAL E ÚNICO DE 28 PEDRAS (SEM REPETIÇÃO)
   const inicializarPedrasCompartilhadas = (userId: string, j1: string | null, j2: string | null) => {
     if (pedrasInicializadas.current || !j1 || !j2) return;
     pedrasInicializadas.current = true;
@@ -336,23 +337,30 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       '6-6'
     ];
 
-    const salaHash = salaId.replace(/[^0-9]/g, '');
-    const seed = salaHash ? parseInt(salaHash.substring(0, 5)) : 12345;
-    
+    // Converte o UUID da sala em uma Seed Numérica Robusta
+    let hashNum = 0;
+    for (let i = 0; i < salaId.length; i++) {
+      hashNum = (hashNum << 5) - hashNum + salaId.charCodeAt(i);
+      hashNum |= 0;
+    }
+    const seed = Math.abs(hashNum) || 98765;
+
     let pool = [...totalVinteOitoPedras];
     let tempSeed = seed;
+
+    // Algoritmo Fisher-Yates com PRNG
     for (let i = pool.length - 1; i > 0; i--) {
-      tempSeed = (tempSeed * 9301 + 49297) % 233280;
-      const j = Math.floor((tempSeed / 233280) * (i + 1));
+      tempSeed = (tempSeed * 1103515245 + 12345) & 0x7fffffff;
+      const j = Math.floor((tempSeed / 0x7fffffff) * (i + 1));
       const temp = pool[i];
       pool[i] = pool[j];
       pool[j] = temp;
     }
 
     if (userId === j1) {
-      setMinhasPedras(pool.slice(0, 7));
+      setMinhasPedras(pool.slice(0, 7)); // Jogador 1 recebe as 7 primeiras
     } else if (userId === j2) {
-      setMinhasPedras(pool.slice(7, 14));
+      setMinhasPedras(pool.slice(7, 14)); // Jogador 2 recebe as 7 seguintes (SEM REPETIÇÃO)
     }
   };
 
