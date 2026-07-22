@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, RefreshCw, Trophy, User, Maximize2, Minimize2, ShieldAlert, Award, MessageSquare, Timer, Move, Volume2 } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Trophy, User, Maximize2, Minimize2, ShieldAlert, Award, MessageSquare, Timer, Move } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface DominoTabuleiroProps {
@@ -81,20 +81,20 @@ const tocarEfeitoSonoro = (tipo: 'jogar' | 'passar' | 'vitoria' | 'empate') => {
 
 const PedraClassica = ({ 
   valor, 
-  onClick, 
   disabled, 
   menor = false, 
   deitada = false,
   destacada = false,
-  onDragStart
+  onDragStart,
+  onTouchStart
 }: { 
   valor: string; 
-  onClick?: () => void; 
   disabled?: boolean; 
   menor?: boolean; 
   deitada?: boolean;
   destacada?: boolean;
   onDragStart?: (e: React.DragEvent) => void;
+  onTouchStart?: (e: React.TouchEvent) => void;
 }) => {
   const safeValor = valor || '0-0';
   const [ladoA, ladoB] = safeValor.split('-').map(Number);
@@ -127,15 +127,14 @@ const PedraClassica = ({
     : (menor ? "w-8 h-16 border-2 flex-col" : "w-10 h-20 border-2 flex-col");
 
   return (
-    <button
-      disabled={disabled}
-      onClick={onClick}
+    <div
       draggable={!disabled && !!onDragStart}
       onDragStart={onDragStart}
-      className={`${classesTamanho} bg-[#1a1a1a] border-[#333] rounded-lg flex items-center justify-between shadow-lg relative transition-all ${
+      onTouchStart={onTouchStart}
+      className={`${classesTamanho} bg-[#1a1a1a] border-[#333] rounded-lg flex items-center justify-between shadow-lg relative transition-all touch-none select-none ${
         destacada 
           ? 'border-purple-500 shadow-[0_0_15px_rgba(147,51,234,0.7)] scale-105 animate-pulse cursor-grab active:cursor-grabbing z-10' 
-          : disabled && !onClick
+          : disabled
             ? 'opacity-100'
             : 'opacity-40 cursor-not-allowed'
       }`}
@@ -147,7 +146,7 @@ const PedraClassica = ({
       <div className="flex-1 w-full h-full flex items-center justify-center pointer-events-none">
         {renderBolinhas(ladoB)}
       </div>
-    </button>
+    </div>
   );
 };
 
@@ -167,9 +166,12 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const [pontaEsquerda, setPontaEsquerda] = useState<number | null>(null);
   const [pontaDireita, setPontaDireita] = useState<number | null>(null);
 
-  // ESTADO DE DRAG AND DROP
+  // ESTADO DE ARRASTO (DESKTOP E TOUCH MOBILE)
   const [pedraArrastando, setPedraArrastando] = useState<string | null>(null);
   const [sobreDropZone, setSobreDropZone] = useState<'esquerda' | 'direita' | null>(null);
+
+  // ESTADO EXCLUSIVO PARA O TOUCH DO CELULAR
+  const [touchPosicao, setTouchPosicao] = useState<{ x: number; y: number } | null>(null);
 
   const [tempoRestante, setTempoRestante] = useState<number>(30);
   
@@ -249,7 +251,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
-  // LÓGICA REUTILIZADA DE PASSE COM CONTAGEM DE JOGO TRANCADO
+  // LÓGICA DE PASSE
   const passarVez = async () => {
     const proximoTurnoId = usuarioId === jogador1Id ? jogador2Id : jogador1Id;
     const novaContagemPassadas = passadasCount + 1;
@@ -258,7 +260,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
     try {
       if (novaContagemPassadas >= 2) {
-        // TRANCADO / FECHADO: NENHUM DOS DOIS JOGADORES TEM PEÇA
         tocarEfeitoSonoro('empate');
         setModalNotificacao({
           visivel: true,
@@ -288,11 +289,13 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
-  // EXECUÇÃO FINAL DA JOGADA ENCAIXANDO NA PONTA ESCOLHIDA
+  // EXECUÇÃO DA JOGADA
   const executarJogadaNaPonta = async (pedra: string, ladoEscolha: 'esquerda' | 'direita') => {
     if (!meuTurno || processandoJogadaLocal.current) return;
     processandoJogadaLocal.current = true;
     setPedraArrastando(null);
+    setTouchPosicao(null);
+    setSobreDropZone(null);
 
     tocarEfeitoSonoro('jogar');
 
@@ -340,7 +343,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           mesa_ponta_esquerda: novaPontaE,
           mesa_ponta_direita: novaPontaD,
           vez_usuario_id: proximoTurnoId,
-          passadas_count: 0, // Reseta contagem de passadas ao jogar
+          passadas_count: 0,
           atualizado_em: new Date().toISOString()
         })
         .eq('id', salaId);
@@ -352,7 +355,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
-  // EVENTOS DE DRAG & DROP
+  // EVENTOS DE DRAG NATIVO DESKTOP
   const handleDragStart = (pedra: string, e: React.DragEvent) => {
     if (!meuTurno || !isPedraJogavel(pedra)) return;
     setPedraArrastando(pedra);
@@ -373,45 +376,75 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     setSobreDropZone(null);
     const pedra = e.dataTransfer.getData('text/plain') || pedraArrastando;
     if (pedra) {
-      const [ladoA, ladoB] = pedra.split('-').map(Number);
-      const serveNaEsquerda = ladoA === pontaEsquerda || ladoB === pontaEsquerda;
-      const serveNaDireita = ladoA === pontaDireita || ladoB === pontaDireita;
-
-      if (mesaPedras.length === 0) {
-        executarJogadaNaPonta(pedra, 'esquerda');
-      } else if (lado === 'esquerda' && serveNaEsquerda) {
-        executarJogadaNaPonta(pedra, 'esquerda');
-      } else if (lado === 'direita' && serveNaDireita) {
-        executarJogadaNaPonta(pedra, 'direita');
-      } else {
-        setAlertaTemporario({ visivel: true, mensagem: '❌ Esta pedra não encaixa nessa ponta!' });
-      }
+      validaESoltaPedra(pedra, lado);
     }
   };
 
-  // CLIQUE SIMPLES
-  const tentarJogarPedraClique = (pedra: string) => {
-    if (!meuTurno || processandoJogadaLocal.current) return;
+  // MANIPULAÇÃO INTELIGENTE E ULTRASENSÍVEL DE TOUCH PARA CELULAR
+  const handleTouchStart = (pedra: string, e: React.TouchEvent) => {
+    if (!meuTurno || !isPedraJogavel(pedra)) return;
+    const touch = e.touches[0];
+    setPedraArrastando(pedra);
+    setTouchPosicao({ x: touch.clientX, y: touch.clientY });
+  };
+
+  const handleTouchMove = (e: TouchEvent) => {
+    if (!pedraArrastando) return;
+    const touch = e.touches[0];
+    setTouchPosicao({ x: touch.clientX, y: touch.clientY });
+
+    // Detecta se o dedo está sobre uma das zonas de soltura
+    const elementoSobOToque = document.elementFromPoint(touch.clientX, touch.clientY);
+    const dropZona = elementoSobOToque?.closest('[data-dropzone]');
+    if (dropZona) {
+      const lado = dropZona.getAttribute('data-dropzone') as 'esquerda' | 'direita';
+      setSobreDropZone(lado);
+    } else {
+      setSobreDropZone(null);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (!pedraArrastando) return;
+
+    if (sobreDropZone) {
+      validaESoltaPedra(pedraArrastando, sobreDropZone);
+    }
+
+    setPedraArrastando(null);
+    setTouchPosicao(null);
+    setSobreDropZone(null);
+  };
+
+  // Efeito global para ouvir o arrasto no touch sem travar a tela
+  useEffect(() => {
+    if (pedraArrastando) {
+      window.addEventListener('touchmove', handleTouchMove, { passive: false });
+      window.addEventListener('touchend', handleTouchEnd);
+    }
+    return () => {
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [pedraArrastando, sobreDropZone]);
+
+  const validaESoltaPedra = (pedra: string, lado: 'esquerda' | 'direita') => {
+    const [ladoA, ladoB] = pedra.split('-').map(Number);
+    const serveNaEsquerda = ladoA === pontaEsquerda || ladoB === pontaEsquerda;
+    const serveNaDireita = ladoA === pontaDireita || ladoB === pontaDireita;
 
     if (mesaPedras.length === 0) {
       executarJogadaNaPonta(pedra, 'esquerda');
-      return;
-    }
-
-    const [ladoA, ladoB] = pedra.split('-').map(Number);
-    const daNaEsquerda = ladoA === pontaEsquerda || ladoB === pontaEsquerda;
-    const daNaDireita = ladoA === pontaDireita || ladoB === pontaDireita;
-
-    if (daNaEsquerda && daNaDireita) {
-      setPedraArrastando(pedra);
-    } else if (daNaEsquerda) {
+    } else if (lado === 'esquerda' && serveNaEsquerda) {
       executarJogadaNaPonta(pedra, 'esquerda');
-    } else if (daNaDireita) {
+    } else if (lado === 'direita' && serveNaDireita) {
       executarJogadaNaPonta(pedra, 'direita');
+    } else {
+      setAlertaTemporario({ visivel: true, mensagem: '❌ Esta pedra não encaixa nessa ponta!' });
     }
   };
 
-  // EMBARALHAMENTO REAL E ÚNICO DE 28 PEDRAS (SEM REPETIÇÃO)
+  // EMBARALHAMENTO SEM REPETIÇÃO
   const inicializarPedrasCompartilhadas = (userId: string, j1: string | null, j2: string | null) => {
     if (pedrasInicializadas.current || !j1 || !j2) return;
     pedrasInicializadas.current = true;
@@ -583,6 +616,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           clearInterval(cronometro);
           setAlertaTemporario({ visivel: true, mensagem: '⏱️ Seu tempo esgotou! A vez foi passada.' });
           setPedraArrastando(null);
+          setTouchPosicao(null);
           passarVez();
           return 30;
         }
@@ -612,7 +646,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   }, [meuTurno, minhasPedras, mesaPedras, pontaEsquerda, pontaDireita]);
 
-  // VITÓRIA AO BATER O JOGO
+  // VITÓRIA
   useEffect(() => {
     if (minhasPedras.length === 0 && mesaPedras.length > 0) {
       tocarEfeitoSonoro('vitoria');
@@ -632,6 +666,16 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   return (
     <div ref={containerRef} className="w-full h-screen bg-[#090610] text-white font-sans flex flex-col justify-between p-2 md:p-4 overflow-hidden select-none relative">
+      {/* ELEMENTO FLUTUANTE QUE SEGUE O DEDO NO TOUCH */}
+      {touchPosicao && pedraArrastando && (
+        <div 
+          className="fixed z-[100] pointer-events-none transform -translate-x-1/2 -translate-y-1/2 scale-110 shadow-[0_0_20px_rgba(168,85,247,0.9)] rounded-lg bg-purple-900 border-2 border-purple-400"
+          style={{ left: `${touchPosicao.x}px`, top: `${touchPosicao.y}px` }}
+        >
+          <PedraClassica valor={pedraArrastando} disabled={false} menor={true} destacada={true} />
+        </div>
+      )}
+
       {alertaTemporario && alertaTemporario.visivel && (
         <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[60] bg-purple-950/95 border-2 border-purple-500 text-white px-5 py-2 rounded-2xl shadow-[0_4px_15px_rgba(147,51,234,0.4)] flex items-center gap-2 text-xs font-bold animate-in fade-in slide-in-from-top-4 duration-200">
           <MessageSquare className="w-4 h-4 text-purple-400 animate-pulse" />
@@ -713,7 +757,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </Button>
       </div>
 
-      {/* TABULEIRO / MESA COM ÁREAS DE SOLTURA (DROP ZONES) */}
+      {/* TABULEIRO / MESA */}
       <div className="flex-grow my-2 bg-emerald-950 border-[4px] border-amber-950 rounded-[24px] shadow-[inset_0_4px_12px_rgba(0,0,0,0.6)] relative flex flex-col items-center justify-center h-[53%] overflow-hidden">
         {mesaPedras.length > 0 && (
           <div className="absolute top-2 left-4 flex items-center gap-3 text-[10px] font-semibold text-emerald-300/60">
@@ -722,7 +766,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           </div>
         )}
 
-        {/* MENSAGEM INDICANDO COMO ARRASTAR */}
+        {/* MENSAGEM INDICANDO O ARRASTO */}
         {meuTurno && mesaPedras.length > 0 && (
           <div className="absolute top-2 z-20 text-[10px] text-emerald-300/70 bg-emerald-900/40 px-3 py-0.5 rounded-full flex items-center gap-1 font-semibold">
             <Move className="w-3 h-3 text-amber-400 animate-pulse" />
@@ -734,9 +778,14 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           {mesaPedras.length === 0 ? (
             /* DROP ZONE MESA VAZIA */
             <div 
+              data-dropzone="esquerda"
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => handleDrop(e, 'esquerda')}
-              className="w-48 h-24 border-2 border-dashed border-emerald-400/40 rounded-2xl flex flex-col items-center justify-center text-center text-emerald-300/60 font-bold text-xs p-4 bg-emerald-900/20 hover:bg-emerald-900/40 transition-all cursor-pointer"
+              className={`w-48 h-24 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center text-center font-bold text-xs p-4 transition-all ${
+                sobreDropZone === 'esquerda'
+                  ? 'border-green-400 bg-green-500/40 text-white scale-105 shadow-[0_0_20px_rgba(34,197,94,0.9)]'
+                  : 'border-emerald-400/40 bg-emerald-900/20 text-emerald-300/60'
+              }`}
             >
               <Move className="w-6 h-6 mb-1 text-amber-400 animate-bounce" />
               <span>Arraste e solte a primeira pedra aqui</span>
@@ -745,12 +794,13 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             <>
               {/* DROP ZONE PONTA ESQUERDA */}
               <div
+                data-dropzone="esquerda"
                 onDragOver={(e) => handleDragOver(e, 'esquerda')}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, 'esquerda')}
                 className={`shrink-0 h-20 w-16 border-2 border-dashed rounded-xl flex items-center justify-center text-[10px] font-black transition-all mr-2 ${
                   sobreDropZone === 'esquerda'
-                    ? 'border-green-400 bg-green-500/30 text-white scale-110 shadow-[0_0_15px_rgba(34,197,94,0.8)]'
+                    ? 'border-green-400 bg-green-500/40 text-white scale-110 shadow-[0_0_15px_rgba(34,197,94,0.9)]'
                     : 'border-emerald-500/50 bg-emerald-900/30 text-emerald-300 hover:border-green-400'
                 }`}
               >
@@ -779,12 +829,13 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
               {/* DROP ZONE PONTA DIREITA */}
               <div
+                data-dropzone="direita"
                 onDragOver={(e) => handleDragOver(e, 'direita')}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, 'direita')}
                 className={`shrink-0 h-20 w-16 border-2 border-dashed rounded-xl flex items-center justify-center text-[10px] font-black transition-all ml-2 ${
                   sobreDropZone === 'direita'
-                    ? 'border-green-400 bg-green-500/30 text-white scale-110 shadow-[0_0_15px_rgba(34,197,94,0.8)]'
+                    ? 'border-green-400 bg-green-500/40 text-white scale-110 shadow-[0_0_15px_rgba(34,197,94,0.9)]'
                     : 'border-emerald-500/50 bg-emerald-900/30 text-emerald-300 hover:border-green-400'
                 }`}
               >
@@ -809,11 +860,11 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </div>
         <div className="flex justify-center items-center gap-1.5 overflow-x-auto h-[75%] py-1">
           {minhasPedras.map((pedra, idx) => (
-            <div key={idx} className="shrink-0 scale-90 md:scale-100">
+            <div key={idx} className="shrink-0 scale-90 md:scale-100 touch-none">
               <PedraClassica 
                 valor={pedra} 
-                onClick={() => tentarJogarPedraClique(pedra)} 
                 onDragStart={(e) => handleDragStart(pedra, e)}
+                onTouchStart={(e) => handleTouchStart(pedra, e)}
                 disabled={!(meuTurno && isPedraJogavel(pedra))} 
                 menor={true} 
                 destacada={meuTurno && isPedraJogavel(pedra)} 
