@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,6 +28,7 @@ const secaoOptions = [
   { value: 'categorias', label: 'Categorias' },
   { value: 'busca', label: 'Busca' },
   { value: 'canal_video', label: 'Canal Informativo - Vídeos' },
+  { value: 'domino', label: 'Jogo Dominó' },
 ];
 
 export const BannersSection = () => {
