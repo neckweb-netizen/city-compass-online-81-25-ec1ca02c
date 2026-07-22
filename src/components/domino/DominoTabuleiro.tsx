@@ -201,6 +201,22 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   const keyStoragePedras = `domino_pedras_sala_${salaId}_usr_${usuarioId}`;
 
+  // ESCUTADOR DE MUDANÇA DE FULLSCREEN REAL DO NAVEGADOR
+  useEffect(() => {
+    const checarFullscreenReal = () => {
+      const emFullscreenNativo = !!document.fullscreenElement || !!(document as any).webkitFullscreenElement;
+      setIsFullscreen(emFullscreenNativo);
+    };
+
+    document.addEventListener('fullscreenchange', checarFullscreenReal);
+    document.addEventListener('webkitfullscreenchange', checarFullscreenReal);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', checarFullscreenReal);
+      document.removeEventListener('webkitfullscreenchange', checarFullscreenReal);
+    };
+  }, []);
+
   const atualizarMinhasPedras = (novasPedras: string[]) => {
     setMinhasPedras(novasPedras);
     try {
@@ -210,12 +226,40 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
-  const alternarFullscreenModo = () => {
-    setIsFullscreen(prev => !prev);
+  // NATIVO TELA CHEIA COMPLETO SEM ROTAÇÃO
+  const alternarFullscreenModo = async () => {
+    try {
+      if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {
+        if (containerRef.current) {
+          if (containerRef.current.requestFullscreen) {
+            await containerRef.current.requestFullscreen();
+          } else if ((containerRef.current as any).webkitRequestFullscreen) {
+            await (containerRef.current as any).webkitRequestFullscreen();
+          }
+        }
+        setIsFullscreen(true);
+        if (screen.orientation && screen.orientation.unlock) {
+          screen.orientation.unlock().catch(() => {});
+        }
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if ((document as any).webkitExitFullscreen) {
+          await (document as any).webkitExitFullscreen();
+        }
+        setIsFullscreen(false);
+      }
+    } catch (err) {
+      console.warn('Erro ao alternar fullscreen:', err);
+      setIsFullscreen(prev => !prev);
+    }
   };
 
   const sairDaPartidaLocal = () => {
     try {
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
       localStorage.removeItem(keyStoragePedras);
     } catch (e) {}
     onVoltarAoLobby();
@@ -769,15 +813,15 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   return (
     <div 
       ref={containerRef} 
-      className={`w-full bg-[#090610] text-white font-sans flex flex-col justify-between p-1 sm:p-4 overflow-hidden select-none relative ${
-        isFullscreen ? 'fixed inset-0 z-[999] h-screen' : 'h-screen'
+      className={`w-screen bg-[#090610] text-white font-sans flex flex-col justify-between p-1 sm:p-4 overflow-hidden select-none relative ${
+        isFullscreen ? 'fixed inset-0 z-[99999] h-[100dvh] w-screen' : 'h-screen'
       }`}
       style={{ forcedColorAdjust: 'none', filter: 'none' }}
     >
       {/* ELEMENTO FLUTUANTE SEGUINDO O DEDO NO TOUCH */}
       {touchPosicao && pedraArrastando && (
         <div 
-          className="fixed z-[1000] pointer-events-none transform -translate-x-1/2 -translate-y-1/2 scale-110 shadow-[0_0_20px_rgba(168,85,247,0.9)] rounded-lg bg-purple-900 border-2 border-purple-400"
+          className="fixed z-[100000] pointer-events-none transform -translate-x-1/2 -translate-y-1/2 scale-110 shadow-[0_0_20px_rgba(168,85,247,0.9)] rounded-lg bg-purple-900 border-2 border-purple-400"
           style={{ left: `${touchPosicao.x}px`, top: `${touchPosicao.y}px` }}
         >
           <PedraClassica valor={pedraArrastando} disabled={false} menor={true} destacada={true} />
@@ -792,7 +836,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       )}
 
       {modalNotificacao.visivel && (
-        <div className="absolute inset-0 bg-black/80 z-[1050] flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-black/80 z-[10500] flex items-center justify-center p-4">
           <div className="max-w-xs bg-[#110D1A] border border-purple-950/60 p-6 rounded-2xl shadow-2xl text-center space-y-4 animate-in fade-in zoom-in-95 duration-150">
             <div className="p-3 bg-purple-950/40 border border-purple-900/30 rounded-full w-fit mx-auto text-purple-400">
               {modalNotificacao.tipo === 'fim' ? <Award className="w-8 h-8 text-yellow-500" /> : <ShieldAlert className="w-8 h-8" />}
@@ -806,7 +850,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </div>
       )}
 
-      {/* CABEÇALHO COM BOTÃO ESCRITO DE FULLSCREEN */}
+      {/* CABEÇALHO COMPACTO E ADAPTÁVEL SEM CORTES */}
       <div className="flex items-center justify-between bg-[#110D1A]/95 border border-purple-950/40 px-1.5 sm:px-3 py-1 rounded-xl shadow-lg h-[9%] min-h-[40px] z-30 w-full gap-1">
         <div className="flex items-center gap-1 shrink-0">
           <Button variant="ghost" size="sm" onClick={sairDaPartida} className="text-gray-400 hover:text-white h-7 text-[10px] sm:text-xs px-1 sm:px-2">
@@ -845,7 +889,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           </div>
         </div>
 
-        {/* BOTÃO CLARO E EXPLÍCITO DE TELA CHEIA */}
+        {/* BOTÃO CLARO E EXPLÍCITO DE TELA CHEIA NATIVA */}
         <Button 
           variant="outline" 
           size="sm" 
@@ -857,7 +901,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </Button>
       </div>
 
-      {/* TABULEIRO / MESA */}
+      {/* TABULEIRO / MESA - ENQUADRADO E SEM EXCEDER AS BORDAS */}
       <div className="flex-grow my-1 bg-emerald-950 border-[3px] sm:border-[4px] border-amber-950 rounded-[20px] shadow-[inset_0_4px_12px_rgba(0,0,0,0.6)] relative flex flex-col items-center justify-center h-[60%] overflow-hidden w-full">
         {mesaPedras.length > 0 && (
           <div className="absolute top-1.5 left-2 sm:left-4 flex items-center gap-2 text-[9px] sm:text-[10px] font-semibold text-emerald-300/60 z-10">
