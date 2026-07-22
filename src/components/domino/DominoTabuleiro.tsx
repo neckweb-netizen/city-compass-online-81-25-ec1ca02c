@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, RefreshCw, Trophy, User, Maximize2, Minimize2, ShieldAlert, Award, MessageSquare, Timer, Move, ExternalLink, Bug } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Trophy, User, Maximize2, Minimize2, ShieldAlert, Award, MessageSquare, Timer, Move, ExternalLink } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface DominoTabuleiroProps {
@@ -198,7 +198,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const [touchPosicao, setTouchPosicao] = useState<{ x: number; y: number } | null>(null);
 
   const [bannerAtivo, setBannerAtivo] = useState<BannerPublicitario | null>(null);
-  const [debugInfo, setDebugInfo] = useState<string>('Buscando banners...');
 
   const [tempoRestante, setTempoRestante] = useState<number>(30);
   
@@ -213,49 +212,38 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   const keyStoragePedras = `domino_pedras_sala_${salaId}_usr_${usuarioId}`;
 
-  // BUSCA INTELIGENTE COM RESILIÊNCIA DE NOME DE TABELA
+  // BUSCA EXATA NA TABELA 'banners_publicitarios'
   useEffect(() => {
     const buscarBannerDomino = async () => {
       try {
-        console.log('🔍 [DEBUG BANNER] Buscando na tabela "banners"...');
-        
-        let { data, error } = await supabase
-          .from('banners')
-          .select('*');
+        const { data, error } = await supabase
+          .from('banners_publicitarios')
+          .select('id, titulo, imagem_url, link_url, ativo, ordem, secao')
+          .eq('secao', 'domino' as any)
+          .eq('ativo', true)
+          .order('ordem', { ascending: true })
+          .limit(1);
 
-        // Se a tabela 'banners' falhou por cache/nome, tenta 'banner'
-        if (error) {
-          console.warn('⚠️ Tentando fallback na tabela "banner"...', error.message);
-          const resAlt = await supabase.from('banner' as any).select('*');
-          data = resAlt.data;
-          error = resAlt.error;
-        }
-
-        if (error) {
-          console.error('❌ Erro final de tabela:', error);
-          setDebugInfo(`Erro SQL: ${error.message}. Execute: NOTIFY pgrst, 'reload schema'; no Supabase.`);
-          return;
-        }
-
-        if (data && data.length > 0) {
-          const bannerEncontrado = data.find((b: any) => {
-            const sec = String(b.secao || '').toLowerCase().trim();
-            const estaAtivo = b.ativo === true || String(b.ativo) === 'true';
-            return estaAtivo && (sec === 'domino' || sec === 'jogo dominó' || sec === 'jogo domino');
-          });
-
-          if (bannerEncontrado) {
-            setBannerAtivo(bannerEncontrado as BannerPublicitario);
-            setDebugInfo('');
-          } else {
-            setDebugInfo(`Nenhum banner ativo marcado com seção "domino". Banners no banco: ${data.length}`);
-          }
+        if (!error && data && data.length > 0) {
+          setBannerAtivo(data[0] as BannerPublicitario);
         } else {
-          setDebugInfo('Nenhum banner cadastrado no banco.');
+          // Busca secundária caso esteja com caixa diferente
+          const { data: todos } = await supabase
+            .from('banners_publicitarios')
+            .select('*')
+            .eq('ativo', true);
+
+          if (todos && todos.length > 0) {
+            const achado = todos.find((b: any) => 
+              String(b.secao).toLowerCase().trim() === 'domino'
+            );
+            if (achado) {
+              setBannerAtivo(achado as BannerPublicitario);
+            }
+          }
         }
-      } catch (err: any) {
-        console.error('💥 Exceção ao buscar banner:', err);
-        setDebugInfo(`Exceção JS: ${err?.message || err}`);
+      } catch (err) {
+        console.warn('Erro ao carregar banner publicitário:', err);
       }
     };
 
@@ -963,9 +951,9 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       </div>
 
       {/* ÁREA DO BANNER PUBLICITÁRIO CENTRALIZADO NO TOPO */}
-      <div className="w-full flex flex-col justify-center items-center my-0.5 px-1 shrink-0 z-20">
-        {bannerAtivo ? (
-          bannerAtivo.link_url ? (
+      {bannerAtivo && (
+        <div className="w-full flex justify-center items-center my-0.5 px-1 shrink-0 z-20">
+          {bannerAtivo.link_url ? (
             <a 
               href={bannerAtivo.link_url} 
               target="_blank" 
@@ -989,17 +977,9 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
                 className="w-full h-full object-cover"
               />
             </div>
-          )
-        ) : debugInfo ? (
-          <div className="w-full max-w-lg p-2 border border-red-500/40 bg-red-950/30 rounded-xl flex flex-col items-center justify-center text-center text-[10px] text-red-200 gap-1">
-            <div className="flex items-center gap-1 font-bold text-red-400">
-              <Bug className="w-3.5 h-3.5" />
-              <span>DIAGNÓSTICO DE BANNER</span>
-            </div>
-            <p className="break-all font-mono text-[9px] text-gray-300">{debugInfo}</p>
-          </div>
-        ) : null}
-      </div>
+          )}
+        </div>
+      )}
 
       {/* TABULEIRO / MESA - ENQUADRADO E SEM EXCEDER AS BORDAS */}
       <div className="flex-grow my-0.5 bg-emerald-950 border-[3px] sm:border-[4px] border-amber-950 rounded-[20px] shadow-[inset_0_4px_12px_rgba(0,0,0,0.6)] relative flex flex-col items-center justify-center h-[54%] overflow-hidden w-full">
