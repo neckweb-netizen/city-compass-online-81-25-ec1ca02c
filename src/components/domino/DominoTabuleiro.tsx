@@ -872,28 +872,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       }`}
       style={{ forcedColorAdjust: 'none', filter: 'none' }}
     >
-      {/* OVERLAY OBRIGATÓRIO: BLOQUEIA O JOGO FORA DO MODO TELA CHEIA */}
-      {!isFullscreen && (
-        <div className="absolute inset-0 bg-black/90 backdrop-blur-md z-[100000] flex flex-col items-center justify-center p-6 text-center space-y-4 animate-in fade-in duration-200">
-          <div className="p-4 bg-purple-950/60 border border-purple-500/40 rounded-full text-purple-400">
-            <Maximize2 className="w-10 h-10 animate-bounce" />
-          </div>
-          <div className="space-y-1 max-w-sm">
-            <h2 className="text-xl font-bold text-white">Modo Tela Cheia Obrigatório</h2>
-            <p className="text-xs text-gray-300 leading-relaxed">
-              Para garantir a melhor experiência de jogo sem distrações, você precisa ativar o modo tela cheia para jogar.
-            </p>
-          </div>
-          <Button 
-            onClick={alternarFullscreenModo}
-            className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-6 h-11 text-sm rounded-xl shadow-lg shadow-purple-600/30 flex items-center gap-2 active:scale-95 transition-all cursor-pointer"
-          >
-            <Maximize2 className="w-4 h-4" />
-            <span>Ativar Tela Cheia Para Jogar</span>
-          </Button>
-        </div>
-      )}
-
       {/* ELEMENTO FLUTUANTE SEGUINDO O DEDO NO TOUCH */}
       {touchPosicao && pedraArrastando && (
         <div 
@@ -1011,6 +989,29 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
       {/* TABULEIRO / MESA - ENQUADRADO E SEM EXCEDER AS BORDAS */}
       <div className="flex-grow my-0.5 bg-emerald-950 border-[3px] sm:border-[4px] border-amber-950 rounded-[20px] shadow-[inset_0_4px_12px_rgba(0,0,0,0.6)] relative flex flex-col items-center justify-center overflow-hidden w-full">
+        
+        {/* OVERLAY OBRIGATÓRIO: COBRE APENAS A MESA DE JOGO (TABULEIRO) */}
+        {!isFullscreen && (
+          <div className="absolute inset-0 bg-black/90 backdrop-blur-md z-[50] flex flex-col items-center justify-center p-4 text-center space-y-3 animate-in fade-in duration-200">
+            <div className="p-3 bg-purple-950/60 border border-purple-500/40 rounded-full text-purple-400">
+              <Maximize2 className="w-7 h-7 animate-bounce" />
+            </div>
+            <div className="space-y-1 max-w-xs">
+              <h2 className="text-sm sm:text-base font-bold text-white">Modo Tela Cheia Obrigatório</h2>
+              <p className="text-[10px] sm:text-xs text-gray-300 leading-relaxed">
+                Ative a tela cheia para jogar no tabuleiro.
+              </p>
+            </div>
+            <Button 
+              onClick={alternarFullscreenModo}
+              className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 h-9 text-xs rounded-xl shadow-lg shadow-purple-600/30 flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+              <span>Ativar Tela Cheia Para Jogar</span>
+            </Button>
+          </div>
+        )}
+
         {mesaPedras.length > 0 && (
           <div className="absolute top-1.5 left-2 sm:left-4 flex items-center gap-2 text-[9px] sm:text-[10px] font-semibold text-emerald-300/60 z-10">
             <span>Esq: <strong className="text-white bg-emerald-900/60 px-1 py-0.5 rounded text-[10px]">{pontaEsquerda}</strong></span>
