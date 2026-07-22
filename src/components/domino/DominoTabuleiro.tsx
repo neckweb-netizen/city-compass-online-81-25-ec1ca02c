@@ -312,7 +312,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
-  // EXECUÇÃO RIGOROSA DA JOGADA
+  // EXECUÇÃO RIGOROSA E INSTANTÂNEA DA JOGADA
   const executarJogadaNaPonta = async (pedra: string, ladoEscolha: 'esquerda' | 'direita') => {
     if (!meuTurno || processandoJogadaLocal.current) return;
     processandoJogadaLocal.current = true;
@@ -357,9 +357,24 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     const proximoTurnoId = usuarioId === jogador1Id ? jogador2Id : jogador1Id;
 
     try {
+      // 1. ATUALIZAÇÃO OTIMISTA LOCAL (A MESA E A MÃO REAGEM NA HORA):
       const restoDasPedras = minhasPedras.filter(p => p !== pedra);
       atualizarMinhasPedras(restoDasPedras);
+      setMesaPedras(novaMesa);
+      setPontaEsquerda(novaPontaE);
+      setPontaDireita(novaPontaD);
+      setVezUsuarioId(proximoTurnoId);
 
+      // 2. ENVIA O AVISO VIA WEBSOCKET (BROADCAST INSTANTÂNEO PARA O OPONENTE)
+      if (canalRef.current) {
+        canalRef.current.send({
+          type: 'broadcast',
+          event: 'jogada_realizada',
+          payload: { mesa: novaMesa, pontaE: novaPontaE, pontaD: novaPontaD, vezId: proximoTurnoId }
+        });
+      }
+
+      // 3. PERSISTE NO BANCO DE DADOS SUPABASE
       const { error } = await supabase
         .from('domino_salas')
         .update({
@@ -376,6 +391,8 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     } catch (err) {
       console.error(err);
       carregarDadosPartida();
+    } finally {
+      processandoJogadaLocal.current = false;
     }
   };
 
@@ -576,7 +593,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   }, [salaId, usuarioId, inicializarPedrasCompartilhadas]);
 
-  // CANAL REALTIME ESTÁVEL - SEM LOOP INFINITO
+  // CANAL REALTIME + BROADCAST ESTÁVEL (Sempre Atualizado Instantaneamente)
   useEffect(() => {
     carregarDadosPartida();
 
@@ -641,6 +658,14 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           }
         }
       )
+      .on('broadcast', { event: 'jogada_realizada' }, (payload) => {
+        const { mesa, pontaE, pontaD, vezId } = payload.payload;
+        if (mesa) setMesaPedras(mesa);
+        if (pontaE !== undefined) setPontaEsquerda(pontaE);
+        if (pontaD !== undefined) setPontaDireita(pontaD);
+        if (vezId) setVezUsuarioId(vezId);
+        setTempoRestante(30);
+      })
       .on('broadcast', { event: 'emoji' }, (payload) => {
         const { remetenteId, emoji } = payload.payload;
         if (remetenteId !== usuarioId) {
