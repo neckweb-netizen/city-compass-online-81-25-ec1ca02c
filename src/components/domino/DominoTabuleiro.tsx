@@ -876,7 +876,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </div>
       )}
 
-      {/* AVISO FLUTUANTE AJUSTADO PARA NÃO COBRIR O BANNER */}
+      {/* AVISO FLUTUANTE AJUSTADO */}
       {alertaTemporario && alertaTemporario.visivel && (
         <div className="absolute top-12 left-1/2 -translate-x-1/2 z-[60] bg-purple-950/95 border-2 border-purple-500 text-white px-3 py-1 rounded-2xl shadow-[0_4px_15px_rgba(147,51,234,0.4)] flex items-center gap-1.5 text-[10px] sm:text-xs font-bold animate-in fade-in slide-in-from-top-4 duration-200 whitespace-nowrap">
           <MessageSquare className="w-3 h-3 text-purple-400 animate-pulse" />
@@ -950,31 +950,31 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </Button>
       </div>
 
-      {/* ÁREA DO BANNER PUBLICITÁRIO - TOTALMENTE PROPORCIONAL E SEM CORTES */}
+      {/* ÁREA DO BANNER PUBLICITÁRIO - ENQUADRADO NA LARGURA TOTAL COM PROPORÇÃO PERFEITA */}
       {bannerAtivo && (
-        <div className="w-full flex justify-center items-center my-1 px-1 shrink-0 z-20">
+        <div className="w-full flex justify-center items-center my-0.5 px-0.5 shrink-0 z-20">
           {bannerAtivo.link_url ? (
             <a 
               href={bannerAtivo.link_url} 
               target="_blank" 
               rel="noopener noreferrer"
-              className="w-full max-w-md max-h-16 rounded-xl overflow-hidden border border-purple-500/40 shadow-md relative group block bg-black/40"
+              className="w-full rounded-xl overflow-hidden border border-purple-500/30 shadow-md relative group block"
             >
               <img 
                 src={bannerAtivo.imagem_url} 
                 alt={bannerAtivo.titulo} 
-                className="w-full h-auto max-h-16 object-contain mx-auto group-hover:scale-105 transition-all duration-300"
+                className="w-full h-auto block rounded-xl group-hover:scale-[1.02] transition-all duration-300"
               />
               <div className="absolute top-1 right-1 bg-black/60 backdrop-blur-md p-1 rounded-full text-white/80">
                 <ExternalLink className="w-3 h-3" />
               </div>
             </a>
           ) : (
-            <div className="w-full max-w-md max-h-16 rounded-xl overflow-hidden border border-purple-500/40 shadow-md relative bg-black/40">
+            <div className="w-full rounded-xl overflow-hidden border border-purple-500/30 shadow-md relative">
               <img 
                 src={bannerAtivo.imagem_url} 
                 alt={bannerAtivo.titulo} 
-                className="w-full h-auto max-h-16 object-contain mx-auto"
+                className="w-full h-auto block rounded-xl"
               />
             </div>
           )}
