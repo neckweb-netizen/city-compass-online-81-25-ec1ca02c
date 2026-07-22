@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, RefreshCw, Trophy, User, Maximize2, Minimize2, ShieldAlert, Award, MessageSquare, Timer } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Trophy, User, Maximize2, Minimize2, ShieldAlert, Award, MessageSquare, Timer, ArrowLeftRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface DominoTabuleiroProps {
@@ -99,6 +99,9 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const [pontaEsquerda, setPontaEsquerda] = useState<number | null>(null);
   const [pontaDireita, setPontaDireita] = useState<number | null>(null);
 
+  // ESTADO PARA SELEÇÃO ESTRATÉGICA DE PONTA
+  const [pedraSelecionadaEstrategia, setPedraSelecionadaEstrategia] = useState<string | null>(null);
+
   const [tempoRestante, setTempoRestante] = useState<number>(30);
   
   const processandoJogadaLocal = useRef(false);
@@ -119,9 +122,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           await (containerRef.current as any).webkitRequestFullscreen();
         }
         setIsFullscreen(true);
-        if (screen.orientation && (screen.orientation as any).lock) {
-          await (screen.orientation as any).lock('landscape').catch(() => {});
-        }
       }
     } catch (err) {
       console.warn(err);
@@ -184,7 +184,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     const proximoTurnoId = usuarioId === jogador1Id ? jogador2Id : jogador1Id;
 
     try {
-      // SISTEMA DE ANULAÇÃO COMPLETAMENTE REMOVIDO DAQUI. APENAS PASSA A VEZ INFINITAMENTE.
       await supabase
         .from('domino_salas')
         .update({
@@ -197,9 +196,11 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
-  const tentarJogarPedra = async (pedra: string) => {
+  // EXECUÇÃO FINAL DA JOGADA NA PONTA ESCOLHIDA
+  const executarJogadaNaPonta = async (pedra: string, ladoEscolha: 'esquerda' | 'direita') => {
     if (!meuTurno || processandoJogadaLocal.current) return;
     processandoJogadaLocal.current = true;
+    setPedraSelecionadaEstrategia(null);
 
     const [ladoA, ladoB] = pedra.split('-').map(Number);
     let novaMesa = [...mesaPedras];
@@ -211,26 +212,25 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       novaMesa.push(novaPedra);
       novaPontaE = ladoA;
       novaPontaD = ladoB;
-    } else {
+    } else if (ladoEscolha === 'esquerda') {
       if (ladoA === pontaEsquerda) {
         const novaPedra: PedraMesa = { valorOriginal: `${ladoB}-${ladoA}`, ladoEsquerdo: ladoB, ladoDireito: ladoA };
         novaMesa.unshift(novaPedra);
         novaPontaE = ladoB;
-      } else if (ladoB === pontaEsquerda) {
+      } else {
         const novaPedra: PedraMesa = { valorOriginal: `${ladoA}-${ladoB}`, ladoEsquerdo: ladoA, ladoDireito: ladoB };
         novaMesa.unshift(novaPedra);
         novaPontaE = ladoA;
-      } else if (ladoA === pontaDireita) {
+      }
+    } else if (ladoEscolha === 'direita') {
+      if (ladoA === pontaDireita) {
         const novaPedra: PedraMesa = { valorOriginal: `${ladoA}-${ladoB}`, ladoEsquerdo: ladoA, ladoDireito: ladoB };
         novaMesa.push(novaPedra);
         novaPontaD = ladoB;
-      } else if (ladoB === pontaDireita) {
+      } else {
         const novaPedra: PedraMesa = { valorOriginal: `${ladoB}-${ladoA}`, ladoEsquerdo: ladoB, ladoDireito: ladoA };
         novaMesa.push(novaPedra);
         novaPontaD = ladoA;
-      } else {
-        processandoJogadaLocal.current = false;
-        return;
       }
     }
 
@@ -255,6 +255,29 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     } catch (err) {
       console.error(err);
       carregarDadosPartida();
+    }
+  };
+
+  // CLIQUE NA PEDRA: DECIDE SE PERGUNTA A PONTA OU SE JOGA DIRETO
+  const tentarJogarPedra = (pedra: string) => {
+    if (!meuTurno || processandoJogadaLocal.current) return;
+
+    if (mesaPedras.length === 0) {
+      executarJogadaNaPonta(pedra, 'esquerda');
+      return;
+    }
+
+    const [ladoA, ladoB] = pedra.split('-').map(Number);
+    const daNaEsquerda = ladoA === pontaEsquerda || ladoB === pontaEsquerda;
+    const daNaDireita = ladoA === pontaDireita || ladoB === pontaDireita;
+
+    // SE A PEÇA SERVIR NAS DUAS PONTAS, FORÇA O JOGADOR A ESCOLHER A PONTA!
+    if (daNaEsquerda && daNaDireita) {
+      setPedraSelecionadaEstrategia(pedra);
+    } else if (daNaEsquerda) {
+      executarJogadaNaPonta(pedra, 'esquerda');
+    } else if (daNaDireita) {
+      executarJogadaNaPonta(pedra, 'direita');
     }
   };
 
@@ -421,6 +444,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         if (tempo <= 1) {
           clearInterval(cronometro);
           setAlertaTemporario({ visivel: true, mensagem: '⏱️ Seu tempo esgotou! A vez foi passada.' });
+          setPedraSelecionadaEstrategia(null);
           passarVez();
           return 30;
         }
@@ -504,6 +528,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </div>
       )}
       
+      {/* CAMEÇALHO */}
       <div className="flex items-center justify-between bg-[#110D1A]/95 border border-purple-950/40 px-3 py-1.5 rounded-xl shadow-lg h-[12%] z-30">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={sairDaPartida} className="text-gray-400 hover:text-white h-8 text-xs px-2">
@@ -547,6 +572,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </Button>
       </div>
 
+      {/* TABULEIRO / MESA */}
       <div className="flex-grow my-2 bg-emerald-950 border-[4px] border-amber-950 rounded-[24px] shadow-[inset_0_4px_12px_rgba(0,0,0,0.6)] relative flex flex-col items-center justify-center h-[53%] overflow-hidden">
         {mesaPedras.length > 0 && (
           <div className="absolute top-2 left-4 flex items-center gap-3 text-[10px] font-semibold text-emerald-300/60">
@@ -555,18 +581,92 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           </div>
         )}
 
-        <div className="flex items-center justify-center gap-[2px] max-w-full overflow-x-auto px-4 py-2">
-          {mesaPedras.length === 0 ? <div className="text-center text-emerald-300/30 font-bold uppercase tracking-widest text-xs py-6">Mesa de Dominó Limpa</div> : mesaPedras.map((pedra, idx) => (<div key={idx} className="shrink-0 flex items-center justify-center"><PedraClassica valor={pedra.valorOriginal} disabled={true} menor={true} deitada={pedra.ladoEsquerdo !== pedra.ladoDireito} /></div>))}
+        {/* ALERTA VISUAL DE ESCOLHA ESTRATÉGICA DE PONTA */}
+        {pedraSelecionadaEstrategia && (
+          <div className="absolute top-10 z-40 bg-purple-950/90 border border-purple-400/50 px-4 py-1.5 rounded-full text-xs font-bold text-purple-200 flex items-center gap-2 animate-bounce shadow-xl">
+            <ArrowLeftRight className="w-4 h-4 text-amber-400" />
+            <span>Toque na ponta verde onde quer jogar a pedra [{pedraSelecionadaEstrategia}]</span>
+          </div>
+        )}
+
+        <div className="flex items-center justify-center gap-[2px] max-w-full overflow-x-auto px-4 py-2 relative">
+          {mesaPedras.length === 0 ? (
+            <div className="text-center text-emerald-300/30 font-bold uppercase tracking-widest text-xs py-6">Mesa de Dominó Limpa</div>
+          ) : (
+            <>
+              {/* BOTAO DE ESCOLHA DA PONTA ESQUERDA */}
+              {pedraSelecionadaEstrategia && (
+                <button
+                  onClick={() => executarJogadaNaPonta(pedraSelecionadaEstrategia, 'esquerda')}
+                  className="shrink-0 bg-green-500 hover:bg-green-400 text-black font-black text-xs px-3 py-4 rounded-xl shadow-[0_0_15px_rgba(34,197,94,0.8)] animate-pulse transition-transform hover:scale-110 active:scale-95 z-30 mr-1"
+                >
+                  ◄ COLAR AQUI
+                </button>
+              )}
+
+              {mesaPedras.map((pedra, idx) => {
+                const ehBucha = pedra.ladoEsquerdo === pedra.ladoDireito;
+                const limiteHorizontal = 7;
+                
+                const ehDobraEsquerda = mesaPedras.length > limiteHorizontal && idx === 0;
+                const ehDobraDireita = mesaPedras.length > limiteHorizontal && idx === mesaPedras.length - 1;
+                const deveFicarDeitada = !ehBucha && !ehDobraEsquerda && !ehDobraDireita;
+
+                return (
+                  <div key={idx} className="shrink-0 flex items-center justify-center transition-all duration-300">
+                    <PedraClassica 
+                      valor={pedra.valorOriginal} 
+                      disabled={true} 
+                      menor={true} 
+                      deitada={deveFicarDeitada} 
+                    />
+                  </div>
+                );
+              })}
+
+              {/* BOTAO DE ESCOLHA DA PONTA DIREITA */}
+              {pedraSelecionadaEstrategia && (
+                <button
+                  onClick={() => executarJogadaNaPonta(pedraSelecionadaEstrategia, 'direita')}
+                  className="shrink-0 bg-green-500 hover:bg-green-400 text-black font-black text-xs px-3 py-4 rounded-xl shadow-[0_0_15px_rgba(34,197,94,0.8)] animate-pulse transition-transform hover:scale-110 active:scale-95 z-30 ml-1"
+                >
+                  COLAR AQUI ►
+                </button>
+              )}
+            </>
+          )}
         </div>
+
         <div className="absolute bottom-2 bg-[#090610]/95 border border-purple-900/40 px-4 py-1 rounded-full text-[10px] font-bold tracking-wide">
           {meuTurno ? <span className="text-green-400 animate-pulse flex items-center gap-1.5"><Timer className="w-3.5 h-3.5" /> {tempoRestante}s - SUA VEZ!</span> : <span className="text-gray-400">Aguardando {adversarioNome}...</span>}
         </div>
       </div>
 
+      {/* ÁREA DAS SUAS PEDRAS (MÃO) */}
       <div className="bg-[#110D1A]/95 border border-purple-950/40 p-2.5 rounded-2xl h-[30%] flex flex-col justify-between">
-        <div className="flex items-center justify-between px-1 h-[25%]"><span className="text-[10px] text-purple-300 font-bold uppercase tracking-wider">Suas Pedras ({minhasPedras.length})</span></div>
+        <div className="flex items-center justify-between px-1 h-[25%]">
+          <span className="text-[10px] text-purple-300 font-bold uppercase tracking-wider">Suas Pedras ({minhasPedras.length})</span>
+          {pedraSelecionadaEstrategia && (
+            <button 
+              onClick={() => setPedraSelecionadaEstrategia(null)}
+              className="text-[10px] text-amber-400 hover:underline font-bold"
+            >
+              Cancelar seleção
+            </button>
+          )}
+        </div>
         <div className="flex justify-center items-center gap-1.5 overflow-x-auto h-[75%] py-1">
-          {minhasPedras.map((pedra, idx) => (<div key={idx} className="shrink-0 scale-90 md:scale-100"><PedraClassica valor={pedra} onClick={() => tentarJogarPedra(pedra)} disabled={!(meuTurno && isPedraJogavel(pedra))} menor={true} destacada={meuTurno && isPedraJogavel(pedra)} /></div>))}
+          {minhasPedras.map((pedra, idx) => (
+            <div key={idx} className="shrink-0 scale-90 md:scale-100">
+              <PedraClassica 
+                valor={pedra} 
+                onClick={() => tentarJogarPedra(pedra)} 
+                disabled={!(meuTurno && isPedraJogavel(pedra))} 
+                menor={true} 
+                destacada={meuTurno && isPedraJogavel(pedra) && pedraSelecionadaEstrategia === pedra} 
+              />
+            </div>
+          ))}
         </div>
       </div>
     </div>
