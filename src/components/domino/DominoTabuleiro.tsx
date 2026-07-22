@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, RefreshCw, Trophy, User, Maximize2, Minimize2, ShieldAlert, Award, MessageSquare, Timer, ArrowLeftRight } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Trophy, User, Maximize2, Minimize2, ShieldAlert, Award, MessageSquare, Timer, Move } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface DominoTabuleiroProps {
@@ -22,7 +22,8 @@ const PedraClassica = ({
   disabled, 
   menor = false, 
   deitada = false,
-  destacada = false 
+  destacada = false,
+  onDragStart
 }: { 
   valor: string; 
   onClick?: () => void; 
@@ -30,6 +31,7 @@ const PedraClassica = ({
   menor?: boolean; 
   deitada?: boolean;
   destacada?: boolean;
+  onDragStart?: (e: React.DragEvent) => void;
 }) => {
   const safeValor = valor || '0-0';
   const [ladoA, ladoB] = safeValor.split('-').map(Number);
@@ -44,7 +46,7 @@ const PedraClassica = ({
     const espacamentoGrid = menor ? 'gap-0.5 p-1' : 'gap-1 p-1.5';
 
     return (
-      <div className={`grid grid-cols-3 ${espacamentoGrid} h-full w-full items-center justify-items-center`}>
+      <div className={`grid grid-cols-3 ${espacamentoGrid} h-full w-full items-center justify-items-center pointer-events-none`}>
         {[...Array(9)].map((_, i) => (
           <div
             key={i}
@@ -65,19 +67,21 @@ const PedraClassica = ({
     <button
       disabled={disabled}
       onClick={onClick}
+      draggable={!disabled && !!onDragStart}
+      onDragStart={onDragStart}
       className={`${classesTamanho} bg-[#1a1a1a] border-[#333] rounded-lg flex items-center justify-between shadow-lg relative transition-all ${
         destacada 
-          ? 'border-purple-500 shadow-[0_0_15px_rgba(147,51,234,0.7)] scale-105 animate-pulse cursor-pointer z-10' 
+          ? 'border-purple-500 shadow-[0_0_15px_rgba(147,51,234,0.7)] scale-105 animate-pulse cursor-grab active:cursor-grabbing z-10' 
           : disabled && !onClick
             ? 'opacity-100'
             : 'opacity-40 cursor-not-allowed'
       }`}
     >
-      <div className="flex-1 w-full h-full flex items-center justify-center">
+      <div className="flex-1 w-full h-full flex items-center justify-center pointer-events-none">
         {renderBolinhas(ladoA)}
       </div>
-      <div className={deitada ? "h-[90%] w-[1.5px] bg-amber-600/80 rounded-full" : "w-[90%] h-[1.5px] bg-amber-600/80 rounded-full"} />
-      <div className="flex-1 w-full h-full flex items-center justify-center">
+      <div className={deitada ? "h-[90%] w-[1.5px] bg-amber-600/80 rounded-full pointer-events-none" : "w-[90%] h-[1.5px] bg-amber-600/80 rounded-full pointer-events-none"} />
+      <div className="flex-1 w-full h-full flex items-center justify-center pointer-events-none">
         {renderBolinhas(ladoB)}
       </div>
     </button>
@@ -99,8 +103,9 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const [pontaEsquerda, setPontaEsquerda] = useState<number | null>(null);
   const [pontaDireita, setPontaDireita] = useState<number | null>(null);
 
-  // ESTADO PARA SELEÇÃO ESTRATÉGICA DE PONTA
-  const [pedraSelecionadaEstrategia, setPedraSelecionadaEstrategia] = useState<string | null>(null);
+  // ESTADO DE DRAG AND DROP
+  const [pedraArrastando, setPedraArrastando] = useState<string | null>(null);
+  const [sobreDropZone, setSobreDropZone] = useState<'esquerda' | 'direita' | null>(null);
 
   const [tempoRestante, setTempoRestante] = useState<number>(30);
   
@@ -196,11 +201,11 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
-  // EXECUÇÃO FINAL DA JOGADA NA PONTA ESCOLHIDA
+  // EXECUÇÃO FINAL DA JOGADA ENCAIXANDO NA PONTA ESCOLHIDA
   const executarJogadaNaPonta = async (pedra: string, ladoEscolha: 'esquerda' | 'direita') => {
     if (!meuTurno || processandoJogadaLocal.current) return;
     processandoJogadaLocal.current = true;
-    setPedraSelecionadaEstrategia(null);
+    setPedraArrastando(null);
 
     const [ladoA, ladoB] = pedra.split('-').map(Number);
     let novaMesa = [...mesaPedras];
@@ -258,8 +263,45 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
-  // CLIQUE NA PEDRA: DECIDE SE PERGUNTA A PONTA OU SE JOGA DIRETO
-  const tentarJogarPedra = (pedra: string) => {
+  // EVENTOS DE DRAG & DROP
+  const handleDragStart = (pedra: string, e: React.DragEvent) => {
+    if (!meuTurno || !isPedraJogavel(pedra)) return;
+    setPedraArrastando(pedra);
+    e.dataTransfer.setData('text/plain', pedra);
+  };
+
+  const handleDragOver = (e: React.DragEvent, lado: 'esquerda' | 'direita') => {
+    e.preventDefault();
+    setSobreDropZone(lado);
+  };
+
+  const handleDragLeave = () => {
+    setSobreDropZone(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, lado: 'esquerda' | 'direita') => {
+    e.preventDefault();
+    setSobreDropZone(null);
+    const pedra = e.dataTransfer.getData('text/plain') || pedraArrastando;
+    if (pedra) {
+      const [ladoA, ladoB] = pedra.split('-').map(Number);
+      const serveNaEsquerda = ladoA === pontaEsquerda || ladoB === pontaEsquerda;
+      const serveNaDireita = ladoA === pontaDireita || ladoB === pontaDireita;
+
+      if (mesaPedras.length === 0) {
+        executarJogadaNaPonta(pedra, 'esquerda');
+      } else if (lado === 'esquerda' && serveNaEsquerda) {
+        executarJogadaNaPonta(pedra, 'esquerda');
+      } else if (lado === 'direita' && serveNaDireita) {
+        executarJogadaNaPonta(pedra, 'direita');
+      } else {
+        setAlertaTemporario({ visivel: true, mensagem: '❌ Esta pedra não encaixa nessa ponta!' });
+      }
+    }
+  };
+
+  // CLIQUE SIMPLES COMO OPÇÃO SECUNDÁRIA
+  const tentarJogarPedraClique = (pedra: string) => {
     if (!meuTurno || processandoJogadaLocal.current) return;
 
     if (mesaPedras.length === 0) {
@@ -271,9 +313,8 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     const daNaEsquerda = ladoA === pontaEsquerda || ladoB === pontaEsquerda;
     const daNaDireita = ladoA === pontaDireita || ladoB === pontaDireita;
 
-    // SE A PEÇA SERVIR NAS DUAS PONTAS, FORÇA O JOGADOR A ESCOLHER A PONTA!
     if (daNaEsquerda && daNaDireita) {
-      setPedraSelecionadaEstrategia(pedra);
+      setPedraArrastando(pedra); // Ativa as zonas de soltura para o jogador escolher a ponta
     } else if (daNaEsquerda) {
       executarJogadaNaPonta(pedra, 'esquerda');
     } else if (daNaDireita) {
@@ -444,7 +485,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         if (tempo <= 1) {
           clearInterval(cronometro);
           setAlertaTemporario({ visivel: true, mensagem: '⏱️ Seu tempo esgotou! A vez foi passada.' });
-          setPedraSelecionadaEstrategia(null);
+          setPedraArrastando(null);
           passarVez();
           return 30;
         }
@@ -528,7 +569,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </div>
       )}
       
-      {/* CAMEÇALHO */}
+      {/* CABEÇALHO */}
       <div className="flex items-center justify-between bg-[#110D1A]/95 border border-purple-950/40 px-3 py-1.5 rounded-xl shadow-lg h-[12%] z-30">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={sairDaPartida} className="text-gray-400 hover:text-white h-8 text-xs px-2">
@@ -572,7 +613,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </Button>
       </div>
 
-      {/* TABULEIRO / MESA */}
+      {/* TABULEIRO / MESA COM ÁREAS DE SOLTURA (DROP ZONES) */}
       <div className="flex-grow my-2 bg-emerald-950 border-[4px] border-amber-950 rounded-[24px] shadow-[inset_0_4px_12px_rgba(0,0,0,0.6)] relative flex flex-col items-center justify-center h-[53%] overflow-hidden">
         {mesaPedras.length > 0 && (
           <div className="absolute top-2 left-4 flex items-center gap-3 text-[10px] font-semibold text-emerald-300/60">
@@ -581,28 +622,40 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           </div>
         )}
 
-        {/* ALERTA VISUAL DE ESCOLHA ESTRATÉGICA DE PONTA */}
-        {pedraSelecionadaEstrategia && (
-          <div className="absolute top-10 z-40 bg-purple-950/90 border border-purple-400/50 px-4 py-1.5 rounded-full text-xs font-bold text-purple-200 flex items-center gap-2 animate-bounce shadow-xl">
-            <ArrowLeftRight className="w-4 h-4 text-amber-400" />
-            <span>Toque na ponta verde onde quer jogar a pedra [{pedraSelecionadaEstrategia}]</span>
+        {/* MENSAGEM INDICANDO COMO ARRASTAR */}
+        {meuTurno && mesaPedras.length > 0 && (
+          <div className="absolute top-2 z-20 text-[10px] text-emerald-300/70 bg-emerald-900/40 px-3 py-0.5 rounded-full flex items-center gap-1 font-semibold">
+            <Move className="w-3 h-3 text-amber-400 animate-pulse" />
+            <span>Arraste a peça e solte na ponta desejada</span>
           </div>
         )}
 
-        <div className="flex items-center justify-center gap-[2px] max-w-full overflow-x-auto px-4 py-2 relative">
+        <div className="flex items-center justify-center gap-[2px] max-w-full overflow-x-auto px-4 py-2 relative w-full h-full">
           {mesaPedras.length === 0 ? (
-            <div className="text-center text-emerald-300/30 font-bold uppercase tracking-widest text-xs py-6">Mesa de Dominó Limpa</div>
+            /* DROP ZONE MESA VAZIA */
+            <div 
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => handleDrop(e, 'esquerda')}
+              className="w-48 h-24 border-2 border-dashed border-emerald-400/40 rounded-2xl flex flex-col items-center justify-center text-center text-emerald-300/60 font-bold text-xs p-4 bg-emerald-900/20 hover:bg-emerald-900/40 transition-all cursor-pointer"
+            >
+              <Move className="w-6 h-6 mb-1 text-amber-400 animate-bounce" />
+              <span>Arraste e solte a primeira pedra aqui</span>
+            </div>
           ) : (
             <>
-              {/* BOTAO DE ESCOLHA DA PONTA ESQUERDA */}
-              {pedraSelecionadaEstrategia && (
-                <button
-                  onClick={() => executarJogadaNaPonta(pedraSelecionadaEstrategia, 'esquerda')}
-                  className="shrink-0 bg-green-500 hover:bg-green-400 text-black font-black text-xs px-3 py-4 rounded-xl shadow-[0_0_15px_rgba(34,197,94,0.8)] animate-pulse transition-transform hover:scale-110 active:scale-95 z-30 mr-1"
-                >
-                  ◄ COLAR AQUI
-                </button>
-              )}
+              {/* DROP ZONE PONTA ESQUERDA */}
+              <div
+                onDragOver={(e) => handleDragOver(e, 'esquerda')}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, 'esquerda')}
+                className={`shrink-0 h-20 w-16 border-2 border-dashed rounded-xl flex items-center justify-center text-[10px] font-black transition-all mr-2 ${
+                  sobreDropZone === 'esquerda'
+                    ? 'border-green-400 bg-green-500/30 text-white scale-110 shadow-[0_0_15px_rgba(34,197,94,0.8)]'
+                    : 'border-emerald-500/50 bg-emerald-900/30 text-emerald-300 hover:border-green-400'
+                }`}
+              >
+                SOLTAR ESQ
+              </div>
 
               {mesaPedras.map((pedra, idx) => {
                 const ehBucha = pedra.ladoEsquerdo === pedra.ladoDireito;
@@ -624,15 +677,19 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
                 );
               })}
 
-              {/* BOTAO DE ESCOLHA DA PONTA DIREITA */}
-              {pedraSelecionadaEstrategia && (
-                <button
-                  onClick={() => executarJogadaNaPonta(pedraSelecionadaEstrategia, 'direita')}
-                  className="shrink-0 bg-green-500 hover:bg-green-400 text-black font-black text-xs px-3 py-4 rounded-xl shadow-[0_0_15px_rgba(34,197,94,0.8)] animate-pulse transition-transform hover:scale-110 active:scale-95 z-30 ml-1"
-                >
-                  COLAR AQUI ►
-                </button>
-              )}
+              {/* DROP ZONE PONTA DIREITA */}
+              <div
+                onDragOver={(e) => handleDragOver(e, 'direita')}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, 'direita')}
+                className={`shrink-0 h-20 w-16 border-2 border-dashed rounded-xl flex items-center justify-center text-[10px] font-black transition-all ml-2 ${
+                  sobreDropZone === 'direita'
+                    ? 'border-green-400 bg-green-500/30 text-white scale-110 shadow-[0_0_15px_rgba(34,197,94,0.8)]'
+                    : 'border-emerald-500/50 bg-emerald-900/30 text-emerald-300 hover:border-green-400'
+                }`}
+              >
+                SOLTAR DIR
+              </div>
             </>
           )}
         </div>
@@ -642,17 +699,12 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </div>
       </div>
 
-      {/* ÁREA DAS SUAS PEDRAS (MÃO) */}
+      {/* ÁREA DAS SUAS PEDRAS (MÃO ARRASTÁVEL) */}
       <div className="bg-[#110D1A]/95 border border-purple-950/40 p-2.5 rounded-2xl h-[30%] flex flex-col justify-between">
         <div className="flex items-center justify-between px-1 h-[25%]">
           <span className="text-[10px] text-purple-300 font-bold uppercase tracking-wider">Suas Pedras ({minhasPedras.length})</span>
-          {pedraSelecionadaEstrategia && (
-            <button 
-              onClick={() => setPedraSelecionadaEstrategia(null)}
-              className="text-[10px] text-amber-400 hover:underline font-bold"
-            >
-              Cancelar seleção
-            </button>
+          {pedraArrastando && (
+            <span className="text-[10px] text-amber-400 font-bold animate-pulse">Arrastando: [{pedraArrastando}]</span>
           )}
         </div>
         <div className="flex justify-center items-center gap-1.5 overflow-x-auto h-[75%] py-1">
@@ -660,10 +712,11 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             <div key={idx} className="shrink-0 scale-90 md:scale-100">
               <PedraClassica 
                 valor={pedra} 
-                onClick={() => tentarJogarPedra(pedra)} 
+                onClick={() => tentarJogarPedraClique(pedra)} 
+                onDragStart={(e) => handleDragStart(pedra, e)}
                 disabled={!(meuTurno && isPedraJogavel(pedra))} 
                 menor={true} 
-                destacada={meuTurno && isPedraJogavel(pedra) && pedraSelecionadaEstrategia === pedra} 
+                destacada={meuTurno && isPedraJogavel(pedra)} 
               />
             </div>
           ))}
