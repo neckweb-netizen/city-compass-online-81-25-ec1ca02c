@@ -256,6 +256,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       setIsFullscreen(emFullscreenNativo);
     };
 
+    checarFullscreenReal();
     document.addEventListener('fullscreenchange', checarFullscreenReal);
     document.addEventListener('webkitfullscreenchange', checarFullscreenReal);
 
@@ -313,25 +314,30 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     onVoltarAoLobby();
   };
 
-  const sairDaPartida = async () => {
-    try {
-      const updates: any = {};
-      if (jogador1Id === usuarioId) updates.jogador_1_id = null;
-      if (jogador2Id === usuarioId) updates.jogador_2_id = null;
-      
-      updates.status = 'aguardando';
-      updates.vez_usuario_id = null;
-      updates.mesa_ponta_esquerda = null;
-      updates.mesa_ponta_direita = null;
-      updates.historico_jogadas = [];
-      updates.passadas_count = 0;
-      updates.atualizado_em = new Date().toISOString();
+  // BOTÃO DE SAIR CORRIGIDO: INSTANTÂNEO NO PRIMEIRO CLIQUE
+  const sairDaPartida = () => {
+    sairDaPartidaLocal();
 
-      await supabase.from('domino_salas').update(updates).eq('id', salaId);
-      sairDaPartidaLocal();
-    } catch (err) {
-      sairDaPartidaLocal();
-    }
+    // Executa em segundo plano para não travar a ação do usuário
+    (async () => {
+      try {
+        const updates: any = {};
+        if (jogador1Id === usuarioId) updates.jogador_1_id = null;
+        if (jogador2Id === usuarioId) updates.jogador_2_id = null;
+        
+        updates.status = 'aguardando';
+        updates.vez_usuario_id = null;
+        updates.mesa_ponta_esquerda = null;
+        updates.mesa_ponta_direita = null;
+        updates.historico_jogadas = [];
+        updates.passadas_count = 0;
+        updates.atualizado_em = new Date().toISOString();
+
+        await supabase.from('domino_salas').update(updates).eq('id', salaId);
+      } catch (err) {
+        console.warn('Erro ao atualizar saída da sala:', err);
+      }
+    })();
   };
 
   const isPedraJogavel = (pedra: string) => {
@@ -406,7 +412,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   // EXECUÇÃO RIGOROSA DA JOGADA
   const executarJogadaNaPonta = async (pedra: string, ladoEscolha: 'esquerda' | 'direita') => {
-    if (!meuTurno || processandoJogadaLocal.current) return;
+    if (!meuTurno || processandoJogadaLocal.current || !isFullscreen) return;
     processandoJogadaLocal.current = true;
     setPedraArrastando(null);
     setTouchPosicao(null);
@@ -487,7 +493,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   // DESKTOP DRAG
   const handleDragStart = (pedra: string, e: React.DragEvent) => {
-    if (!meuTurno || !isPedraJogavel(pedra)) return;
+    if (!meuTurno || !isPedraJogavel(pedra) || !isFullscreen) return;
     setPedraArrastando(pedra);
     e.dataTransfer.setData('text/plain', pedra);
   };
@@ -512,7 +518,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   // TOUCH MOBILE
   const handleTouchStart = (pedra: string, e: React.TouchEvent) => {
-    if (!meuTurno || !isPedraJogavel(pedra)) return;
+    if (!meuTurno || !isPedraJogavel(pedra) || !isFullscreen) return;
     const touch = e.touches[0];
     setPedraArrastando(pedra);
     setTouchPosicao({ x: touch.clientX, y: touch.clientY });
@@ -779,7 +785,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   // CRONÔMETRO
   useEffect(() => {
-    if (!meuTurno) {
+    if (!meuTurno || !isFullscreen) {
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
@@ -809,7 +815,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         timerRef.current = null;
       }
     };
-  }, [meuTurno, vezUsuarioId]);
+  }, [meuTurno, vezUsuarioId, isFullscreen]);
 
   useEffect(() => {
     if (alertaTemporario && alertaTemporario.visivel) {
@@ -820,7 +826,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   // AUTO-PASSE INSTANTÂNEO
   useEffect(() => {
-    if (meuTurno && minhasPedras.length > 0 && mesaPedras.length > 0 && !processandoJogadaLocal.current) {
+    if (meuTurno && minhasPedras.length > 0 && mesaPedras.length > 0 && !processandoJogadaLocal.current && isFullscreen) {
       const temQualquerPecaJogavel = minhasPedras.some(pedra => isPedraJogavel(pedra));
 
       if (!temQualquerPecaJogavel) {
@@ -828,7 +834,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         passarVez();
       }
     }
-  }, [meuTurno, minhasPedras, mesaPedras, pontaEsquerda, pontaDireita]);
+  }, [meuTurno, minhasPedras, mesaPedras, pontaEsquerda, pontaDireita, isFullscreen]);
 
   // VITÓRIA
   useEffect(() => {
@@ -848,7 +854,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     sairDaPartidaLocal();
   };
 
-  // CÁLCULO DE ESCALONAMENTO PRECISO PARA MODO VERTICAL
+  // CÁLCULO DE ESCALONAMENTO PRECISO PARA MODO VERTICAL E PAISAGEM
   const getEscalaMesa = () => {
     const qtd = mesaPedras.length;
     if (qtd <= 3) return 'scale-90 sm:scale-100';
@@ -861,11 +867,33 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   return (
     <div 
       ref={containerRef} 
-      className={`w-screen bg-[#090610] text-white font-sans flex flex-col justify-between p-1 sm:p-4 overflow-hidden select-none relative ${
+      className={`w-screen bg-[#090610] text-white font-sans flex flex-col justify-between p-1 sm:p-3 overflow-hidden select-none relative ${
         isFullscreen ? 'fixed inset-0 z-[99999] h-[100dvh] w-screen' : 'h-screen'
       }`}
       style={{ forcedColorAdjust: 'none', filter: 'none' }}
     >
+      {/* OVERLAY OBRIGATÓRIO: BLOQUEIA O JOGO FORA DO MODO TELA CHEIA */}
+      {!isFullscreen && (
+        <div className="absolute inset-0 bg-black/90 backdrop-blur-md z-[100000] flex flex-col items-center justify-center p-6 text-center space-y-4 animate-in fade-in duration-200">
+          <div className="p-4 bg-purple-950/60 border border-purple-500/40 rounded-full text-purple-400">
+            <Maximize2 className="w-10 h-10 animate-bounce" />
+          </div>
+          <div className="space-y-1 max-w-sm">
+            <h2 className="text-xl font-bold text-white">Modo Tela Cheia Obrigatório</h2>
+            <p className="text-xs text-gray-300 leading-relaxed">
+              Para garantir a melhor experiência de jogo sem distrações, você precisa ativar o modo tela cheia para jogar.
+            </p>
+          </div>
+          <Button 
+            onClick={alternarFullscreenModo}
+            className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-6 h-11 text-sm rounded-xl shadow-lg shadow-purple-600/30 flex items-center gap-2 active:scale-95 transition-all cursor-pointer"
+          >
+            <Maximize2 className="w-4 h-4" />
+            <span>Ativar Tela Cheia Para Jogar</span>
+          </Button>
+        </div>
+      )}
+
       {/* ELEMENTO FLUTUANTE SEGUINDO O DEDO NO TOUCH */}
       {touchPosicao && pedraArrastando && (
         <div 
@@ -900,9 +928,9 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       )}
 
       {/* CABEÇALHO COMPACTO E ADAPTÁVEL SEM CORTES */}
-      <div className="flex items-center justify-between bg-[#110D1A]/95 border border-purple-950/40 px-1.5 sm:px-3 py-1 rounded-xl shadow-lg h-[8%] min-h-[38px] z-30 w-full gap-1">
+      <div className="flex items-center justify-between bg-[#110D1A]/95 border border-purple-950/40 px-1.5 sm:px-3 py-1 rounded-xl shadow-lg h-[8%] min-h-[36px] z-30 w-full gap-1">
         <div className="flex items-center gap-1 shrink-0">
-          <Button variant="ghost" size="sm" onClick={sairDaPartida} className="text-gray-400 hover:text-white h-7 text-[10px] sm:text-xs px-1 sm:px-2">
+          <Button variant="ghost" size="sm" onClick={sairDaPartida} className="text-gray-400 hover:text-white h-7 text-[10px] sm:text-xs px-1 sm:px-2 cursor-pointer active:scale-95">
             <ArrowLeft className="w-3 h-3 mr-0.5" /> Sair
           </Button>
           <span className="text-[8px] sm:text-[10px] text-purple-300 font-bold bg-purple-950/50 px-1.5 py-0.5 rounded-full shrink-0">Mesa {numeroSala}</span>
@@ -943,40 +971,38 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           variant="outline" 
           size="sm" 
           onClick={alternarFullscreenModo} 
-          className="bg-purple-950/60 hover:bg-purple-900 border-purple-500/40 text-purple-200 hover:text-white h-7 text-[9px] sm:text-[10px] font-bold px-2 rounded-lg shrink-0 flex items-center gap-1"
+          className="bg-purple-950/60 hover:bg-purple-900 border-purple-500/40 text-purple-200 hover:text-white h-7 text-[9px] sm:text-[10px] font-bold px-2 rounded-lg shrink-0 flex items-center gap-1 cursor-pointer"
         >
           {isFullscreen ? <Minimize2 className="w-3 h-3 text-purple-400" /> : <Maximize2 className="w-3 h-3 text-purple-400" />}
           <span>{isFullscreen ? 'Sair Full' : 'Tela Cheia'}</span>
         </Button>
       </div>
 
-      {/* ÁREA DO BANNER PUBLICITÁRIO - MESMA PROPORÇÃO DA HOME (aspect-[970/250]) E COMPACTO */}
+      {/* ÁREA DO BANNER PUBLICITÁRIO - ALTURA ULTRA-COMPACTA PERFECT FIT */}
       {bannerAtivo && (
-        <div className="w-full flex justify-center items-center my-0.5 px-1 shrink-0 z-20">
+        <div className="w-full flex justify-center items-center my-0.5 px-0.5 shrink-0 z-20">
           {bannerAtivo.link_url ? (
             <a 
               href={bannerAtivo.link_url} 
               target="_blank" 
               rel="noopener noreferrer"
-              className="w-full max-w-sm sm:max-w-md aspect-[970/250] rounded-xl overflow-hidden border border-purple-500/40 shadow-md relative group block bg-[#110D1A]"
+              className="w-full max-w-xs sm:max-w-md h-8 sm:h-10 md:h-12 rounded-lg overflow-hidden border border-purple-500/30 shadow-md relative group block bg-[#110D1A]"
             >
               <img 
                 src={bannerAtivo.imagem_url} 
                 alt={bannerAtivo.titulo} 
-                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-                style={{ aspectRatio: '970/250' }}
+                className="w-full h-full object-cover object-center group-hover:scale-[1.02] transition-all duration-300"
               />
-              <div className="absolute top-1 right-1 z-20 bg-black/60 backdrop-blur-md p-0.5 rounded-full text-white/80">
-                <ExternalLink className="w-2.5 h-2.5" />
+              <div className="absolute top-0.5 right-0.5 z-20 bg-black/60 backdrop-blur-md p-0.5 rounded-full text-white/80">
+                <ExternalLink className="w-2 h-2" />
               </div>
             </a>
           ) : (
-            <div className="w-full max-w-sm sm:max-w-md aspect-[970/250] rounded-xl overflow-hidden border border-purple-500/40 shadow-md relative bg-[#110D1A]">
+            <div className="w-full max-w-xs sm:max-w-md h-8 sm:h-10 md:h-12 rounded-lg overflow-hidden border border-purple-500/30 shadow-md relative bg-[#110D1A]">
               <img 
                 src={bannerAtivo.imagem_url} 
                 alt={bannerAtivo.titulo} 
-                className="w-full h-full object-cover"
-                style={{ aspectRatio: '970/250' }}
+                className="w-full h-full object-cover object-center"
               />
             </div>
           )}
@@ -984,7 +1010,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       )}
 
       {/* TABULEIRO / MESA - ENQUADRADO E SEM EXCEDER AS BORDAS */}
-      <div className="flex-grow my-0.5 bg-emerald-950 border-[3px] sm:border-[4px] border-amber-950 rounded-[20px] shadow-[inset_0_4px_12px_rgba(0,0,0,0.6)] relative flex flex-col items-center justify-center h-[54%] overflow-hidden w-full">
+      <div className="flex-grow my-0.5 bg-emerald-950 border-[3px] sm:border-[4px] border-amber-950 rounded-[20px] shadow-[inset_0_4px_12px_rgba(0,0,0,0.6)] relative flex flex-col items-center justify-center overflow-hidden w-full">
         {mesaPedras.length > 0 && (
           <div className="absolute top-1.5 left-2 sm:left-4 flex items-center gap-2 text-[9px] sm:text-[10px] font-semibold text-emerald-300/60 z-10">
             <span>Esq: <strong className="text-white bg-emerald-900/60 px-1 py-0.5 rounded text-[10px]">{pontaEsquerda}</strong></span>
@@ -1005,13 +1031,13 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
               data-dropzone="esquerda"
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => handleDrop(e, 'esquerda')}
-              className={`w-36 sm:w-48 h-20 sm:h-24 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center text-center font-bold text-[11px] sm:text-xs p-2 transition-all ${
+              className={`w-36 sm:w-48 h-16 sm:h-20 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center text-center font-bold text-[10px] sm:text-xs p-2 transition-all ${
                 sobreDropZone === 'esquerda'
                   ? 'border-green-400 bg-green-500/40 text-white scale-105 shadow-[0_0_20px_rgba(34,197,94,0.9)]'
                   : 'border-emerald-400/40 bg-emerald-900/20 text-emerald-300/60'
               }`}
             >
-              <Move className="w-5 h-5 mb-1 text-amber-400 animate-bounce" />
+              <Move className="w-4 h-4 mb-0.5 text-amber-400 animate-bounce" />
               <span>Arraste e solte a primeira pedra aqui</span>
             </div>
           ) : (
@@ -1068,10 +1094,10 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           )}
         </div>
 
-        <div className="absolute bottom-1.5 bg-[#090610]/95 border border-purple-900/40 px-3 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold tracking-wide">
+        <div className="absolute bottom-1 bg-[#090610]/95 border border-purple-900/40 px-2.5 py-0.5 rounded-full text-[8px] sm:text-[10px] font-bold tracking-wide">
           {meuTurno ? (
             <span className="text-green-400 animate-pulse flex items-center gap-1">
-              <Timer className="w-3 h-3" /> {tempoRestante}s - SUA VEZ!
+              <Timer className="w-2.5 h-2.5" /> {tempoRestante}s - SUA VEZ!
             </span>
           ) : (
             <span className="text-gray-400">Aguardando {adversarioNome}...</span>
@@ -1080,7 +1106,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       </div>
 
       {/* ÁREA DAS SUAS PEDRAS (MÃO ARRASTÁVEL COM PEDRAS BRANCAS NÍTIDAS) */}
-      <div className="bg-[#110D1A]/95 border border-purple-950/40 p-1.5 sm:p-2.5 rounded-2xl h-[26%] flex flex-col justify-between w-full">
+      <div className="bg-[#110D1A]/95 border border-purple-950/40 p-1 sm:p-2 rounded-2xl h-[24%] flex flex-col justify-between w-full">
         <div className="flex items-center justify-between px-1 h-[20%]">
           <span className="text-[8px] sm:text-[10px] text-purple-300 font-bold uppercase tracking-wider">Suas Pedras ({minhasPedras.length})</span>
           {pedraArrastando && (
@@ -1089,14 +1115,14 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </div>
         <div className="flex justify-center items-center gap-1 overflow-x-auto h-[80%] py-0.5">
           {minhasPedras.map((pedra, idx) => (
-            <div key={idx} className="shrink-0 scale-90 sm:scale-100 touch-none">
+            <div key={idx} className="shrink-0 scale-85 sm:scale-100 touch-none">
               <PedraClassica 
                 valor={pedra} 
                 onDragStart={(e) => handleDragStart(pedra, e)}
                 onTouchStart={(e) => handleTouchStart(pedra, e)}
-                disabled={!(meuTurno && isPedraJogavel(pedra))} 
+                disabled={!(meuTurno && isPedraJogavel(pedra) && isFullscreen)} 
                 menor={true} 
-                destacada={meuTurno && isPedraJogavel(pedra)} 
+                destacada={meuTurno && isPedraJogavel(pedra) && isFullscreen} 
               />
             </div>
           ))}
