@@ -22,6 +22,7 @@ interface BannerPublicitario {
   imagem_url: string;
   link_url?: string | null;
   ativo: boolean;
+  secao?: string;
 }
 
 // SINTETIZADOR WEB AUDIO API PARA EFEITOS SONOROS
@@ -211,21 +212,32 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   const keyStoragePedras = `domino_pedras_sala_${salaId}_usr_${usuarioId}`;
 
-  // CARREGA O BANNER DA SEÇÃO 'DOMINO' CADASTRADO NO ADM
+  // CARREGA O BANNER DA SEÇÃO 'DOMINO' CADASTRADO NO ADM DE FORMA ROBUSTA
   useEffect(() => {
     const buscarBannerDomino = async () => {
       try {
         const { data, error } = await supabase
           .from('banners')
-          .select('id, titulo, imagem_url, link_url, ativo')
-          .eq('secao', 'domino')
-          .eq('ativo', true)
-          .order('ordem', { ascending: true })
-          .limit(1)
-          .maybeSingle();
+          .select('id, titulo, imagem_url, link_url, ativo, secao')
+          .eq('ativo', true);
 
-        if (!error && data) {
-          setBannerAtivo(data as BannerPublicitario);
+        if (error) {
+          console.error('Erro na query de banners:', error);
+          return;
+        }
+
+        if (data && data.length > 0) {
+          // Filtra localmente garantindo compatibilidade de caixa baixa/alta
+          const bannerDomino = data.find((b: any) => 
+            b.secao?.toLowerCase() === 'domino' || b.secao === 'Jogo Dominó'
+          );
+
+          if (bannerDomino) {
+            console.log('Banner do Dominó encontrado:', bannerDomino);
+            setBannerAtivo(bannerDomino as BannerPublicitario);
+          } else {
+            console.log('Nenhum banner ativo com seção "domino". Banners disponíveis:', data);
+          }
         }
       } catch (err) {
         console.warn('Erro ao carregar banner do dominó:', err);
@@ -935,7 +947,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </Button>
       </div>
 
-      {/* ÁREA DO BANNER PUBLICITÁRIO (TOP O TOP / CENTRALIZADO NA MESA) */}
+      {/* ÁREA DO BANNER PUBLICITÁRIO CENTRALIZADO NO TOPO */}
       <div className="w-full flex justify-center items-center my-0.5 px-1 shrink-0 z-20">
         {bannerAtivo ? (
           bannerAtivo.link_url ? (
@@ -964,7 +976,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             </div>
           )
         ) : (
-          /* ESPAÇO RESERVADO PARA BANNER CASO VOCÊ QUEIRA VISUALIZAR OU QUANDO ESTIVER SEM BANNER CADASTRADO */
           <div className="w-full max-w-lg h-10 sm:h-12 border border-dashed border-purple-500/20 bg-purple-950/10 rounded-xl flex items-center justify-center text-[10px] sm:text-xs text-purple-300/40 font-semibold tracking-wider">
             <span>ESPAÇO RESERVADO PARA BANNER PUBLICITÁRIO</span>
           </div>
