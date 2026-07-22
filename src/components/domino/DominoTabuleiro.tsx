@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, RefreshCw, Trophy, User, Maximize2, Minimize2, ShieldAlert, Award, MessageSquare, Timer, Move } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Trophy, User, Maximize2, Minimize2, ShieldAlert, Award, MessageSquare, Timer, Move, ExternalLink } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface DominoTabuleiroProps {
@@ -14,6 +14,14 @@ interface PedraMesa {
   valorOriginal: string;
   ladoEsquerdo: number;
   ladoDireito: number;
+}
+
+interface BannerPublicitario {
+  id: string;
+  titulo: string;
+  imagem_url: string;
+  link_url?: string | null;
+  ativo: boolean;
 }
 
 // SINTETIZADOR WEB AUDIO API PARA EFEITOS SONOROS
@@ -188,6 +196,8 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const [sobreDropZone, setSobreDropZone] = useState<'esquerda' | 'direita' | null>(null);
   const [touchPosicao, setTouchPosicao] = useState<{ x: number; y: number } | null>(null);
 
+  const [bannerAtivo, setBannerAtivo] = useState<BannerPublicitario | null>(null);
+
   const [tempoRestante, setTempoRestante] = useState<number>(30);
   
   const processandoJogadaLocal = useRef(false);
@@ -200,6 +210,30 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const [alertaTemporario, setAlertaTemporario] = useState<{ visivel: boolean; mensagem: string } | null>(null);
 
   const keyStoragePedras = `domino_pedras_sala_${salaId}_usr_${usuarioId}`;
+
+  // CARREGA O BANNER DA SEÇÃO 'DOMINO' CADASTRADO NO ADM
+  useEffect(() => {
+    const buscarBannerDomino = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('banners')
+          .select('id, titulo, imagem_url, link_url, ativo')
+          .eq('secao', 'domino')
+          .eq('ativo', true)
+          .order('ordem', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        if (!error && data) {
+          setBannerAtivo(data as BannerPublicitario);
+        }
+      } catch (err) {
+        console.warn('Erro ao carregar banner do dominó:', err);
+      }
+    };
+
+    buscarBannerDomino();
+  }, []);
 
   // ESCUTADOR DE MUDANÇA DE FULLSCREEN REAL DO NAVEGADOR
   useEffect(() => {
@@ -851,7 +885,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       )}
 
       {/* CABEÇALHO COMPACTO E ADAPTÁVEL SEM CORTES */}
-      <div className="flex items-center justify-between bg-[#110D1A]/95 border border-purple-950/40 px-1.5 sm:px-3 py-1 rounded-xl shadow-lg h-[9%] min-h-[40px] z-30 w-full gap-1">
+      <div className="flex items-center justify-between bg-[#110D1A]/95 border border-purple-950/40 px-1.5 sm:px-3 py-1 rounded-xl shadow-lg h-[8%] min-h-[38px] z-30 w-full gap-1">
         <div className="flex items-center gap-1 shrink-0">
           <Button variant="ghost" size="sm" onClick={sairDaPartida} className="text-gray-400 hover:text-white h-7 text-[10px] sm:text-xs px-1 sm:px-2">
             <ArrowLeft className="w-3 h-3 mr-0.5" /> Sair
@@ -889,7 +923,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           </div>
         </div>
 
-        {/* BOTÃO CLARO E EXPLÍCITO DE TELA CHEIA NATIVA */}
+        {/* BOTÃO CLARO E EXPLÍCITO DE TELA CHEIA */}
         <Button 
           variant="outline" 
           size="sm" 
@@ -901,8 +935,44 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </Button>
       </div>
 
+      {/* ÁREA DO BANNER PUBLICITÁRIO (TOP O TOP / CENTRALIZADO NA MESA) */}
+      <div className="w-full flex justify-center items-center my-0.5 px-1 shrink-0 z-20">
+        {bannerAtivo ? (
+          bannerAtivo.link_url ? (
+            <a 
+              href={bannerAtivo.link_url} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="w-full max-w-lg h-12 sm:h-16 rounded-xl overflow-hidden border border-purple-500/40 shadow-md relative group block"
+            >
+              <img 
+                src={bannerAtivo.imagem_url} 
+                alt={bannerAtivo.titulo} 
+                className="w-full h-full object-cover group-hover:scale-105 transition-all duration-300"
+              />
+              <div className="absolute top-1 right-1 bg-black/60 backdrop-blur-md p-1 rounded-full text-white/80">
+                <ExternalLink className="w-3 h-3" />
+              </div>
+            </a>
+          ) : (
+            <div className="w-full max-w-lg h-12 sm:h-16 rounded-xl overflow-hidden border border-purple-500/40 shadow-md relative">
+              <img 
+                src={bannerAtivo.imagem_url} 
+                alt={bannerAtivo.titulo} 
+                className="w-full h-full object-cover"
+              />
+            </div>
+          )
+        ) : (
+          /* ESPAÇO RESERVADO PARA BANNER CASO VOCÊ QUEIRA VISUALIZAR OU QUANDO ESTIVER SEM BANNER CADASTRADO */
+          <div className="w-full max-w-lg h-10 sm:h-12 border border-dashed border-purple-500/20 bg-purple-950/10 rounded-xl flex items-center justify-center text-[10px] sm:text-xs text-purple-300/40 font-semibold tracking-wider">
+            <span>ESPAÇO RESERVADO PARA BANNER PUBLICITÁRIO</span>
+          </div>
+        )}
+      </div>
+
       {/* TABULEIRO / MESA - ENQUADRADO E SEM EXCEDER AS BORDAS */}
-      <div className="flex-grow my-1 bg-emerald-950 border-[3px] sm:border-[4px] border-amber-950 rounded-[20px] shadow-[inset_0_4px_12px_rgba(0,0,0,0.6)] relative flex flex-col items-center justify-center h-[60%] overflow-hidden w-full">
+      <div className="flex-grow my-0.5 bg-emerald-950 border-[3px] sm:border-[4px] border-amber-950 rounded-[20px] shadow-[inset_0_4px_12px_rgba(0,0,0,0.6)] relative flex flex-col items-center justify-center h-[54%] overflow-hidden w-full">
         {mesaPedras.length > 0 && (
           <div className="absolute top-1.5 left-2 sm:left-4 flex items-center gap-2 text-[9px] sm:text-[10px] font-semibold text-emerald-300/60 z-10">
             <span>Esq: <strong className="text-white bg-emerald-900/60 px-1 py-0.5 rounded text-[10px]">{pontaEsquerda}</strong></span>
@@ -998,7 +1068,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       </div>
 
       {/* ÁREA DAS SUAS PEDRAS (MÃO ARRASTÁVEL COM PEDRAS BRANCAS NÍTIDAS) */}
-      <div className="bg-[#110D1A]/95 border border-purple-950/40 p-1.5 sm:p-2.5 rounded-2xl h-[28%] flex flex-col justify-between w-full">
+      <div className="bg-[#110D1A]/95 border border-purple-950/40 p-1.5 sm:p-2.5 rounded-2xl h-[26%] flex flex-col justify-between w-full">
         <div className="flex items-center justify-between px-1 h-[20%]">
           <span className="text-[8px] sm:text-[10px] text-purple-300 font-bold uppercase tracking-wider">Suas Pedras ({minhasPedras.length})</span>
           {pedraArrastando && (
