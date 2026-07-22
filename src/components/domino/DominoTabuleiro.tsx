@@ -950,7 +950,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </Button>
       </div>
 
-      {/* ÁREA DO BANNER PUBLICITÁRIO - FAIXA LIMPA SEM BORDAS LATERAIS */}
+      {/* ÁREA DO BANNER PUBLICITÁRIO - ENQUADRAMENTO COMPACTO PARA IMAGENS 1930x1815 */}
       {bannerAtivo && (
         <div className="w-full flex justify-center items-center my-0.5 px-0.5 shrink-0 z-20">
           {bannerAtivo.link_url ? (
@@ -958,7 +958,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
               href={bannerAtivo.link_url} 
               target="_blank" 
               rel="noopener noreferrer"
-              className="w-full h-12 sm:h-14 rounded-xl overflow-hidden border border-purple-500/30 shadow-md relative group block"
+              className="w-full h-12 sm:h-14 rounded-xl overflow-hidden border border-purple-500/30 shadow-md relative group block bg-[#110D1A]"
             >
               <img 
                 src={bannerAtivo.imagem_url} 
@@ -970,7 +970,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
               </div>
             </a>
           ) : (
-            <div className="w-full h-12 sm:h-14 rounded-xl overflow-hidden border border-purple-500/30 shadow-md relative">
+            <div className="w-full h-12 sm:h-14 rounded-xl overflow-hidden border border-purple-500/30 shadow-md relative bg-[#110D1A]">
               <img 
                 src={bannerAtivo.imagem_url} 
                 alt={bannerAtivo.titulo} 
