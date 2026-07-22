@@ -26,10 +26,10 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
 
   const canalRef = useRef<any>(null);
 
-  // Busca centralizada dos dados no banco
+  // Busca de dados do banco com JOIN de usuários
   const carregarDados = useCallback(async () => {
     if (!usuarioId) return;
-    console.log('🔍 [LOBBY-BROADCAST] Buscando salas do banco para o usuário:', usuarioId);
+    console.log('🔍 [LOBBY-BROADCAST] Buscando dados atualizados das salas...');
 
     try {
       const { data: dataSalas, error: errorSalas } = await supabase
@@ -48,7 +48,7 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
         .order('numero_sala', { ascending: true });
 
       if (errorSalas) {
-        console.error('❌ [LOBBY-BROADCAST] Erro no SELECT de domino_salas:', errorSalas);
+        console.error('❌ [LOBBY-BROADCAST] Erro SQL em domino_salas:', errorSalas);
         throw errorSalas;
       }
 
@@ -86,10 +86,10 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
     carregarDadosRef.current = carregarDados;
   }, [carregarDados]);
 
-  // Função para avisar a todos os navegadores na rede sobre uma mudança
+  // Função para notificar instantaneamente todos os outros clientes via WebSocket
   const notificarOutrosUsuarios = () => {
     if (canalRef.current) {
-      console.log('📢 [LOBBY-BROADCAST] Emitindo aviso via WebSocket para a sala...');
+      console.log('📢 [LOBBY-BROADCAST] Emitindo aviso de alteração de sala...');
       canalRef.current.send({
         type: 'broadcast',
         event: 'MUDANCA_LOBBY',
@@ -105,31 +105,31 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
     }
   }, [usuarioId, carregarDados]);
 
-  // CANAL DE WEBSOCKET BROADCAST (Sem erro de Postgres Change Bindings!)
+  // WEBSOCKET NATIVO BROADCAST (Inspecionado, limpo e imune a erros de binding)
   useEffect(() => {
     if (!usuarioId) return;
 
     console.log('🔌 [LOBBY-BROADCAST] Conectando no canal Broadcast do Realtime...');
 
-    const canal = supabase.channel('sala-global-domino-broadcast', {
+    const canal = supabase.channel('sala-global-domino-lobby', {
       config: {
-        broadcast: { self: false }, // Não precisa escutar a própria mensagem
+        broadcast: { self: false },
       },
     });
 
     canal
       .on('broadcast', { event: 'MUDANCA_LOBBY' }, async (payload) => {
-        console.log('⚡ [LOBBY-BROADCAST] AVISO DE MUDANÇA RECEBIDO!', payload);
+        console.log('⚡ [LOBBY-BROADCAST] AVISO RECEBIDO DE OUTRO JOGADOR!', payload);
         await carregarDadosRef.current();
       })
       .subscribe((status) => {
-        console.log('📡 [LOBBY-BROADCAST] Status da Conexão WebSocket:', status);
+        console.log('📡 [LOBBY-BROADCAST] Status do WebSocket Broadcast:', status);
       });
 
     canalRef.current = canal;
 
     return () => {
-      console.log('🔌 [LOBBY-BROADCAST] Fechando canal Broadcast...');
+      console.log('🔌 [LOBBY-BROADCAST] Encerrando conexão com o canal Broadcast...');
       supabase.removeChannel(canal);
       canalRef.current = null;
     };
@@ -212,9 +212,9 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
       }
 
       await carregarDados();
-      notificarOutrosUsuarios(); // Dispara o sinal via WebSocket para todos
+      notificarOutrosUsuarios();
     } catch (err) {
-      console.error('❌ [LOBBY-BROADCAST] Erro ao entrar no jogo:', err);
+      console.error('❌ [LOBBY-BROADCAST] Erro em entrarNoJogo:', err);
     }
   };
 
@@ -223,9 +223,9 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
     try {
       await limparResiduosUsuario();
       await carregarDados();
-      notificarOutrosUsuarios(); // Dispara o sinal via WebSocket para todos
+      notificarOutrosUsuarios();
     } catch (err) {
-      console.error('❌ [LOBBY-BROADCAST] Erro ao sair do jogo:', err);
+      console.error('❌ [LOBBY-BROADCAST] Erro em sairDoJogo:', err);
     }
   };
 
