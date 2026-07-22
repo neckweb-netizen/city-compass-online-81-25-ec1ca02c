@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, RefreshCw, Trophy, User, Maximize2, Minimize2, ShieldAlert, Award, MessageSquare, Timer, Move, ExternalLink } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Trophy, User, Maximize2, Minimize2, ShieldAlert, Award, MessageSquare, Timer, Move, ExternalLink, Bug } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface DominoTabuleiroProps {
@@ -198,6 +198,8 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const [touchPosicao, setTouchPosicao] = useState<{ x: number; y: number } | null>(null);
 
   const [bannerAtivo, setBannerAtivo] = useState<BannerPublicitario | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string>('Buscando banners...');
+  const [exibirDebugPanel, setExibirDebugPanel] = useState<boolean>(true);
 
   const [tempoRestante, setTempoRestante] = useState<number>(30);
   
@@ -212,38 +214,57 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   const keyStoragePedras = `domino_pedras_sala_${salaId}_usr_${usuarioId}`;
 
-  // CARREGA O BANNER DA SEÇÃO 'DOMINO' DIRETO DO SUPABASE
+  // DIAGNÓSTICO PROFUNDO E BUSCA DE BANNERS
   useEffect(() => {
     const buscarBannerDomino = async () => {
       try {
-        const { data, error } = await supabase
+        console.log('🔍 [DEBUG BANNER] Iniciando busca...');
+        
+        // 1. Busca sem filtro para testar conexão com a tabela
+        const { data: todosBanners, error: errGeral } = await supabase
           .from('banners')
-          .select('*')
-          .eq('secao', 'domino' as any)
-          .eq('ativo', true)
-          .order('ordem', { ascending: true });
+          .select('*');
 
-        if (!error && data && data.length > 0) {
-          setBannerAtivo(data[0] as BannerPublicitario);
+        if (errGeral) {
+          console.error('❌ [DEBUG BANNER] Erro na tabela banners:', errGeral);
+          setDebugInfo(`Erro SQL: ${errGeral.message}`);
           return;
         }
 
-        // Busca alternativa caso venha com formatação levemente diferente
-        const { data: dataAlt } = await supabase
-          .from('banners')
-          .select('*')
-          .eq('ativo', true);
-
-        if (dataAlt && dataAlt.length > 0) {
-          const achado = dataAlt.find((b: any) => 
-            String(b.secao).toLowerCase() === 'domino' || String(b.secao) === 'Jogo Dominó'
-          );
-          if (achado) {
-            setBannerAtivo(achado as BannerPublicitario);
-          }
+        if (!todosBanners || todosBanners.length === 0) {
+          console.warn('⚠️ [DEBUG BANNER] Tabela "banners" retornou vazia (0 registros).');
+          setDebugInfo('Tabela "banners" está vazia ou sem permissão RLS.');
+          return;
         }
-      } catch (err) {
-        console.warn('Erro ao carregar banner do dominó:', err);
+
+        console.log('✅ [DEBUG BANNER] Todos os banners salvos no banco:', todosBanners);
+
+        // 2. Filtra localmente de forma super abrangente
+        const bannerEncontrado = todosBanners.find((b: any) => {
+          const sec = String(b.secao || '').toLowerCase().trim();
+          const tit = String(b.titulo || '').toLowerCase().trim();
+          const estaAtivo = b.ativo === true || String(b.ativo) === 'true';
+
+          return estaAtivo && (
+            sec === 'domino' || 
+            sec === 'jogo dominó' || 
+            sec === 'jogo domino' || 
+            tit.includes('domino')
+          );
+        });
+
+        if (bannerEncontrado) {
+          console.log('🎯 [DEBUG BANNER] Banner filtrado com sucesso:', bannerEncontrado);
+          setBannerAtivo(bannerEncontrado as BannerPublicitario);
+          setDebugInfo(`Banner achado: "${bannerEncontrado.titulo}"`);
+        } else {
+          const resumo = todosBanners.map(b => `[Secao: "${b.secao}" | Ativo: ${b.ativo}]`).join(', ');
+          console.warn('⚠️ [DEBUG BANNER] Nenhum bateu com a seção "domino". Banners no banco:', resumo);
+          setDebugInfo(`Banners achados no banco (${todosBanners.length}), mas nenhum como "domino": ${resumo}`);
+        }
+      } catch (err: any) {
+        console.error('💥 [DEBUG BANNER] Exceção:', err);
+        setDebugInfo(`Exceção JS: ${err?.message || err}`);
       }
     };
 
@@ -950,10 +971,10 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </Button>
       </div>
 
-      {/* ÁREA DO BANNER PUBLICITÁRIO CENTRALIZADO NO TOPO */}
-      {bannerAtivo && (
-        <div className="w-full flex justify-center items-center my-0.5 px-1 shrink-0 z-20">
-          {bannerAtivo.link_url ? (
+      {/* ÁREA DO BANNER PUBLICITÁRIO COM PAINEL DE DIAGNÓSTICO */}
+      <div className="w-full flex flex-col justify-center items-center my-0.5 px-1 shrink-0 z-20">
+        {bannerAtivo ? (
+          bannerAtivo.link_url ? (
             <a 
               href={bannerAtivo.link_url} 
               target="_blank" 
@@ -977,9 +998,17 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
                 className="w-full h-full object-cover"
               />
             </div>
-          )}
-        </div>
-      )}
+          )
+        ) : (
+          <div className="w-full max-w-lg p-2 border border-red-500/40 bg-red-950/30 rounded-xl flex flex-col items-center justify-center text-center text-[10px] text-red-200 gap-1">
+            <div className="flex items-center gap-1 font-bold text-red-400">
+              <Bug className="w-3.5 h-3.5" />
+              <span>DIAGNÓSTICO DE BANNER</span>
+            </div>
+            <p className="break-all font-mono text-[9px] text-gray-300">{debugInfo}</p>
+          </div>
+        )}
+      </div>
 
       {/* TABULEIRO / MESA - ENQUADRADO E SEM EXCEDER AS BORDAS */}
       <div className="flex-grow my-0.5 bg-emerald-950 border-[3px] sm:border-[4px] border-amber-950 rounded-[20px] shadow-[inset_0_4px_12px_rgba(0,0,0,0.6)] relative flex flex-col items-center justify-center h-[54%] overflow-hidden w-full">
