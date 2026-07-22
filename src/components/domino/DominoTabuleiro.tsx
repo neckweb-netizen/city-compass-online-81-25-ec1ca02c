@@ -212,31 +212,34 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   const keyStoragePedras = `domino_pedras_sala_${salaId}_usr_${usuarioId}`;
 
-  // CARREGA O BANNER DA SEÇÃO 'DOMINO' CADASTRADO NO ADM DE FORMA ROBUSTA
+  // CARREGA O BANNER DA SEÇÃO 'DOMINO' DIRETO DO SUPABASE
   useEffect(() => {
     const buscarBannerDomino = async () => {
       try {
         const { data, error } = await supabase
           .from('banners')
-          .select('id, titulo, imagem_url, link_url, ativo, secao')
-          .eq('ativo', true);
+          .select('*')
+          .eq('secao', 'domino' as any)
+          .eq('ativo', true)
+          .order('ordem', { ascending: true });
 
-        if (error) {
-          console.error('Erro na query de banners:', error);
+        if (!error && data && data.length > 0) {
+          setBannerAtivo(data[0] as BannerPublicitario);
           return;
         }
 
-        if (data && data.length > 0) {
-          // Filtra localmente garantindo compatibilidade de caixa baixa/alta
-          const bannerDomino = data.find((b: any) => 
-            b.secao?.toLowerCase() === 'domino' || b.secao === 'Jogo Dominó'
-          );
+        // Busca alternativa caso venha com formatação levemente diferente
+        const { data: dataAlt } = await supabase
+          .from('banners')
+          .select('*')
+          .eq('ativo', true);
 
-          if (bannerDomino) {
-            console.log('Banner do Dominó encontrado:', bannerDomino);
-            setBannerAtivo(bannerDomino as BannerPublicitario);
-          } else {
-            console.log('Nenhum banner ativo com seção "domino". Banners disponíveis:', data);
+        if (dataAlt && dataAlt.length > 0) {
+          const achado = dataAlt.find((b: any) => 
+            String(b.secao).toLowerCase() === 'domino' || String(b.secao) === 'Jogo Dominó'
+          );
+          if (achado) {
+            setBannerAtivo(achado as BannerPublicitario);
           }
         }
       } catch (err) {
@@ -948,9 +951,9 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       </div>
 
       {/* ÁREA DO BANNER PUBLICITÁRIO CENTRALIZADO NO TOPO */}
-      <div className="w-full flex justify-center items-center my-0.5 px-1 shrink-0 z-20">
-        {bannerAtivo ? (
-          bannerAtivo.link_url ? (
+      {bannerAtivo && (
+        <div className="w-full flex justify-center items-center my-0.5 px-1 shrink-0 z-20">
+          {bannerAtivo.link_url ? (
             <a 
               href={bannerAtivo.link_url} 
               target="_blank" 
@@ -974,13 +977,9 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
                 className="w-full h-full object-cover"
               />
             </div>
-          )
-        ) : (
-          <div className="w-full max-w-lg h-10 sm:h-12 border border-dashed border-purple-500/20 bg-purple-950/10 rounded-xl flex items-center justify-center text-[10px] sm:text-xs text-purple-300/40 font-semibold tracking-wider">
-            <span>ESPAÇO RESERVADO PARA BANNER PUBLICITÁRIO</span>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {/* TABULEIRO / MESA - ENQUADRADO E SEM EXCEDER AS BORDAS */}
       <div className="flex-grow my-0.5 bg-emerald-950 border-[3px] sm:border-[4px] border-amber-950 rounded-[20px] shadow-[inset_0_4px_12px_rgba(0,0,0,0.6)] relative flex flex-col items-center justify-center h-[54%] overflow-hidden w-full">
