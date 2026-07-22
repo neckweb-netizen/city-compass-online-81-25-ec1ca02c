@@ -950,31 +950,33 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </Button>
       </div>
 
-      {/* ÁREA DO BANNER PUBLICITÁRIO - ENQUADRAMENTO COMPACTO PARA IMAGENS 1930x1815 */}
+      {/* ÁREA DO BANNER PUBLICITÁRIO - MESMA PROPORÇÃO DA HOME (aspect-[970/250]) E COMPACTO */}
       {bannerAtivo && (
-        <div className="w-full flex justify-center items-center my-0.5 px-0.5 shrink-0 z-20">
+        <div className="w-full flex justify-center items-center my-0.5 px-1 shrink-0 z-20">
           {bannerAtivo.link_url ? (
             <a 
               href={bannerAtivo.link_url} 
               target="_blank" 
               rel="noopener noreferrer"
-              className="w-full h-12 sm:h-14 rounded-xl overflow-hidden border border-purple-500/30 shadow-md relative group block bg-[#110D1A]"
+              className="w-full max-w-sm sm:max-w-md aspect-[970/250] rounded-xl overflow-hidden border border-purple-500/40 shadow-md relative group block bg-[#110D1A]"
             >
               <img 
                 src={bannerAtivo.imagem_url} 
                 alt={bannerAtivo.titulo} 
-                className="w-full h-full object-cover object-center group-hover:scale-[1.02] transition-all duration-300"
+                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                style={{ aspectRatio: '970/250' }}
               />
               <div className="absolute top-1 right-1 z-20 bg-black/60 backdrop-blur-md p-0.5 rounded-full text-white/80">
                 <ExternalLink className="w-2.5 h-2.5" />
               </div>
             </a>
           ) : (
-            <div className="w-full h-12 sm:h-14 rounded-xl overflow-hidden border border-purple-500/30 shadow-md relative bg-[#110D1A]">
+            <div className="w-full max-w-sm sm:max-w-md aspect-[970/250] rounded-xl overflow-hidden border border-purple-500/40 shadow-md relative bg-[#110D1A]">
               <img 
                 src={bannerAtivo.imagem_url} 
                 alt={bannerAtivo.titulo} 
-                className="w-full h-full object-cover object-center"
+                className="w-full h-full object-cover"
+                style={{ aspectRatio: '970/250' }}
               />
             </div>
           )}
@@ -982,7 +984,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       )}
 
       {/* TABULEIRO / MESA - ENQUADRADO E SEM EXCEDER AS BORDAS */}
-      <div className="flex-grow my-0.5 bg-emerald-950 border-[3px] sm:border-[4px] border-amber-950 rounded-[20px] shadow-[inset_0_4px_12px_rgba(0,0,0,0.6)] relative flex flex-col items-center justify-center h-[56%] overflow-hidden w-full">
+      <div className="flex-grow my-0.5 bg-emerald-950 border-[3px] sm:border-[4px] border-amber-950 rounded-[20px] shadow-[inset_0_4px_12px_rgba(0,0,0,0.6)] relative flex flex-col items-center justify-center h-[54%] overflow-hidden w-full">
         {mesaPedras.length > 0 && (
           <div className="absolute top-1.5 left-2 sm:left-4 flex items-center gap-2 text-[9px] sm:text-[10px] font-semibold text-emerald-300/60 z-10">
             <span>Esq: <strong className="text-white bg-emerald-900/60 px-1 py-0.5 rounded text-[10px]">{pontaEsquerda}</strong></span>
