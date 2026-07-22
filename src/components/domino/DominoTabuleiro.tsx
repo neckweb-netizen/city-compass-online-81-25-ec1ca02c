@@ -79,7 +79,7 @@ const tocarEfeitoSonoro = (tipo: 'jogar' | 'passar' | 'vitoria' | 'empate') => {
   }
 };
 
-// PEDRA BLINDADA CONTRA DARK MODE DO ANDROID (BLINDA CORES E BRILHO)
+// PEDRA COM PROTEÇÃO ANTI-DARKMODE DO NAVEGADOR
 const PedraClassica = ({ 
   valor, 
   disabled, 
@@ -117,7 +117,8 @@ const PedraClassica = ({
             className={`${tamanhoBolinha} rounded-full transition-all`}
             style={{
               backgroundColor: ativas.includes(i) ? '#000000' : 'transparent',
-              boxShadow: ativas.includes(i) ? '0 0 1px rgba(0,0,0,0.5)' : 'none'
+              forcedColorAdjust: 'none',
+              filter: 'none'
             }}
           />
         ))}
@@ -142,20 +143,23 @@ const PedraClassica = ({
             : 'opacity-40 cursor-not-allowed'
       }`}
       style={{
-        backgroundColor: '#FAFAFA',
+        backgroundColor: '#FFFFFF',
         borderColor: '#9CA3AF',
-        colorScheme: 'light',
-        boxShadow: '0 2px 5px rgba(0,0,0,0.3)'
+        colorScheme: 'only light',
+        forcedColorAdjust: 'none',
+        filter: 'none',
+        WebkitFilter: 'none',
+        boxShadow: '0 2px 5px rgba(0,0,0,0.4)'
       }}
     >
-      <div className="flex-1 w-full h-full flex items-center justify-center pointer-events-none">
+      <div className="flex-1 w-full h-full flex items-center justify-center pointer-events-none" style={{ filter: 'none' }}>
         {renderBolinhas(ladoA)}
       </div>
       <div 
         className={deitada ? "h-[90%] w-[2px] rounded-full pointer-events-none" : "w-[90%] h-[2px] rounded-full pointer-events-none"} 
-        style={{ backgroundColor: '#D97706' }}
+        style={{ backgroundColor: '#D97706', filter: 'none' }}
       />
-      <div className="flex-1 w-full h-full flex items-center justify-center pointer-events-none">
+      <div className="flex-1 w-full h-full flex items-center justify-center pointer-events-none" style={{ filter: 'none' }}>
         {renderBolinhas(ladoB)}
       </div>
     </div>
@@ -167,7 +171,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const canalRef = useRef<any>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const [isFullscreen, setIsFullscreen] = useState(true); // Padrão ativo em Viewport Fixo
+  const [isFullscreen, setIsFullscreen] = useState(true);
   const [jogador1Id, setJogador1Id] = useState<string | null>(null);
   const [jogador2Id, setJogador2Id] = useState<string | null>(null);
   const [nomeJ1, setNomeJ1] = useState('Jogador 1');
@@ -746,6 +750,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       className={`w-full bg-[#090610] text-white font-sans flex flex-col justify-between p-1 sm:p-4 overflow-hidden select-none relative ${
         isFullscreen ? 'fixed inset-0 z-[999] h-screen' : 'h-screen'
       }`}
+      style={{ forcedColorAdjust: 'none', filter: 'none' }}
     >
       {/* ELEMENTO FLUTUANTE SEGUINDO O DEDO NO TOUCH (PEDRA BRANCA COM BRILHO) */}
       {touchPosicao && pedraArrastando && (
@@ -871,7 +876,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
                 SOLTAR ESQ
               </div>
 
-              {/* RENDERIZAÇÃO DAS PEDRAS COM ALTO CONTRASTE */}
+              {/* RENDERIZAÇÃO DAS PEDRAS COM ALTO CONTRASTE BLINDADO */}
               <div className="flex items-center justify-center gap-0.5 shrink-0">
                 {mesaPedras.map((pedra, idx) => {
                   const [lA, lB] = pedra.valorOriginal.split('-').map(Number);
