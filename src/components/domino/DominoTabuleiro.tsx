@@ -295,7 +295,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
-  // EXECUÇÃO DA JOGADA
+  // EXECUÇÃO RIGOROSA E PRECISA DA JOGADA (SEM MISTURAR PEÇAS)
   const executarJogadaNaPonta = async (pedra: string, ladoEscolha: 'esquerda' | 'direita') => {
     if (!meuTurno || processandoJogadaLocal.current) return;
     processandoJogadaLocal.current = true;
@@ -311,11 +311,13 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     let novaPontaD = pontaDireita;
 
     if (mesaPedras.length === 0) {
-      const novaPedra: PedraMesa = { valorOriginal: pedra, ladoEsquerdo: ladoA, ladoDireito: ladoB };
+      // Primeira pedra da mesa
+      const novaPedra: PedraMesa = { valorOriginal: `${ladoA}-${ladoB}`, ladoEsquerdo: ladoA, ladoDireito: ladoB };
       novaMesa.push(novaPedra);
       novaPontaE = ladoA;
       novaPontaD = ladoB;
     } else if (ladoEscolha === 'esquerda') {
+      // O lado que encosta no pontaEsquerda deve ir para a DIREITA da nova pedra!
       if (ladoA === pontaEsquerda) {
         const novaPedra: PedraMesa = { valorOriginal: `${ladoB}-${ladoA}`, ladoEsquerdo: ladoB, ladoDireito: ladoA };
         novaMesa.unshift(novaPedra);
@@ -326,6 +328,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         novaPontaE = ladoA;
       }
     } else if (ladoEscolha === 'direita') {
+      // O lado que encosta no pontaDireita deve ir para a ESQUERDA da nova pedra!
       if (ladoA === pontaDireita) {
         const novaPedra: PedraMesa = { valorOriginal: `${ladoA}-${ladoB}`, ladoEsquerdo: ladoA, ladoDireito: ladoB };
         novaMesa.push(novaPedra);
@@ -679,13 +682,14 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     sairDaPartidaLocal();
   };
 
-  // CÁLCULO DE ESCALONAMENTO DINÂMICO PARA AS PEÇAS DA MESA NÃO ESTOURAREM A BORDA
+  // CÁLCULO DE ESCALONAMENTO DINÂMICO GRADUAL (PARA ENCAIXE PERFEITO SEM VAZAR)
   const getEscalaMesa = () => {
     const qtd = mesaPedras.length;
-    if (qtd <= 5) return 'scale-100';
-    if (qtd <= 8) return 'scale-90';
-    if (qtd <= 12) return 'scale-75';
-    return 'scale-65';
+    if (qtd <= 4) return 'scale-100';
+    if (qtd <= 7) return 'scale-90';
+    if (qtd <= 10) return 'scale-75';
+    if (qtd <= 14) return 'scale-65';
+    return 'scale-55';
   };
 
   return (
@@ -798,7 +802,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           </div>
         )}
 
-        <div className="flex items-center justify-center gap-[2px] max-w-full px-2 py-2 relative w-full h-full overflow-hidden">
+        <div className="flex items-center justify-center max-w-full px-2 py-2 relative w-full h-full overflow-hidden">
           {mesaPedras.length === 0 ? (
             <div 
               data-dropzone="esquerda"
@@ -830,31 +834,19 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
                 SOLTAR ESQ
               </div>
 
-              {/* RENDERIZAÇÃO COM ESCALA E CURVA AJUSTADAS */}
-              <div className="flex items-center justify-center gap-1">
+              {/* RENDERIZAÇÃO LIMPA E SEM SOBREPOSIÇÕES */}
+              <div className="flex items-center justify-center gap-0.5 max-w-full">
                 {mesaPedras.map((pedra, idx) => {
-                  const ehBucha = pedra.ladoEsquerdo === pedra.ladoDireito;
-                  const maxHorizontal = 5;
-                  
-                  const ehPontaEsqDobra = mesaPedras.length > maxHorizontal && idx === 0;
-                  const ehPontaDirDobra = mesaPedras.length > maxHorizontal && idx === mesaPedras.length - 1;
-
-                  const deveFicarDeitada = !ehBucha && !ehPontaEsqDobra && !ehPontaDirDobra;
+                  const [lA, lB] = pedra.valorOriginal.split('-').map(Number);
+                  const ehBucha = lA === lB;
 
                   return (
-                    <div 
-                      key={idx} 
-                      className={`shrink-0 flex items-center justify-center transition-all duration-200 ${
-                        ehPontaEsqDobra ? '-translate-y-2 border-l-2 border-emerald-400/40 pl-0.5' : ''
-                      } ${
-                        ehPontaDirDobra ? 'translate-y-2 border-r-2 border-emerald-400/40 pr-0.5' : ''
-                      }`}
-                    >
+                    <div key={idx} className="shrink-0 flex items-center justify-center">
                       <PedraClassica 
                         valor={pedra.valorOriginal} 
                         disabled={true} 
                         menor={true} 
-                        deitada={deveFicarDeitada} 
+                        deitada={!ehBucha} 
                       />
                     </div>
                   );
