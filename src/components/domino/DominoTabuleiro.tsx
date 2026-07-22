@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, RefreshCw, Trophy, User, Maximize2, Minimize2, ShieldAlert, Award, MessageSquare, Timer, Move } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Trophy, User, ShieldAlert, Award, MessageSquare, Timer, Move } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface DominoTabuleiroProps {
@@ -16,7 +16,7 @@ interface PedraMesa {
   ladoDireito: number;
 }
 
-// SINTETIZADOR WEB AUDIO API PARA EFEITOS SONOROS
+// SINTETIZADOR WEB AUDIO API
 const tocarEfeitoSonoro = (tipo: 'jogar' | 'passar' | 'vitoria' | 'empate') => {
   try {
     const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
@@ -123,15 +123,15 @@ const PedraClassica = ({
   };
 
   const classesTamanho = deitada
-    ? (menor ? "w-16 h-8 border-2 flex-row" : "w-20 h-10 border-2 flex-row")
-    : (menor ? "w-8 h-16 border-2 flex-col" : "w-10 h-20 border-2 flex-col");
+    ? (menor ? "w-14 h-7 border-2 flex-row" : "w-18 h-9 border-2 flex-row")
+    : (menor ? "w-7 h-14 border-2 flex-col" : "w-9 h-18 border-2 flex-col");
 
   return (
     <div
       draggable={!disabled && !!onDragStart}
       onDragStart={onDragStart}
       onTouchStart={onTouchStart}
-      className={`${classesTamanho} bg-[#1a1a1a] border-[#333] rounded-lg flex items-center justify-between shadow-lg relative transition-all touch-none select-none ${
+      className={`${classesTamanho} bg-[#1a1a1a] border-[#333] rounded-md flex items-center justify-between shadow-lg relative transition-all touch-none select-none ${
         destacada 
           ? 'border-purple-500 shadow-[0_0_15px_rgba(147,51,234,0.7)] scale-105 animate-pulse cursor-grab active:cursor-grabbing z-10' 
           : disabled
@@ -153,7 +153,7 @@ const PedraClassica = ({
 export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby }: DominoTabuleiroProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canalRef = useRef<any>(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+
   const [jogador1Id, setJogador1Id] = useState<string | null>(null);
   const [jogador2Id, setJogador2Id] = useState<string | null>(null);
   const [nomeJ1, setNomeJ1] = useState('Jogador 1');
@@ -166,11 +166,8 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const [pontaEsquerda, setPontaEsquerda] = useState<number | null>(null);
   const [pontaDireita, setPontaDireita] = useState<number | null>(null);
 
-  // ESTADO DE ARRASTO (DESKTOP E TOUCH MOBILE)
   const [pedraArrastando, setPedraArrastando] = useState<string | null>(null);
   const [sobreDropZone, setSobreDropZone] = useState<'esquerda' | 'direita' | null>(null);
-
-  // ESTADO EXCLUSIVO PARA O TOUCH DO CELULAR
   const [touchPosicao, setTouchPosicao] = useState<{ x: number; y: number } | null>(null);
 
   const [tempoRestante, setTempoRestante] = useState<number>(30);
@@ -184,28 +181,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   const [alertaTemporario, setAlertaTemporario] = useState<{ visivel: boolean; mensagem: string } | null>(null);
 
-  const entrarModoJogoReal = async () => {
-    try {
-      if (containerRef.current) {
-        if (containerRef.current.requestFullscreen) {
-          await containerRef.current.requestFullscreen();
-        } else if ((containerRef.current as any).webkitRequestFullscreen) {
-          await (containerRef.current as any).webkitRequestFullscreen();
-        }
-        setIsFullscreen(true);
-      }
-    } catch (err) {
-      console.warn(err);
-    }
-  };
-
-  const sairModoJogoReal = () => {
-    if (document.fullscreenElement) document.exitFullscreen();
-    setIsFullscreen(false);
-  };
-
   const sairDaPartidaLocal = () => {
-    sairModoJogoReal();
     onVoltarAoLobby();
   };
 
@@ -251,8 +227,11 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
-  // LÓGICA DE PASSE
+  // LÓGICA DE PASSE INSTANTÂNEO COM CHECAGEM DE TRANCADO
   const passarVez = async () => {
+    if (processandoJogadaLocal.current) return;
+    processandoJogadaLocal.current = true;
+
     const proximoTurnoId = usuarioId === jogador1Id ? jogador2Id : jogador1Id;
     const novaContagemPassadas = passadasCount + 1;
 
@@ -286,6 +265,8 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         .eq('id', salaId);
     } catch (err) {
       console.error(err);
+    } finally {
+      processandoJogadaLocal.current = false;
     }
   };
 
@@ -355,7 +336,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
-  // EVENTOS DE DRAG NATIVO DESKTOP
+  // DESKTOP DRAG
   const handleDragStart = (pedra: string, e: React.DragEvent) => {
     if (!meuTurno || !isPedraJogavel(pedra)) return;
     setPedraArrastando(pedra);
@@ -380,7 +361,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
-  // MANIPULAÇÃO INTELIGENTE E ULTRASENSÍVEL DE TOUCH PARA CELULAR
+  // TOUCH SENSÍVEL
   const handleTouchStart = (pedra: string, e: React.TouchEvent) => {
     if (!meuTurno || !isPedraJogavel(pedra)) return;
     const touch = e.touches[0];
@@ -393,7 +374,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     const touch = e.touches[0];
     setTouchPosicao({ x: touch.clientX, y: touch.clientY });
 
-    // Detecta se o dedo está sobre uma das zonas de soltura
     const elementoSobOToque = document.elementFromPoint(touch.clientX, touch.clientY);
     const dropZona = elementoSobOToque?.closest('[data-dropzone]');
     if (dropZona) {
@@ -416,7 +396,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     setSobreDropZone(null);
   };
 
-  // Efeito global para ouvir o arrasto no touch sem travar a tela
   useEffect(() => {
     if (pedraArrastando) {
       window.addEventListener('touchmove', handleTouchMove, { passive: false });
@@ -444,7 +423,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
-  // EMBARALHAMENTO SEM REPETIÇÃO
+  // EMBARALHAMENTO
   const inicializarPedrasCompartilhadas = (userId: string, j1: string | null, j2: string | null) => {
     if (pedrasInicializadas.current || !j1 || !j2) return;
     pedrasInicializadas.current = true;
@@ -564,9 +543,21 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             }
 
             setVezUsuarioId(newData.vez_usuario_id);
-            setPassadasCount(newData.passadas_count || 0);
+            const passadas = newData.passadas_count || 0;
+            setPassadasCount(passadas);
             setPontaEsquerda(newData.mesa_ponta_esquerda);
             setPontaDireita(newData.mesa_ponta_direita);
+
+            // CHECA JOGO TRANCADO NO REALTIME INSTANTANEAMENTE
+            if (passadas >= 2) {
+              tocarEfeitoSonoro('empate');
+              setModalNotificacao({
+                visivel: true,
+                titulo: 'Jogo Trancado!',
+                message: 'Ambos os jogadores não possuem peças jogáveis. Partida empatada!',
+                tipo: 'info'
+              });
+            }
 
             const jogadasRaw = newData.historico_jogadas as any[];
             const jogadasProcessadas: PedraMesa[] = Array.isArray(jogadasRaw) 
@@ -634,13 +625,13 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   }, [alertaTemporario]);
 
-  // AUTO-PASSAR QUANDO NÃO TEM PEDRA JOGÁVEL
+  // PASSE INSTANTÂNEO NA HORA DA VEZ SE NÃO TIVER PEÇA JOGÁVEL (SEM ESPERAR CRONÔMETRO)
   useEffect(() => {
     if (meuTurno && minhasPedras.length > 0 && mesaPedras.length > 0 && !processandoJogadaLocal.current) {
       const temQualquerPecaJogavel = minhasPedras.some(pedra => isPedraJogavel(pedra));
 
       if (!temQualquerPecaJogavel) {
-        setAlertaTemporario({ visivel: true, mensagem: '⚠️ Sem peças jogáveis! Passando a vez...' });
+        setAlertaTemporario({ visivel: true, mensagem: '⚠️ Sem peças! Passando a vez instantaneamente...' });
         passarVez();
       }
     }
@@ -698,21 +689,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </div>
       )}
 
-      {!isFullscreen && (
-        <div className="absolute inset-0 bg-[#090610]/98 z-50 flex flex-col items-center justify-center p-6 text-center">
-          <div className="max-w-sm space-y-6">
-            <div className="p-4 bg-purple-950/40 border border-purple-900/30 rounded-full w-fit mx-auto text-purple-400 animate-bounce">
-              <ShieldAlert className="w-12 h-12" />
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-xl font-black text-white">Modo Exclusivo Ativo</h2>
-              <p className="text-xs text-gray-400 leading-relaxed">Para garantir a melhor experiência, jogue em modo tela cheia.</p>
-            </div>
-            <Button className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold h-11 shadow-lg shadow-purple-900/20" onClick={entrarModoJogoReal}>Ativar Tela Cheia</Button>
-          </div>
-        </div>
-      )}
-      
       {/* CABEÇALHO */}
       <div className="flex items-center justify-between bg-[#110D1A]/95 border border-purple-950/40 px-3 py-1.5 rounded-xl shadow-lg h-[12%] z-30">
         <div className="flex items-center gap-2">
@@ -751,13 +727,9 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             </div>
           </div>
         </div>
-
-        <Button variant="ghost" size="icon" onClick={isFullscreen ? sairModoJogoReal : entrarModoJogoReal} className="text-purple-400 hover:text-white w-8 h-8">
-          {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-        </Button>
       </div>
 
-      {/* TABULEIRO / MESA */}
+      {/* TABULEIRO / MESA - RENDERIZAÇÃO ADAPTÁVEL EM L DE QUINA */}
       <div className="flex-grow my-2 bg-emerald-950 border-[4px] border-amber-950 rounded-[24px] shadow-[inset_0_4px_12px_rgba(0,0,0,0.6)] relative flex flex-col items-center justify-center h-[53%] overflow-hidden">
         {mesaPedras.length > 0 && (
           <div className="absolute top-2 left-4 flex items-center gap-3 text-[10px] font-semibold text-emerald-300/60">
@@ -766,7 +738,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           </div>
         )}
 
-        {/* MENSAGEM INDICANDO O ARRASTO */}
         {meuTurno && mesaPedras.length > 0 && (
           <div className="absolute top-2 z-20 text-[10px] text-emerald-300/70 bg-emerald-900/40 px-3 py-0.5 rounded-full flex items-center gap-1 font-semibold">
             <Move className="w-3 h-3 text-amber-400 animate-pulse" />
@@ -776,7 +747,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
         <div className="flex items-center justify-center gap-[2px] max-w-full overflow-x-auto px-4 py-2 relative w-full h-full">
           {mesaPedras.length === 0 ? (
-            /* DROP ZONE MESA VAZIA */
             <div 
               data-dropzone="esquerda"
               onDragOver={(e) => e.preventDefault()}
@@ -798,7 +768,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
                 onDragOver={(e) => handleDragOver(e, 'esquerda')}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, 'esquerda')}
-                className={`shrink-0 h-20 w-16 border-2 border-dashed rounded-xl flex items-center justify-center text-[10px] font-black transition-all mr-2 ${
+                className={`shrink-0 h-16 w-12 border-2 border-dashed rounded-lg flex items-center justify-center text-[9px] font-black transition-all mr-1.5 ${
                   sobreDropZone === 'esquerda'
                     ? 'border-green-400 bg-green-500/40 text-white scale-110 shadow-[0_0_15px_rgba(34,197,94,0.9)]'
                     : 'border-emerald-500/50 bg-emerald-900/30 text-emerald-300 hover:border-green-400'
@@ -807,25 +777,38 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
                 SOLTAR ESQ
               </div>
 
-              {mesaPedras.map((pedra, idx) => {
-                const ehBucha = pedra.ladoEsquerdo === pedra.ladoDireito;
-                const limiteHorizontal = 7;
-                
-                const ehDobraEsquerda = mesaPedras.length > limiteHorizontal && idx === 0;
-                const ehDobraDireita = mesaPedras.length > limiteHorizontal && idx === mesaPedras.length - 1;
-                const deveFicarDeitada = !ehBucha && !ehDobraEsquerda && !ehDobraDireita;
+              {/* RENDERIZAÇÃO DAS PEDRAS COM DOBRA REAL DE CANTO NAS EXTREMIDADES */}
+              <div className="flex items-center justify-center gap-1 overflow-x-auto max-w-full py-2">
+                {mesaPedras.map((pedra, idx) => {
+                  const ehBucha = pedra.ladoEsquerdo === pedra.ladoDireito;
+                  const maxHorizontal = 6;
+                  
+                  // Se a mesa passar de 6 pedras, as extremidades dobram no canto do tabuleiro
+                  const ehPontaEsqDobra = mesaPedras.length > maxHorizontal && idx === 0;
+                  const ehPontaDirDobra = mesaPedras.length > maxHorizontal && idx === mesaPedras.length - 1;
 
-                return (
-                  <div key={idx} className="shrink-0 flex items-center justify-center transition-all duration-300">
-                    <PedraClassica 
-                      valor={pedra.valorOriginal} 
-                      disabled={true} 
-                      menor={true} 
-                      deitada={deveFicarDeitada} 
-                    />
-                  </div>
-                );
-              })}
+                  // Se for bucha ou ponta dobrada de canto, renderiza em pé (vertical); caso contrário, deitada
+                  const deveFicarDeitada = !ehBucha && !ehPontaEsqDobra && !ehPontaDirDobra;
+
+                  return (
+                    <div 
+                      key={idx} 
+                      className={`shrink-0 flex items-center justify-center transition-all duration-200 ${
+                        ehPontaEsqDobra ? '-translate-y-2 border-l-2 border-emerald-400/40 pl-0.5' : ''
+                      } ${
+                        ehPontaDirDobra ? 'translate-y-2 border-r-2 border-emerald-400/40 pr-0.5' : ''
+                      }`}
+                    >
+                      <PedraClassica 
+                        valor={pedra.valorOriginal} 
+                        disabled={true} 
+                        menor={true} 
+                        deitada={deveFicarDeitada} 
+                      />
+                    </div>
+                  );
+                })}
+              </div>
 
               {/* DROP ZONE PONTA DIREITA */}
               <div
@@ -833,7 +816,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
                 onDragOver={(e) => handleDragOver(e, 'direita')}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, 'direita')}
-                className={`shrink-0 h-20 w-16 border-2 border-dashed rounded-xl flex items-center justify-center text-[10px] font-black transition-all ml-2 ${
+                className={`shrink-0 h-16 w-12 border-2 border-dashed rounded-lg flex items-center justify-center text-[9px] font-black transition-all ml-1.5 ${
                   sobreDropZone === 'direita'
                     ? 'border-green-400 bg-green-500/40 text-white scale-110 shadow-[0_0_15px_rgba(34,197,94,0.9)]'
                     : 'border-emerald-500/50 bg-emerald-900/30 text-emerald-300 hover:border-green-400'
