@@ -79,6 +79,7 @@ const tocarEfeitoSonoro = (tipo: 'jogar' | 'passar' | 'vitoria' | 'empate') => {
   }
 };
 
+// COMPONENTE DE PEDRA REALISTA DE ALTO CONTRASTE (FUNDO BRANCO PURISSIMO E BOLINHAS PRETAS)
 const PedraClassica = ({ 
   valor, 
   disabled, 
@@ -105,7 +106,7 @@ const PedraClassica = ({
     };
 
     const ativas = posicoes[pontos] || [];
-    const tamanhoBolinha = menor ? 'w-0.5 h-0.5 sm:w-1 sm:h-1' : 'w-1 h-1 sm:w-1.5 sm:h-1.5';
+    const tamanhoBolinha = menor ? 'w-1 h-1 sm:w-1.5 sm:h-1.5' : 'w-1.5 h-1.5 sm:w-2 sm:h-2';
     const espacamentoGrid = menor ? 'gap-0.5 p-0.5' : 'gap-0.5 p-1';
 
     return (
@@ -114,7 +115,7 @@ const PedraClassica = ({
           <div
             key={i}
             className={`${tamanhoBolinha} rounded-full transition-all ${
-              ativas.includes(i) ? 'bg-white' : 'bg-transparent'
+              ativas.includes(i) ? 'bg-black shadow-sm' : 'bg-transparent'
             }`}
           />
         ))}
@@ -123,17 +124,17 @@ const PedraClassica = ({
   };
 
   const classesTamanho = deitada
-    ? (menor ? "w-10 h-5 sm:w-14 sm:h-7 border-2 flex-row" : "w-14 h-7 sm:w-18 sm:h-9 border-2 flex-row")
-    : (menor ? "w-5 h-10 sm:w-7 sm:h-14 border-2 flex-col" : "w-7 h-14 sm:w-9 sm:h-18 border-2 flex-col");
+    ? (menor ? "w-12 h-6 sm:w-14 sm:h-7 border-2 flex-row" : "w-16 h-8 sm:w-18 sm:h-9 border-2 flex-row")
+    : (menor ? "w-6 h-12 sm:w-7 sm:h-14 border-2 flex-col" : "w-8 h-16 sm:w-9 sm:h-18 border-2 flex-col");
 
   return (
     <div
       draggable={!disabled && !!onDragStart}
       onDragStart={onDragStart}
       onTouchStart={onTouchStart}
-      className={`${classesTamanho} bg-[#1a1a1a] border-[#333] rounded-md flex items-center justify-between shadow-lg relative transition-all touch-none select-none ${
+      className={`${classesTamanho} bg-white border-gray-400 rounded-md flex items-center justify-between shadow-md relative transition-all touch-none select-none ${
         destacada 
-          ? 'border-purple-500 shadow-[0_0_15px_rgba(147,51,234,0.7)] scale-105 animate-pulse cursor-grab active:cursor-grabbing z-10' 
+          ? 'border-purple-600 shadow-[0_0_15px_rgba(147,51,234,0.9)] scale-105 animate-pulse cursor-grab active:cursor-grabbing z-10' 
           : disabled
             ? 'opacity-100'
             : 'opacity-40 cursor-not-allowed'
@@ -142,7 +143,7 @@ const PedraClassica = ({
       <div className="flex-1 w-full h-full flex items-center justify-center pointer-events-none">
         {renderBolinhas(ladoA)}
       </div>
-      <div className={deitada ? "h-[90%] w-[1.5px] bg-amber-600/80 rounded-full pointer-events-none" : "w-[90%] h-[1.5px] bg-amber-600/80 rounded-full pointer-events-none"} />
+      <div className={deitada ? "h-[90%] w-[2px] bg-amber-600/90 rounded-full pointer-events-none" : "w-[90%] h-[2px] bg-amber-600/90 rounded-full pointer-events-none"} />
       <div className="flex-1 w-full h-full flex items-center justify-center pointer-events-none">
         {renderBolinhas(ladoB)}
       </div>
@@ -185,10 +186,16 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   const keyStoragePedras = `domino_pedras_sala_${salaId}_usr_${usuarioId}`;
 
+  // GARANTE QUE O NAVEGADOR NUNCA GIRE A TELA AO MUDAR PARA FULLSCREEN
   useEffect(() => {
     const checarFullscreenReal = () => {
       const emFullscreen = !!document.fullscreenElement || !!(document as any).webkitFullscreenElement;
       setIsFullscreen(emFullscreen);
+
+      // Destrava qualquer tentativa de rotação do celular
+      if (screen.orientation && screen.orientation.unlock) {
+        screen.orientation.unlock().catch(() => {});
+      }
     };
 
     document.addEventListener('fullscreenchange', checarFullscreenReal);
@@ -220,6 +227,9 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           await (containerRef.current as any).webkitRequestFullscreen();
         }
         setIsFullscreen(true);
+        if (screen.orientation && screen.orientation.unlock) {
+          screen.orientation.unlock().catch(() => {});
+        }
       }
     } catch (err) {
       console.warn('Erro ao entrar em fullscreen:', err);
@@ -283,7 +293,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
-  // PASSE INSTANTÂNEO SEM RETER O CRONÔMETRO
+  // PASSE INSTANTÂNEO
   const passarVez = async () => {
     if (processandoJogadaLocal.current) return;
     processandoJogadaLocal.current = true;
@@ -486,23 +496,31 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
-  // EMBARALHAMENTO PERSISTENTE
-  const inicializarPedrasCompartilhadas = (userId: string, j1: string | null, j2: string | null) => {
+  // EMBARALHAMENTO SEGURO DE 7 PEDRAS INICIAIS POR JOGADOR (GARANTE SEMPRE 7 PEÇAS)
+  const inicializarPedrasCompartilhadas = (userId: string, j1: string | null, j2: string | null, mesaVazia: boolean) => {
     if (pedrasInicializadas.current || !j1 || !j2) return;
-    pedrasInicializadas.current = true;
 
-    try {
-      const pedrasSalvas = localStorage.getItem(keyStoragePedras);
-      if (pedrasSalvas) {
-        const pedrasArray = JSON.parse(pedrasSalvas);
-        if (Array.isArray(pedrasArray) && pedrasArray.length > 0) {
-          setMinhasPedras(pedrasArray);
-          return;
+    // Se a mesa estiver vazia (início do jogo), limpa resíduos antigos obrigatoriamente
+    if (mesaVazia) {
+      try { localStorage.removeItem(keyStoragePedras); } catch (e) {}
+    } else {
+      // Se não for o início e houver pedras salvas na partida corrente, recupera
+      try {
+        const pedrasSalvas = localStorage.getItem(keyStoragePedras);
+        if (pedrasSalvas) {
+          const pedrasArray = JSON.parse(pedrasSalvas);
+          if (Array.isArray(pedrasArray) && pedrasArray.length > 0) {
+            pedrasInicializadas.current = true;
+            setMinhasPedras(pedrasArray);
+            return;
+          }
         }
+      } catch (e) {
+        console.warn('Erro ao ler pedras salvas:', e);
       }
-    } catch (e) {
-      console.warn('Erro ao ler pedras salvas:', e);
     }
+
+    pedrasInicializadas.current = true;
 
     const totalVinteOitoPedras = [
       '0-0', '0-1', '0-2', '0-3', '0-4', '0-5', '0-6',
@@ -534,9 +552,9 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
     let pedrasIniciais: string[] = [];
     if (userId === j1) {
-      pedrasIniciais = pool.slice(0, 7);
+      pedrasIniciais = pool.slice(0, 7); // Exatamente 7 pedras para J1
     } else if (userId === j2) {
-      pedrasIniciais = pool.slice(7, 14);
+      pedrasIniciais = pool.slice(7, 14); // Exatamente 7 pedras para J2
     }
 
     atualizarMinhasPedras(pedrasIniciais);
@@ -578,7 +596,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           : [];
 
         setMesaPedras(jogadasProcessadas);
-        inicializarPedrasCompartilhadas(usuarioId, data.jogador_1_id, data.jogador_2_id);
+        inicializarPedrasCompartilhadas(usuarioId, data.jogador_1_id, data.jogador_2_id, jogadasProcessadas.length === 0);
 
         if (!data.vez_usuario_id && data.jogador_1_id) {
           await supabase.from('domino_salas').update({ vez_usuario_id: data.jogador_1_id }).eq('id', salaId);
@@ -617,8 +635,19 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             setJogador1Id(newData.jogador_1_id);
             setJogador2Id(newData.jogador_2_id);
 
+            const jogadasRaw = newData.historico_jogadas as any[];
+            const jogadasProcessadas: PedraMesa[] = Array.isArray(jogadasRaw) 
+              ? jogadasRaw.map((jogada: any) => {
+                  if (typeof jogada === 'string') {
+                    const [lA, lB] = jogada.split('-').map(Number);
+                    return { valorOriginal: jogada, ladoEsquerdo: lA, ladoDireito: lB };
+                  }
+                  return jogada as PedraMesa;
+                })
+              : [];
+
             if (newData.jogador_1_id && newData.jogador_2_id && !pedrasInicializadas.current) {
-              inicializarPedrasCompartilhadas(usuarioId, newData.jogador_1_id, newData.jogador_2_id);
+              inicializarPedrasCompartilhadas(usuarioId, newData.jogador_1_id, newData.jogador_2_id, jogadasProcessadas.length === 0);
             }
 
             setVezUsuarioId(newData.vez_usuario_id);
@@ -637,17 +666,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
               });
             }
 
-            const jogadasRaw = newData.historico_jogadas as any[];
-            const jogadasProcessadas: PedraMesa[] = Array.isArray(jogadasRaw) 
-              ? jogadasRaw.map((jogada: any) => {
-                  if (typeof jogada === 'string') {
-                    const [lA, lB] = jogada.split('-').map(Number);
-                    return { valorOriginal: jogada, ladoEsquerdo: lA, ladoDireito: lB };
-                  }
-                  return jogada as PedraMesa;
-                })
-              : [];
-              
             setMesaPedras(jogadasProcessadas);
             setTempoRestante(30);
             processandoJogadaLocal.current = false;
@@ -759,7 +777,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   return (
     <div ref={containerRef} className="w-full h-screen bg-[#090610] text-white font-sans flex flex-col justify-between p-1 sm:p-4 overflow-hidden select-none relative">
-      {/* ELEMENTO FLUTUANTE SEGUINDO O DEDO NO TOUCH */}
+      {/* ELEMENTO FLUTUANTE SEGUINDO O DEDO NO TOUCH (PEDRA BRANCA COM BRILHO) */}
       {touchPosicao && pedraArrastando && (
         <div 
           className="fixed z-[100] pointer-events-none transform -translate-x-1/2 -translate-y-1/2 scale-110 shadow-[0_0_20px_rgba(168,85,247,0.9)] rounded-lg bg-purple-900 border-2 border-purple-400"
@@ -899,7 +917,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
                 SOLTAR ESQ
               </div>
 
-              {/* RENDERIZAÇÃO DAS PEDRAS */}
+              {/* RENDERIZAÇÃO DAS PEDRAS COM ALTO CONTRASTE */}
               <div className="flex items-center justify-center gap-0.5 shrink-0">
                 {mesaPedras.map((pedra, idx) => {
                   const [lA, lB] = pedra.valorOriginal.split('-').map(Number);
@@ -947,7 +965,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </div>
       </div>
 
-      {/* ÁREA DAS SUAS PEDRAS (MÃO ARRASTÁVEL) */}
+      {/* ÁREA DAS SUAS PEDRAS (MÃO ARRASTÁVEL COM PEDRAS BRANCAS NÍTIDAS) */}
       <div className="bg-[#110D1A]/95 border border-purple-950/40 p-1.5 sm:p-2.5 rounded-2xl h-[28%] flex flex-col justify-between w-full">
         <div className="flex items-center justify-between px-1 h-[20%]">
           <span className="text-[8px] sm:text-[10px] text-purple-300 font-bold uppercase tracking-wider">Suas Pedras ({minhasPedras.length})</span>
