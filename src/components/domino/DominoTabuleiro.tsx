@@ -312,7 +312,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
-  // EXECUÇÃO RIGOROSA E INSTANTÂNEA DA JOGADA
+  // EXECUÇÃO RIGOROSA DA JOGADA
   const executarJogadaNaPonta = async (pedra: string, ladoEscolha: 'esquerda' | 'direita') => {
     if (!meuTurno || processandoJogadaLocal.current) return;
     processandoJogadaLocal.current = true;
@@ -357,7 +357,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     const proximoTurnoId = usuarioId === jogador1Id ? jogador2Id : jogador1Id;
 
     try {
-      // 1. ATUALIZAÇÃO OTIMISTA LOCAL (A MESA E A MÃO REAGEM NA HORA):
       const restoDasPedras = minhasPedras.filter(p => p !== pedra);
       atualizarMinhasPedras(restoDasPedras);
       setMesaPedras(novaMesa);
@@ -365,7 +364,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       setPontaDireita(novaPontaD);
       setVezUsuarioId(proximoTurnoId);
 
-      // 2. ENVIA O AVISO VIA WEBSOCKET (BROADCAST INSTANTÂNEO PARA O OPONENTE)
       if (canalRef.current) {
         canalRef.current.send({
           type: 'broadcast',
@@ -374,7 +372,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         });
       }
 
-      // 3. PERSISTE NO BANCO DE DADOS SUPABASE
       const { error } = await supabase
         .from('domino_salas')
         .update({
@@ -593,7 +590,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   }, [salaId, usuarioId, inicializarPedrasCompartilhadas]);
 
-  // CANAL REALTIME + BROADCAST ESTÁVEL (Sempre Atualizado Instantaneamente)
+  // CANAL REALTIME + BROADCAST ESTÁVEL
   useEffect(() => {
     carregarDadosPartida();
 
@@ -777,7 +774,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       }`}
       style={{ forcedColorAdjust: 'none', filter: 'none' }}
     >
-      {/* ELEMENTO FLUTUANTE SEGUINDO O DEDO NO TOUCH (PEDRA BRANCA COM BRILHO) */}
+      {/* ELEMENTO FLUTUANTE SEGUINDO O DEDO NO TOUCH */}
       {touchPosicao && pedraArrastando && (
         <div 
           className="fixed z-[1000] pointer-events-none transform -translate-x-1/2 -translate-y-1/2 scale-110 shadow-[0_0_20px_rgba(168,85,247,0.9)] rounded-lg bg-purple-900 border-2 border-purple-400"
@@ -809,7 +806,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </div>
       )}
 
-      {/* CABEÇALHO COMPACTO E ADAPTÁVEL SEM CORTES */}
+      {/* CABEÇALHO COM BOTÃO ESCRITO DE FULLSCREEN */}
       <div className="flex items-center justify-between bg-[#110D1A]/95 border border-purple-950/40 px-1.5 sm:px-3 py-1 rounded-xl shadow-lg h-[9%] min-h-[40px] z-30 w-full gap-1">
         <div className="flex items-center gap-1 shrink-0">
           <Button variant="ghost" size="sm" onClick={sairDaPartida} className="text-gray-400 hover:text-white h-7 text-[10px] sm:text-xs px-1 sm:px-2">
@@ -848,12 +845,19 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           </div>
         </div>
 
-        <Button variant="ghost" size="icon" onClick={alternarFullscreenModo} className="text-purple-400 hover:text-white w-6 h-6 sm:w-7 sm:h-7 shrink-0">
-          {isFullscreen ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
+        {/* BOTÃO CLARO E EXPLÍCITO DE TELA CHEIA */}
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={alternarFullscreenModo} 
+          className="bg-purple-950/60 hover:bg-purple-900 border-purple-500/40 text-purple-200 hover:text-white h-7 text-[9px] sm:text-[10px] font-bold px-2 rounded-lg shrink-0 flex items-center gap-1"
+        >
+          {isFullscreen ? <Minimize2 className="w-3 h-3 text-purple-400" /> : <Maximize2 className="w-3 h-3 text-purple-400" />}
+          <span>{isFullscreen ? 'Sair Full' : 'Tela Cheia'}</span>
         </Button>
       </div>
 
-      {/* TABULEIRO / MESA - ENQUADRADO E SEM EXCEDER AS BORDAS */}
+      {/* TABULEIRO / MESA */}
       <div className="flex-grow my-1 bg-emerald-950 border-[3px] sm:border-[4px] border-amber-950 rounded-[20px] shadow-[inset_0_4px_12px_rgba(0,0,0,0.6)] relative flex flex-col items-center justify-center h-[60%] overflow-hidden w-full">
         {mesaPedras.length > 0 && (
           <div className="absolute top-1.5 left-2 sm:left-4 flex items-center gap-2 text-[9px] sm:text-[10px] font-semibold text-emerald-300/60 z-10">
