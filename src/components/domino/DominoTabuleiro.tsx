@@ -199,7 +199,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   const [bannerAtivo, setBannerAtivo] = useState<BannerPublicitario | null>(null);
   const [debugInfo, setDebugInfo] = useState<string>('Buscando banners...');
-  const [exibirDebugPanel, setExibirDebugPanel] = useState<boolean>(true);
 
   const [tempoRestante, setTempoRestante] = useState<number>(30);
   
@@ -214,56 +213,48 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   const keyStoragePedras = `domino_pedras_sala_${salaId}_usr_${usuarioId}`;
 
-  // DIAGNÓSTICO PROFUNDO E BUSCA DE BANNERS
+  // BUSCA INTELIGENTE COM RESILIÊNCIA DE NOME DE TABELA
   useEffect(() => {
     const buscarBannerDomino = async () => {
       try {
-        console.log('🔍 [DEBUG BANNER] Iniciando busca...');
+        console.log('🔍 [DEBUG BANNER] Buscando na tabela "banners"...');
         
-        // 1. Busca sem filtro para testar conexão com a tabela
-        const { data: todosBanners, error: errGeral } = await supabase
+        let { data, error } = await supabase
           .from('banners')
           .select('*');
 
-        if (errGeral) {
-          console.error('❌ [DEBUG BANNER] Erro na tabela banners:', errGeral);
-          setDebugInfo(`Erro SQL: ${errGeral.message}`);
+        // Se a tabela 'banners' falhou por cache/nome, tenta 'banner'
+        if (error) {
+          console.warn('⚠️ Tentando fallback na tabela "banner"...', error.message);
+          const resAlt = await supabase.from('banner' as any).select('*');
+          data = resAlt.data;
+          error = resAlt.error;
+        }
+
+        if (error) {
+          console.error('❌ Erro final de tabela:', error);
+          setDebugInfo(`Erro SQL: ${error.message}. Execute: NOTIFY pgrst, 'reload schema'; no Supabase.`);
           return;
         }
 
-        if (!todosBanners || todosBanners.length === 0) {
-          console.warn('⚠️ [DEBUG BANNER] Tabela "banners" retornou vazia (0 registros).');
-          setDebugInfo('Tabela "banners" está vazia ou sem permissão RLS.');
-          return;
-        }
+        if (data && data.length > 0) {
+          const bannerEncontrado = data.find((b: any) => {
+            const sec = String(b.secao || '').toLowerCase().trim();
+            const estaAtivo = b.ativo === true || String(b.ativo) === 'true';
+            return estaAtivo && (sec === 'domino' || sec === 'jogo dominó' || sec === 'jogo domino');
+          });
 
-        console.log('✅ [DEBUG BANNER] Todos os banners salvos no banco:', todosBanners);
-
-        // 2. Filtra localmente de forma super abrangente
-        const bannerEncontrado = todosBanners.find((b: any) => {
-          const sec = String(b.secao || '').toLowerCase().trim();
-          const tit = String(b.titulo || '').toLowerCase().trim();
-          const estaAtivo = b.ativo === true || String(b.ativo) === 'true';
-
-          return estaAtivo && (
-            sec === 'domino' || 
-            sec === 'jogo dominó' || 
-            sec === 'jogo domino' || 
-            tit.includes('domino')
-          );
-        });
-
-        if (bannerEncontrado) {
-          console.log('🎯 [DEBUG BANNER] Banner filtrado com sucesso:', bannerEncontrado);
-          setBannerAtivo(bannerEncontrado as BannerPublicitario);
-          setDebugInfo(`Banner achado: "${bannerEncontrado.titulo}"`);
+          if (bannerEncontrado) {
+            setBannerAtivo(bannerEncontrado as BannerPublicitario);
+            setDebugInfo('');
+          } else {
+            setDebugInfo(`Nenhum banner ativo marcado com seção "domino". Banners no banco: ${data.length}`);
+          }
         } else {
-          const resumo = todosBanners.map(b => `[Secao: "${b.secao}" | Ativo: ${b.ativo}]`).join(', ');
-          console.warn('⚠️ [DEBUG BANNER] Nenhum bateu com a seção "domino". Banners no banco:', resumo);
-          setDebugInfo(`Banners achados no banco (${todosBanners.length}), mas nenhum como "domino": ${resumo}`);
+          setDebugInfo('Nenhum banner cadastrado no banco.');
         }
       } catch (err: any) {
-        console.error('💥 [DEBUG BANNER] Exceção:', err);
+        console.error('💥 Exceção ao buscar banner:', err);
         setDebugInfo(`Exceção JS: ${err?.message || err}`);
       }
     };
@@ -971,7 +962,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </Button>
       </div>
 
-      {/* ÁREA DO BANNER PUBLICITÁRIO COM PAINEL DE DIAGNÓSTICO */}
+      {/* ÁREA DO BANNER PUBLICITÁRIO CENTRALIZADO NO TOPO */}
       <div className="w-full flex flex-col justify-center items-center my-0.5 px-1 shrink-0 z-20">
         {bannerAtivo ? (
           bannerAtivo.link_url ? (
@@ -999,7 +990,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
               />
             </div>
           )
-        ) : (
+        ) : debugInfo ? (
           <div className="w-full max-w-lg p-2 border border-red-500/40 bg-red-950/30 rounded-xl flex flex-col items-center justify-center text-center text-[10px] text-red-200 gap-1">
             <div className="flex items-center gap-1 font-bold text-red-400">
               <Bug className="w-3.5 h-3.5" />
@@ -1007,7 +998,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             </div>
             <p className="break-all font-mono text-[9px] text-gray-300">{debugInfo}</p>
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* TABULEIRO / MESA - ENQUADRADO E SEM EXCEDER AS BORDAS */}
