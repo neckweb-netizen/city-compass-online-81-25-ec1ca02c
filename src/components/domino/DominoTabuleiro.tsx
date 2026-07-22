@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, RefreshCw, Trophy, User, Maximize2, Minimize2, ShieldAlert, Award, MessageSquare, Timer, Move } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -79,7 +79,7 @@ const tocarEfeitoSonoro = (tipo: 'jogar' | 'passar' | 'vitoria' | 'empate') => {
   }
 };
 
-// COMPONENTE DE PEDRA REALISTA DE ALTO CONTRASTE (FUNDO BRANCO PURISSIMO E BOLINHAS PRETAS)
+// COMPONENTE DE PEDRA REALISTA DE ALTO CONTRASTE (FUNDO BRANCO E BOLINHAS PRETAS)
 const PedraClassica = ({ 
   valor, 
   disabled, 
@@ -189,12 +189,15 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   // GARANTE QUE O NAVEGADOR NUNCA GIRE A TELA AO MUDAR PARA FULLSCREEN
   useEffect(() => {
     const checarFullscreenReal = () => {
-      const emFullscreen = !!document.fullscreenElement || !!(document as any).webkitFullscreenElement;
-      setIsFullscreen(emFullscreen);
+      try {
+        const emFullscreen = !!document.fullscreenElement || !!(document as any).webkitFullscreenElement;
+        setIsFullscreen(emFullscreen);
 
-      // Destrava qualquer tentativa de rotação do celular
-      if (screen.orientation && screen.orientation.unlock) {
-        screen.orientation.unlock().catch(() => {});
+        if (screen.orientation && screen.orientation.unlock) {
+          screen.orientation.unlock().catch(() => {});
+        }
+      } catch (e) {
+        console.warn('Erro ao checar fullscreen:', e);
       }
     };
 
@@ -237,9 +240,11 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   };
 
   const sairModoJogoReal = () => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen().catch(() => {});
-    }
+    try {
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+    } catch (e) {}
     setIsFullscreen(false);
   };
 
@@ -496,15 +501,13 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
-  // EMBARALHAMENTO SEGURO DE 7 PEDRAS INICIAIS POR JOGADOR (GARANTE SEMPRE 7 PEÇAS)
-  const inicializarPedrasCompartilhadas = (userId: string, j1: string | null, j2: string | null, mesaVazia: boolean) => {
+  // EMBARALHAMENTO SEGURO DE 7 PEDRAS INICIAIS
+  const inicializarPedrasCompartilhadas = useCallback((userId: string, j1: string | null, j2: string | null, mesaVazia: boolean) => {
     if (pedrasInicializadas.current || !j1 || !j2) return;
 
-    // Se a mesa estiver vazia (início do jogo), limpa resíduos antigos obrigatoriamente
     if (mesaVazia) {
       try { localStorage.removeItem(keyStoragePedras); } catch (e) {}
     } else {
-      // Se não for o início e houver pedras salvas na partida corrente, recupera
       try {
         const pedrasSalvas = localStorage.getItem(keyStoragePedras);
         if (pedrasSalvas) {
@@ -552,15 +555,15 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
     let pedrasIniciais: string[] = [];
     if (userId === j1) {
-      pedrasIniciais = pool.slice(0, 7); // Exatamente 7 pedras para J1
+      pedrasIniciais = pool.slice(0, 7);
     } else if (userId === j2) {
-      pedrasIniciais = pool.slice(7, 14); // Exatamente 7 pedras para J2
+      pedrasIniciais = pool.slice(7, 14);
     }
 
     atualizarMinhasPedras(pedrasIniciais);
-  };
+  }, [salaId, keyStoragePedras]);
 
-  const carregarDadosPartida = async () => {
+  const carregarDadosPartida = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('domino_salas')
@@ -604,10 +607,11 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         }
       }
     } catch (err) {
-      console.error(err);
+      console.error('Erro em carregarDadosPartida:', err);
     }
-  };
+  }, [salaId, usuarioId, inicializarPedrasCompartilhadas]);
 
+  // CANAL REALTIME ESTÁVEL - SEM LOOP INFINITO
   useEffect(() => {
     carregarDadosPartida();
 
@@ -689,7 +693,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     return () => {
       supabase.removeChannel(canalJogo);
     };
-  }, [salaId, mesaPedras.length, nomeJ1, nomeJ2, jogador1Id, jogador2Id]);
+  }, [salaId, usuarioId, carregarDadosPartida, inicializarPedrasCompartilhadas, jogador1Id, jogador2Id, nomeJ1, nomeJ2]);
 
   const meuTurno = vezUsuarioId === usuarioId;
   const adversarioNome = usuarioId === jogador1Id ? nomeJ2 : nomeJ1;
