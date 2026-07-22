@@ -182,6 +182,38 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   const [alertaTemporario, setAlertaTemporario] = useState<{ visivel: boolean; mensagem: string } | null>(null);
 
+  // CHAVE DE ARMAZENAMENTO PARA REARRANJO PERSISTENTE DE PEDRAS NO LOCALSTORAGE
+  const keyStoragePedras = `domino_pedras_sala_${salaId}_usr_${usuarioId}`;
+
+  // ESCUTADOR ESTRITO DE FULLSCREEN DO NAVEGADOR
+  useEffect(() => {
+    const checarFullscreenReal = () => {
+      const emFullscreen = !!document.fullscreenElement || !!(document as any).webkitFullscreenElement;
+      setIsFullscreen(emFullscreen);
+    };
+
+    document.addEventListener('fullscreenchange', checarFullscreenReal);
+    document.addEventListener('webkitfullscreenchange', checarFullscreenReal);
+
+    // Checagem inicial
+    checarFullscreenReal();
+
+    return () => {
+      document.removeEventListener('fullscreenchange', checarFullscreenReal);
+      document.removeEventListener('webkitfullscreenchange', checarFullscreenReal);
+    };
+  }, []);
+
+  // ATUALIZA O LOCALSTORAGE SEMPRE QUE AS PEDRAS DA MÃO MUDAM
+  const atualizarMinhasPedras = (novasPedras: string[]) => {
+    setMinhasPedras(novasPedras);
+    try {
+      localStorage.setItem(keyStoragePedras, JSON.stringify(novasPedras));
+    } catch (e) {
+      console.warn('Erro ao salvar pedras no storage:', e);
+    }
+  };
+
   // ENTRAR EM FULLSCREEN (SEM LOCK DE ROTAÇÃO)
   const entrarModoJogoReal = async () => {
     try {
@@ -206,6 +238,9 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   };
 
   const sairDaPartidaLocal = () => {
+    try {
+      localStorage.removeItem(keyStoragePedras);
+    } catch (e) {}
     sairModoJogoReal();
     onVoltarAoLobby();
   };
@@ -295,7 +330,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
-  // EXECUÇÃO RIGOROSA E PRECISA DA JOGADA (SEM MISTURAR PEÇAS)
+  // EXECUÇÃO RIGOROSA DA JOGADA
   const executarJogadaNaPonta = async (pedra: string, ladoEscolha: 'esquerda' | 'direita') => {
     if (!meuTurno || processandoJogadaLocal.current) return;
     processandoJogadaLocal.current = true;
@@ -311,13 +346,11 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     let novaPontaD = pontaDireita;
 
     if (mesaPedras.length === 0) {
-      // Primeira pedra da mesa
       const novaPedra: PedraMesa = { valorOriginal: `${ladoA}-${ladoB}`, ladoEsquerdo: ladoA, ladoDireito: ladoB };
       novaMesa.push(novaPedra);
       novaPontaE = ladoA;
       novaPontaD = ladoB;
     } else if (ladoEscolha === 'esquerda') {
-      // O lado que encosta no pontaEsquerda deve ir para a DIREITA da nova pedra!
       if (ladoA === pontaEsquerda) {
         const novaPedra: PedraMesa = { valorOriginal: `${ladoB}-${ladoA}`, ladoEsquerdo: ladoB, ladoDireito: ladoA };
         novaMesa.unshift(novaPedra);
@@ -328,7 +361,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         novaPontaE = ladoA;
       }
     } else if (ladoEscolha === 'direita') {
-      // O lado que encosta no pontaDireita deve ir para a ESQUERDA da nova pedra!
       if (ladoA === pontaDireita) {
         const novaPedra: PedraMesa = { valorOriginal: `${ladoA}-${ladoB}`, ladoEsquerdo: ladoA, ladoDireito: ladoB };
         novaMesa.push(novaPedra);
@@ -343,7 +375,8 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     const proximoTurnoId = usuarioId === jogador1Id ? jogador2Id : jogador1Id;
 
     try {
-      setMinhasPedras(prev => prev.filter(p => p !== pedra));
+      const restoDasPedras = minhasPedras.filter(p => p !== pedra);
+      atualizarMinhasPedras(restoDasPedras);
 
       const { error } = await supabase
         .from('domino_salas')
@@ -451,11 +484,26 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   };
 
-  // EMBARALHAMENTO
+  // EMBARALHAMENTO PERSISTENTE COM SUPORTE A REFRESH (F5)
   const inicializarPedrasCompartilhadas = (userId: string, j1: string | null, j2: string | null) => {
     if (pedrasInicializadas.current || !j1 || !j2) return;
     pedrasInicializadas.current = true;
 
+    // 1. Tenta recuperar pedras salvas previamente no LocalStorage para essa partida
+    try {
+      const pedrasSalvas = localStorage.getItem(keyStoragePedras);
+      if (pedrasSalvas) {
+        const pedrasArray = JSON.parse(pedrasSalvas);
+        if (Array.isArray(pedrasArray) && pedrasArray.length > 0) {
+          setMinhasPedras(pedrasArray);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Erro ao ler pedras salvas:', e);
+    }
+
+    // 2. Se for uma nova partida sem pedras salvas, faz a distribuição inicial
     const totalVinteOitoPedras = [
       '0-0', '0-1', '0-2', '0-3', '0-4', '0-5', '0-6',
       '1-1', '1-2', '1-3', '1-4', '1-5', '1-6',
@@ -484,11 +532,14 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       pool[j] = temp;
     }
 
+    let pedrasIniciais: string[] = [];
     if (userId === j1) {
-      setMinhasPedras(pool.slice(0, 7));
+      pedrasIniciais = pool.slice(0, 7);
     } else if (userId === j2) {
-      setMinhasPedras(pool.slice(7, 14));
+      pedrasIniciais = pool.slice(7, 14);
     }
+
+    atualizarMinhasPedras(pedrasIniciais);
   };
 
   const carregarDadosPartida = async () => {
@@ -682,7 +733,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     sairDaPartidaLocal();
   };
 
-  // CÁLCULO DE ESCALONAMENTO DINÂMICO GRADUAL (PARA ENCAIXE PERFEITO SEM VAZAR)
+  // CÁLCULO DE ESCALONAMENTO DINÂMICO
   const getEscalaMesa = () => {
     const qtd = mesaPedras.length;
     if (qtd <= 4) return 'scale-100';
@@ -712,7 +763,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       )}
 
       {modalNotificacao.visivel && (
-        <div className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-black/80 z-[150] flex items-center justify-center p-4">
           <div className="max-w-xs bg-[#110D1A] border border-purple-950/60 p-6 rounded-2xl shadow-2xl text-center space-y-4 animate-in fade-in zoom-in-95 duration-150">
             <div className="p-3 bg-purple-950/40 border border-purple-900/30 rounded-full w-fit mx-auto text-purple-400">
               {modalNotificacao.tipo === 'fim' ? <Award className="w-8 h-8 text-yellow-500" /> : <ShieldAlert className="w-8 h-8" />}
@@ -726,16 +777,16 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </div>
       )}
 
-      {/* TELA DE SOLICITAÇÃO DE FULLSCREEN */}
+      {/* TELA OBRIGATÓRIA BLOQUEADORA DE FULLSCREEN */}
       {!isFullscreen && (
-        <div className="absolute inset-0 bg-[#090610]/98 z-50 flex flex-col items-center justify-center p-6 text-center">
+        <div className="absolute inset-0 bg-[#090610]/99 z-[200] flex flex-col items-center justify-center p-6 text-center">
           <div className="max-w-sm space-y-6">
             <div className="p-4 bg-purple-950/40 border border-purple-900/30 rounded-full w-fit mx-auto text-purple-400 animate-bounce">
               <ShieldAlert className="w-12 h-12" />
             </div>
             <div className="space-y-2">
               <h2 className="text-xl font-black text-white">Modo Fullscreen Requerido</h2>
-              <p className="text-xs text-gray-400 leading-relaxed">Para uma melhor experiência no tabuleiro sem cortes, ative a tela cheia.</p>
+              <p className="text-xs text-gray-400 leading-relaxed">Para jogar e visualizar o tabuleiro corretamente sem distorções, você precisa ativar a tela cheia.</p>
             </div>
             <Button className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold h-11 shadow-lg shadow-purple-900/20" onClick={entrarModoJogoReal}>Ativar Tela Cheia</Button>
           </div>
