@@ -950,7 +950,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </Button>
       </div>
 
-      {/* ÁREA DO BANNER PUBLICITÁRIO - ENQUADRADO NA LARGURA TOTAL COM PROPORÇÃO PERFEITA */}
+      {/* ÁREA DO BANNER PUBLICITÁRIO - ALTURA DISCRETA E COMPACTA */}
       {bannerAtivo && (
         <div className="w-full flex justify-center items-center my-0.5 px-0.5 shrink-0 z-20">
           {bannerAtivo.link_url ? (
@@ -958,23 +958,31 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
               href={bannerAtivo.link_url} 
               target="_blank" 
               rel="noopener noreferrer"
-              className="w-full rounded-xl overflow-hidden border border-purple-500/30 shadow-md relative group block"
+              className="w-full h-12 sm:h-14 rounded-xl overflow-hidden border border-purple-500/30 shadow-md relative group block bg-purple-950/40"
             >
+              <div 
+                className="absolute inset-0 bg-cover bg-center blur-md opacity-30 scale-110"
+                style={{ backgroundImage: `url(${bannerAtivo.imagem_url})` }}
+              />
               <img 
                 src={bannerAtivo.imagem_url} 
                 alt={bannerAtivo.titulo} 
-                className="w-full h-auto block rounded-xl group-hover:scale-[1.02] transition-all duration-300"
+                className="w-full h-full object-contain relative z-10 mx-auto group-hover:scale-[1.02] transition-all duration-300"
               />
-              <div className="absolute top-1 right-1 bg-black/60 backdrop-blur-md p-1 rounded-full text-white/80">
-                <ExternalLink className="w-3 h-3" />
+              <div className="absolute top-1 right-1 z-20 bg-black/60 backdrop-blur-md p-0.5 rounded-full text-white/80">
+                <ExternalLink className="w-2.5 h-2.5" />
               </div>
             </a>
           ) : (
-            <div className="w-full rounded-xl overflow-hidden border border-purple-500/30 shadow-md relative">
+            <div className="w-full h-12 sm:h-14 rounded-xl overflow-hidden border border-purple-500/30 shadow-md relative bg-purple-950/40">
+              <div 
+                className="absolute inset-0 bg-cover bg-center blur-md opacity-30 scale-110"
+                style={{ backgroundImage: `url(${bannerAtivo.imagem_url})` }}
+              />
               <img 
                 src={bannerAtivo.imagem_url} 
                 alt={bannerAtivo.titulo} 
-                className="w-full h-auto block rounded-xl"
+                className="w-full h-full object-contain relative z-10 mx-auto"
               />
             </div>
           )}
@@ -982,7 +990,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       )}
 
       {/* TABULEIRO / MESA - ENQUADRADO E SEM EXCEDER AS BORDAS */}
-      <div className="flex-grow my-0.5 bg-emerald-950 border-[3px] sm:border-[4px] border-amber-950 rounded-[20px] shadow-[inset_0_4px_12px_rgba(0,0,0,0.6)] relative flex flex-col items-center justify-center h-[52%] overflow-hidden w-full">
+      <div className="flex-grow my-0.5 bg-emerald-950 border-[3px] sm:border-[4px] border-amber-950 rounded-[20px] shadow-[inset_0_4px_12px_rgba(0,0,0,0.6)] relative flex flex-col items-center justify-center h-[56%] overflow-hidden w-full">
         {mesaPedras.length > 0 && (
           <div className="absolute top-1.5 left-2 sm:left-4 flex items-center gap-2 text-[9px] sm:text-[10px] font-semibold text-emerald-300/60 z-10">
             <span>Esq: <strong className="text-white bg-emerald-900/60 px-1 py-0.5 rounded text-[10px]">{pontaEsquerda}</strong></span>
