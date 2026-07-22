@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -26,7 +25,7 @@ const bannerSchema = z.object({
   }, 'URL do link inválida'),
   ativo: z.boolean(),
   ordem: z.number().min(1, 'Ordem deve ser no mínimo 1').max(999, 'Ordem deve ser no máximo 999'),
-  secao: z.enum(['home', 'locais', 'eventos', 'categorias', 'busca', 'canal_video'], {
+  secao: z.enum(['home', 'locais', 'eventos', 'categorias', 'busca', 'canal_video', 'domino'], {
     errorMap: () => ({ message: 'Seção é obrigatória' })
   }),
   tipo_midia: z.enum(['imagem', 'video'], {
@@ -50,6 +49,7 @@ const secaoOptions = [
   { value: 'categorias', label: 'Categorias' },
   { value: 'busca', label: 'Busca' },
   { value: 'canal_video', label: 'Canal Informativo - Vídeos' },
+  { value: 'domino', label: 'Jogo Dominó' },
 ];
 
 export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerFormProps) => {
