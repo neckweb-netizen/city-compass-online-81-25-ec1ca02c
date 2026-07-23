@@ -19,11 +19,47 @@ interface PedraMesa {
 interface BannerPublicitario {
   id: string;
   titulo: string;
-  imagem_url: string;
+  imagem_url?: string | null;
+  codigo_html?: string | null;
+  tipo_midia?: 'imagem' | 'video' | 'codigo';
   link_url?: string | null;
   ativo: boolean;
   secao?: string;
 }
+
+// COMPONENTE AUXILIAR PARA RENDERIZAR BANNER DE CÓDIGO/ADSENSE
+const BannerCodeContainer: React.FC<{ codigoHtml: string }> = ({ codigoHtml }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!containerRef.current || !codigoHtml) return;
+
+    containerRef.current.innerHTML = codigoHtml;
+
+    // Re-executa tags <script> contidas no código colado
+    const scriptElements = Array.from(containerRef.current.querySelectorAll('script'));
+    scriptElements.forEach((oldScript) => {
+      const newScript = document.createElement('script');
+      Array.from(oldScript.attributes).forEach((attr) => {
+        newScript.setAttribute(attr.name, attr.value);
+      });
+      newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+      if (oldScript.parentNode) {
+        oldScript.parentNode.replaceChild(newScript, oldScript);
+      }
+    });
+
+    try {
+      if (codigoHtml.includes('adsbygoogle')) {
+        ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({});
+      }
+    } catch (e) {
+      console.warn('AdSense push error:', e);
+    }
+  }, [codigoHtml]);
+
+  return <div ref={containerRef} className="w-full h-full flex items-center justify-center overflow-hidden" />;
+};
 
 // SINTETIZADOR WEB AUDIO API PARA EFEITOS SONOROS
 const tocarEfeitoSonoro = (tipo: 'jogar' | 'passar' | 'vitoria' | 'empate') => {
@@ -218,7 +254,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       try {
         const { data, error } = await supabase
           .from('banners_publicitarios')
-          .select('id, titulo, imagem_url, link_url, ativo, ordem, secao')
+          .select('id, titulo, imagem_url, codigo_html, tipo_midia, link_url, ativo, ordem, secao')
           .eq('secao', 'domino' as any)
           .eq('ativo', true)
           .order('ordem', { ascending: true })
@@ -318,7 +354,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const sairDaPartida = () => {
     sairDaPartidaLocal();
 
-    // Executa em segundo plano para não travar a ação do usuário
     (async () => {
       try {
         const updates: any = {};
@@ -864,6 +899,8 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     return 'scale-35 sm:scale-50';
   };
 
+  const isBannerCodigo = bannerAtivo?.tipo_midia === 'codigo' || (!bannerAtivo?.imagem_url && !!bannerAtivo?.codigo_html);
+
   return (
     <div 
       ref={containerRef} 
@@ -956,34 +993,36 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </Button>
       </div>
 
-      {/* ÁREA DO BANNER PUBLICITÁRIO - ALTURA ULTRA-COMPACTA PERFECT FIT */}
+      {/* ÁREA DO BANNER PUBLICITÁRIO - RENDERIZAÇÃO DUPLA (CÓDIGO OU IMAGEM) */}
       {bannerAtivo && (
         <div className="w-full flex justify-center items-center my-0.5 px-0.5 shrink-0 z-20">
-          {bannerAtivo.link_url ? (
-            <a 
-              href={bannerAtivo.link_url} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="w-full max-w-xs sm:max-w-md h-8 sm:h-10 md:h-12 rounded-lg overflow-hidden border border-purple-500/30 shadow-md relative group block bg-[#110D1A]"
-            >
+          <div className="w-full max-w-xs sm:max-w-md h-8 sm:h-10 md:h-12 rounded-lg overflow-hidden border border-purple-500/30 shadow-md relative bg-[#110D1A]">
+            {isBannerCodigo ? (
+              <BannerCodeContainer codigoHtml={bannerAtivo.codigo_html || ''} />
+            ) : bannerAtivo.link_url ? (
+              <a 
+                href={bannerAtivo.link_url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="w-full h-full relative group block"
+              >
+                <img 
+                  src={bannerAtivo.imagem_url || '/placeholder.svg'} 
+                  alt={bannerAtivo.titulo} 
+                  className="w-full h-full object-cover object-center group-hover:scale-[1.02] transition-all duration-300"
+                />
+                <div className="absolute top-0.5 right-0.5 z-20 bg-black/60 backdrop-blur-md p-0.5 rounded-full text-white/80">
+                  <ExternalLink className="w-2 h-2" />
+                </div>
+              </a>
+            ) : (
               <img 
-                src={bannerAtivo.imagem_url} 
-                alt={bannerAtivo.titulo} 
-                className="w-full h-full object-cover object-center group-hover:scale-[1.02] transition-all duration-300"
-              />
-              <div className="absolute top-0.5 right-0.5 z-20 bg-black/60 backdrop-blur-md p-0.5 rounded-full text-white/80">
-                <ExternalLink className="w-2 h-2" />
-              </div>
-            </a>
-          ) : (
-            <div className="w-full max-w-xs sm:max-w-md h-8 sm:h-10 md:h-12 rounded-lg overflow-hidden border border-purple-500/30 shadow-md relative bg-[#110D1A]">
-              <img 
-                src={bannerAtivo.imagem_url} 
+                src={bannerAtivo.imagem_url || '/placeholder.svg'} 
                 alt={bannerAtivo.titulo} 
                 className="w-full h-full object-cover object-center"
               />
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
 
