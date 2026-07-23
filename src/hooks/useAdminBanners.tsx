@@ -5,11 +5,13 @@ import { useToast } from '@/hooks/use-toast';
 export interface Banner {
   id: string;
   titulo: string;
-  imagem_url: string;
-  link_url?: string;
+  imagem_url?: string | null;
+  codigo_html?: string | null;
+  tipo_midia?: 'imagem' | 'video' | 'codigo';
+  link_url?: string | null;
   ativo: boolean;
   ordem: number;
-  secao: 'home' | 'locais' | 'eventos' | 'categorias' | 'busca' | 'canal_video' | 'empresas';
+  secao: 'home' | 'locais' | 'eventos' | 'categorias' | 'busca' | 'canal_video' | 'empresas' | 'domino';
   criado_em: string;
   atualizado_em: string;
 }
@@ -31,7 +33,7 @@ export const useAdminBanners = (secao?: string) => {
 
       let query = supabase
         .from('banners_publicitarios')
-        .select('id, titulo, imagem_url, link_url, ativo, ordem, secao, criado_em, atualizado_em')
+        .select('id, titulo, imagem_url, codigo_html, tipo_midia, link_url, ativo, ordem, secao, criado_em, atualizado_em')
         .order('ordem', { ascending: true });
 
       if (secao && secao !== 'all') {
@@ -60,9 +62,17 @@ export const useAdminBanners = (secao?: string) => {
         throw new Error('Usuário não autenticado. Faça login novamente.');
       }
 
-      // Validar dados obrigatórios
-      if (!banner.titulo || !banner.imagem_url || !banner.secao) {
-        throw new Error('Título, imagem e seção são obrigatórios');
+      // Validar dados obrigatórios considerando o tipo de mídia
+      if (!banner.titulo || !banner.secao) {
+        throw new Error('Título e seção são obrigatórios');
+      }
+
+      if (banner.tipo_midia === 'codigo' && !banner.codigo_html) {
+        throw new Error('O código HTML/AdSense é obrigatório');
+      }
+
+      if ((banner.tipo_midia === 'imagem' || banner.tipo_midia === 'video') && !banner.imagem_url) {
+        throw new Error('A imagem ou URL do vídeo é obrigatória');
       }
 
       // Ensure ordem is a valid integer between 1 and 999
@@ -71,7 +81,9 @@ export const useAdminBanners = (secao?: string) => {
       // Preparar dados para inserção
       const bannerData = {
         titulo: banner.titulo.trim(),
-        imagem_url: banner.imagem_url,
+        imagem_url: banner.imagem_url || null,
+        codigo_html: banner.codigo_html || null,
+        tipo_midia: banner.tipo_midia || 'imagem',
         link_url: banner.link_url?.trim() || null,
         ativo: Boolean(banner.ativo),
         ordem: ordem,
@@ -83,7 +95,7 @@ export const useAdminBanners = (secao?: string) => {
       const { data, error } = await supabase
         .from('banners_publicitarios')
         .insert([bannerData])
-        .select('id, titulo, imagem_url, link_url, ativo, ordem, secao, criado_em, atualizado_em')
+        .select('id, titulo, imagem_url, codigo_html, tipo_midia, link_url, ativo, ordem, secao, criado_em, atualizado_em')
         .single();
 
       if (error) {
@@ -141,7 +153,7 @@ export const useAdminBanners = (secao?: string) => {
       // Buscar o banner original
       const { data: originalBanner, error: fetchError } = await supabase
         .from('banners_publicitarios')
-        .select('titulo, imagem_url, link_url, ativo, ordem')
+        .select('titulo, imagem_url, codigo_html, tipo_midia, link_url, ativo, ordem')
         .eq('id', id)
         .single();
 
@@ -154,6 +166,8 @@ export const useAdminBanners = (secao?: string) => {
       const duplicatedBannerData = {
         titulo: `${originalBanner.titulo} (Cópia)`,
         imagem_url: originalBanner.imagem_url,
+        codigo_html: originalBanner.codigo_html,
+        tipo_midia: originalBanner.tipo_midia,
         link_url: originalBanner.link_url,
         ativo: originalBanner.ativo,
         ordem: originalBanner.ordem,
@@ -165,7 +179,7 @@ export const useAdminBanners = (secao?: string) => {
       const { data, error } = await supabase
         .from('banners_publicitarios')
         .insert([duplicatedBannerData])
-        .select('id, titulo, imagem_url, link_url, ativo, ordem, secao, criado_em, atualizado_em')
+        .select('id, titulo, imagem_url, codigo_html, tipo_midia, link_url, ativo, ordem, secao, criado_em, atualizado_em')
         .single();
 
       if (error) {
@@ -220,7 +234,9 @@ export const useAdminBanners = (secao?: string) => {
       const updateData: any = {};
       
       if (banner.titulo) updateData.titulo = banner.titulo.trim();
-      if (banner.imagem_url) updateData.imagem_url = banner.imagem_url;
+      if (banner.imagem_url !== undefined) updateData.imagem_url = banner.imagem_url;
+      if (banner.codigo_html !== undefined) updateData.codigo_html = banner.codigo_html;
+      if (banner.tipo_midia !== undefined) updateData.tipo_midia = banner.tipo_midia;
       if (banner.link_url !== undefined) updateData.link_url = banner.link_url?.trim() || null;
       if (banner.ativo !== undefined) updateData.ativo = Boolean(banner.ativo);
       if (banner.ordem !== undefined) {
@@ -232,7 +248,7 @@ export const useAdminBanners = (secao?: string) => {
         .from('banners_publicitarios')
         .update(updateData)
         .eq('id', id)
-        .select('id, titulo, imagem_url, link_url, ativo, ordem, secao, criado_em, atualizado_em')
+        .select('id, titulo, imagem_url, codigo_html, tipo_midia, link_url, ativo, ordem, secao, criado_em, atualizado_em')
         .single();
 
       if (error) {
