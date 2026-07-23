@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ImageUpload } from '@/components/ui/image-upload';
@@ -13,7 +14,8 @@ import { Banner } from '@/hooks/useAdminBanners';
 
 const bannerSchema = z.object({
   titulo: z.string().min(1, 'Título é obrigatório').max(255, 'Título deve ter no máximo 255 caracteres'),
-  imagem_url: z.string().min(1, 'Mídia é obrigatória').url('URL da mídia inválida'),
+  imagem_url: z.string().optional(),
+  codigo_html: z.string().optional(),
   link_url: z.string().optional().refine((val) => {
     if (!val || val.trim() === '') return true;
     try {
@@ -28,9 +30,20 @@ const bannerSchema = z.object({
   secao: z.enum(['home', 'locais', 'eventos', 'categorias', 'busca', 'canal_video', 'domino'], {
     errorMap: () => ({ message: 'Seção é obrigatória' })
   }),
-  tipo_midia: z.enum(['imagem', 'video'], {
+  tipo_midia: z.enum(['imagem', 'video', 'codigo'], {
     errorMap: () => ({ message: 'Tipo de mídia é obrigatório' })
   }),
+}).refine((data) => {
+  if (data.tipo_midia === 'imagem' || data.tipo_midia === 'video') {
+    return !!data.imagem_url && data.imagem_url.trim() !== '';
+  }
+  if (data.tipo_midia === 'codigo') {
+    return !!data.codigo_html && data.codigo_html.trim() !== '';
+  }
+  return true;
+}, {
+  message: 'Preencha o conteúdo da mídia (imagem/URL/código)',
+  path: ['imagem_url'],
 });
 
 type BannerFormData = z.infer<typeof bannerSchema>;
@@ -58,6 +71,7 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
     defaultValues: {
       titulo: banner?.titulo || '',
       imagem_url: banner?.imagem_url || '',
+      codigo_html: (banner as any)?.codigo_html || '',
       link_url: banner?.link_url || '',
       ativo: banner?.ativo ?? true,
       ordem: banner?.ordem || 1,
@@ -68,6 +82,7 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
 
   const ativo = watch('ativo');
   const imagemUrl = watch('imagem_url');
+  const codigoHtml = watch('codigo_html');
   const secao = watch('secao');
   const tipoMidia = watch('tipo_midia');
 
@@ -92,28 +107,19 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
   const handleTipoMidiaChange = (value: string) => {
     console.log('Media type changed:', value);
     setValue('tipo_midia', value as any);
-    setValue('imagem_url', ''); // Reset URL when changing type
-    trigger(['tipo_midia', 'imagem_url']);
+    trigger(['tipo_midia', 'imagem_url', 'codigo_html']);
   };
 
   const handleFormSubmit = (data: BannerFormData) => {
     console.log('Form submitted with data:', data);
     
-    // Validação adicional antes do envio
     if (!data.titulo.trim()) {
       console.error('Título é obrigatório');
       return;
     }
-    
-    if (!data.imagem_url) {
-      console.error('Mídia é obrigatória');
-      return;
-    }
 
-    // Ensure ordem is within valid range
     const ordem = Math.max(1, Math.min(999, Math.floor(Number(data.ordem) || 1)));
 
-    // Limpar link_url se estiver vazio
     const formattedData = {
       ...data,
       titulo: data.titulo.trim(),
@@ -173,6 +179,7 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
               <SelectContent>
                 <SelectItem value="imagem">Imagem</SelectItem>
                 <SelectItem value="video">Vídeo</SelectItem>
+                <SelectItem value="codigo">Código / AdSense</SelectItem>
               </SelectContent>
             </Select>
             {errors.tipo_midia && (
@@ -180,11 +187,12 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
             )}
           </div>
 
-          <div>
-            <Label>{tipoMidia === 'video' ? 'URL do Vídeo *' : 'Imagem do Banner *'}</Label>
-            {tipoMidia === 'imagem' ? (
+          {/* RENDERING DINÂMICO CONFORME O TIPO SELECIONADO */}
+          {tipoMidia === 'imagem' && (
+            <div>
+              <Label>Imagem do Banner *</Label>
               <ImageUpload
-                value={imagemUrl}
+                value={imagemUrl || ''}
                 onChange={handleImageChange}
                 onRemove={handleImageRemove}
                 bucket="banners"
@@ -192,47 +200,72 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
                 maxSize={10}
                 className="mt-2"
               />
-            ) : (
-              <div className="space-y-2 mt-2">
-                <Input
-                  value={imagemUrl}
-                  onChange={(e) => {
-                    setValue('imagem_url', e.target.value);
-                    trigger('imagem_url');
-                  }}
-                  placeholder="https://youtube.com/watch?v=... ou URL direta do vídeo"
-                  type="url"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Suporta URLs do YouTube, Vimeo ou links diretos para arquivos de vídeo (.mp4, .webm, .ogg)
-                </p>
-              </div>
-            )}
-            {errors.imagem_url && (
-              <p className="text-sm text-destructive mt-1">{errors.imagem_url.message}</p>
-            )}
-            {tipoMidia === 'imagem' && (
+              {errors.imagem_url && (
+                <p className="text-sm text-destructive mt-1">{errors.imagem_url.message}</p>
+              )}
               <p className="text-xs text-muted-foreground mt-1">
-                Formatos aceitos: JPG, PNG, GIF • Tamanho recomendado: 1200x400px para desktop, responsivo automático
+                Formatos aceitos: JPG, PNG, GIF • Tamanho recomendado: 1200x400px
               </p>
-            )}
-          </div>
+            </div>
+          )}
 
-          <div>
-            <Label htmlFor="link_url">URL do Link (opcional)</Label>
-            <Input
-              id="link_url"
-              {...register('link_url')}
-              placeholder="https://exemplo.com"
-              type="url"
-            />
-            {errors.link_url && (
-              <p className="text-sm text-destructive mt-1">{errors.link_url.message}</p>
-            )}
-            <p className="text-xs text-muted-foreground mt-1">
-              Deixe em branco se o banner não deve redirecionar para nenhum link
-            </p>
-          </div>
+          {tipoMidia === 'video' && (
+            <div>
+              <Label>URL do Vídeo *</Label>
+              <Input
+                value={imagemUrl || ''}
+                onChange={(e) => {
+                  setValue('imagem_url', e.target.value);
+                  trigger('imagem_url');
+                }}
+                placeholder="https://youtube.com/watch?v=... ou URL direta do vídeo"
+                type="url"
+                className="mt-2"
+              />
+              {errors.imagem_url && (
+                <p className="text-sm text-destructive mt-1">{errors.imagem_url.message}</p>
+              )}
+              <p className="text-xs text-muted-foreground mt-1">
+                Suporta URLs do YouTube, Vimeo ou links diretos de vídeo (.mp4, .webm)
+              </p>
+            </div>
+          )}
+
+          {tipoMidia === 'codigo' && (
+            <div>
+              <Label htmlFor="codigo_html">Código HTML / AdSense *</Label>
+              <Textarea
+                id="codigo_html"
+                {...register('codigo_html')}
+                placeholder={`<script async src="https://pagead2.googlesyndication.com/..."></script>\n<ins class="adsbygoogle" ...></ins>`}
+                className="mt-2 font-mono text-xs min-h-[120px]"
+              />
+              {errors.codigo_html && (
+                <p className="text-sm text-destructive mt-1">{errors.codigo_html.message}</p>
+              )}
+              <p className="text-xs text-muted-foreground mt-1">
+                Cole aqui o bloco de código gerado pelo Google AdSense ou qualquer HTML/Script de anúncio.
+              </p>
+            </div>
+          )}
+
+          {tipoMidia !== 'codigo' && (
+            <div>
+              <Label htmlFor="link_url">URL do Link (opcional)</Label>
+              <Input
+                id="link_url"
+                {...register('link_url')}
+                placeholder="https://exemplo.com"
+                type="url"
+              />
+              {errors.link_url && (
+                <p className="text-sm text-destructive mt-1">{errors.link_url.message}</p>
+              )}
+              <p className="text-xs text-muted-foreground mt-1">
+                Deixe em branco se o banner não deve redirecionar para nenhum link
+              </p>
+            </div>
+          )}
 
           <div>
             <Label htmlFor="ordem">Ordem (1-999) *</Label>
