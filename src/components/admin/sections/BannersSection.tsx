@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Edit, Trash2, ExternalLink, Image, AlertCircle, Copy } from 'lucide-react';
+import { Plus, Edit, Trash2, ExternalLink, Image, AlertCircle, Copy, Code, Video } from 'lucide-react';
 import { useAdminBanners, Banner } from '@/hooks/useAdminBanners';
 import { BannerForm } from '../forms/BannerForm';
 import { DuplicateBannerModal } from '../forms/DuplicateBannerModal';
@@ -121,7 +121,7 @@ export const BannersSection = () => {
             Gerencie os banners publicitários exibidos nas diferentes seções do site
           </p>
           <p className="text-sm text-muted-foreground mt-1">
-            Formatos aceitos: JPG, PNG, GIF • Tamanho recomendado: 1200x400px (responsivo automático)
+            Suporta Imagens, Vídeos e Códigos HTML / AdSense
           </p>
         </div>
         <Button onClick={() => setShowForm(true)}>
@@ -178,114 +178,157 @@ export const BannersSection = () => {
         </Card>
       ) : (
         <div className="grid gap-4">
-          {banners.map((banner) => (
-            <Card key={banner.id}>
-              <CardHeader className="pb-3">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-lg">{banner.titulo}</CardTitle>
-                    <div className="flex gap-2 mt-2">
-                      <Badge variant={banner.ativo ? 'default' : 'secondary'}>
-                        {banner.ativo ? 'Ativo' : 'Inativo'}
-                      </Badge>
-                      <Badge variant="outline">
-                        {getSecaoLabel(banner.secao)}
-                      </Badge>
-                      <Badge variant="outline">Ordem {banner.ordem}</Badge>
+          {banners.map((banner) => {
+            const isCodigo = banner.tipo_midia === 'codigo' || (!banner.imagem_url && !!banner.codigo_html);
+            const isVideo = banner.tipo_midia === 'video';
+
+            return (
+              <Card key={banner.id}>
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-lg">{banner.titulo}</CardTitle>
+                      <div className="flex gap-2 mt-2">
+                        <Badge variant={banner.ativo ? 'default' : 'secondary'}>
+                          {banner.ativo ? 'Ativo' : 'Inativo'}
+                        </Badge>
+                        <Badge variant="outline">
+                          {getSecaoLabel(banner.secao)}
+                        </Badge>
+                        <Badge variant="secondary" className="gap-1">
+                          {isCodigo ? (
+                            <>
+                              <Code className="w-3 h-3" /> AdSense / HTML
+                            </>
+                          ) : isVideo ? (
+                            <>
+                              <Video className="w-3 h-3" /> Vídeo
+                            </>
+                          ) : (
+                            <>
+                              <Image className="w-3 h-3" /> Imagem
+                            </>
+                          )}
+                        </Badge>
+                        <Badge variant="outline">Ordem {banner.ordem}</Badge>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleDuplicate(banner)}
-                      disabled={updateBanner.isPending || deleteBanner.isPending || duplicateBanner.isPending}
-                      title="Duplicar banner"
-                    >
-                      <Copy className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleEdit(banner)}
-                      disabled={updateBanner.isPending || deleteBanner.isPending || duplicateBanner.isPending}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          size="icon"
-                          disabled={updateBanner.isPending || deleteBanner.isPending || duplicateBanner.isPending}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Tem certeza que deseja excluir o banner "{banner.titulo}"?
-                            Esta ação não pode ser desfeita.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDelete(banner.id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handleDuplicate(banner)}
+                        disabled={updateBanner.isPending || deleteBanner.isPending || duplicateBanner.isPending}
+                        title="Duplicar banner"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handleEdit(banner)}
+                        disabled={updateBanner.isPending || deleteBanner.isPending || duplicateBanner.isPending}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            size="icon"
+                            disabled={updateBanner.isPending || deleteBanner.isPending || duplicateBanner.isPending}
                           >
-                            Excluir
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex gap-4">
-                  <div className="w-40 h-24 bg-muted rounded-lg overflow-hidden flex-shrink-0 border">
-                    <img
-                      src={banner.imagem_url}
-                      alt={banner.titulo}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = '/placeholder.svg';
-                      }}
-                    />
-                  </div>
-                  <div className="flex-1 space-y-2">
-                    <div className="text-sm text-muted-foreground">
-                      <strong>Seção:</strong> {getSecaoLabel(banner.secao)}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      <strong>Arquivo:</strong> {banner.imagem_url.split('/').pop()}
-                    </div>
-                    {banner.link_url && (
-                      <p className="text-sm text-muted-foreground flex items-center gap-1">
-                        <ExternalLink className="w-3 h-3" />
-                        <strong>Link:</strong> 
-                        <a 
-                          href={banner.link_url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-primary hover:underline truncate"
-                        >
-                          {banner.link_url}
-                        </a>
-                      </p>
-                    )}
-                    <div className="text-xs text-muted-foreground">
-                      Criado em: {new Date(banner.criado_em).toLocaleDateString('pt-BR')}
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Tem certeza que deseja excluir o banner "{banner.titulo}"?
+                              Esta ação não pode ser desfeita.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDelete(banner.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Excluir
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardHeader>
+                <CardContent>
+                  <div className="flex gap-4">
+                    {/* PREVIEW PROTEGIDO CONTRA NULL */}
+                    <div className="w-40 h-24 bg-muted rounded-lg overflow-hidden flex-shrink-0 border flex items-center justify-center">
+                      {isCodigo ? (
+                        <div className="flex flex-col items-center justify-center p-2 text-center text-xs text-muted-foreground bg-slate-900/5 w-full h-full">
+                          <Code className="w-6 h-6 mb-1 text-purple-600" />
+                          <span className="font-mono text-[10px] font-semibold">Código AdSense</span>
+                        </div>
+                      ) : banner.imagem_url ? (
+                        <img
+                          src={banner.imagem_url}
+                          alt={banner.titulo}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = '/placeholder.svg';
+                          }}
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-xs text-muted-foreground">
+                          <Image className="w-6 h-6 mb-1" />
+                          <span>Sem imagem</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-1 space-y-2">
+                      <div className="text-sm text-muted-foreground">
+                        <strong>Seção:</strong> {getSecaoLabel(banner.secao)}
+                      </div>
+                      
+                      {isCodigo ? (
+                        <div className="text-sm text-muted-foreground">
+                          <strong>Conteúdo:</strong> <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">Bloco HTML / Script de Anúncio</span>
+                        </div>
+                      ) : (
+                        <div className="text-sm text-muted-foreground truncate max-w-md">
+                          <strong>Arquivo/URL:</strong> {banner.imagem_url ? banner.imagem_url.split('/').pop() : 'Nenhum'}
+                        </div>
+                      )}
+
+                      {banner.link_url && !isCodigo && (
+                        <p className="text-sm text-muted-foreground flex items-center gap-1">
+                          <ExternalLink className="w-3 h-3" />
+                          <strong>Link:</strong> 
+                          <a 
+                            href={banner.link_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline truncate"
+                          >
+                            {banner.link_url}
+                          </a>
+                        </p>
+                      )}
+                      
+                      <div className="text-xs text-muted-foreground">
+                        Criado em: {banner.criado_em ? new Date(banner.criado_em).toLocaleDateString('pt-BR') : 'Hoje'}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
