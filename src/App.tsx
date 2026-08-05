@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   Hammer, Clock, MapPin, Mail, MessageSquare, Instagram, Facebook, 
   ArrowRight, Sparkles, DollarSign, FileText, NotebookPen, Search, 
-  ShieldCheck, Lock, Calculator, Car, Percent 
+  ShieldCheck, Lock, Calculator, Percent 
 } from "lucide-react";
 import { initGA, logPageView } from "@/utils/analytics";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -55,7 +55,6 @@ const GeradorCobranca = lazy(() => import("./pages/ferramentas/GeradorCobranca")
 const CriadorCurriculo = lazy(() => import("./pages/ferramentas/CriadorCurriculo").then(m => ({ default: m.CriadorCurriculo })));
 const GestaoCobrancas = lazy(() => import("./pages/ferramentas/GestaoCobrancas").then(m => ({ default: m.GestaoCobrancas })));
 const CalculadoraOrcamento = lazy(() => import("./pages/ferramentas/CalculadoraOrcamento").then(m => ({ default: m.CalculadoraOrcamento })));
-const CalculadoraViagem = lazy(() => import("./pages/ferramentas/CalculadoraViagem").then(m => ({ default: m.CalculadoraViagem })));
 const CalculadoraMargem = lazy(() => import("./pages/ferramentas/CalculadoraMargem").then(m => ({ default: m.CalculadoraMargem })));
 
 // Lazy load all admin pages
@@ -143,16 +142,6 @@ const FerramentasCatalogInternal = () => {
       categoria: 'Precificação',
       corGradiente: 'from-purple-500/20 via-purple-500/5 to-transparent border-purple-500/30',
       corTexto: 'text-purple-500',
-    },
-    {
-      id: 'calculadora-viagem',
-      titulo: 'Calculadora de Viagem & Carona',
-      descricao: 'Calcule custos de combustível, pedágio e divida a conta da viagem facilmente com seus amigos pelo WhatsApp.',
-      icone: Car,
-      rota: '/ferramentas/calculadora-viagem',
-      categoria: 'Utilidade Pública',
-      corGradiente: 'from-orange-500/20 via-orange-500/5 to-transparent border-orange-500/30',
-      corTexto: 'text-orange-500',
     },
     {
       id: 'calculadora-margem',
@@ -495,7 +484,6 @@ const App = () => {
                 <Route path="ferramentas/gestao-cobrancas" element={<ProtectedRoute><GestaoCobrancas /></ProtectedRoute>} />
                 <Route path="ferramentas/GestaoCobrancas" element={<ProtectedRoute><GestaoCobrancas /></ProtectedRoute>} />
                 <Route path="ferramentas/calculadora-orcamento" element={<ProtectedRoute><CalculadoraOrcamento /></ProtectedRoute>} />
-                <Route path="ferramentas/calculadora-viagem" element={<ProtectedRoute><CalculadoraViagem /></ProtectedRoute>} />
                 <Route path="ferramentas/calculadora-margem" element={<ProtectedRoute><CalculadoraMargem /></ProtectedRoute>} />
                 
                 <Route path=":shortCode" element={<ShortUrlRedirect />} />
