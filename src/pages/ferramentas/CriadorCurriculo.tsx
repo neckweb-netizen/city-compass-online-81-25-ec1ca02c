@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Download, Plus, Trash2, User, Briefcase, GraduationCap, Sparkles, Phone, Mail, MapPin, Award, FileText } from 'lucide-react';
+import { ArrowLeft, Download, Printer, Plus, Trash2, User, Briefcase, GraduationCap, Sparkles, Award, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface Experiencia {
@@ -25,7 +25,7 @@ interface Formacao {
 export const CriadorCurriculo = () => {
   const navigate = useNavigate();
 
-  // DADOS PESSOAIS (TOTALMENTE FICTÍCIOS / VAZIOS DE INÍCIO)
+  // DADOS PESSOAIS FICTÍCIOS DE EXEMPLO
   const [nome, setNome] = useState('João da Silva Santos');
   const [idade, setIdade] = useState('25 anos (01/01/2000)');
   const [endereco, setEndereco] = useState('Rua Exemplo, 100 - Bairro Centro');
@@ -49,7 +49,7 @@ export const CriadorCurriculo = () => {
       id: '1',
       empresa: 'Empresa Exemplo LTDA',
       cidade: 'Sua Cidade - BA',
-      cargo: 'Auxiliar de Operações',
+      cargo: 'Auxiliar Administrativo',
       dataInicio: '01/01/2022',
       dataFim: '01/01/2024',
       descricao: ''
@@ -95,15 +95,28 @@ export const CriadorCurriculo = () => {
     setFormacoes(formacoes.map(form => form.id === id ? { ...form, descricao: valor } : form));
   };
 
-  // IMPRESSÃO / SALVAR PDF
-  const handleBaixarPDF = () => {
+  // 1️⃣ BOTÃO IMPRIMIR: ABRE A TELA DE ESCOLHA DA IMPRESSORA
+  const handleImprimir = () => {
     window.print();
+  };
+
+  // 2️⃣ BOTÃO BAIXAR PDF: ACIONA O SALVAMENTO DE PDF DIRETO DO NAVEGADOR
+  const handleBaixarPDF = () => {
+    const tituloOriginal = document.title;
+    const nomeLimpo = nome.trim() ? `Curriculo_${nome.replace(/\s+/g, '_')}` : 'Meu_Curriculo';
+    
+    document.title = nomeLimpo;
+    window.print();
+    
+    setTimeout(() => {
+      document.title = tituloOriginal;
+    }, 1000);
   };
 
   return (
     <div className="min-h-screen bg-background py-8 px-4 sm:px-6 lg:px-8 print:p-0 print:bg-white print:m-0">
       
-      {/* ESTILOS DE IMPRESSÃO EXCLUSIVOS PARA O PDF LIMPO */}
+      {/* REGRAS CSS DE IMPRESSÃO QUE MANDAM SOMENTE A FOLHA PARA O PDF */}
       <style>{`
         @media print {
           body * {
@@ -156,7 +169,7 @@ export const CriadorCurriculo = () => {
             Criador de Currículo PDF Profissional
           </h1>
           <p className="text-muted-foreground max-w-xl mx-auto text-sm sm:text-base">
-            Preencha os campos abaixo e veja seu currículo formatado na folha ao lado.
+            Preencha os campos abaixo, veja o resultado em tempo real e escolha se prefere imprimir ou baixar o PDF.
           </p>
         </div>
 
@@ -314,18 +327,38 @@ export const CriadorCurriculo = () => {
               </CardContent>
             </Card>
 
-            <Button onClick={handleBaixarPDF} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-12 rounded-xl flex items-center justify-center gap-2 shadow-lg">
-              <Download className="w-5 h-5" /> Baixar Currículo em PDF
-            </Button>
+            {/* BOTÕES LADO A LADO */}
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <Button 
+                onClick={handleImprimir}
+                variant="outline"
+                className="w-full border-primary text-primary hover:bg-primary/10 font-bold h-12 rounded-xl flex items-center justify-center gap-2"
+              >
+                <Printer className="w-5 h-5" /> Imprimir
+              </Button>
+
+              <Button 
+                onClick={handleBaixarPDF}
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-12 rounded-xl flex items-center justify-center gap-2 shadow-lg"
+              >
+                <Download className="w-5 h-5" /> Baixar PDF
+              </Button>
+            </div>
           </div>
 
           {/* PRÉ-VISUALIZAÇÃO / FOLHA FORMATADA A4 */}
           <div className="sticky top-6">
             <div className="flex justify-between items-center mb-2 no-print">
               <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Pré-visualização do PDF</span>
-              <Button size="sm" onClick={handleBaixarPDF} className="h-8 text-xs gap-1">
-                <Download className="w-3.5 h-3.5" /> Baixar PDF
-              </Button>
+              
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={handleImprimir} className="h-8 text-xs gap-1 border-primary text-primary">
+                  <Printer className="w-3.5 h-3.5" /> Imprimir
+                </Button>
+                <Button size="sm" onClick={handleBaixarPDF} className="h-8 text-xs gap-1">
+                  <Download className="w-3.5 h-3.5" /> Baixar PDF
+                </Button>
+              </div>
             </div>
 
             {/* DOCUMENTO FORMATADO A4 */}
