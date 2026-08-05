@@ -1,9 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Download, Plus, Trash2, User, Briefcase, GraduationCap, Sparkles, Phone, Mail, MapPin, Award } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -25,7 +25,6 @@ interface Formacao {
 
 export const CriadorCurriculo = () => {
   const navigate = useNavigate();
-  const printRef = useRef<HTMLDivElement>(null);
 
   // DADOS PESSOAIS
   const [nome, setNome] = useState('');
@@ -44,7 +43,7 @@ export const CriadorCurriculo = () => {
     { id: '1', instituicao: '', curso: '', conclusao: '' }
   ]);
 
-  // MANIPULAÇÃO DE EXPERIÊNCIAS.
+  // MANIPULAÇÃO DE EXPERIÊNCIAS
   const adicionarExperiencia = () => {
     setExperiencias([
       ...experiencias,
@@ -86,11 +85,45 @@ export const CriadorCurriculo = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background py-8 px-4 sm:px-6 lg:px-8 print:p-0 print:bg-white">
+    <div className="min-h-screen bg-background py-8 px-4 sm:px-6 lg:px-8 print:p-0 print:bg-white print:m-0">
+      
+      {/* ESTILOS DE IMPRESSÃO EXCLUSIVOS PARA O PDF LIMPO */}
+      <style>{`
+        @media print {
+          /* Esconde cabeçalhos do site, navegação, menus e rodapé */
+          body * {
+            visibility: hidden !important;
+          }
+          header, footer, nav, .no-print {
+            display: none !important;
+          }
+          /* Exibe e isola apenas a área do folha de currículo */
+          #folha-curriculo, #folha-curriculo * {
+            visibility: visible !important;
+          }
+          #folha-curriculo {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 20px !important;
+            box-shadow: none !important;
+            border: none !important;
+            background: white !important;
+            color: black !important;
+          }
+          @page {
+            size: A4;
+            margin: 10mm;
+          }
+        }
+      `}</style>
+
       <div className="max-w-5xl mx-auto space-y-6 print:m-0 print:max-w-none">
         
-        {/* CABEÇALHO (ESCONDIDO NA IMPRESSÃO) */}
-        <div className="flex items-center justify-between print:hidden">
+        {/* CABEÇALHO DA PÁGINA (ESCONDIDO NA IMPRESSÃO) */}
+        <div className="flex items-center justify-between no-print">
           <Button 
             variant="ghost" 
             onClick={() => navigate(-1)} 
@@ -103,20 +136,20 @@ export const CriadorCurriculo = () => {
           </span>
         </div>
 
-        <div className="text-center space-y-2 print:hidden">
+        <div className="text-center space-y-2 no-print">
           <h1 className="text-3xl sm:text-4xl font-extrabold text-foreground tracking-tight">
             Criador de Currículo PDF Profissional
           </h1>
           <p className="text-muted-foreground max-w-xl mx-auto text-sm sm:text-base">
-            Preencha seus dados, escolha suas experiências e baixe seu currículo pronto para enviar para as vagas.
+            Preencha seus dados e baixe o currículo pronto em PDF formatado.
           </p>
         </div>
 
-        {/* LAYOUT PRINCIPAL: FORMULÁRIO (ESQUERDA) E PRÉ-VISUALIZAÇÃO (DIREITA) */}
+        {/* FORMULÁRIO (ESQUERDA) E PRÉ-VISUALIZAÇÃO (DIREITA) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 print:block">
           
-          {/* PAINEL DE ENTRADA (FORMULÁRIO) - ESCONDIDO NA IMPRESSÃO */}
-          <div className="space-y-6 print:hidden">
+          {/* PAINEL DE FORMULÁRIO (ESCONDIDO NA IMPRESSÃO) */}
+          <div className="space-y-6 no-print">
             
             {/* DADOS PESSOAIS */}
             <Card className="border-border/60 shadow-md">
@@ -150,7 +183,7 @@ export const CriadorCurriculo = () => {
                 </div>
                 <div>
                   <Label htmlFor="resumo" className="text-xs">Resumo Profissional</Label>
-                  <Textarea id="resumo" placeholder="Breve resumo das suas qualificações e objetivos..." value={resumo} onChange={e => setResumo(e.target.value)} className="text-xs h-20" />
+                  <Textarea id="resumo" placeholder="Breve resumo das suas qualificações..." value={resumo} onChange={e => setResumo(e.target.value)} className="text-xs h-20" />
                 </div>
               </CardContent>
             </Card>
@@ -166,7 +199,7 @@ export const CriadorCurriculo = () => {
                 </Button>
               </CardHeader>
               <CardContent className="space-y-4">
-                {experiencias.map((exp, index) => (
+                {experiencias.map((exp) => (
                   <div key={exp.id} className="p-3 border border-border/50 rounded-lg space-y-2 relative bg-muted/20">
                     {experiencias.length > 1 && (
                       <Button size="icon" variant="ghost" onClick={() => removerExperiencia(exp.id)} className="absolute top-2 right-2 h-6 w-6 text-destructive">
@@ -247,7 +280,7 @@ export const CriadorCurriculo = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <Input placeholder="Ex: Informática Básica, Informática Avançada, CNH B, Atendimento ao Cliente" value={habilidades} onChange={e => setHabilidades(e.target.value)} className="text-xs" />
+                <Input placeholder="Ex: Informática Básica, CNH B, Atendimento ao Cliente" value={habilidades} onChange={e => setHabilidades(e.target.value)} className="text-xs" />
               </CardContent>
             </Card>
 
@@ -256,9 +289,9 @@ export const CriadorCurriculo = () => {
             </Button>
           </div>
 
-          {/* PRÉ-VISUALIZAÇÃO / FOLHA A4 PARA IMPRESSÃO */}
-          <div className="sticky top-6 print:static">
-            <div className="flex justify-between items-center mb-2 print:hidden">
+          {/* ÁREA DA FOLHA DE CURRÍCULO A4 (SÓ ELA SERÁ IMPRESSA) */}
+          <div className="sticky top-6">
+            <div className="flex justify-between items-center mb-2 no-print">
               <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Pré-visualização do PDF</span>
               <Button size="sm" onClick={handleBaixarPDF} className="h-8 text-xs gap-1">
                 <Download className="w-3.5 h-3.5" /> Baixar PDF
@@ -267,15 +300,15 @@ export const CriadorCurriculo = () => {
 
             {/* DOCUMENTO FORMATADO A4 */}
             <div 
-              ref={printRef}
-              className="bg-white text-gray-900 p-8 rounded-lg shadow-2xl border border-gray-200 min-h-[700px] font-sans print:shadow-none print:border-none print:p-0 print:w-full"
+              id="folha-curriculo"
+              className="bg-white text-gray-900 p-8 rounded-lg shadow-2xl border border-gray-200 min-h-[700px] font-sans"
             >
               {/* CABEÇALHO DO CURRÍCULO */}
-              <div className="border-b-2 border-primary pb-4 mb-4">
+              <div className="border-b-2 border-indigo-600 pb-4 mb-4">
                 <h1 className="text-2xl font-black text-gray-900 uppercase tracking-tight">
                   {nome || 'SEU NOME COMPLETO'}
                 </h1>
-                <p className="text-sm font-bold text-primary mt-0.5">
+                <p className="text-sm font-bold text-indigo-600 mt-0.5">
                   {cargoPretendido || 'CARGO PRETENDIDO'}
                 </p>
                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600 mt-2">
