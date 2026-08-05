@@ -107,7 +107,7 @@ export const GeradorCobranca = () => {
             <ArrowLeft className="w-4 h-4" /> Voltar
           </Button>
           <span className="text-xs bg-primary/10 text-primary px-3 py-1 rounded-full font-semibold flex items-center gap-1">
-            <Sparkles className="w-3.5 h-3.5" /> Ferramenta Gratuita.
+            <Sparkles className="w-3.5 h-3.5" /> Ferramenta Gratuita..
           </span>
         </div>
 
