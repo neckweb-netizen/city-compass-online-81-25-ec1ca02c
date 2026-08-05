@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   Hammer, Clock, MapPin, Mail, MessageSquare, Instagram, Facebook, 
   ArrowRight, Sparkles, DollarSign, FileText, NotebookPen, Search, 
-  ShieldCheck, Lock, Calculator, Percent 
+  ShieldCheck, Lock, Calculator, Percent, FileSpreadsheet 
 } from "lucide-react";
 import { initGA, logPageView } from "@/utils/analytics";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -56,6 +56,7 @@ const CriadorCurriculo = lazy(() => import("./pages/ferramentas/CriadorCurriculo
 const GestaoCobrancas = lazy(() => import("./pages/ferramentas/GestaoCobrancas").then(m => ({ default: m.GestaoCobrancas })));
 const CalculadoraOrcamento = lazy(() => import("./pages/ferramentas/CalculadoraOrcamento").then(m => ({ default: m.CalculadoraOrcamento })));
 const CalculadoraMargem = lazy(() => import("./pages/ferramentas/CalculadoraMargem").then(m => ({ default: m.CalculadoraMargem })));
+const SimuladorRescisao = lazy(() => import("./pages/ferramentas/SimuladorRescisao").then(m => ({ default: m.SimuladorRescisao })));
 
 // Lazy load all admin pages
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
@@ -152,6 +153,16 @@ const FerramentasCatalogInternal = () => {
       categoria: 'Comércio',
       corGradiente: 'from-pink-500/20 via-pink-500/5 to-transparent border-pink-500/30',
       corTexto: 'text-pink-500',
+    },
+    {
+      id: 'simulador-rescisao',
+      titulo: 'Simulador de Rescisão (CLT)',
+      descricao: 'Simule seus direitos trabalhistas, aviso prévio, férias proporcionais, 13º e multa do FGTS de forma simples.',
+      icone: FileSpreadsheet,
+      rota: '/ferramentas/simulador-rescisao',
+      categoria: 'Trabalho',
+      corGradiente: 'from-cyan-500/20 via-cyan-500/5 to-transparent border-cyan-500/30',
+      corTexto: 'text-cyan-500',
     },
   ];
 
@@ -485,6 +496,7 @@ const App = () => {
                 <Route path="ferramentas/GestaoCobrancas" element={<ProtectedRoute><GestaoCobrancas /></ProtectedRoute>} />
                 <Route path="ferramentas/calculadora-orcamento" element={<ProtectedRoute><CalculadoraOrcamento /></ProtectedRoute>} />
                 <Route path="ferramentas/calculadora-margem" element={<ProtectedRoute><CalculadoraMargem /></ProtectedRoute>} />
+                <Route path="ferramentas/simulador-rescisao" element={<ProtectedRoute><SimuladorRescisao /></ProtectedRoute>} />
                 
                 <Route path=":shortCode" element={<ShortUrlRedirect />} />
               </Route>
