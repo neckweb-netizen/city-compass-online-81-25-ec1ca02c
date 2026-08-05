@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   Hammer, Clock, MapPin, Mail, MessageSquare, Instagram, Facebook, 
   ArrowRight, Sparkles, DollarSign, FileText, NotebookPen, Search, 
-  ShieldCheck, Lock, Calculator, Percent, FileSpreadsheet, Volume2 
+  ShieldCheck, Lock, Calculator, Percent, FileSpreadsheet, Volume2, Grid 
 } from "lucide-react";
 import { initGA, logPageView } from "@/utils/analytics";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -99,10 +99,11 @@ import { PublicLayout } from "./components/layout/PublicLayout";
 import { AdminLayout } from "./components/admin/AdminLayout";
 import { RoutePreloader } from "./components/layout/RoutePreloader";
 
-// PÁGINA DO CATÁLOGO DE FERRAMENTAS
+// PÁGINA DO CATÁLOGO DE FERRAMENTAS COM FILTRO POR CATEGORIAS
 const FerramentasCatalogInternal = () => {
   const navigate = useNavigate();
   const [busca, setBusca] = useState('');
+  const [categoriaAtiva, setCategoriaAtiva] = useState<string>('Todas');
 
   const ferramentas = [
     {
@@ -177,11 +178,20 @@ const FerramentasCatalogInternal = () => {
     },
   ];
 
-  const ferramentasFiltradas = ferramentas.filter(f => 
-    f.titulo.toLowerCase().includes(busca.toLowerCase()) || 
-    f.descricao.toLowerCase().includes(busca.toLowerCase()) ||
-    f.categoria.toLowerCase().includes(busca.toLowerCase())
-  );
+  // EXTRAIR TODAS AS CATEGORIAS EXISTENTES
+  const categoriasUnicas = ['Todas', ...Array.from(new Set(ferramentas.map(f => f.categoria)))];
+
+  // FILTRAGEM DUPLA (POR BUSCA E POR BOTÃO DE CATEGORIA)
+  const ferramentasFiltradas = ferramentas.filter(f => {
+    const bateTexto = 
+      f.titulo.toLowerCase().includes(busca.toLowerCase()) || 
+      f.descricao.toLowerCase().includes(busca.toLowerCase()) ||
+      f.categoria.toLowerCase().includes(busca.toLowerCase());
+
+    const bateCategoria = categoriaAtiva === 'Todas' || f.categoria === categoriaAtiva;
+
+    return bateTexto && bateCategoria;
+  });
 
   return (
     <div className="min-h-screen bg-background py-10 px-4 sm:px-6 lg:px-8">
@@ -213,53 +223,92 @@ const FerramentasCatalogInternal = () => {
           </div>
         </div>
 
-        {/* GRID DE FERRAMENTAS */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4">
-          {ferramentasFiltradas.map((item) => {
-            const Icone = item.icone;
+        {/* BOTÕES DE FILTRO POR CATEGORIA (HORIZONTAL COM SCROLL NO MOBILE) */}
+        <div className="flex items-center justify-start sm:justify-center gap-2 overflow-x-auto pb-2 pt-2 scrollbar-none px-1">
+          {categoriasUnicas.map((cat) => {
+            const isSelected = categoriaAtiva === cat;
             return (
-              <Card 
-                key={item.id}
-                className={`border bg-gradient-to-b ${item.corGradiente} shadow-md hover:shadow-xl transition-all duration-300 flex flex-col justify-between group rounded-2xl overflow-hidden`}
+              <Button
+                key={cat}
+                variant={isSelected ? "default" : "outline"}
+                size="sm"
+                onClick={() => setCategoriaAtiva(cat)}
+                className={`rounded-full text-xs font-bold px-4 py-2 transition-all whitespace-nowrap shrink-0 shadow-sm ${
+                  isSelected 
+                    ? "bg-primary text-primary-foreground shadow-md scale-105" 
+                    : "hover:border-primary/50 hover:bg-primary/5 text-muted-foreground"
+                }`}
               >
-                <CardContent className="p-6 space-y-4 flex flex-col justify-between h-full">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className={`p-3 rounded-2xl bg-background/80 border border-border shadow-sm ${item.corTexto}`}>
-                        <Icone className="w-6 h-6" />
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wider">
-                          {item.categoria}
-                        </Badge>
-                        <Badge className="bg-primary/20 text-primary text-[10px] font-bold flex items-center gap-1">
-                          <Lock className="w-3 h-3" /> Membros
-                        </Badge>
-                      </div>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <h3 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
-                        {item.titulo}
-                      </h3>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        {item.descricao}
-                      </p>
-                    </div>
-                  </div>
-
-                  <Button 
-                    onClick={() => navigate(item.rota)}
-                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-10 rounded-xl flex items-center justify-center gap-2 text-xs group-hover:translate-x-0.5 transition-all shadow-md mt-4"
-                  >
-                    <span>Acessar Ferramenta</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </CardContent>
-              </Card>
+                {cat === 'Todas' && <Grid className="w-3.5 h-3.5 mr-1.5" />}
+                {cat}
+              </Button>
             );
           })}
         </div>
+
+        {/* GRID DE FERRAMENTAS */}
+        {ferramentasFiltradas.length === 0 ? (
+          <div className="text-center py-12 space-y-3">
+            <Search className="w-10 h-10 text-muted-foreground mx-auto opacity-40" />
+            <h3 className="text-base font-bold text-foreground">Nenhuma ferramenta encontrada</h3>
+            <p className="text-xs text-muted-foreground">Tente buscar por outro termo ou mude a categoria selecionada.</p>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={() => { setBusca(''); setCategoriaAtiva('Todas'); }}
+              className="text-xs rounded-xl mt-2"
+            >
+              Limpar Filtros
+            </Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-2">
+            {ferramentasFiltradas.map((item) => {
+              const Icone = item.icone;
+              return (
+                <Card 
+                  key={item.id}
+                  className={`border bg-gradient-to-b ${item.corGradiente} shadow-md hover:shadow-xl transition-all duration-300 flex flex-col justify-between group rounded-2xl overflow-hidden`}
+                >
+                  <CardContent className="p-6 space-y-4 flex flex-col justify-between h-full">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className={`p-3 rounded-2xl bg-background/80 border border-border shadow-sm ${item.corTexto}`}>
+                          <Icone className="w-6 h-6" />
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wider">
+                            {item.categoria}
+                          </Badge>
+                          <Badge className="bg-primary/20 text-primary text-[10px] font-bold flex items-center gap-1">
+                            <Lock className="w-3 h-3" /> Membros
+                          </Badge>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <h3 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
+                          {item.titulo}
+                        </h3>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          {item.descricao}
+                        </p>
+                      </div>
+                    </div>
+
+                    <Button 
+                      onClick={() => navigate(item.rota)}
+                      className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-10 rounded-xl flex items-center justify-center gap-2 text-xs group-hover:translate-x-0.5 transition-all shadow-md mt-4"
+                    >
+                      <span>Acessar Ferramenta</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
 
         {/* INFORMATIVO DE SEGURANÇA */}
         <div className="p-4 bg-muted/30 border border-border/60 rounded-2xl text-center flex flex-col sm:flex-row items-center justify-center gap-2 text-xs text-muted-foreground">
