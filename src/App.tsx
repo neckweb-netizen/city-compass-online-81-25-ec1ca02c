@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   Hammer, Clock, MapPin, Mail, MessageSquare, Instagram, Facebook, 
   ArrowRight, Sparkles, DollarSign, FileText, NotebookPen, Search, 
-  ShieldCheck, Lock 
+  ShieldCheck, Lock, Calculator 
 } from "lucide-react";
 import { initGA, logPageView } from "@/utils/analytics";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -54,6 +54,7 @@ const Domino = lazy(() => import("./pages/Domino"));
 const GeradorCobranca = lazy(() => import("./pages/ferramentas/GeradorCobranca").then(m => ({ default: m.GeradorCobranca })));
 const CriadorCurriculo = lazy(() => import("./pages/ferramentas/CriadorCurriculo").then(m => ({ default: m.CriadorCurriculo })));
 const GestaoCobrancas = lazy(() => import("./pages/ferramentas/GestaoCobrancas").then(m => ({ default: m.GestaoCobrancas })));
+const CalculadoraOrcamento = lazy(() => import("./pages/ferramentas/CalculadoraOrcamento").then(m => ({ default: m.CalculadoraOrcamento })));
 
 // Lazy load all admin pages
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
@@ -95,7 +96,7 @@ import { PublicLayout } from "./components/layout/PublicLayout";
 import { AdminLayout } from "./components/admin/AdminLayout";
 import { RoutePreloader } from "./components/layout/RoutePreloader";
 
-// PAGINA INTERNA DO CATÁLOGO DE FERRAMENTAS
+// PÁGINA DO CATÁLOGO DE FERRAMENTAS
 const FerramentasCatalogInternal = () => {
   const navigate = useNavigate();
   const [busca, setBusca] = useState('');
@@ -130,6 +131,16 @@ const FerramentasCatalogInternal = () => {
       categoria: 'Gestão',
       corGradiente: 'from-amber-500/20 via-amber-500/5 to-transparent border-amber-500/30',
       corTexto: 'text-amber-500',
+    },
+    {
+      id: 'calculadora-orcamento',
+      titulo: 'Calculadora de Hora & Orçamentos',
+      descricao: 'Descubra quanto cobrar por hora de trabalho e crie orçamentos detalhados para enviar direto ao seu cliente.',
+      icone: Calculator,
+      rota: '/ferramentas/calculadora-orcamento',
+      categoria: 'Precificação',
+      corGradiente: 'from-purple-500/20 via-purple-500/5 to-transparent border-purple-500/30',
+      corTexto: 'text-purple-500',
     },
   ];
 
@@ -461,6 +472,7 @@ const App = () => {
                 <Route path="ferramentas/criador-curriculo" element={<ProtectedRoute><CriadorCurriculo /></ProtectedRoute>} />
                 <Route path="ferramentas/gestao-cobrancas" element={<ProtectedRoute><GestaoCobrancas /></ProtectedRoute>} />
                 <Route path="ferramentas/GestaoCobrancas" element={<ProtectedRoute><GestaoCobrancas /></ProtectedRoute>} />
+                <Route path="ferramentas/calculadora-orcamento" element={<ProtectedRoute><CalculadoraOrcamento /></ProtectedRoute>} />
                 
                 <Route path=":shortCode" element={<ShortUrlRedirect />} />
               </Route>
