@@ -99,7 +99,7 @@ import { PublicLayout } from "./components/layout/PublicLayout";
 import { AdminLayout } from "./components/admin/AdminLayout";
 import { RoutePreloader } from "./components/layout/RoutePreloader";
 
-// PÁGINA DO CATÁLOGO DE FERRAMENTAS COM FILTRO POR CATEGORIAS
+// PÁGINA DO CATÁLOGO DE FERRAMENTAS COM CATEGORIAS EM DUA COLUNAS VISÍVEIS
 const FerramentasCatalogInternal = () => {
   const navigate = useNavigate();
   const [busca, setBusca] = useState('');
@@ -181,7 +181,7 @@ const FerramentasCatalogInternal = () => {
   // EXTRAIR TODAS AS CATEGORIAS EXISTENTES
   const categoriasUnicas = ['Todas', ...Array.from(new Set(ferramentas.map(f => f.categoria)))];
 
-  // FILTRAGEM DUPLA (POR BUSCA E POR BOTÃO DE CATEGORIA)
+  // FILTRAGEM DUPLA
   const ferramentasFiltradas = ferramentas.filter(f => {
     const bateTexto = 
       f.titulo.toLowerCase().includes(busca.toLowerCase()) || 
@@ -223,27 +223,33 @@ const FerramentasCatalogInternal = () => {
           </div>
         </div>
 
-        {/* BOTÕES DE FILTRO POR CATEGORIA (HORIZONTAL COM SCROLL NO MOBILE) */}
-        <div className="flex items-center justify-start sm:justify-center gap-2 overflow-x-auto pb-2 pt-2 scrollbar-none px-1">
-          {categoriasUnicas.map((cat) => {
-            const isSelected = categoriaAtiva === cat;
-            return (
-              <Button
-                key={cat}
-                variant={isSelected ? "default" : "outline"}
-                size="sm"
-                onClick={() => setCategoriaAtiva(cat)}
-                className={`rounded-full text-xs font-bold px-4 py-2 transition-all whitespace-nowrap shrink-0 shadow-sm ${
-                  isSelected 
-                    ? "bg-primary text-primary-foreground shadow-md scale-105" 
-                    : "hover:border-primary/50 hover:bg-primary/5 text-muted-foreground"
-                }`}
-              >
-                {cat === 'Todas' && <Grid className="w-3.5 h-3.5 mr-1.5" />}
-                {cat}
-              </Button>
-            );
-          })}
+        {/* LISTA FIXA DE CATEGORIAS EM 2 COLUNAS (SEM ROLAGEM LATERAL) */}
+        <div className="max-w-xl mx-auto space-y-2 pt-2">
+          <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block text-center">
+            Filtrar por Categoria
+          </span>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {categoriasUnicas.map((cat) => {
+              const isSelected = categoriaAtiva === cat;
+              return (
+                <Button
+                  key={cat}
+                  variant={isSelected ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setCategoriaAtiva(cat)}
+                  className={`w-full rounded-xl text-xs font-bold py-2 px-3 transition-all h-9 ${
+                    isSelected 
+                      ? "bg-primary text-primary-foreground shadow-md" 
+                      : "hover:border-primary/50 hover:bg-primary/5 text-muted-foreground"
+                  }`}
+                >
+                  {cat === 'Todas' && <Grid className="w-3.5 h-3.5 mr-1.5" />}
+                  <span className="truncate">{cat}</span>
+                </Button>
+              );
+            })}
+          </div>
         </div>
 
         {/* GRID DE FERRAMENTAS */}
