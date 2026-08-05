@@ -3,25 +3,25 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Calculator, Copy, Send, Sparkles, DollarSign, Clock, FileText, Check } from 'lucide-react';
+import { ArrowLeft, Calculator, Copy, Send, Sparkles, FileText, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export const CalculadoraOrcamento = () => {
   const navigate = useNavigate();
   const [copiado, setCopiado] = useState(false);
 
-  // DADOS DA CALCULADORA DA HORA
-  const [metaSalarial, setMetaSalarial] = useState('3000,00');
-  const [custosFixos, setCustosFixos] = useState('500,00');
-  const [diasTrabalhados, setDiasTrabalhados] = useState('22');
-  const [horasPorDia, setHorasPorDia] = useState('8');
+  // DADOS DA CALCULADORA DA HORA (INICIADOS TOTALMENTE VAZIOS)
+  const [metaSalarial, setMetaSalarial] = useState('');
+  const [custosFixos, setCustosFixos] = useState('');
+  const [diasTrabalhados, setDiasTrabalhados] = useState('');
+  const [horasPorDia, setHorasPorDia] = useState('');
 
-  // DADOS DO ORÇAMENTO
+  // DADOS DO ORÇAMENTO (INICIADOS TOTALMENTE VAZIOS)
   const [nomeCliente, setNomeCliente] = useState('');
   const [descricaoServico, setDescricaoServico] = useState('');
-  const [horasEstimadas, setHorasEstimadas] = useState('5');
-  const [custoMateriais, setCustoMateriais] = useState('0,00');
-  const [margemLucro, setMargemLucro] = useState('20');
+  const [horasEstimadas, setHorasEstimadas] = useState('');
+  const [custoMateriais, setCustoMateriais] = useState('');
+  const [margemLucro, setMargemLucro] = useState('');
 
   // FUNÇÕES AUXILIARES DE CONVERSÃO
   const parseMoeda = (val: string) => parseFloat(val.replace(/\./g, '').replace(',', '.')) || 0;
@@ -30,8 +30,8 @@ export const CalculadoraOrcamento = () => {
   // CÁLCULOS DA HORA DE TRABALHO
   const salarioNum = parseMoeda(metaSalarial);
   const custosNum = parseMoeda(custosFixos);
-  const diasNum = parseFloat(diasTrabalhados) || 1;
-  const horasNum = parseFloat(horasPorDia) || 1;
+  const diasNum = parseFloat(diasTrabalhados) || 0;
+  const horasNum = parseFloat(horasPorDia) || 0;
 
   const totalHorasMes = diasNum * horasNum;
   const custoTotalMensal = salarioNum + custosNum;
@@ -51,10 +51,10 @@ export const CalculadoraOrcamento = () => {
     let msg = `📄 *ORÇAMENTO DE SERVIÇO*\n`;
     if (nomeCliente.trim()) msg += `👤 *Cliente:* ${nomeCliente}\n`;
     msg += `🔧 *Serviço:* ${descricaoServico.trim() || 'Prestação de Serviço'}\n\n`;
-    msg += `⏱️ *Tempo Estimado:* ${horasServico} hora(s)\n`;
+    msg += `⏱️ *Tempo Estimado:* ${horasServico || 0} hora(s)\n`;
     if (materiaisNum > 0) msg += `📦 *Materiais/Outros:* R$ ${custoMateriais}\n`;
     msg += `💰 *Valor Total:* *R$ ${formatarMoeda(valorTotalOrcamento)}*\n\n`;
-    msg += `💬 Orcamento válido por 15 dias. Ficou alguma dúvida?`;
+    msg += `💬 Orçamento válido por 15 dias. Ficou alguma dúvida?`;
     return msg;
   };
 
@@ -114,6 +114,7 @@ export const CalculadoraOrcamento = () => {
                   <div>
                     <Label className="text-xs font-semibold">Salário Desejado (R$)</Label>
                     <Input 
+                      placeholder="Ex: 3000,00"
                       value={metaSalarial} 
                       onChange={e => setMetaSalarial(e.target.value)} 
                       className="h-9 text-xs" 
@@ -122,6 +123,7 @@ export const CalculadoraOrcamento = () => {
                   <div>
                     <Label className="text-xs font-semibold">Custos Fixos Mensais (R$)</Label>
                     <Input 
+                      placeholder="Ex: 500,00"
                       value={custosFixos} 
                       onChange={e => setCustosFixos(e.target.value)} 
                       className="h-9 text-xs" 
@@ -134,6 +136,7 @@ export const CalculadoraOrcamento = () => {
                     <Label className="text-xs font-semibold">Dias Trabalhados / Mês</Label>
                     <Input 
                       type="number" 
+                      placeholder="Ex: 22"
                       value={diasTrabalhados} 
                       onChange={e => setDiasTrabalhados(e.target.value)} 
                       className="h-9 text-xs" 
@@ -143,6 +146,7 @@ export const CalculadoraOrcamento = () => {
                     <Label className="text-xs font-semibold">Horas / Dia</Label>
                     <Input 
                       type="number" 
+                      placeholder="Ex: 8"
                       value={horasPorDia} 
                       onChange={e => setHorasPorDia(e.target.value)} 
                       className="h-9 text-xs" 
@@ -200,6 +204,7 @@ export const CalculadoraOrcamento = () => {
                     <Label className="text-xs font-semibold">Horas Gastas</Label>
                     <Input 
                       type="number" 
+                      placeholder="Ex: 5"
                       value={horasEstimadas} 
                       onChange={e => setHorasEstimadas(e.target.value)} 
                       className="h-9 text-xs" 
@@ -208,6 +213,7 @@ export const CalculadoraOrcamento = () => {
                   <div>
                     <Label className="text-xs font-semibold">Materiais (R$)</Label>
                     <Input 
+                      placeholder="Ex: 150,00"
                       value={custoMateriais} 
                       onChange={e => setCustoMateriais(e.target.value)} 
                       className="h-9 text-xs" 
@@ -217,6 +223,7 @@ export const CalculadoraOrcamento = () => {
                     <Label className="text-xs font-semibold">Lucro (%)</Label>
                     <Input 
                       type="number" 
+                      placeholder="Ex: 20"
                       value={margemLucro} 
                       onChange={e => setMargemLucro(e.target.value)} 
                       className="h-9 text-xs" 
@@ -264,4 +271,3 @@ export const CalculadoraOrcamento = () => {
 };
 
 export default CalculadoraOrcamento;
-
