@@ -44,6 +44,7 @@ const AnuncieGratis = lazy(() => import("./pages/AnuncieGratis").then(m => ({ de
 const Domino = lazy(() => import("./pages/Domino"));
 const GeradorCobranca = lazy(() => import("./pages/ferramentas/GeradorCobranca").then(m => ({ default: m.GeradorCobranca })));
 const CriadorCurriculo = lazy(() => import("./pages/ferramentas/CriadorCurriculo").then(m => ({ default: m.CriadorCurriculo })));
+const GestaoCobrancas = lazy(() => import("./pages/ferramentas/GestaoCobrancas").then(m => ({ default: m.GestaoCobrancas })));
 
 // Lazy load all admin pages
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
@@ -313,6 +314,7 @@ const App = () => {
                 {/* ROTAS ADICIONADAS: Ferramentas Gratuitas */}
                 <Route path="ferramentas/gerador-cobranca" element={<GeradorCobranca />} />
                 <Route path="ferramentas/criador-curriculo" element={<CriadorCurriculo />} />
+                <Route path="ferramentas/gestao-cobrancas" element={<GestaoCobrancas />} />
                 
                 <Route path=":shortCode" element={<ShortUrlRedirect />} />
               </Route>
