@@ -55,7 +55,7 @@ const AdminEventos = lazy(() => import("./pages/admin/AdminEventos").then(m => (
 const AdminCidades = lazy(() => import("./pages/admin/AdminCidades").then(m => ({ default: m.AdminCidades })));
 const AdminCategorias = lazy(() => import("./pages/admin/AdminCategorias").then(m => ({ default: m.AdminCategorias })));
 const AdminUsuarios = lazy(() => import("./pages/admin/AdminUsuarios").then(m => ({ default: m.AdminUsuarios })));
-const AdminBanners = lazy(() => import("./pages/admin/AdminBanners").then(m => ({ default: m.AdminBanners })));
+const AdminBanners = lazy(() => import("./pages/admin/AdminBanners"));
 const AdminCanalInformativo = lazy(() => import("./pages/admin/AdminCanalInformativo").then(m => ({ default: m.AdminCanalInformativo })));
 const AdminStories = lazy(() => import("./pages/admin/AdminStories").then(m => ({ default: m.AdminStories })));
 const AdminCupons = lazy(() => import("./pages/admin/AdminCupons").then(m => ({ default: m.AdminCupons })));
@@ -134,7 +134,7 @@ const App = () => {
         }
       } catch (error) {
         console.error("Erro ao sincronizar chaves de manutenção no App:", error);
-      } font-medium {
+      } finally {
         setLoadingConfig(false);
       }
     };
