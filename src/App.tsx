@@ -43,6 +43,7 @@ const AnuncieGratis = lazy(() => import("./pages/AnuncieGratis").then(m => ({ de
 // NOVO: Importações Lazy Load das ferramentas públicas e jogos
 const Domino = lazy(() => import("./pages/Domino"));
 const GeradorCobranca = lazy(() => import("./pages/ferramentas/GeradorCobranca").then(m => ({ default: m.GeradorCobranca })));
+const CriadorCurriculo = lazy(() => import("./pages/ferramentas/CriadorCurriculo").then(m => ({ default: m.CriadorCurriculo })));
 
 // Lazy load all admin pages
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
@@ -133,7 +134,7 @@ const App = () => {
         }
       } catch (error) {
         console.error("Erro ao sincronizar chaves de manutenção no App:", error);
-      } finally {
+      } font-medium {
         setLoadingConfig(false);
       }
     };
@@ -309,8 +310,9 @@ const App = () => {
                 {/* ROTA ADICIONADA: Página pública de Dominó */}
                 <Route path="domino" element={<Domino />} />
 
-                {/* ROTA ADICIONADA: Gerador de Cobrança PIX WhatsApp */}
+                {/* ROTAS ADICIONADAS: Ferramentas Gratuitas */}
                 <Route path="ferramentas/gerador-cobranca" element={<GeradorCobranca />} />
+                <Route path="ferramentas/criador-curriculo" element={<CriadorCurriculo />} />
                 
                 <Route path=":shortCode" element={<ShortUrlRedirect />} />
               </Route>
