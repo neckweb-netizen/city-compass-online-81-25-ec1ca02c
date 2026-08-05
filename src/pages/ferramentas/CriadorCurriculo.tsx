@@ -25,39 +25,31 @@ interface Formacao {
 export const CriadorCurriculo = () => {
   const navigate = useNavigate();
 
-  // DADOS PESSOAIS FICTÍCIOS DE EXEMPLO
-  const [nome, setNome] = useState('João da Silva Santos');
-  const [idade, setIdade] = useState('25 anos (01/01/2000)');
-  const [endereco, setEndereco] = useState('Rua Exemplo, 100 - Bairro Centro');
-  const [telefone1, setTelefone1] = useState('75999999999');
-  const [telefone2, setTelefone2] = useState('75988888888');
-  const [email, setEmail] = useState('exemplo@email.com');
+  // ESTADOS INICIADOS TOTALMENTE VAZIOS (SEM AUTOCOMPLETAR)
+  const [nome, setNome] = useState('');
+  const [idade, setIdade] = useState('');
+  const [endereco, setEndereco] = useState('');
+  const [telefone1, setTelefone1] = useState('');
+  const [telefone2, setTelefone2] = useState('');
+  const [email, setEmail] = useState('');
+  const [resumo, setResumo] = useState('');
+  const [informacoesAdicionais, setInformacoesAdicionais] = useState('');
 
-  // RESUMO DE QUALIFICAÇÕES
-  const [resumo, setResumo] = useState(
-    'Profissional dedicado, organizado e com facilidade para aprender novas atividades. Possuo boa comunicação, responsabilidade e foco em resultados, buscando sempre contribuir para o bom desempenho da equipe e da empresa.'
-  );
-
-  // FORMAÇÃO
   const [formacoes, setFormacoes] = useState<Formacao[]>([
-    { id: '1', descricao: 'Ensino Médio completo' }
+    { id: '1', descricao: '' }
   ]);
 
-  // EXPERIÊNCIAS
   const [experiencias, setExperiencias] = useState<Experiencia[]>([
     {
       id: '1',
-      empresa: 'Empresa Exemplo LTDA',
-      cidade: 'Sua Cidade - BA',
-      cargo: 'Auxiliar Administrativo',
-      dataInicio: '01/01/2022',
-      dataFim: '01/01/2024',
+      empresa: '',
+      cidade: '',
+      cargo: '',
+      dataInicio: '',
+      dataFim: '',
       descricao: ''
     }
   ]);
-
-  // INFORMAÇÕES ADICIONAIS
-  const [informacoesAdicionais, setInformacoesAdicionais] = useState('Disponibilidade para início imediato');
 
   // MANIPULAÇÃO DE EXPERIÊNCIAS
   const adicionarExperiencia = () => {
@@ -132,7 +124,7 @@ export const CriadorCurriculo = () => {
       ctx.drawImage(img, 0, 0);
 
       const a = document.createElement('a');
-      const nomeLimpo = nome.trim() ? `curriculo_${nome.toLowerCase().replace(/\s+/g, '_')}.pdf` : 'curriculo.pdf';
+      const nomeLimpo = nome.trim() ? `curriculo_${nome.toLowerCase().replace(/\s+/g, '_')}.png` : 'curriculo.png';
       a.download = nomeLimpo;
       a.href = canvas.toDataURL('image/png');
       a.click();
@@ -217,7 +209,7 @@ export const CriadorCurriculo = () => {
               <CardContent className="space-y-3">
                 <div>
                   <Label htmlFor="nome" className="text-xs">Nome Completo</Label>
-                  <Input id="nome" placeholder="Ex: João da Silva" value={nome} onChange={e => setNome(e.target.value)} />
+                  <Input id="nome" placeholder="Ex: João da Silva Santos" value={nome} onChange={e => setNome(e.target.value)} />
                 </div>
                 <div>
                   <Label htmlFor="idade" className="text-xs">Idade e Data de Nascimento</Label>
@@ -230,16 +222,16 @@ export const CriadorCurriculo = () => {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label htmlFor="tel1" className="text-xs">Telefone Principal</Label>
-                    <Input id="tel1" placeholder="Ex: 75999999999" value={telefone1} onChange={e => setTelefone1(e.target.value)} />
+                    <Input id="tel1" placeholder="Ex: (75) 99999-9999" value={telefone1} onChange={e => setTelefone1(e.target.value)} />
                   </div>
                   <div>
                     <Label htmlFor="tel2" className="text-xs">Celular / Contato 2</Label>
-                    <Input id="tel2" placeholder="Ex: 75988888888" value={telefone2} onChange={e => setTelefone2(e.target.value)} />
+                    <Input id="tel2" placeholder="Ex: (75) 98888-8888" value={telefone2} onChange={e => setTelefone2(e.target.value)} />
                   </div>
                 </div>
                 <div>
                   <Label htmlFor="email" className="text-xs">E-mail</Label>
-                  <Input id="email" type="email" placeholder="exemplo@email.com" value={email} onChange={e => setEmail(e.target.value)} />
+                  <Input id="email" type="email" placeholder="Ex: exemplo@email.com" value={email} onChange={e => setEmail(e.target.value)} />
                 </div>
               </CardContent>
             </Card>
@@ -254,7 +246,7 @@ export const CriadorCurriculo = () => {
               <CardContent>
                 <Textarea 
                   id="resumo" 
-                  placeholder="Escreva sobre seu perfil profissional..." 
+                  placeholder="Ex: Profissional dedicado, organizado e com facilidade para aprender novas atividades. Possuo boa comunicação, responsabilidade e foco em resultados..." 
                   value={resumo} 
                   onChange={e => setResumo(e.target.value)} 
                   className="text-xs h-28" 
@@ -312,11 +304,11 @@ export const CriadorCurriculo = () => {
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <Label className="text-[10px]">Empresa</Label>
-                        <Input placeholder="Ex: Nome da Empresa" value={exp.empresa} onChange={e => atualizarExperiencia(exp.id, 'empresa', e.target.value)} className="h-8 text-xs" />
+                        <Input placeholder="Ex: Nome da Empresa LTDA" value={exp.empresa} onChange={e => atualizarExperiencia(exp.id, 'empresa', e.target.value)} className="h-8 text-xs" />
                       </div>
                       <div>
                         <Label className="text-[10px]">Cidade / Estado</Label>
-                        <Input placeholder="Ex: Cidade - BA" value={exp.cidade} onChange={e => atualizarExperiencia(exp.id, 'cidade', e.target.value)} className="h-8 text-xs" />
+                        <Input placeholder="Ex: Santo Antônio de Jesus - BA" value={exp.cidade} onChange={e => atualizarExperiencia(exp.id, 'cidade', e.target.value)} className="h-8 text-xs" />
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
@@ -395,50 +387,58 @@ export const CriadorCurriculo = () => {
               {/* DADOS PESSOAIS */}
               <div className="mb-6 space-y-0.5 text-xs text-gray-800">
                 <div className="font-bold text-gray-900 text-sm uppercase mb-1">DADOS PESSOAIS</div>
-                {idade && <div>{idade}</div>}
-                {endereco && <div>{endereco}</div>}
-                {(telefone1 || telefone2) && (
+                {idade ? <div>{idade}</div> : <div className="text-gray-400 italic">Idade e Data de Nascimento</div>}
+                {endereco ? <div>{endereco}</div> : <div className="text-gray-400 italic">Endereço Completo</div>}
+                {(telefone1 || telefone2) ? (
                   <div>
                     {telefone1 && `Tel.: ${telefone1}`}
                     {telefone1 && telefone2 && ' | '}
                     {telefone2 && `Cel.: ${telefone2}`}
                   </div>
+                ) : (
+                  <div className="text-gray-400 italic">Telefones de Contato</div>
                 )}
-                {email && <div>E-mail: {email}</div>}
+                {email ? <div>E-mail: {email}</div> : <div className="text-gray-400 italic">E-mail</div>}
               </div>
 
               {/* RESUMO DE QUALIFICAÇÕES */}
-              {resumo && (
-                <div className="mb-6">
-                  <div className="font-bold text-gray-900 text-sm uppercase mb-1 border-b border-gray-300 pb-0.5">
-                    RESUMO DE QUALIFICAÇÕES
-                  </div>
+              <div className="mb-6">
+                <div className="font-bold text-gray-900 text-sm uppercase mb-1 border-b border-gray-300 pb-0.5">
+                  RESUMO DE QUALIFICAÇÕES
+                </div>
+                {resumo ? (
                   <p className="text-xs text-gray-800 leading-normal whitespace-pre-wrap mt-1">
                     {resumo}
                   </p>
-                </div>
-              )}
+                ) : (
+                  <p className="text-xs text-gray-400 italic mt-1">
+                    Seu resumo de qualificações aparecerá aqui...
+                  </p>
+                )}
+              </div>
 
               {/* FORMAÇÃO EDUCACIONAL */}
-              {formacoes.some(f => f.descricao) && (
-                <div className="mb-6">
-                  <div className="font-bold text-gray-900 text-sm uppercase mb-1 border-b border-gray-300 pb-0.5">
-                    FORMAÇÃO EDUCACIONAL
-                  </div>
+              <div className="mb-6">
+                <div className="font-bold text-gray-900 text-sm uppercase mb-1 border-b border-gray-300 pb-0.5">
+                  FORMAÇÃO EDUCACIONAL
+                </div>
+                {formacoes.some(f => f.descricao) ? (
                   <div className="space-y-1 text-xs text-gray-800 mt-1">
                     {formacoes.map((form) => (
                       form.descricao && <div key={form.id}>{form.descricao}</div>
                     ))}
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div className="text-xs text-gray-400 italic mt-1">Sua formação aparecerá aqui...</div>
+                )}
+              </div>
 
               {/* EXPERIÊNCIA PROFISSIONAL */}
-              {experiencias.some(e => e.empresa || e.cargo) && (
-                <div className="mb-6">
-                  <div className="font-bold text-gray-900 text-sm uppercase mb-1 border-b border-gray-300 pb-0.5">
-                    EXPERIÊNCIA PROFISSIONAL
-                  </div>
+              <div className="mb-6">
+                <div className="font-bold text-gray-900 text-sm uppercase mb-1 border-b border-gray-300 pb-0.5">
+                  EXPERIÊNCIA PROFISSIONAL
+                </div>
+                {experiencias.some(e => e.empresa || e.cargo) ? (
                   <div className="space-y-3 mt-2">
                     {experiencias.map((exp) => (
                       (exp.empresa || exp.cargo) && (
@@ -454,20 +454,24 @@ export const CriadorCurriculo = () => {
                       )
                     ))}
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div className="text-xs text-gray-400 italic mt-1">Sua experiência profissional aparecerá aqui...</div>
+                )}
+              </div>
 
               {/* INFORMAÇÕES ADICIONAIS */}
-              {informacoesAdicionais && (
-                <div>
-                  <div className="font-bold text-gray-900 text-sm uppercase mb-1 border-b border-gray-300 pb-0.5">
-                    INFORMAÇÕES ADICIONAIS
-                  </div>
+              <div>
+                <div className="font-bold text-gray-900 text-sm uppercase mb-1 border-b border-gray-300 pb-0.5">
+                  INFORMAÇÕES ADICIONAIS
+                </div>
+                {informacoesAdicionais ? (
                   <div className="text-xs text-gray-800 mt-1">
                     {informacoesAdicionais}
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div className="text-xs text-gray-400 italic mt-1">Informações adicionais...</div>
+                )}
+              </div>
             </div>
           </div>
 
