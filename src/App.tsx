@@ -40,8 +40,9 @@ const Configuracoes = lazy(() => import("./pages/Configuracoes"));
 const ContactPage = lazy(() => import("./pages/ContactPage").then(m => ({ default: m.ContactPage })));
 const AnuncieGratis = lazy(() => import("./pages/AnuncieGratis").then(m => ({ default: m.AnuncieGratis })));
 
-// NOVO: Importação Lazy Load da nova página de Dominó
+// NOVO: Importações Lazy Load das ferramentas públicas e jogos
 const Domino = lazy(() => import("./pages/Domino"));
+const GeradorCobranca = lazy(() => import("./pages/ferramentas/GeradorCobranca").then(m => ({ default: m.GeradorCobranca })));
 
 // Lazy load all admin pages
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
@@ -307,6 +308,9 @@ const App = () => {
                 
                 {/* ROTA ADICIONADA: Página pública de Dominó */}
                 <Route path="domino" element={<Domino />} />
+
+                {/* ROTA ADICIONADA: Gerador de Cobrança PIX WhatsApp */}
+                <Route path="ferramentas/gerador-cobranca" element={<GeradorCobranca />} />
                 
                 <Route path=":shortCode" element={<ShortUrlRedirect />} />
               </Route>
