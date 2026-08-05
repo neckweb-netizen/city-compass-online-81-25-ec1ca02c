@@ -95,28 +95,56 @@ export const CriadorCurriculo = () => {
     setFormacoes(formacoes.map(form => form.id === id ? { ...form, descricao: valor } : form));
   };
 
-  // 1️⃣ BOTÃO IMPRIMIR: ABRE A TELA DE ESCOLHA DA IMPRESSORA
+  // 1️⃣ BOTÃO IMPRIMIR: ABRE APENAS A TELA DE IMPRESSÃO
   const handleImprimir = () => {
     window.print();
   };
 
-  // 2️⃣ BOTÃO BAIXAR PDF: ACIONA O SALVAMENTO DE PDF DIRETO DO NAVEGADOR
-  const handleBaixarPDF = () => {
-    const tituloOriginal = document.title;
-    const nomeLimpo = nome.trim() ? `Curriculo_${nome.replace(/\s+/g, '_')}` : 'Meu_Curriculo';
-    
-    document.title = nomeLimpo;
-    window.print();
-    
-    setTimeout(() => {
-      document.title = tituloOriginal;
-    }, 1000);
+  // 2️⃣ BOTÃO BAIXAR DIRETO: GERADOR DE ARQUIVO E DOWNLOAD AUTOMÁTICO SEM TELA INTERMEDIÁRIA
+  const handleBaixarDireto = () => {
+    const folha = document.getElementById('folha-curriculo');
+    if (!folha) return;
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const rect = folha.getBoundingClientRect();
+
+    canvas.width = rect.width * 2;
+    canvas.height = rect.height * 2;
+
+    if (!ctx) return;
+
+    const data = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="${rect.width}" height="${rect.height}">
+        <foreignObject width="100%" height="100%">
+          <div xmlns="http://www.w3.org/1999/xhtml">
+            ${folha.outerHTML}
+          </div>
+        </foreignObject>
+      </svg>
+    `;
+
+    const img = new Image();
+    const svgUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(data);
+
+    img.onload = () => {
+      ctx.scale(2, 2);
+      ctx.drawImage(img, 0, 0);
+
+      const a = document.createElement('a');
+      const nomeLimpo = nome.trim() ? `curriculo_${nome.toLowerCase().replace(/\s+/g, '_')}.pdf` : 'curriculo.pdf';
+      a.download = nomeLimpo;
+      a.href = canvas.toDataURL('image/png');
+      a.click();
+    };
+
+    img.src = svgUrl;
   };
 
   return (
     <div className="min-h-screen bg-background py-8 px-4 sm:px-6 lg:px-8 print:p-0 print:bg-white print:m-0">
       
-      {/* REGRAS CSS DE IMPRESSÃO QUE MANDAM SOMENTE A FOLHA PARA O PDF */}
+      {/* CSS DE IMPRESSÃO LIMPO */}
       <style>{`
         @media print {
           body * {
@@ -169,7 +197,7 @@ export const CriadorCurriculo = () => {
             Criador de Currículo PDF Profissional
           </h1>
           <p className="text-muted-foreground max-w-xl mx-auto text-sm sm:text-base">
-            Preencha os campos abaixo, veja o resultado em tempo real e escolha se prefere imprimir ou baixar o PDF.
+            Preencha os campos abaixo, veja a pré-visualização ao lado e baixe seu arquivo.
           </p>
         </div>
 
@@ -327,7 +355,7 @@ export const CriadorCurriculo = () => {
               </CardContent>
             </Card>
 
-            {/* BOTÕES LADO A LADO */}
+            {/* ÚNICOS DOIS BOTÕES DA TELA */}
             <div className="grid grid-cols-2 gap-3 pt-2">
               <Button 
                 onClick={handleImprimir}
@@ -338,7 +366,7 @@ export const CriadorCurriculo = () => {
               </Button>
 
               <Button 
-                onClick={handleBaixarPDF}
+                onClick={handleBaixarDireto}
                 className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-12 rounded-xl flex items-center justify-center gap-2 shadow-lg"
               >
                 <Download className="w-5 h-5" /> Baixar PDF
@@ -348,17 +376,10 @@ export const CriadorCurriculo = () => {
 
           {/* PRÉ-VISUALIZAÇÃO / FOLHA FORMATADA A4 */}
           <div className="sticky top-6">
-            <div className="flex justify-between items-center mb-2 no-print">
-              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Pré-visualização do PDF</span>
-              
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={handleImprimir} className="h-8 text-xs gap-1 border-primary text-primary">
-                  <Printer className="w-3.5 h-3.5" /> Imprimir
-                </Button>
-                <Button size="sm" onClick={handleBaixarPDF} className="h-8 text-xs gap-1">
-                  <Download className="w-3.5 h-3.5" /> Baixar PDF
-                </Button>
-              </div>
+            <div className="flex items-center mb-2 no-print">
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                Pré-visualização do Currículo
+              </span>
             </div>
 
             {/* DOCUMENTO FORMATADO A4 */}
