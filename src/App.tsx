@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   Hammer, Clock, MapPin, Mail, MessageSquare, Instagram, Facebook, 
   ArrowRight, Sparkles, DollarSign, FileText, NotebookPen, Search, 
-  ShieldCheck, Lock, Calculator, Percent, FileSpreadsheet 
+  ShieldCheck, Lock, Calculator, Percent, FileSpreadsheet, Volume2 
 } from "lucide-react";
 import { initGA, logPageView } from "@/utils/analytics";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -57,6 +57,7 @@ const GestaoCobrancas = lazy(() => import("./pages/ferramentas/GestaoCobrancas")
 const CalculadoraOrcamento = lazy(() => import("./pages/ferramentas/CalculadoraOrcamento").then(m => ({ default: m.CalculadoraOrcamento })));
 const CalculadoraMargem = lazy(() => import("./pages/ferramentas/CalculadoraMargem").then(m => ({ default: m.CalculadoraMargem })));
 const SimuladorRescisao = lazy(() => import("./pages/ferramentas/SimuladorRescisao").then(m => ({ default: m.SimuladorRescisao })));
+const LeitorVoz = lazy(() => import("./pages/ferramentas/LeitorVoz").then(m => ({ default: m.LeitorVoz })));
 
 // Lazy load all admin pages
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
@@ -163,6 +164,16 @@ const FerramentasCatalogInternal = () => {
       categoria: 'Trabalho',
       corGradiente: 'from-cyan-500/20 via-cyan-500/5 to-transparent border-cyan-500/30',
       corTexto: 'text-cyan-500',
+    },
+    {
+      id: 'leitor-voz',
+      titulo: 'Leitor de Texto em Voz Alta',
+      descricao: 'Converta qualquer texto em áudio narrado com ajuste de tom, velocidade e voz em tempo real.',
+      icone: Volume2,
+      rota: '/ferramentas/leitor-voz',
+      categoria: 'Acessibilidade',
+      corGradiente: 'from-indigo-500/20 via-indigo-500/5 to-transparent border-indigo-500/30',
+      corTexto: 'text-indigo-500',
     },
   ];
 
@@ -341,8 +352,8 @@ const App = () => {
   if (!loadingConfig && isMaintenance && !window.location.pathname.startsWith("/admin")) {
     return (
       <div className="min-h-screen flex flex-col justify-between bg-[#0F0A19] text-white relative overflow-hidden font-sans">
-        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-900/20 rounded-full blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-900/20 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute top-[#10%] left-[-10%] w-[500px] h-[500px] bg-purple-900/20 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-[#10%] right-[-10%] w-[500px] h-[500px] bg-indigo-900/20 rounded-full blur-[120px] pointer-events-none" />
 
         <header className="w-full max-w-7xl mx-auto px-6 py-6 flex items-center justify-between relative z-10">
           <div className="flex items-center gap-2.5">
@@ -497,6 +508,7 @@ const App = () => {
                 <Route path="ferramentas/calculadora-orcamento" element={<ProtectedRoute><CalculadoraOrcamento /></ProtectedRoute>} />
                 <Route path="ferramentas/calculadora-margem" element={<ProtectedRoute><CalculadoraMargem /></ProtectedRoute>} />
                 <Route path="ferramentas/simulador-rescisao" element={<ProtectedRoute><SimuladorRescisao /></ProtectedRoute>} />
+                <Route path="ferramentas/leitor-voz" element={<ProtectedRoute><LeitorVoz /></ProtectedRoute>} />
                 
                 <Route path=":shortCode" element={<ShortUrlRedirect />} />
               </Route>
