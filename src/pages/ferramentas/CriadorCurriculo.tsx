@@ -25,17 +25,17 @@ interface Formacao {
 export const CriadorCurriculo = () => {
   const navigate = useNavigate();
 
-  // DADOS PESSOAIS
-  const [nome, setNome] = useState('Deivid de Jesus Santos');
-  const [idade, setIdade] = useState('29 anos (08/04/1996)');
-  const [endereco, setEndereco] = useState('Rua Areial do Mutum, 134 - Irmã Dulce, 44444-738');
-  const [telefone1, setTelefone1] = useState('75983269725');
-  const [telefone2, setTelefone2] = useState('75981229904');
-  const [email, setEmail] = useState('neckweb@gmail.com');
+  // DADOS PESSOAIS (TOTALMENTE FICTÍCIOS / VAZIOS DE INÍCIO)
+  const [nome, setNome] = useState('João da Silva Santos');
+  const [idade, setIdade] = useState('25 anos (01/01/2000)');
+  const [endereco, setEndereco] = useState('Rua Exemplo, 100 - Bairro Centro');
+  const [telefone1, setTelefone1] = useState('75999999999');
+  const [telefone2, setTelefone2] = useState('75988888888');
+  const [email, setEmail] = useState('exemplo@email.com');
 
   // RESUMO DE QUALIFICAÇÕES
   const [resumo, setResumo] = useState(
-    'Profissional dedicado, organizado e com facilidade para aprender novas atividades. Possuo boa comunicação, responsabilidade e foco em resultados, buscando sempre contribuir para o bom desempenho da equipe e da empresa.\n\nTenho interesse em desenvolver minhas habilidades profissionais, aprender continuamente e agregar valor ao ambiente de trabalho por meio de comprometimento, proatividade e disposição para novos desafios.'
+    'Profissional dedicado, organizado e com facilidade para aprender novas atividades. Possuo boa comunicação, responsabilidade e foco em resultados, buscando sempre contribuir para o bom desempenho da equipe e da empresa.'
   );
 
   // FORMAÇÃO
@@ -47,11 +47,11 @@ export const CriadorCurriculo = () => {
   const [experiencias, setExperiencias] = useState<Experiencia[]>([
     {
       id: '1',
-      empresa: 'Dubahia - Dublagens Bahia',
-      cidade: 'Santo Antônio de Jesus',
-      cargo: 'Auxiliar de Almoxarifado',
-      dataInicio: '18/05/2022',
-      dataFim: '24/09/2025',
+      empresa: 'Empresa Exemplo LTDA',
+      cidade: 'Sua Cidade - BA',
+      cargo: 'Auxiliar de Operações',
+      dataInicio: '01/01/2022',
+      dataFim: '01/01/2024',
       descricao: ''
     }
   ]);
@@ -103,7 +103,7 @@ export const CriadorCurriculo = () => {
   return (
     <div className="min-h-screen bg-background py-8 px-4 sm:px-6 lg:px-8 print:p-0 print:bg-white print:m-0">
       
-      {/* ESTILOS DE IMPRESSÃO EXCLUSIVOS PARA O PDF LIMPO NO PADRÃO ENVIADO */}
+      {/* ESTILOS DE IMPRESSÃO EXCLUSIVOS PARA O PDF LIMPO */}
       <style>{`
         @media print {
           body * {
@@ -176,29 +176,29 @@ export const CriadorCurriculo = () => {
               <CardContent className="space-y-3">
                 <div>
                   <Label htmlFor="nome" className="text-xs">Nome Completo</Label>
-                  <Input id="nome" placeholder="Ex: Deivid de Jesus Santos" value={nome} onChange={e => setNome(e.target.value)} />
+                  <Input id="nome" placeholder="Ex: João da Silva" value={nome} onChange={e => setNome(e.target.value)} />
                 </div>
                 <div>
                   <Label htmlFor="idade" className="text-xs">Idade e Data de Nascimento</Label>
-                  <Input id="idade" placeholder="Ex: 29 anos (08/04/1996)" value={idade} onChange={e => setIdade(e.target.value)} />
+                  <Input id="idade" placeholder="Ex: 25 anos (01/01/2000)" value={idade} onChange={e => setIdade(e.target.value)} />
                 </div>
                 <div>
                   <Label htmlFor="endereco" className="text-xs">Endereço Completo</Label>
-                  <Input id="endereco" placeholder="Ex: Rua Areial do Mutum, 134 - Irmã Dulce..." value={endereco} onChange={e => setEndereco(e.target.value)} />
+                  <Input id="endereco" placeholder="Ex: Rua Exemplo, 100 - Bairro Centro" value={endereco} onChange={e => setEndereco(e.target.value)} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label htmlFor="tel1" className="text-xs">Telefone Principal</Label>
-                    <Input id="tel1" placeholder="Ex: 75983269725" value={telefone1} onChange={e => setTelefone1(e.target.value)} />
+                    <Input id="tel1" placeholder="Ex: 75999999999" value={telefone1} onChange={e => setTelefone1(e.target.value)} />
                   </div>
                   <div>
                     <Label htmlFor="tel2" className="text-xs">Celular / Contato 2</Label>
-                    <Input id="tel2" placeholder="Ex: 75981229904" value={telefone2} onChange={e => setTelefone2(e.target.value)} />
+                    <Input id="tel2" placeholder="Ex: 75988888888" value={telefone2} onChange={e => setTelefone2(e.target.value)} />
                   </div>
                 </div>
                 <div>
                   <Label htmlFor="email" className="text-xs">E-mail</Label>
-                  <Input id="email" type="email" placeholder="neckweb@gmail.com" value={email} onChange={e => setEmail(e.target.value)} />
+                  <Input id="email" type="email" placeholder="exemplo@email.com" value={email} onChange={e => setEmail(e.target.value)} />
                 </div>
               </CardContent>
             </Card>
@@ -271,26 +271,26 @@ export const CriadorCurriculo = () => {
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <Label className="text-[10px]">Empresa</Label>
-                        <Input placeholder="Ex: Dubahia - Dublagens Bahia" value={exp.empresa} onChange={e => atualizarExperiencia(exp.id, 'empresa', e.target.value)} className="h-8 text-xs" />
+                        <Input placeholder="Ex: Nome da Empresa" value={exp.empresa} onChange={e => atualizarExperiencia(exp.id, 'empresa', e.target.value)} className="h-8 text-xs" />
                       </div>
                       <div>
                         <Label className="text-[10px]">Cidade / Estado</Label>
-                        <Input placeholder="Ex: Santo Antônio de Jesus" value={exp.cidade} onChange={e => atualizarExperiencia(exp.id, 'cidade', e.target.value)} className="h-8 text-xs" />
+                        <Input placeholder="Ex: Cidade - BA" value={exp.cidade} onChange={e => atualizarExperiencia(exp.id, 'cidade', e.target.value)} className="h-8 text-xs" />
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <Label className="text-[10px]">Data de Início</Label>
-                        <Input placeholder="Ex: 18/05/2022" value={exp.dataInicio} onChange={e => atualizarExperiencia(exp.id, 'dataInicio', e.target.value)} className="h-8 text-xs" />
+                        <Input placeholder="Ex: 01/01/2022" value={exp.dataInicio} onChange={e => atualizarExperiencia(exp.id, 'dataInicio', e.target.value)} className="h-8 text-xs" />
                       </div>
                       <div>
                         <Label className="text-[10px]">Data de Término</Label>
-                        <Input placeholder="Ex: 24/09/2025 ou Atual" value={exp.dataFim} onChange={e => atualizarExperiencia(exp.id, 'dataFim', e.target.value)} className="h-8 text-xs" />
+                        <Input placeholder="Ex: 01/01/2024 ou Atual" value={exp.dataFim} onChange={e => atualizarExperiencia(exp.id, 'dataFim', e.target.value)} className="h-8 text-xs" />
                       </div>
                     </div>
                     <div>
                       <Label className="text-[10px]">Cargo</Label>
-                      <Input placeholder="Ex: Auxiliar de Almoxarifado" value={exp.cargo} onChange={e => atualizarExperiencia(exp.id, 'cargo', e.target.value)} className="h-8 text-xs" />
+                      <Input placeholder="Ex: Auxiliar Administrativo" value={exp.cargo} onChange={e => atualizarExperiencia(exp.id, 'cargo', e.target.value)} className="h-8 text-xs" />
                     </div>
                   </div>
                 ))}
@@ -328,7 +328,7 @@ export const CriadorCurriculo = () => {
               </Button>
             </div>
 
-            {/* DOCUMENTO EXATO NO PADRÃO DO MODELO ENVIADO */}
+            {/* DOCUMENTO FORMATADO A4 */}
             <div 
               id="folha-curriculo"
               className="bg-white text-gray-900 p-8 sm:p-10 rounded-lg shadow-2xl border border-gray-200 min-h-[750px] font-sans leading-relaxed text-sm"
