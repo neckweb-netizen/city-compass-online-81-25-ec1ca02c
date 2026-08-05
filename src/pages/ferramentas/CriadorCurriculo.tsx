@@ -44,7 +44,7 @@ export const CriadorCurriculo = () => {
     { id: '1', instituicao: '', curso: '', conclusao: '' }
   ]);
 
-  // MANIPULAÇÃO DE EXPERIÊNCIAS
+  // MANIPULAÇÃO DE EXPERIÊNCIAS.
   const adicionarExperiencia = () => {
     setExperiencias([
       ...experiencias,
