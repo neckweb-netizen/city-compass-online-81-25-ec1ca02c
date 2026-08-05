@@ -8,31 +8,31 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { 
   ArrowLeft, Plus, Trash2, Edit3, Send, CheckCircle2, Clock, 
-  AlertCircle, Search, DollarSign, UserCheck, Calendar, Sparkles, Filter 
+  AlertCircle, Search, Sparkles, UserCheck, Calendar, Loader2 
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 interface RegistroCobranca {
   id: string;
+  user_id: string;
   cliente: string;
   telefone: string;
   valor: string;
   descricao: string;
   vencimento: string;
-  chavePix: string;
+  chave_pix: string;
   status: 'pendente' | 'pago' | 'atrasado';
   observacoes: string;
-  criadoEm: string;
+  created_at: string;
 }
 
 export const GestaoCobrancas = () => {
   const navigate = useNavigate();
-
-  // ESTADO DOS REGISTROS (Salvos no LocalStorage do navegador do usuário)
-  const [cobrancas, setCobrancas] = useState<RegistroCobranca[]>(() => {
-    const salvos = localStorage.getItem('@sajtem:cobrancas');
-    return salvos ? JSON.parse(salvos) : [];
-  });
+  const [loading, setLoading] = useState(true);
+  const [salvando, setSalvando] = useState(false);
+  const [cobrancas, setCobrancas] = useState<RegistroCobranca[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
 
   // FORMULÁRIO DE CADASTRO/EDIÇÃO
   const [editandoId, setEditandoId] = useState<string | null>(null);
@@ -49,10 +49,36 @@ export const GestaoCobrancas = () => {
   const [termoBusca, setTermoBusca] = useState('');
   const [filtroStatus, setFiltroStatus] = useState<string>('todos');
 
-  // SALVAR NO LOCALSTORAGE SEMPRE QUE HOUVER ALTERAÇÃO
+  // OBTER O ID DO USUÁRIO LOGADO E CARREGAR ANOTAÇÕES DO SUPABASE
   useEffect(() => {
-    localStorage.setItem('@sajtem:cobrancas', JSON.stringify(cobrancas));
-  }, [cobrancas]);
+    carregarCobrancasDoUsuario();
+  }, []);
+
+  const carregarCobrancasDoUsuario = async () => {
+    setLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      setUserId(user.id);
+
+      const { data, error } = await supabase
+        .from('cobrancas_usuario' as any)
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      if (data) setCobrancas(data as unknown as RegistroCobranca[]);
+    } catch (err) {
+      console.error('Erro ao carregar anotações:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // FORMATAÇÃO DE MOEDA
   const handleValorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -74,8 +100,8 @@ export const GestaoCobrancas = () => {
     setTelefone(value);
   };
 
-  // ADICIONAR OU ATUALIZAR REGISTRO
-  const handleSalvar = (e: React.FormEvent) => {
+  // ADICIONAR OU ATUALIZAR REGISTRO NO SUPABASE
+  const handleSalvar = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!cliente.trim() || !valor.trim()) {
@@ -83,36 +109,57 @@ export const GestaoCobrancas = () => {
       return;
     }
 
-    if (editandoId) {
-      setCobrancas(cobrancas.map(item => item.id === editandoId ? {
-        ...item,
-        cliente,
-        telefone,
-        valor,
-        descricao,
-        vencimento,
-        chavePix,
-        status,
-        observacoes
-      } : item));
-      setEditandoId(null);
-    } else {
-      const novoRegistro: RegistroCobranca = {
-        id: Date.now().toString(),
-        cliente,
-        telefone,
-        valor,
-        descricao,
-        vencimento,
-        chavePix,
-        status,
-        observacoes,
-        criadoEm: new Date().toLocaleDateString('pt-BR')
-      };
-      setCobrancas([novoRegistro, ...cobrancas]);
+    if (!userId) {
+      alert('Sessão expirada. Por favor, faça login novamente.');
+      return;
     }
 
-    limparFormulario();
+    setSalvando(true);
+
+    try {
+      if (editandoId) {
+        const { error } = await supabase
+          .from('cobrancas_usuario' as any)
+          .update({
+            cliente,
+            telefone,
+            valor,
+            descricao,
+            vencimento,
+            chave_pix: chavePix,
+            status,
+            observacoes
+          })
+          .eq('id', editandoId)
+          .eq('user_id', userId);
+
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('cobrancas_usuario' as any)
+          .insert({
+            user_id: userId,
+            cliente,
+            telefone,
+            valor,
+            descricao,
+            vencimento,
+            chave_pix: chavePix,
+            status,
+            observacoes
+          });
+
+        if (error) throw error;
+      }
+
+      await carregarCobrancasDoUsuario();
+      limparFormulario();
+    } catch (err) {
+      console.error('Erro ao salvar anotação:', err);
+      alert('Ocorreu um erro ao salvar no banco de dados.');
+    } finally {
+      setSalvando(false);
+    }
   };
 
   // LIMPAR FORMULÁRIO
@@ -132,36 +179,59 @@ export const GestaoCobrancas = () => {
   const handleEditar = (item: RegistroCobranca) => {
     setEditandoId(item.id);
     setCliente(item.cliente);
-    setTelefone(item.telefone);
+    setTelefone(item.telefone || '');
     setValor(item.valor);
-    setDescricao(item.descricao);
-    setVencimento(item.vencimento);
-    setChavePix(item.chavePix);
+    setDescricao(item.descricao || '');
+    setVencimento(item.vencimento || '');
+    setChavePix(item.chave_pix || '');
     setStatus(item.status);
-    setObservacoes(item.observacoes);
+    setObservacoes(item.observacoes || '');
   };
 
-  // EXCLUIR REGISTRO
-  const handleExcluir = (id: string) => {
-    if (confirm('Deseja realmente excluir esta anotação?')) {
+  // EXCLUIR REGISTRO DO SUPABASE
+  const handleExcluir = async (id: string) => {
+    if (!confirm('Deseja realmente excluir esta anotação?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('cobrancas_usuario' as any)
+        .delete()
+        .eq('id', id)
+        .eq('user_id', userId);
+
+      if (error) throw error;
       setCobrancas(cobrancas.filter(item => item.id !== id));
+    } catch (err) {
+      console.error('Erro ao deletar:', err);
     }
   };
 
   // ALTERAR STATUS RÁPIDO
-  const handleMudarStatus = (id: string, novoStatus: 'pendente' | 'pago' | 'atrasado') => {
-    setCobrancas(cobrancas.map(item => item.id === id ? { ...item, status: novoStatus } : item));
+  const handleMudarStatus = async (id: string, novoStatus: 'pendente' | 'pago' | 'atrasado') => {
+    try {
+      const { error } = await supabase
+        .from('cobrancas_usuario' as any)
+        .update({ status: novoStatus })
+        .eq('id', id)
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      setCobrancas(cobrancas.map(item => item.id === id ? { ...item, status: novoStatus } : item));
+    } catch (err) {
+      console.error('Erro ao alterar status:', err);
+    }
   };
 
   // ENVIAR COBRANÇA DIRETO NO WHATSAPP
   const handleEnviarWhatsApp = (item: RegistroCobranca) => {
-    const numLimpo = item.telefone.replace(/\D/g, '');
+    const numLimpo = item.telefone ? item.telefone.replace(/\D/g, '') : '';
     const dataFormatada = item.vencimento ? item.vencimento.split('-').reverse().join('/') : 'A combinar';
     
     let mensagem = `Olá, *${item.cliente}*! Tudo bem?\n\nPassando para lembrar do valor de *R$ ${item.valor}* referente a *${item.descricao || 'serviços/produtos'}*, com vencimento em *${dataFormatada}*.`;
     
-    if (item.chavePix) {
-      mensagem += `\n\n🔑 *Chave PIX:* \`${item.chavePix}\``;
+    if (item.chave_pix) {
+      mensagem += `\n\n🔑 *Chave PIX:* \`${item.chave_pix}\``;
     }
 
     mensagem += `\n\nQualquer dúvida, estou à disposição! 🙏`;
@@ -173,7 +243,7 @@ export const GestaoCobrancas = () => {
     window.open(url, '_blank');
   };
 
-  // CÁLCULOS TOTAIS DOS CARDS
+  // CÁLCULOS TOTAIS
   const totalRecebido = cobrancas
     .filter(i => i.status === 'pago')
     .reduce((acc, curr) => acc + (parseFloat(curr.valor.replace('.', '').replace(',', '.')) || 0), 0);
@@ -189,7 +259,7 @@ export const GestaoCobrancas = () => {
   // FILTRAGEM DOS REGISTROS
   const cobrancasFiltradas = cobrancas.filter(item => {
     const bateBusca = item.cliente.toLowerCase().includes(termoBusca.toLowerCase()) ||
-                      item.descricao.toLowerCase().includes(termoBusca.toLowerCase());
+                      (item.descricao && item.descricao.toLowerCase().includes(termoBusca.toLowerCase()));
     const bateStatus = filtroStatus === 'todos' || item.status === filtroStatus;
     return bateBusca && bateStatus;
   });
@@ -208,7 +278,7 @@ export const GestaoCobrancas = () => {
             <ArrowLeft className="w-4 h-4" /> Voltar
           </Button>
           <span className="text-xs bg-primary/10 text-primary px-3 py-1 rounded-full font-semibold flex items-center gap-1">
-            <Sparkles className="w-3.5 h-3.5" /> Gestão Pessoal
+            <Sparkles className="w-3.5 h-3.5" /> Gestão Pessoal Privada
           </span>
         </div>
 
@@ -217,7 +287,7 @@ export const GestaoCobrancas = () => {
             Caderno & Gestão de Cobranças
           </h1>
           <p className="text-muted-foreground max-w-xl mx-auto text-sm sm:text-base">
-            Anote suas contas a receber, controle status de pagamentos e cobre clientes via WhatsApp em um só lugar.
+            Seus dados são 100% privados e ficam salvos com segurança na sua conta.
           </p>
         </div>
 
@@ -263,7 +333,7 @@ export const GestaoCobrancas = () => {
         {/* FORMULÁRIO E LISTAGEM */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
-          {/* FORMULÁRIO (1 COLUNA) */}
+          {/* FORMULÁRIO */}
           <Card className="border-border/60 shadow-lg h-fit">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg font-bold flex items-center justify-between">
@@ -275,7 +345,7 @@ export const GestaoCobrancas = () => {
                 )}
               </CardTitle>
               <CardDescription>
-                Registre detalhes de novos serviços ou vendas a receber
+                Salve os dados de novos clientes a receber
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -351,7 +421,7 @@ export const GestaoCobrancas = () => {
                 <div>
                   <Label className="text-xs font-semibold">Descrição do Serviço / Produto</Label>
                   <Input 
-                    placeholder="Ex: Concerto de Celular / Venda de Peça" 
+                    placeholder="Ex: Conserto de Celular / Venda" 
                     value={descricao} 
                     onChange={e => setDescricao(e.target.value)} 
                     className="h-9 text-xs"
@@ -359,24 +429,28 @@ export const GestaoCobrancas = () => {
                 </div>
 
                 <div>
-                  <Label className="text-xs font-semibold">Anotações Internas / Observações</Label>
+                  <Label className="text-xs font-semibold">Observações</Label>
                   <Textarea 
-                    placeholder="Ex: Cliente disse que vai pagar no próximo sábado..." 
+                    placeholder="Ex: Vai pagar no sábado..." 
                     value={observacoes} 
                     onChange={e => setObservacoes(e.target.value)} 
                     className="text-xs h-16"
                   />
                 </div>
 
-                <Button type="submit" className="w-full bg-primary hover:bg-primary/90 font-bold h-10 text-xs rounded-xl gap-2 mt-2">
-                  <Plus className="w-4 h-4" />
+                <Button 
+                  type="submit" 
+                  disabled={salvando}
+                  className="w-full bg-primary hover:bg-primary/90 font-bold h-10 text-xs rounded-xl gap-2 mt-2"
+                >
+                  {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                   {editandoId ? 'Atualizar Anotação' : 'Salvar no Caderno'}
                 </Button>
               </form>
             </CardContent>
           </Card>
 
-          {/* LISTAGEM E REGISTROS (2 COLUNAS) */}
+          {/* LISTAGEM */}
           <div className="lg:col-span-2 space-y-4">
             
             {/* BARRA DE BUSCA E FILTROS */}
@@ -407,13 +481,18 @@ export const GestaoCobrancas = () => {
               </div>
             </Card>
 
-            {/* LISTA DE ANOTAÇÕES */}
-            {cobrancasFiltradas.length === 0 ? (
+            {/* STATUS DE CARREGAMENTO OU LISTA DE ANOTAÇÕES */}
+            {loading ? (
+              <Card className="p-8 text-center space-y-2">
+                <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto" />
+                <p className="text-xs text-muted-foreground">Carregando suas anotações privadas...</p>
+              </Card>
+            ) : cobrancasFiltradas.length === 0 ? (
               <Card className="border-dashed border-border/80 p-8 text-center space-y-2">
                 <UserCheck className="w-10 h-10 text-muted-foreground mx-auto opacity-50" />
-                <h3 className="font-bold text-sm text-foreground">Nenhuma anotação encontrada</h3>
+                <h3 className="font-bold text-sm text-foreground">Nenhuma anotação registrada</h3>
                 <p className="text-xs text-muted-foreground max-w-xs mx-auto">
-                  Cadastre sua primeira cobrança no formulário ao lado para começar o acompanhamento.
+                  Cadastre sua primeira cobrança no formulário ao lado. Ela ficará salva exclusivamente na sua conta.
                 </p>
               </Card>
             ) : (
@@ -422,7 +501,7 @@ export const GestaoCobrancas = () => {
                   <Card key={item.id} className="border-border/60 shadow-sm hover:border-primary/40 transition-all">
                     <CardContent className="p-4 space-y-3">
                       
-                      {/* TOPO DO CARD DA ANOTAÇÃO */}
+                      {/* TOPO DO CARD */}
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <div className="flex items-center gap-2">
@@ -455,14 +534,14 @@ export const GestaoCobrancas = () => {
                         </div>
                       </div>
 
-                      {/* OBSERVAÇÕES SE HOUVER */}
+                      {/* OBSERVAÇÕES */}
                       {item.observacoes && (
                         <div className="p-2 bg-muted/30 rounded-lg text-xs text-muted-foreground border border-border/40">
                           <strong>Anotação:</strong> {item.observacoes}
                         </div>
                       )}
 
-                      {/* BARRA DE AÇÕES RÁPIDAS */}
+                      {/* AÇÕES RÁPIDAS */}
                       <div className="flex flex-wrap items-center justify-between pt-2 border-t border-border/40 gap-2">
                         <div className="flex items-center gap-1">
                           <Button 
