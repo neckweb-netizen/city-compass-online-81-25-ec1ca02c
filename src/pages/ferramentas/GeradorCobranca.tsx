@@ -116,7 +116,7 @@ export const GeradorCobranca = () => {
             Gerador de Cobrança & Lembrete PIX.
           </h1>
           <p className="text-muted-foreground max-w-xl mx-auto text-sm sm:text-base">
-            Crie mensagens de cobrança profissionais e envie direto para o WhatsApp do seu cliente sem complicação.
+            Crie mensagens de cobrança profissionais e envie direto para o WhatsApp do seu cliente sem complicação..
           </p>
         </div>
 
