@@ -43,7 +43,6 @@ const AnuncieGratis = lazy(() => import("./pages/AnuncieGratis").then(m => ({ de
 
 // NOVO: Importações Lazy Load das ferramentas públicas e jogos
 const Domino = lazy(() => import("./pages/Domino"));
-const FerramentasCatalog = lazy(() => import("./pages/FerramentasCatalog").then(m => ({ default: m.FerramentasCatalog })));
 const GeradorCobranca = lazy(() => import("./pages/ferramentas/GeradorCobranca").then(m => ({ default: m.GeradorCobranca })));
 const CriadorCurriculo = lazy(() => import("./pages/ferramentas/CriadorCurriculo").then(m => ({ default: m.CriadorCurriculo })));
 const GestaoCobrancas = lazy(() => import("./pages/ferramentas/GestaoCobrancas").then(m => ({ default: m.GestaoCobrancas })));
@@ -167,7 +166,7 @@ const App = () => {
   // Interceptação com a Landing Page Corporativa Profissional
   if (!loadingConfig && isMaintenance && !window.location.pathname.startsWith("/admin")) {
     return (
-      <div className="min-h-screen flex flex-col justify-between bg-[#0F0A19] text-[#FFFFFF] relative overflow-hidden font-sans">
+      <div className="min-h-screen flex flex-col justify-between bg-[#0F0A19] text-white relative overflow-hidden font-sans">
         <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-900/20 rounded-full blur-[120px] pointer-events-none" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-900/20 rounded-full blur-[120px] pointer-events-none" />
 
@@ -312,9 +311,6 @@ const App = () => {
                 
                 {/* ROTA ADICIONADA: Página pública de Dominó */}
                 <Route path="domino" element={<Domino />} />
-
-                {/* CENTRAL DEDICADA DE FERRAMENTAS (PÚBLICA) */}
-                <Route path="ferramentas" element={<FerramentasCatalog />} />
 
                 {/* ROTAS PROTEGIDAS (RESTRITAS A USUÁRIOS LOGADOS) */}
                 <Route path="ferramentas/gerador-cobranca" element={<ProtectedRoute><GeradorCobranca /></ProtectedRoute>} />
