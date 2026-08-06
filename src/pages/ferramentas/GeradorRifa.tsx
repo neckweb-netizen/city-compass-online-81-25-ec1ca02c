@@ -6,8 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { ArrowLeft, Ticket, Trophy, QrCode, Sparkles, Copy, Trash2, Calendar, Clock, Share2, AlertTriangle, PlusCircle, ListFilter, Loader2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Ticket, Trophy, QrCode, Sparkles, Copy, Trash2, Calendar, Clock, Share2, AlertTriangle, PlusCircle, ListFilter, Loader2, CheckCircle2 } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -34,6 +34,8 @@ interface RifaDados {
 
 export const GeradorRifa = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const idRifaPublica = searchParams.get('id');
 
   // DADOS DO FORMULÁRIO
   const [titulo, setTitulo] = useState('');
@@ -49,6 +51,7 @@ export const GeradorRifa = () => {
   const [rifaAtiva, setRifaAtiva] = useState<RifaDados | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
+  const [isModoComprador, setIsModoComprador] = useState(false);
 
   // ABA ATIVA: 'minhas' OU 'criar'
   const [abaExibicao, setAbaExibicao] = useState<'minhas' | 'criar'>('criar');
@@ -63,24 +66,55 @@ export const GeradorRifa = () => {
   const [nomeComprador, setNomeComprador] = useState('');
   const [telefoneComprador, setTelefoneComprador] = useState('');
 
-  // 1. LIMPAR EXPIRADAS DO BANCO E BUSCAR RIFAS DO USUÁRIO
-  const carregarRifasDoBanco = async () => {
+  // CARREGAR RIFA PÚBLICA (LINK COMPARTILHADO) OU RIFAS DO ORGANIZADOR
+  const inicializarRifas = async () => {
     try {
       setCarregando(true);
+
+      // Limpa rifas expiradas há 7 dias no banco
+      await supabase.rpc('deletar_rifas_expiradas' as any);
+
+      // SE FOR ACESSO VIA LINK PÚBLICO (?id=UUID)
+      if (idRifaPublica) {
+        setIsModoComprador(true);
+        const { data, error } = await supabase
+          .from('rifas_usuarios' as any)
+          .select('*')
+          .eq('id', idRifaPublica)
+          .single();
+
+        if (error || !data) {
+          toast.error('Rifa não encontrada ou já encerrada.');
+          setCarregando(false);
+          return;
+        }
+
+        const rifaPub: RifaDados = {
+          id: data.id,
+          titulo: data.titulo,
+          premio: data.premio,
+          valor_numero: data.valor_numero,
+          chave_pix: data.chave_pix,
+          data_sorteio: data.data_sorteio,
+          hora_sorteio: data.hora_sorteio,
+          qtd_numeros: data.qtd_numeros,
+          numeros: data.numeros || []
+        };
+
+        selecionarRifaParaExibir(rifaPub);
+        setAbaExibicao('minhas');
+        setCarregando(false);
+        return;
+      }
+
+      // MODO ORGANIZADOR/LOGADO
       const { data: { session } } = await supabase.auth.getSession();
       const userId = session?.user?.id;
 
-      // Executa rotina de exclusão das expiradas há mais de 7 dias no Supabase
-      await supabase.rpc('deletar_rifas_expiradas' as any);
-
       let query = supabase.from('rifas_usuarios' as any).select('*').order('created_at', { ascending: false });
-
-      if (userId) {
-        query = query.eq('user_id', userId);
-      }
+      if (userId) query = query.eq('user_id', userId);
 
       const { data, error } = await query;
-
       if (error) throw error;
 
       if (data && data.length > 0) {
@@ -107,15 +141,15 @@ export const GeradorRifa = () => {
         setAbaExibicao('criar');
       }
     } catch (err) {
-      console.error('Erro ao carregar rifas do Supabase:', err);
+      console.error('Erro ao buscar dados da rifa:', err);
     } finally {
       setCarregando(false);
     }
   };
 
   useEffect(() => {
-    carregarRifasDoBanco();
-  }, []);
+    inicializarRifas();
+  }, [idRifaPublica]);
 
   const selecionarRifaParaExibir = (rifa: RifaDados) => {
     setRifaAtiva(rifa);
@@ -129,7 +163,7 @@ export const GeradorRifa = () => {
     setQtdNumeros(rifa.qtd_numeros);
   };
 
-  // 2. CRIAR E SALVAR NOVA RIFA NO SUPABASE
+  // CRIAR E SALVAR NOVA RIFA NO SUPABASE
   const handleCriarRifa = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -176,19 +210,19 @@ export const GeradorRifa = () => {
       if (error) throw error;
 
       toast.success('Rifa salva com sucesso no banco de dados!');
-      await carregarRifasDoBanco();
+      await inicializarRifas();
     } catch (err: any) {
-      toast.error('Erro ao salvar rifa no banco: ' + err.message);
+      toast.error('Erro ao salvar rifa: ' + err.message);
     } finally {
       setSalvando(false);
     }
   };
 
-  // 3. ATUALIZAR STATUS DE NÚMERO RESERVADO / PAGO NO BANCO DE DADOS
+  // RESERVAR / COMPRAR NÚMERO NA VISÃO DO COMPRADOR OU ORGANIZADOR
   const handleSalvarReserva = async (novoStatus: 'reservado' | 'pago') => {
     if (!numeroSelecionado || !rifaAtiva?.id) return;
     if (!nomeComprador.trim()) {
-      toast.error('Informe o nome do comprador.');
+      toast.error('Informe o seu nome para reservar.');
       return;
     }
 
@@ -216,9 +250,9 @@ export const GeradorRifa = () => {
 
       setRifaAtiva(prev => prev ? { ...prev, numeros: novosNumeros } : null);
       setModalReservaOpen(false);
-      toast.success(`Número ${numeroSelecionado.numero} atualizado para ${novoStatus.toUpperCase()}!`);
+      toast.success(`Número ${numeroSelecionado.numero} ${novoStatus === 'reservado' ? 'reservado' : 'pago'} com sucesso!`);
     } catch (err: any) {
-      toast.error('Erro ao atualizar número no banco: ' + err.message);
+      toast.error('Erro ao atualizar número: ' + err.message);
     }
   };
 
@@ -250,15 +284,15 @@ export const GeradorRifa = () => {
       setModalReservaOpen(false);
       toast.info(`Número ${numeroSelecionado.numero} liberado novamente.`);
     } catch (err: any) {
-      toast.error('Erro ao liberar número no banco: ' + err.message);
+      toast.error('Erro ao liberar número: ' + err.message);
     }
   };
 
-  // 4. APAGAR RIFA DO BANCO DE DADOS
+  // APAGAR RIFA DO BANCO DE DADOS
   const handleApagarRifaManual = async () => {
     if (!rifaAtiva?.id) return;
 
-    if (confirm('Tem certeza que deseja apagar esta rifa do banco de dados? Ela será removida permanentemente.')) {
+    if (confirm('Tem certeza que deseja apagar esta rifa? Ela será removida permanentemente do banco de dados.')) {
       try {
         const { error } = await supabase
           .from('rifas_usuarios' as any)
@@ -267,28 +301,18 @@ export const GeradorRifa = () => {
 
         if (error) throw error;
 
-        toast.success('Rifa excluída permanentemente do banco de dados.');
-        await carregarRifasDoBanco();
+        toast.success('Rifa excluída permanentemente.');
+        await inicializarRifas();
       } catch (err: any) {
-        toast.error('Erro ao apagar rifa do banco: ' + err.message);
+        toast.error('Erro ao apagar rifa: ' + err.message);
       }
     }
   };
 
   const handleCopiarLinkRifa = () => {
-    const linkBase = window.location.origin + window.location.pathname;
-    const params = new URLSearchParams({
-      id: rifaAtiva?.id || '',
-      titulo,
-      premio,
-      valor: valorNumero,
-      data: dataSorteio,
-      hora: horaSorteio,
-    });
-
-    const linkFinal = `${linkBase}?${params.toString()}`;
+    const linkFinal = `${window.location.origin}${window.location.pathname}?id=${rifaAtiva?.id}`;
     navigator.clipboard.writeText(linkFinal);
-    toast.success('Link da Rifa copiado para compartilhar!');
+    toast.success('Link público da Rifa copiado para compartilhar!');
   };
 
   const totalPagos = numeros.filter(n => n.status === 'pago').length;
@@ -306,7 +330,7 @@ export const GeradorRifa = () => {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 text-primary animate-spin" />
-          <span className="text-xs text-muted-foreground font-semibold">Sincronizando com o banco de dados...</span>
+          <span className="text-xs text-muted-foreground font-semibold">Carregando dados da rifa...</span>
         </div>
       </div>
     );
@@ -320,71 +344,67 @@ export const GeradorRifa = () => {
         <div className="flex items-center justify-between">
           <Button 
             variant="ghost" 
-            onClick={() => navigate(-1)} 
+            onClick={() => navigate('/')} 
             className="text-muted-foreground hover:text-foreground gap-2"
           >
-            <ArrowLeft className="w-4 h-4" /> Voltar
+            <ArrowLeft className="w-4 h-4" /> Início
           </Button>
           <Badge className="bg-primary/10 text-primary border-primary/20 px-3 py-1 text-xs font-semibold flex items-center gap-1">
-            <Sparkles className="w-3.5 h-3.5" /> Ações & Rifas
+            <Sparkles className="w-3.5 h-3.5" /> {isModoComprador ? 'Rifa Pública' : 'Ações & Rifas'}
           </Badge>
         </div>
 
         <div className="text-center space-y-2">
           <h1 className="text-3xl sm:text-4xl font-extrabold text-foreground tracking-tight flex items-center justify-center gap-2">
-            <Ticket className="w-8 h-8 text-primary" /> Gerador e Caderno de Rifas
+            <Ticket className="w-8 h-8 text-primary" /> {titulo || 'Rifa Online'}
           </h1>
           <p className="text-muted-foreground max-w-xl mx-auto text-sm sm:text-base">
-            Crie sua rifa personalizada, acompanhe os pagamentos e salve no banco de dados com apaga automático pós-sorteio.
+            {isModoComprador 
+              ? 'Escolha seu número da sorte abaixo e informe seus dados para reservar.' 
+              : 'Crie sua rifa personalizada e gerencie pagamentos no seu caderno virtual.'}
           </p>
         </div>
 
-        {/* CONTROLES DE NAVEGAÇÃO DE ABAS */}
-        <div className="flex items-center justify-center gap-2 pt-2">
-          {rifasUsuario.length > 0 && (
+        {/* CONTROLES APENAS PARA ORGANIZADOR */}
+        {!isModoComprador && (
+          <div className="flex items-center justify-center gap-2 pt-2">
+            {rifasUsuario.length > 0 && (
+              <Button
+                variant={abaExibicao === 'minhas' ? 'default' : 'outline'}
+                onClick={() => setAbaExibicao('minhas')}
+                className="rounded-full text-xs font-bold gap-2 px-5 h-9"
+              >
+                <ListFilter className="w-4 h-4" /> Minhas Rifas ({rifasUsuario.length})
+              </Button>
+            )}
+
             <Button
-              variant={abaExibicao === 'minhas' ? 'default' : 'outline'}
-              onClick={() => setAbaExibicao('minhas')}
+              variant={abaExibicao === 'criar' ? 'default' : 'outline'}
+              onClick={() => {
+                setTitulo('');
+                setPremio('');
+                setValorNumero('');
+                setChavePix('');
+                setDataSorteio('');
+                setHoraSorteio('');
+                setAbaExibicao('criar');
+              }}
               className="rounded-full text-xs font-bold gap-2 px-5 h-9"
             >
-              <ListFilter className="w-4 h-4" /> Minhas Rifas ({rifasUsuario.length})
+              <PlusCircle className="w-4 h-4" /> Nova Rifa
             </Button>
-          )}
+          </div>
+        )}
 
-          <Button
-            variant={abaExibicao === 'criar' ? 'default' : 'outline'}
-            onClick={() => {
-              setTitulo('');
-              setPremio('');
-              setValorNumero('');
-              setChavePix('');
-              setDataSorteio('');
-              setHoraSorteio('');
-              setAbaExibicao('criar');
-            }}
-            className="rounded-full text-xs font-bold gap-2 px-5 h-9"
-          >
-            <PlusCircle className="w-4 h-4" /> Nova Rifa
-          </Button>
-        </div>
-
-        {/* AVISO DE EXPIRAÇÃO AUTOMÁTICA EM 7 DIAS */}
-        <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-amber-700 dark:text-amber-400 text-xs flex items-center gap-3">
-          <AlertTriangle className="w-5 h-5 shrink-0 text-amber-500" />
-          <span>
-            <strong>Gestão do Banco de Dados:</strong> As rifas ficam salvas no banco de dados e são <strong>apagadas automaticamente 7 dias após a data do sorteio</strong>.
-          </span>
-        </div>
-
-        {abaExibicao === 'criar' ? (
-          /* FORMULÁRIO DE CRIAÇÃO DA RIFA */
+        {/* MODO CRIAR RIFA */}
+        {!isModoComprador && abaExibicao === 'criar' ? (
           <Card className="max-w-2xl mx-auto border-border/60 shadow-md">
             <CardHeader>
               <CardTitle className="text-lg font-bold flex items-center gap-2">
                 <Ticket className="w-5 h-5 text-primary" /> Configurar Nova Rifa
               </CardTitle>
               <CardDescription className="text-xs">
-                Informe os dados e salve a rifa diretamente no banco de dados
+                A rifa será pública e qualquer pessoa com o link poderá acessar sem estar logada
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -480,17 +500,17 @@ export const GeradorRifa = () => {
                   className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-11 rounded-xl gap-2 mt-2"
                 >
                   {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                  <span>{salvando ? 'Salvando Rifa...' : 'Salvar Rifa no Banco de Dados'}</span>
+                  <span>{salvando ? 'Criando Rifa...' : 'Salvar Rifa e Gerar Link'}</span>
                 </Button>
               </form>
             </CardContent>
           </Card>
         ) : (
-          /* PAINEL DE GESTÃO DA RIFA ATIVA */
+          /* PAINEL DA RIFA (VISÃO DO COMPRADOR OU ORGANIZADOR) */
           <div className="space-y-6">
 
-            {/* SELETOR SE HOUVER MAIS DE UMA RIFA */}
-            {rifasUsuario.length > 1 && (
+            {/* SELETOR SE FOR ORGANIZADOR COM VÁRIAS RIFAS */}
+            {!isModoComprador && rifasUsuario.length > 1 && (
               <div className="flex items-center gap-2 overflow-x-auto pb-2">
                 <span className="text-xs font-bold text-muted-foreground whitespace-nowrap">Alternar Rifa:</span>
                 {rifasUsuario.map(r => (
@@ -513,10 +533,10 @@ export const GeradorRifa = () => {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <Badge variant="outline" className="text-primary border-primary/30 text-[10px] uppercase font-bold mb-1">
-                        Rifa Ativa ({qtdNumeros} números)
+                        Rifa Oficial ({qtdNumeros} números)
                       </Badge>
                       <Badge variant="outline" className="text-amber-600 border-amber-500/30 text-[10px] font-bold mb-1">
-                        Auto-delete 7 dias pós-sorteio
+                        Sorteio em Breve
                       </Badge>
                     </div>
                     <h2 className="text-2xl font-black text-foreground">{titulo}</h2>
@@ -542,17 +562,19 @@ export const GeradorRifa = () => {
                       <Share2 className="w-4 h-4" /> Copiar Link da Rifa
                     </Button>
 
-                    <Button 
-                      variant="outline" 
-                      onClick={handleApagarRifaManual}
-                      className="h-10 text-xs border-destructive/40 text-destructive hover:bg-destructive/10"
-                    >
-                      <Trash2 className="w-3.5 h-3.5 mr-1" /> Apagar Rifa do Banco
-                    </Button>
+                    {!isModoComprador && (
+                      <Button 
+                        variant="outline" 
+                        onClick={handleApagarRifaManual}
+                        className="h-10 text-xs border-destructive/40 text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 mr-1" /> Apagar Rifa
+                      </Button>
+                    )}
                   </div>
                 </div>
 
-                {/* PAINEL DE MÉTRICAS */}
+                {/* PAINEL DE MÉTRICAS DA RIFA */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
                   <div className="p-3 bg-muted/40 rounded-xl border text-center">
                     <span className="text-[10px] text-muted-foreground uppercase font-semibold block">Valor/Número</span>
@@ -576,7 +598,7 @@ export const GeradorRifa = () => {
                   <div className="p-3 bg-primary/5 border border-primary/20 rounded-xl flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
                       <QrCode className="w-4 h-4 text-primary shrink-0" />
-                      <span>Chave PIX: <strong>{chavePix}</strong></span>
+                      <span>Chave PIX para Pagamento: <strong>{chavePix}</strong></span>
                     </div>
                     <Button 
                       variant="ghost" 
@@ -594,12 +616,16 @@ export const GeradorRifa = () => {
               </CardContent>
             </Card>
 
-            {/* GRADE DE NÚMEROS */}
+            {/* GRADE INTERATIVA DE NÚMEROS */}
             <Card className="border-border/60 shadow-md">
               <CardHeader className="pb-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div>
-                  <CardTitle className="text-base font-bold">Grade de Números</CardTitle>
-                  <CardDescription className="text-xs">Clique no número para alterar comprador ou status</CardDescription>
+                  <CardTitle className="text-base font-bold">Escolha seu Número</CardTitle>
+                  <CardDescription className="text-xs">
+                    {isModoComprador 
+                      ? 'Clique em qualquer número livre para informar seu nome e realizar a reserva' 
+                      : 'Clique no número para gerenciar ou marcar como Pago'}
+                  </CardDescription>
                 </div>
 
                 <div className="flex items-center gap-1.5 flex-wrap">
@@ -620,13 +646,14 @@ export const GeradorRifa = () => {
               <CardContent>
                 <div className="grid grid-cols-5 sm:grid-cols-10 md:grid-cols-12 gap-2 max-h-[500px] overflow-y-auto p-1">
                   {numerosFiltrados.map((item) => {
-                    let estilos = 'bg-background hover:border-primary/60 text-foreground border-border';
-                    if (item.status === 'reservado') estilos = 'bg-amber-500/20 border-amber-500 text-amber-700 dark:text-amber-300 font-bold';
+                    let estilos = 'bg-background hover:border-primary/60 text-foreground border-border cursor-pointer';
+                    if (item.status === 'reservado') estilos = 'bg-amber-500/20 border-amber-500 text-amber-700 dark:text-amber-300 font-bold cursor-pointer';
                     if (item.status === 'pago') estilos = 'bg-emerald-500 text-white border-emerald-600 font-extrabold shadow-sm';
 
                     return (
                       <button
                         key={item.numero}
+                        disabled={isModoComprador && item.status === 'pago'}
                         onClick={() => {
                           setNumeroSelecionado(item);
                           setNomeComprador(item.nome || '');
@@ -668,7 +695,7 @@ export const GeradorRifa = () => {
 
       </div>
 
-      {/* MODAL DE RESERVA / PAGO */}
+      {/* MODAL DE RESERVA / COMPRA DO NÚMERO */}
       <Dialog open={modalReservaOpen} onOpenChange={setModalReservaOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -676,13 +703,15 @@ export const GeradorRifa = () => {
               <Ticket className="w-5 h-5 text-primary" /> Número {numeroSelecionado?.numero}
             </DialogTitle>
             <DialogDescription className="text-xs">
-              Cadastre os dados do comprador para atualizar no banco
+              {isModoComprador 
+                ? 'Informe seu nome e WhatsApp para confirmar a reserva do número.' 
+                : 'Gerencie ou atualize os dados do comprador para este número.'}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Nome do Comprador *</Label>
+              <Label className="text-xs font-semibold">Seu Nome Completo *</Label>
               <Input 
                 placeholder="Ex: João da Silva" 
                 value={nomeComprador} 
@@ -692,7 +721,7 @@ export const GeradorRifa = () => {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">WhatsApp / Telefone</Label>
+              <Label className="text-xs font-semibold">WhatsApp / Telefone *</Label>
               <Input 
                 placeholder="Ex: (75) 99999-9999" 
                 value={telefoneComprador} 
@@ -703,7 +732,7 @@ export const GeradorRifa = () => {
           </div>
 
           <DialogFooter className="flex-col sm:flex-row gap-2">
-            {numeroSelecionado?.status !== 'livre' && (
+            {!isModoComprador && numeroSelecionado?.status !== 'livre' && (
               <Button 
                 variant="outline" 
                 onClick={handleLiberarNumero}
@@ -712,19 +741,22 @@ export const GeradorRifa = () => {
                 Liberar Número
               </Button>
             )}
+
             <Button 
               onClick={() => handleSalvarReserva('reservado')} 
-              variant="outline"
-              className="bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 text-xs h-9"
+              className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs h-9"
             >
-              Marcar Reservado
+              Confirmar Reserva
             </Button>
-            <Button 
-              onClick={() => handleSalvarReserva('pago')} 
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-9"
-            >
-              Marcar PAGO
-            </Button>
+
+            {!isModoComprador && (
+              <Button 
+                onClick={() => handleSalvarReserva('pago')} 
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-9"
+              >
+                Marcar PAGO
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
