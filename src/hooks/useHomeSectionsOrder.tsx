@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+Nmnnnnnnn/!import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -77,7 +77,7 @@ export const useHomeSectionsOrder = () => {
             display_name: 'Central de Ferramentas',
             ordem: (sections?.length || 1),
             ativo
-          }, { onConflict: 'section_name' });
+          }, { onConflict: 'se.ction_name' });
 
         if (error) throw error;
       } else {
