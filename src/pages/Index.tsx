@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { HomeContent } from '@/components/home/HomeContent';
 import { SearchContent } from '@/components/search/SearchContent';
 import { CategoriesContent } from '@/components/categories/CategoriesContent';
 import { CouponsContent } from '@/components/coupons/CouponsContent';
 import { ProfileContent } from '@/components/profile/ProfileContent';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   Hammer, 
@@ -19,7 +22,12 @@ import {
   Search,
   Calendar,
   Tag,
-  AlertCircle
+  AlertCircle,
+  Wrench,
+  FileSpreadsheet,
+  Percent,
+  Volume2,
+  FileText
 } from 'lucide-react';
 
 interface ItemAchadoPerdido {
@@ -33,6 +41,7 @@ interface ItemAchadoPerdido {
 }
 
 const Index = () => {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab') || 'home';
   const [activeTab, setActiveTab] = useState(tabFromUrl);
@@ -46,11 +55,54 @@ const Index = () => {
   const [itensAchados, setItensAchados] = useState<ItemAchadoPerdido[]>([]);
   const [loadingAchados, setLoadingAchados] = useState(false);
 
+  // As 4 ferramentas principais em destaque para a Home
+  const ferramentasDestaque = [
+    {
+      id: 'simulador-rescisao',
+      titulo: 'Simulador de Rescisão (CLT)',
+      descricao: 'Calcule aviso prévio, férias, 13º e multa do FGTS em segundos.',
+      icone: FileSpreadsheet,
+      rota: '/ferramentas/simulador-rescisao',
+      tag: 'Novo',
+      corTexto: 'text-cyan-500',
+      corBg: 'bg-cyan-500/10 border-cyan-500/20',
+    },
+    {
+      id: 'calculadora-margem',
+      titulo: 'Calculadora de Maquininha',
+      descricao: 'Descubra o preço ideal de venda considerando as taxas dos cartões.',
+      icone: Percent,
+      rota: '/ferramentas/calculadora-margem',
+      tag: 'Mais Usado',
+      corTexto: 'text-pink-500',
+      corBg: 'bg-pink-500/10 border-pink-500/20',
+    },
+    {
+      id: 'leitor-voz',
+      titulo: 'Leitor de Texto em Voz Alta',
+      descricao: 'Converta qualquer texto em áudio narrado com voz natural e ajustes.',
+      icone: Volume2,
+      rota: '/ferramentas/leitor-voz',
+      tag: 'IA Grátis',
+      corTexto: 'text-indigo-500',
+      corBg: 'bg-indigo-500/10 border-indigo-500/20',
+    },
+    {
+      id: 'criador-curriculo',
+      titulo: 'Criador de Currículo PDF',
+      descricao: 'Monte seu currículo profissional no formato padrão A4 para download.',
+      icone: FileText,
+      rota: '/ferramentas/criador-curriculo',
+      tag: 'Útil',
+      corTexto: 'text-blue-500',
+      corBg: 'bg-blue-500/10 border-blue-500/20',
+    },
+  ];
+
   // Carrega e monitora o status de manutenção do banco de dados
   useEffect(() => {
     const verificarManutencao = async () => {
       try {
-        // timeout de segurança de 3 segundos para não prender o usuário se o supabase falhar
         const timeoutPromise = new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Timeout Supabase')), 3000)
         );
@@ -61,7 +113,6 @@ const Index = () => {
           .limit(1)
           .maybeSingle();
 
-        // Executa a busca ou falha caso demore demais
         const { data, error }: any = await Promise.race([fetchPromise, timeoutPromise]).catch(() => ({ data: null, error: null }));
 
         if (error) throw error;
@@ -70,12 +121,10 @@ const Index = () => {
           setIsMaintenance(data.manutencao ?? false);
           setMaintenanceMessage(data.mensagem_manutencao ?? 'O portal está passando por atualizações e voltará em breve.');
         } else {
-          // Se não houver dados, o site padrão precisa rodar livremente
           setIsMaintenance(false);
         }
       } catch (error) {
         console.error('Erro ao buscar status de manutenção:', error);
-        // Fallback de segurança: Se der erro na tabela, deixa o site aberto
         setIsMaintenance(false);
       } finally {
         setLoadingConfig(false);
@@ -84,7 +133,6 @@ const Index = () => {
 
     verificarManutencao();
 
-    // Listener Realtime para alternar na hora sem precisar de F5
     const channel = supabase
       .channel('schema-db-changes-index')
       .on(
@@ -134,7 +182,6 @@ const Index = () => {
     setActiveTab(tabFromUrl);
   }, [tabFromUrl]);
 
-  // Se estiver carregando as configurações da tabela, mostra o loading rápido
   if (loadingConfig) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0F0A19] text-white">
@@ -146,16 +193,12 @@ const Index = () => {
     );
   }
 
-  // Se o modo manutenção estiver ativado, intercepta a renderização pública
   if (isMaintenance) {
     return (
       <div className="min-h-screen flex flex-col justify-between bg-[#0F0A19] text-white relative overflow-hidden font-sans">
-        
-        {/* Detalhes de luz de fundo em gradiente neon (Efeito Blur Profissional) */}
         <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-900/20 rounded-full blur-[120px] pointer-events-none" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-900/20 rounded-full blur-[120px] pointer-events-none" />
 
-        {/* Topo / Header da página de Manutenção */}
         <header className="w-full max-w-7xl mx-auto px-6 py-6 flex items-center justify-between relative z-10">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 bg-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-600/30">
@@ -172,16 +215,12 @@ const Index = () => {
           </div>
         </header>
 
-        {/* Conteúdo Principal Centralizado */}
         <main className="w-full max-w-4xl mx-auto px-6 py-12 flex flex-col items-center justify-center flex-grow relative z-10 text-center">
-          
-          {/* Badge Informativa superior */}
           <div className="inline-flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 px-4 py-2 rounded-full text-amber-400 text-xs font-semibold uppercase tracking-wider mb-8 animate-pulse">
             <Clock className="h-3.5 w-3.5" />
             Melhorias Estruturais em Andamento
           </div>
 
-          {/* Títulos principais de impacto */}
           <h1 className="text-4xl sm:text-6xl font-black tracking-tight max-w-2xl leading-[1.1] mb-6">
             Estamos a preparar algo <span className="bg-gradient-to-r from-purple-400 via-purple-500 to-indigo-400 bg-clip-text text-transparent">incrível</span> para si.
           </h1>
@@ -190,7 +229,6 @@ const Index = () => {
             {maintenanceMessage} O nosso guia comercial está a receber uma atualização nos servidores para melhorar a velocidade das pesquisas comerciais da região.
           </p>
 
-          {/* Barra de Progresso Visual Simulada para passar credibilidade */}
           <div className="w-full max-w-md bg-purple-950/30 border border-purple-900/40 rounded-2xl p-4 mb-12 backdrop-blur-sm">
             <div className="flex justify-between text-xs font-bold mb-2">
               <span className="text-purple-400 flex items-center gap-1.5">
@@ -203,7 +241,6 @@ const Index = () => {
             </div>
           </div>
 
-          {/* Seção Informativa de Suporte / Comercial */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-2xl text-left">
             <div className="bg-[#150F22]/60 border border-purple-900/30 p-5 rounded-2xl backdrop-blur-sm hover:border-purple-800/40 transition-colors">
               <h3 className="font-bold text-sm text-white mb-1 flex items-center gap-2">
@@ -234,10 +271,8 @@ const Index = () => {
               </span>
             </div>
           </div>
-
         </main>
 
-        {/* Rodapé da página com Copyright e Redes Sociais */}
         <footer className="w-full max-w-7xl mx-auto px-6 py-6 border-t border-purple-950/50 flex flex-col sm:flex-row items-center justify-between gap-4 relative z-10 text-xs text-gray-500">
           <div>
             © {new Date().getFullYear()} Saj Tem. Todos os direitos reservados.
@@ -252,7 +287,6 @@ const Index = () => {
             </a>
           </div>
         </footer>
-
       </div>
     );
   }
@@ -264,9 +298,78 @@ const Index = () => {
           <div className="space-y-12">
             <HomeContent />
             
-            {/* Seção dinâmica de Achados e Perdidos envelopada no mesmo estilo container de Cupons */}
+            {/* SEÇÃO DE FERRAMENTAS EM DESTAQUE NA HOME */}
+            <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="bg-background border border-border/60 rounded-3xl p-6 sm:p-8 shadow-sm">
+                
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border/40 pb-4 mb-6">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="p-2 rounded-xl bg-primary/10 text-primary">
+                        <Wrench className="w-5 h-5" />
+                      </span>
+                      <h2 className="text-lg sm:text-xl font-bold text-foreground">
+                        Utilitários Gratuitos em Destaque
+                      </h2>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Ferramentas práticas desenvolvidas para o seu dia a dia</p>
+                  </div>
+                  <Link
+                    to="/ferramentas"
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline transition-all group"
+                  >
+                    Ver todas as ferramentas <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+                  </Link>
+                </div>
+
+                {/* GRID DOS 4 CARDS DE FERRAMENTAS */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {ferramentasDestaque.map((item) => {
+                    const Icone = item.icone;
+                    return (
+                      <Card 
+                        key={item.id}
+                        onClick={() => navigate(item.rota)}
+                        className="border border-border/60 hover:border-primary/50 shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer group rounded-2xl overflow-hidden bg-card flex flex-col justify-between"
+                      >
+                        <CardContent className="p-5 space-y-4 flex flex-col justify-between h-full">
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className={`p-3 rounded-2xl border ${item.corBg} ${item.corTexto} shadow-inner`}>
+                                <Icone className="w-5 h-5" />
+                              </div>
+                              <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] font-extrabold px-2 py-0.5 uppercase tracking-wider">
+                                {item.tag}
+                              </Badge>
+                            </div>
+
+                            <div className="space-y-1">
+                              <h3 className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">
+                                {item.titulo}
+                              </h3>
+                              <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2">
+                                {item.descricao}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1 text-xs font-bold text-primary pt-2 group-hover:translate-x-1 transition-transform">
+                            <span>Acessar agora</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+
+              </div>
+            </section>
+            
+            {/* Seção dinâmica de Achados e Perdidos */}
             <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
             <div className="bg-[#221A32] border border-purple-950/20 rounded-3xl p-6 sm:p-8 backdrop-blur-md shadow-2xl">                
+                
                 {/* Header interno do Card */}
                 <div className="flex items-center justify-between border-b border-purple-950/60 pb-4 mb-6">
                   <div>
