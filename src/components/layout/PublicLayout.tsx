@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { Header } from './Header';
@@ -8,6 +7,7 @@ import { SecurityHeaders } from '@/components/security/SecurityHeaders';
 import { RateLimitWrapper } from '@/components/security/RateLimitWrapper';
 import { Watermark } from '@/components/ui/watermark';
 import { PWAInstallPrompt } from '@/components/pwa/PWAInstallPrompt';
+import { TourTutorial } from '@/components/tutorial/TourTutorial'; // ADICIONADO: Importação do Tour Guiado
 import { cn } from '@/lib/utils';
 
 export const PublicLayout: React.FC = () => {
@@ -18,6 +18,9 @@ export const PublicLayout: React.FC = () => {
       <SecurityHeaders />
       <RateLimitWrapper maxRequests={200} windowMs={60000}>
         <div className="min-h-screen bg-background flex w-full">
+          {/* Tour Guiado para Visitantes (Aparece na primeira visita) */}
+          <TourTutorial />
+
           {/* Desktop Sidebar - Fixed */}
           <div className="hidden lg:block fixed left-0 top-0 h-full z-30">
             <DesktopSidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
@@ -32,7 +35,7 @@ export const PublicLayout: React.FC = () => {
               <Watermark />
             </main>
             
-            {/* Bottom Navigation - now visible on all devices */}
+            {/* Bottom Navigation */}
             <BottomNavigation />
           </div>
         </div>
