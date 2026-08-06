@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   Hammer, Clock, MapPin, Mail, MessageSquare, Instagram, Facebook, 
   ArrowRight, Sparkles, DollarSign, FileText, NotebookPen, Search, 
-  ShieldCheck, Lock, Calculator, Percent, FileSpreadsheet, Volume2, Grid 
+  ShieldCheck, Lock, Calculator, Percent, FileSpreadsheet, Volume2, Grid, Ticket 
 } from "lucide-react";
 import { initGA, logPageView } from "@/utils/analytics";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -49,7 +49,7 @@ const Configuracoes = lazy(() => import("./pages/Configuracoes"));
 const ContactPage = lazy(() => import("./pages/ContactPage").then(m => ({ default: m.ContactPage })));
 const AnuncieGratis = lazy(() => import("./pages/AnuncieGratis").then(m => ({ default: m.AnuncieGratis })));
 
-// NOVO: Importações Lazy Load das ferramentas públicas e jogos
+// Ferramentas públicas e jogos
 const Domino = lazy(() => import("./pages/Domino"));
 const GeradorCobranca = lazy(() => import("./pages/ferramentas/GeradorCobranca").then(m => ({ default: m.GeradorCobranca })));
 const CriadorCurriculo = lazy(() => import("./pages/ferramentas/CriadorCurriculo").then(m => ({ default: m.CriadorCurriculo })));
@@ -58,8 +58,9 @@ const CalculadoraOrcamento = lazy(() => import("./pages/ferramentas/CalculadoraO
 const CalculadoraMargem = lazy(() => import("./pages/ferramentas/CalculadoraMargem").then(m => ({ default: m.CalculadoraMargem })));
 const SimuladorRescisao = lazy(() => import("./pages/ferramentas/SimuladorRescisao").then(m => ({ default: m.SimuladorRescisao })));
 const LeitorVoz = lazy(() => import("./pages/ferramentas/LeitorVoz").then(m => ({ default: m.LeitorVoz })));
+const GeradorRifa = lazy(() => import("./pages/ferramentas/GeradorRifa").then(m => ({ default: m.GeradorRifa })));
 
-// Lazy load all admin pages
+// Admin pages
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminAchadosPerdidos = lazy(() => import("./pages/admin/AdminAchadosPerdidos"));
 const AdminLocais = lazy(() => import("./pages/admin/AdminLocais"));
@@ -71,7 +72,7 @@ const AdminCategorias = lazy(() => import("./pages/admin/AdminCategorias").then(
 const AdminUsuarios = lazy(() => import("./pages/admin/AdminUsuarios").then(m => ({ default: m.AdminUsuarios })));
 const AdminBanners = lazy(() => import("./pages/admin/AdminBanners"));
 const AdminCanalInformativo = lazy(() => import("./pages/admin/AdminCanalInformativo").then(m => ({ default: m.AdminCanalInformativo })));
-const AdminStories = lazy(() => import("./pages/admin/AdminStories").then(m => ({ default: m.AdminStories })));
+const AdminStories = lazy(() => import("./pages/admin/AdminStories"));
 const AdminCupons = lazy(() => import("./pages/admin/AdminCupons").then(m => ({ default: m.AdminCupons })));
 const AdminPlanos = lazy(() => import("./pages/admin/AdminPlanos").then(m => ({ default: m.AdminPlanos })));
 const AdminAvaliacoes = lazy(() => import("./pages/admin/AdminAvaliacoes").then(m => ({ default: m.AdminAvaliacoes })));
@@ -99,13 +100,23 @@ import { PublicLayout } from "./components/layout/PublicLayout";
 import { AdminLayout } from "./components/admin/AdminLayout";
 import { RoutePreloader } from "./components/layout/RoutePreloader";
 
-// PÁGINA DO CATÁLOGO DE FERRAMENTAS COM CATEGORIAS EM DUA COLUNAS VISÍVEIS
+// CATÁLOGO DE FERRAMENTAS
 const FerramentasCatalogInternal = () => {
   const navigate = useNavigate();
   const [busca, setBusca] = useState('');
   const [categoriaAtiva, setCategoriaAtiva] = useState<string>('Todas');
 
   const ferramentas = [
+    {
+      id: 'gerador-rifa',
+      titulo: 'Gerador & Caderno de Rifas',
+      descricao: 'Crie rifas personalizadas, controle pagamentos de números e realize o sorteio do ganhador.',
+      icone: Ticket,
+      rota: '/ferramentas/gerador-rifa',
+      categoria: 'Sorteios',
+      corGradiente: 'from-orange-500/20 via-orange-500/5 to-transparent border-orange-500/30',
+      corTexto: 'text-orange-500',
+    },
     {
       id: 'gerador-cobranca',
       titulo: 'Gerador de Cobrança PIX',
@@ -178,10 +189,8 @@ const FerramentasCatalogInternal = () => {
     },
   ];
 
-  // EXTRAIR TODAS AS CATEGORIAS EXISTENTES
   const categoriasUnicas = ['Todas', ...Array.from(new Set(ferramentas.map(f => f.categoria)))];
 
-  // FILTRAGEM DUPLA
   const ferramentasFiltradas = ferramentas.filter(f => {
     const bateTexto = 
       f.titulo.toLowerCase().includes(busca.toLowerCase()) || 
@@ -197,7 +206,6 @@ const FerramentasCatalogInternal = () => {
     <div className="min-h-screen bg-background py-10 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto space-y-8">
         
-        {/* HERO SECTION DAS FERRAMENTAS */}
         <div className="text-center space-y-4 max-w-2xl mx-auto">
           <Badge className="bg-primary/10 text-primary border-primary/20 px-3 py-1 text-xs uppercase tracking-wider font-bold inline-flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5" /> Central de Utilitários SAJ TEM
@@ -211,7 +219,6 @@ const FerramentasCatalogInternal = () => {
             Soluções práticas e inteligentes desenvolvidas para facilitar o trabalho de autônomos, profissionais e moradores de Santo Antônio de Jesus.
           </p>
 
-          {/* BARRA DE PESQUISA */}
           <div className="relative max-w-md mx-auto pt-2">
             <Search className="w-4 h-4 absolute left-3.5 top-5 text-muted-foreground" />
             <Input 
@@ -223,7 +230,6 @@ const FerramentasCatalogInternal = () => {
           </div>
         </div>
 
-        {/* LISTA FIXA DE CATEGORIAS EM 2 COLUNAS (SEM ROLAGEM LATERAL) */}
         <div className="max-w-xl mx-auto space-y-2 pt-2">
           <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block text-center">
             Filtrar por Categoria
@@ -252,7 +258,6 @@ const FerramentasCatalogInternal = () => {
           </div>
         </div>
 
-        {/* GRID DE FERRAMENTAS */}
         {ferramentasFiltradas.length === 0 ? (
           <div className="text-center py-12 space-y-3">
             <Search className="w-10 h-10 text-muted-foreground mx-auto opacity-40" />
@@ -316,7 +321,6 @@ const FerramentasCatalogInternal = () => {
           </div>
         )}
 
-        {/* INFORMATIVO DE SEGURANÇA */}
         <div className="p-4 bg-muted/30 border border-border/60 rounded-2xl text-center flex flex-col sm:flex-row items-center justify-center gap-2 text-xs text-muted-foreground">
           <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
           <span>Todas as suas informações registradas nas ferramentas são 100% privadas e armazenadas com segurança.</span>
@@ -327,7 +331,6 @@ const FerramentasCatalogInternal = () => {
   );
 };
 
-// Optimized loading component with minimal DOM and skeleton
 const LoadingFallback = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">
     <div className="flex flex-col items-center gap-4">
@@ -337,7 +340,6 @@ const LoadingFallback = () => (
   </div>
 );
 
-// Componente interno responsável por mapear as trocas de tela do roteador e enviar ao GA4
 const AnalyticsTracker = () => {
   const location = useLocation();
 
@@ -353,12 +355,10 @@ const App = () => {
   const [maintenanceMessage, setMaintenanceMessage] = useState("");
   const [loadingConfig, setLoadingConfig] = useState(true);
 
-  // Inicialização única do Google Analytics 4
   useEffect(() => {
     initGA();
   }, []);
 
-  // Monitoramento ativo e assíncrono do status de manutenção global
   useEffect(() => {
     const verificarManutencao = async () => {
       try {
@@ -383,7 +383,6 @@ const App = () => {
 
     verificarManutencao();
 
-    // Sincronização em tempo real das tabelas operacionais
     const channel = supabase
       .channel("schema-db-maintenance-app")
       .on(
@@ -403,7 +402,6 @@ const App = () => {
     };
   }, []);
 
-  // Interceptação com a Landing Page Corporativa Profissional
   if (!loadingConfig && isMaintenance && !window.location.pathname.startsWith("/admin")) {
     return (
       <div className="min-h-screen flex flex-col justify-between bg-[#0F0A19] text-white relative overflow-hidden font-sans">
@@ -549,13 +547,12 @@ const App = () => {
                 <Route path="reclamacoes/:id" element={<ReclamacaoDetalhes />} />
                 <Route path="unauthorized" element={<UnauthorizedPage />} />
                 
-                {/* ROTA ADICIONADA: Página pública de Dominó */}
                 <Route path="domino" element={<Domino />} />
 
-                {/* ROTA PÚBLICA DO CATÁLOGO DE FERRAMENTAS */}
+                {/* CATÁLOGOS E FERRAMENTAS */}
                 <Route path="ferramentas" element={<FerramentasCatalogInternal />} />
 
-                {/* ROTAS PROTEGIDAS (RESTRITAS A USUÁRIOS LOGADOS) */}
+                <Route path="ferramentas/gerador-rifa" element={<ProtectedRoute><GeradorRifa /></ProtectedRoute>} />
                 <Route path="ferramentas/gerador-cobranca" element={<ProtectedRoute><GeradorCobranca /></ProtectedRoute>} />
                 <Route path="ferramentas/criador-curriculo" element={<ProtectedRoute><CriadorCurriculo /></ProtectedRoute>} />
                 <Route path="ferramentas/gestao-cobrancas" element={<ProtectedRoute><GestaoCobrancas /></ProtectedRoute>} />
