@@ -20,10 +20,10 @@ import {
   BarChart3,
   ChevronUp,
   ChevronDown,
-  Vote
+  Vote,
+  Wrench
 } from "lucide-react";
 import { useHomeSectionsOrder } from "@/hooks/useHomeSectionsOrder";
-import { toast } from "sonner";
 
 interface SectionIconMap {
   [key: string]: React.ComponentType<any>;
@@ -43,7 +43,8 @@ const sectionIcons: SectionIconMap = {
   eventos_slider: Calendar,
   stats_section: BarChart3,
   featured_products: Briefcase,
-  achados_perdidos: Search
+  achados_perdidos: Search,
+  ferramentas: Wrench
 };
 
 export function AdminHomeSections() {
@@ -226,7 +227,7 @@ export function AdminHomeSections() {
                       
                       <Switch
                         checked={section.ativo}
-                        onCheckedChange={(checked) => 
+                        onCheckedChange={() => 
                           handleToggleVisibility(section.id, section.ativo)
                         }
                       />
