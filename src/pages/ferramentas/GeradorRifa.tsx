@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { ArrowLeft, Ticket, Trophy, QrCode, Sparkles, Copy, Trash2, Calendar, Clock, Share2, AlertTriangle, PlusCircle, ListFilter, Loader2, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Ticket, Trophy, QrCode, Sparkles, Copy, Trash2, Calendar, Clock, Share2, AlertTriangle, PlusCircle, ListFilter, Loader2 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -66,15 +66,13 @@ export const GeradorRifa = () => {
   const [nomeComprador, setNomeComprador] = useState('');
   const [telefoneComprador, setTelefoneComprador] = useState('');
 
-  // CARREGAR RIFA PÚBLICA (LINK COMPARTILHADO) OU RIFAS DO ORGANIZADOR
+  // CARREGAR RIFA PÚBLICA OU DO USUÁRIO
   const inicializarRifas = async () => {
     try {
       setCarregando(true);
 
-      // Limpa rifas expiradas há 7 dias no banco
       await supabase.rpc('deletar_rifas_expiradas' as any);
 
-      // SE FOR ACESSO VIA LINK PÚBLICO (?id=UUID)
       if (idRifaPublica) {
         setIsModoComprador(true);
         const { data, error } = await supabase
@@ -84,7 +82,7 @@ export const GeradorRifa = () => {
           .single();
 
         if (error || !data) {
-          toast.error('Rifa não encontrada ou já encerrada.');
+          toast.error('Rifa não encontrada ou encerrada.');
           setCarregando(false);
           return;
         }
@@ -107,7 +105,6 @@ export const GeradorRifa = () => {
         return;
       }
 
-      // MODO ORGANIZADOR/LOGADO
       const { data: { session } } = await supabase.auth.getSession();
       const userId = session?.user?.id;
 
@@ -141,7 +138,7 @@ export const GeradorRifa = () => {
         setAbaExibicao('criar');
       }
     } catch (err) {
-      console.error('Erro ao buscar dados da rifa:', err);
+      console.error('Erro ao buscar rifa:', err);
     } finally {
       setCarregando(false);
     }
@@ -218,7 +215,7 @@ export const GeradorRifa = () => {
     }
   };
 
-  // RESERVAR / COMPRAR NÚMERO NA VISÃO DO COMPRADOR OU ORGANIZADOR
+  // RESERVAR / COMPRAR NÚMERO
   const handleSalvarReserva = async (novoStatus: 'reservado' | 'pago') => {
     if (!numeroSelecionado || !rifaAtiva?.id) return;
     if (!nomeComprador.trim()) {
@@ -365,21 +362,25 @@ export const GeradorRifa = () => {
           </p>
         </div>
 
-        {/* CONTROLES APENAS PARA ORGANIZADOR */}
+        {/* NAVEGAÇÃO DE ABAS COM VISIBILIDADE E CONTRASTE CORRIGIDOS PARA O TEMA CLARO */}
         {!isModoComprador && (
-          <div className="flex items-center justify-center gap-2 pt-2">
+          <div className="flex items-center justify-center gap-3 pt-2">
             {rifasUsuario.length > 0 && (
               <Button
-                variant={abaExibicao === 'minhas' ? 'default' : 'outline'}
+                type="button"
                 onClick={() => setAbaExibicao('minhas')}
-                className="rounded-full text-xs font-bold gap-2 px-5 h-9"
+                className={`rounded-full text-xs font-extrabold gap-2 px-5 h-10 transition-all border ${
+                  abaExibicao === 'minhas'
+                    ? 'bg-primary text-primary-foreground shadow-md border-primary'
+                    : 'bg-muted/80 text-foreground hover:bg-muted border-border'
+                }`}
               >
                 <ListFilter className="w-4 h-4" /> Minhas Rifas ({rifasUsuario.length})
               </Button>
             )}
 
             <Button
-              variant={abaExibicao === 'criar' ? 'default' : 'outline'}
+              type="button"
               onClick={() => {
                 setTitulo('');
                 setPremio('');
@@ -389,7 +390,11 @@ export const GeradorRifa = () => {
                 setHoraSorteio('');
                 setAbaExibicao('criar');
               }}
-              className="rounded-full text-xs font-bold gap-2 px-5 h-9"
+              className={`rounded-full text-xs font-extrabold gap-2 px-5 h-10 transition-all border ${
+                abaExibicao === 'criar'
+                  ? 'bg-primary text-primary-foreground shadow-md border-primary'
+                  : 'bg-muted/80 text-foreground hover:bg-muted border-border'
+              }`}
             >
               <PlusCircle className="w-4 h-4" /> Nova Rifa
             </Button>
@@ -574,7 +579,7 @@ export const GeradorRifa = () => {
                   </div>
                 </div>
 
-                {/* PAINEL DE MÉTRICAS DA RIFA */}
+                {/* PAINEL DE MÉTRICAS */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
                   <div className="p-3 bg-muted/40 rounded-xl border text-center">
                     <span className="text-[10px] text-muted-foreground uppercase font-semibold block">Valor/Número</span>
