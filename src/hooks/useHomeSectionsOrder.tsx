@@ -1,4 +1,4 @@
-Nmnnnnnnn/!import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -69,7 +69,6 @@ export const useHomeSectionsOrder = () => {
   const toggleSectionVisibility = useMutation({
     mutationFn: async ({ sectionId, ativo }: { sectionId: string; ativo: boolean }) => {
       if (sectionId === 'ferramentas-virtual-id') {
-        // Insere a seção no Supabase se ela for a virtual
         const { error } = await supabase
           .from('home_sections_order')
           .upsert({
@@ -77,7 +76,7 @@ export const useHomeSectionsOrder = () => {
             display_name: 'Central de Ferramentas',
             ordem: (sections?.length || 1),
             ativo
-          }, { onConflict: 'se.ction_name' });
+          }, { onConflict: 'section_name' });
 
         if (error) throw error;
       } else {
