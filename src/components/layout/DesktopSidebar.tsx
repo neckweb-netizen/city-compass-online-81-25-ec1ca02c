@@ -96,6 +96,14 @@ export const DesktopSidebar = ({
       rota: '/reclamacoes',
       categoria: 'principal'
     }, 
+    // ADICIONADO: Opção de Ferramentas no Menu Principal
+    {
+      id: 'ferramentas',
+      nome_item: 'Ferramentas',
+      icone: 'Wrench',
+      rota: '/ferramentas',
+      categoria: 'principal'
+    },
     {
       id: 'buscar',
       nome_item: 'Buscar',
@@ -183,7 +191,7 @@ export const DesktopSidebar = ({
       </Button>
       
       <div className="flex flex-col h-full">
-        {/* Logo Section - Atualizada para o caminho limpo /Logo.png */}
+        {/* Logo Section */}
         <div className="p-4 border-b">
           <div className="flex items-center justify-center">
             <img 
