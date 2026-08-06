@@ -295,7 +295,7 @@ const Index = () => {
     switch (activeTab) {
       case 'home':
         return (
-          <div className="space-y-12">
+          <div className="space-y-6">
             <HomeContent />
             
             {/* SEÇÃO DE FERRAMENTAS EM DESTAQUE NA HOME */}
