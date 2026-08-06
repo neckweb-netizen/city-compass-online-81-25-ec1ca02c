@@ -1,7 +1,6 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Settings, Database, Shield, Globe } from 'lucide-react';
+import { Settings, Database, Shield, Globe, Wrench } from 'lucide-react';
 
 export const ConfiguracoesSection = () => {
   return (
@@ -154,15 +153,15 @@ export const ConfiguracoesSection = () => {
                 <h4 className="font-medium">Recursos Adicionais</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center justify-between">
+                    <span>Central de Ferramentas</span>
+                    <Badge variant="default">Ativo</Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
                     <span>Upload de Imagens</span>
                     <Badge variant="default">Ativo</Badge>
                   </div>
                   <div className="flex items-center justify-between">
                     <span>Busca por Localização</span>
-                    <Badge variant="default">Ativo</Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Estatísticas</span>
                     <Badge variant="default">Ativo</Badge>
                   </div>
                   <div className="flex items-center justify-between">
