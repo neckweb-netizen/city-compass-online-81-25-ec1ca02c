@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   Hammer, Clock, MapPin, Mail, MessageSquare, Instagram, Facebook, 
   ArrowRight, Sparkles, DollarSign, FileText, NotebookPen, Search, 
-  ShieldCheck, Lock, Calculator, Percent, FileSpreadsheet, Volume2, Grid, Ticket 
+  ShieldCheck, Globe, Calculator, Percent, FileSpreadsheet, Volume2, Grid, Ticket 
 } from "lucide-react";
 import { initGA, logPageView } from "@/utils/analytics";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -110,7 +110,7 @@ const FerramentasCatalogInternal = () => {
     {
       id: 'gerador-rifa',
       titulo: 'Gerador & Caderno de Rifas',
-      descricao: 'Crie rifas personalizadas, controle pagamentos de números e realize o sorteio do ganhador.',
+      descricao: 'Crie rifas personalizadas, controle pagamentos de números e compartilhe o link público com compradores.',
       icone: Ticket,
       rota: '/ferramentas/gerador-rifa',
       categoria: 'Sorteios',
@@ -291,8 +291,8 @@ const FerramentasCatalogInternal = () => {
                           <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wider">
                             {item.categoria}
                           </Badge>
-                          <Badge className="bg-primary/20 text-primary text-[10px] font-bold flex items-center gap-1">
-                            <Lock className="w-3 h-3" /> Membros
+                          <Badge className="bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold flex items-center gap-1">
+                            <Globe className="w-3 h-3" /> Público
                           </Badge>
                         </div>
                       </div>
@@ -549,10 +549,11 @@ const App = () => {
                 
                 <Route path="domino" element={<Domino />} />
 
-                {/* CATÁLOGOS E FERRAMENTAS */}
+                {/* CATÁLOGOS E FERRAMENTAS PÚBLICAS */}
                 <Route path="ferramentas" element={<FerramentasCatalogInternal />} />
+                <Route path="ferramentas/gerador-rifa" element={<GeradorRifa />} />
 
-                <Route path="ferramentas/gerador-rifa" element={<ProtectedRoute><GeradorRifa /></ProtectedRoute>} />
+                {/* FERRAMENTAS PROTEGIDAS */}
                 <Route path="ferramentas/gerador-cobranca" element={<ProtectedRoute><GeradorCobranca /></ProtectedRoute>} />
                 <Route path="ferramentas/criador-curriculo" element={<ProtectedRoute><CriadorCurriculo /></ProtectedRoute>} />
                 <Route path="ferramentas/gestao-cobrancas" element={<ProtectedRoute><GestaoCobrancas /></ProtectedRoute>} />
