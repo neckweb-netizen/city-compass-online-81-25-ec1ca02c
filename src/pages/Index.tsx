@@ -23,10 +23,10 @@ import {
   Tag,
   AlertCircle,
   Wrench,
+  Ticket,
   FileSpreadsheet,
   Percent,
-  Volume2,
-  FileText
+  Volume2
 } from 'lucide-react';
 
 interface ItemAchadoPerdido {
@@ -57,15 +57,25 @@ const Index = () => {
   const [itensAchados, setItensAchados] = useState<ItemAchadoPerdido[]>([]);
   const [loadingAchados, setLoadingAchados] = useState(false);
 
-  // As 4 ferramentas principais em destaque para a Home
+  // As 4 ferramentas principais em destaque para a Home (Gerador de Rifas em primeiro)
   const ferramentasDestaque = [
+    {
+      id: 'gerador-rifa',
+      titulo: 'Gerador & Caderno de Rifas',
+      descricao: 'Crie rifas personalizadas, controle os pagamentos e compartilhe o link público.',
+      icone: Ticket,
+      rota: '/ferramentas/gerador-rifa',
+      tag: 'NOVO & GRÁTIS',
+      corTexto: 'text-orange-500',
+      corBg: 'bg-orange-500/10 border-orange-500/20',
+    },
     {
       id: 'simulador-rescisao',
       titulo: 'Simulador de Rescisão (CLT)',
       descricao: 'Calcule aviso prévio, férias, 13º e multa do FGTS em segundos.',
       icone: FileSpreadsheet,
       rota: '/ferramentas/simulador-rescisao',
-      tag: 'Novo',
+      tag: 'Útil',
       corTexto: 'text-cyan-500',
       corBg: 'bg-cyan-500/10 border-cyan-500/20',
     },
@@ -88,16 +98,6 @@ const Index = () => {
       tag: 'IA Grátis',
       corTexto: 'text-indigo-500',
       corBg: 'bg-indigo-500/10 border-indigo-500/20',
-    },
-    {
-      id: 'criador-curriculo',
-      titulo: 'Criador de Currículo PDF',
-      descricao: 'Monte seu currículo profissional no formato padrão A4 para download.',
-      icone: FileText,
-      rota: '/ferramentas/criador-curriculo',
-      tag: 'Útil',
-      corTexto: 'text-blue-500',
-      corBg: 'bg-blue-500/10 border-blue-500/20',
     },
   ];
 
@@ -172,7 +172,7 @@ const Index = () => {
         }
       } catch (err) {
         console.error('Erro ao buscar itens de achados e perdidos na home:', err);
-      } finally {
+      } fontal {
         setLoadingAchados(false);
       }
     };
@@ -438,7 +438,6 @@ const Index = () => {
 
   // RENDERIZAÇÃO ORGANIZADA
   const renderHomeOrganizado = () => {
-    // Verifica se as seções adicionais estão ativas no painel
     const secaoFerramentas = (homeSections || []).find(s => s.section_name === 'ferramentas');
     const secaoAchados = (homeSections || []).find(s => s.section_name === 'achados_perdidos');
 
@@ -448,7 +447,6 @@ const Index = () => {
     const ordemFerramentas = secaoFerramentas ? secaoFerramentas.ordem : 99;
     const ordemAchados = secaoAchados ? secaoAchados.ordem : 100;
 
-    // Se ferramentas tiver uma ordem menor que achados, posiciona ela primeiro
     if (ordemFerramentas <= ordemAchados) {
       return (
         <div className="space-y-6">
