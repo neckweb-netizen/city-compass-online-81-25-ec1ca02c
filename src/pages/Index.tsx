@@ -366,12 +366,12 @@ const Index = () => {
               </div>
             </section>
             
-            {/* Seção dinâmica de Achados e Perdidos */}
+            {/* Seção dinâmica de Achados e Perdidos adaptada ao Tema Claro/Escuro */}
             <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
-            <div className="bg-[#221A32] border border-purple-950/20 rounded-3xl p-6 sm:p-8 backdrop-blur-md shadow-2xl">                
+              <div className="bg-background border border-border/60 rounded-3xl p-6 sm:p-8 shadow-sm">                
                 
                 {/* Header interno do Card */}
-                <div className="flex items-center justify-between border-b border-purple-950/60 pb-4 mb-6">
+                <div className="flex items-center justify-between border-b border-border/40 pb-4 mb-6">
                   <div>
                     <h2 className="text-lg sm:text-xl font-bold text-foreground flex items-center gap-2">
                       <Search className="h-5 w-5 text-primary" /> Achados e Perdidos
