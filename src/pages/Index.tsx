@@ -172,7 +172,7 @@ const Index = () => {
         }
       } catch (err) {
         console.error('Erro ao buscar itens de achados e perdidos na home:', err);
-      } fontal {
+      } finally {
         setLoadingAchados(false);
       }
     };
