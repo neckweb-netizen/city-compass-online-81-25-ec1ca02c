@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Play, Pause, Square, Volume2, Sparkles, Trash2, Gauge, VolumeX } from 'lucide-react';
+import { ArrowLeft, Play, Pause, Square, Volume2, Sparkles, Trash2, Gauge } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export const LeitorVoz = () => {
@@ -27,12 +27,26 @@ export const LeitorVoz = () => {
     const carregarVozes = () => {
       if ('speechSynthesis' in window) {
         const disponiveis = window.speechSynthesis.getVoices();
+        
+        // Prioriza vozes em Português (Brasil ou Portugal)
         const vozesPt = disponiveis.filter(v => v.lang.includes('pt') || v.lang.includes('PT'));
         const listaFinal = vozesPt.length > 0 ? vozesPt : disponiveis;
         
         setVozes(listaFinal);
+
         if (listaFinal.length > 0 && !vozSelecionada) {
-          setVozSelecionada(listaFinal[0].name);
+          // Tenta encontrar uma voz masculina padrão em PT (ex: Antonio, Daniel, Google português)
+          const vozMasculinaPadrao = listaFinal.find(v => 
+            v.name.toLowerCase().includes('antonio') || 
+            v.name.toLowerCase().includes('daniel') || 
+            v.name.toLowerCase().includes('male')
+          );
+
+          if (vozMasculinaPadrao) {
+            setVozSelecionada(vozMasculinaPadrao.name);
+          } else {
+            setVozSelecionada(listaFinal[0].name);
+          }
         }
       }
     };
@@ -47,7 +61,7 @@ export const LeitorVoz = () => {
         window.speechSynthesis.cancel();
       }
     };
-  }, []);
+  }, [vozSelecionada]);
 
   // INICIAR A LEITURA
   const handlePlay = () => {
@@ -251,10 +265,10 @@ export const LeitorVoz = () => {
                   />
                 </div>
 
-                {/* CONTROLE DE TOM */}
+                {/* CONTROLE DE TOM (Tonalidades mais baixas deixam a voz mais grave/masculina) */}
                 <div className="space-y-2">
                   <div className="flex justify-between items-center text-xs">
-                    <Label className="font-semibold">Tom da Voz</Label>
+                    <Label className="font-semibold">Tom da Voz (Grave / Agudo)</Label>
                     <span className="text-muted-foreground font-mono">{tom}</span>
                   </div>
                   <Slider 
@@ -264,6 +278,9 @@ export const LeitorVoz = () => {
                     step={0.1} 
                     onValueChange={v => setTom(v[0])} 
                   />
+                  <span className="text-[10px] text-muted-foreground block text-center pt-1">
+                    Dica: Reduza o tom (ex: 0.7) para deixar a voz mais grave.
+                  </span>
                 </div>
 
               </CardContent>
