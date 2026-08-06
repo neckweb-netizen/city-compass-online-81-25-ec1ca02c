@@ -1,18 +1,71 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Settings, Database, Shield, Globe, Wrench } from 'lucide-react';
+import { Settings, Database, Shield, Globe, Wrench, DollarSign, FileText, NotebookPen, Calculator, Percent, FileSpreadsheet, Volume2, Ticket } from 'lucide-react';
 
 export const ConfiguracoesSection = () => {
+  const ferramentasAtivas = [
+    { nome: 'Gerador & Caderno de Rifas', categoria: 'Sorteios', icone: Ticket },
+    { nome: 'Gerador de Cobrança PIX', categoria: 'Financeiro', icone: DollarSign },
+    { nome: 'Criador de Currículo PDF', categoria: 'Carreira', icone: FileText },
+    { nome: 'Caderno de Cobranças & CRM', categoria: 'Gestão', icone: NotebookPen },
+    { nome: 'Calculadora de Hora & Orçamento', categoria: 'Precificação', icone: Calculator },
+    { nome: 'Calculadora de Margem & Maquininha', categoria: 'Comércio', icone: Percent },
+    { nome: 'Simulador de Rescisão (CLT)', categoria: 'Trabalho', icone: FileSpreadsheet },
+    { nome: 'Leitor de Texto em Voz Alta', categoria: 'Acessibilidade', icone: Volume2 },
+  ];
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-3xl font-bold tracking-tight text-foreground">Configurações Gerais</h2>
         <p className="text-muted-foreground">
-          Configure as opções gerais do sistema
+          Configure as opções gerais do sistema e utilitários
         </p>
       </div>
       
       <div className="grid gap-6">
+
+        {/* SECTION DEDICADA DE GESTÃO DE FERRAMENTAS */}
+        <Card className="border-primary/20 bg-primary/5">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Wrench className="w-5 h-5 text-primary" />
+                Gestão da Central de Ferramentas
+              </div>
+              <Badge variant="default" className="bg-primary">
+                {ferramentasAtivas.length} Ferramentas Ativas
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {ferramentasAtivas.map((item, index) => {
+                const Icone = item.icone;
+                return (
+                  <div 
+                    key={index} 
+                    className="flex items-center justify-between p-3 rounded-xl bg-background border border-border/60 shadow-sm"
+                  >
+                    <div className="flex items-center gap-2.5 overflow-hidden">
+                      <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
+                        <Icone className="w-4 h-4" />
+                      </div>
+                      <div className="truncate">
+                        <h5 className="text-xs font-bold text-foreground truncate">{item.nome}</h5>
+                        <span className="text-[10px] text-muted-foreground block">{item.categoria}</span>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="text-[10px] border-emerald-500/40 text-emerald-600 dark:text-emerald-400 shrink-0">
+                      Ativo
+                    </Badge>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
