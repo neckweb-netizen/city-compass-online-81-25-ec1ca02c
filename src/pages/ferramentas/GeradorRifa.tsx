@@ -2,12 +2,11 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { ArrowLeft, Ticket, Trophy, DollarSign, QrCode, Sparkles, CheckCircle2, Clock, User, Phone, Share2, Dices, Copy, RefreshCw, Trash2 } from 'lucide-react';
+import { ArrowLeft, Ticket, Trophy, QrCode, Sparkles, Copy, Trash2, Calendar, Clock, Share2, Link as LinkIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -26,6 +25,8 @@ export const GeradorRifa = () => {
   const [premio, setPremio] = useState('');
   const [valorNumero, setValorNumero] = useState('');
   const [chavePix, setChavePix] = useState('');
+  const [dataSorteio, setDataSorteio] = useState('');
+  const [horaSorteio, setHoraSorteio] = useState('');
   const [qtdNumeros, setQtdNumeros] = useState<'50' | '100' | '1000'>('100');
   const [rifaCriada, setRifaCriada] = useState(false);
 
@@ -38,15 +39,13 @@ export const GeradorRifa = () => {
   const [modalReservaOpen, setModalReservaOpen] = useState(false);
   const [nomeComprador, setNomeComprador] = useState('');
   const [telefoneComprador, setTelefoneComprador] = useState('');
-  const [ganhadorSorteado, setGanhadorSorteado] = useState<NumeroRifa | null>(null);
-  const [modalSorteioOpen, setModalSorteioOpen] = useState(false);
 
   // CRIAR OU REINICIAR RIFA
   const handleCriarRifa = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!titulo || !premio || !valorNumero) {
-      toast.error('Preencha os campos obrigatórios (Título, Prêmio e Valor)');
+    if (!titulo || !premio || !valorNumero || !dataSorteio || !horaSorteio) {
+      toast.error('Preencha todos os campos obrigatórios (Título, Prêmio, Valor, Data e Horário)');
       return;
     }
 
@@ -66,7 +65,7 @@ export const GeradorRifa = () => {
 
     setNumeros(lista);
     setRifaCriada(true);
-    toast.success('Rifa criada com sucesso! Você já pode gerenciar os números.');
+    toast.success('Rifa criada com sucesso! Você já pode gerenciar os números e compartilhar o link.');
   };
 
   // SELEÇÃO DE NÚMERO NA GRADE
@@ -119,18 +118,21 @@ export const GeradorRifa = () => {
     toast.info(`Número ${numeroSelecionado.numero} liberado para venda novamente.`);
   };
 
-  // SORTEAR GANHADOR DENTRE OS PAGOS
-  const handleSortear = () => {
-    const pagos = numeros.filter(n => n.status === 'pago');
+  // COPIAR LINK DE COMPARTILHAMENTO DA RIFA
+  const handleCopiarLinkRifa = () => {
+    const linkBase = window.location.origin + window.location.pathname;
+    const params = new URLSearchParams({
+      titulo,
+      premio,
+      valor: valorNumero,
+      data: dataSorteio,
+      hora: horaSorteio,
+    });
 
-    if (pagos.length === 0) {
-      toast.error('Nenhum número pago para realizar o sorteio.');
-      return;
-    }
+    const linkFinal = `${linkBase}?${params.toString()}`;
 
-    const sorteado = pagos[Math.floor(Math.random() * pagos.length)];
-    setGanhadorSorteado(sorteado);
-    setModalSorteioOpen(true);
+    navigator.clipboard.writeText(linkFinal);
+    toast.success('Link da Rifa copiado com sucesso! Agora você pode compartilhar.');
   };
 
   // ESTATÍSTICAS
@@ -158,7 +160,7 @@ export const GeradorRifa = () => {
             <ArrowLeft className="w-4 h-4" /> Voltar
           </Button>
           <Badge className="bg-primary/10 text-primary border-primary/20 px-3 py-1 text-xs font-semibold flex items-center gap-1">
-            <Sparkles className="w-3.5 h-3.5" /> Ações & Sorteios
+            <Sparkles className="w-3.5 h-3.5" /> Ações & Rifas
           </Badge>
         </div>
 
@@ -167,7 +169,7 @@ export const GeradorRifa = () => {
             <Ticket className="w-8 h-8 text-primary" /> Gerador e Caderno de Rifas
           </h1>
           <p className="text-muted-foreground max-w-xl mx-auto text-sm sm:text-base">
-            Crie sua rifa personalizada, controle pagamentos e realize o sorteio de forma transparente.
+            Crie sua rifa personalizada, defina data e horário do sorteio e compartilhe o link direto com os compradores.
           </p>
         </div>
 
@@ -179,7 +181,7 @@ export const GeradorRifa = () => {
                 <Ticket className="w-5 h-5 text-primary" /> Configurar Nova Rifa
               </CardTitle>
               <CardDescription className="text-xs">
-                Informe as regras básicas e a quantidade de números
+                Informe os dados do prêmio, valores e a data do sorteio
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -219,6 +221,31 @@ export const GeradorRifa = () => {
                   </div>
                 </div>
 
+                {/* DATA E HORÁRIO DO SORTEIO */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">Data do Sorteio *</Label>
+                    <Input 
+                      type="date"
+                      value={dataSorteio} 
+                      onChange={e => setDataSorteio(e.target.value)} 
+                      required 
+                      className="h-10 text-sm"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">Horário do Sorteio *</Label>
+                    <Input 
+                      type="time"
+                      value={horaSorteio} 
+                      onChange={e => setHoraSorteio(e.target.value)} 
+                      required 
+                      className="h-10 text-sm"
+                    />
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold">Quantidade de Números</Label>
@@ -246,7 +273,7 @@ export const GeradorRifa = () => {
                 </div>
 
                 <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-11 rounded-xl gap-2 mt-2">
-                  <Sparkles className="w-4 h-4" /> Gerar Tabela da Rifa
+                  <Sparkles className="w-4 h-4" /> Gerar Tabela e Link da Rifa
                 </Button>
               </form>
             </CardContent>
@@ -255,27 +282,38 @@ export const GeradorRifa = () => {
           /* PAINEL DE GESTÃO DA RIFA */
           <div className="space-y-6">
 
-            {/* CARD DE INFORMAÇÕES E RESUMO */}
+            {/* CARD DE INFORMAÇÕES E RESUMO COM DATA E LINK COPIÁVEL */}
             <Card className="border-border/60 shadow-md">
               <CardContent className="p-6 space-y-4">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4">
-                  <div>
+                  <div className="space-y-1">
                     <Badge variant="outline" className="text-primary border-primary/30 text-[10px] uppercase font-bold mb-1">
                       Rifa Ativa ({qtdNumeros} números)
                     </Badge>
                     <h2 className="text-2xl font-black text-foreground">{titulo}</h2>
-                    <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
-                      <Trophy className="w-4 h-4 text-amber-500 shrink-0" /> Prêmio: <strong className="text-foreground">{premio}</strong>
-                    </p>
+                    
+                    <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground pt-1">
+                      <span className="flex items-center gap-1">
+                        <Trophy className="w-4 h-4 text-amber-500 shrink-0" /> Prêmio: <strong className="text-foreground">{premio}</strong>
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Calendar className="w-4 h-4 text-primary shrink-0" /> Data: <strong className="text-foreground">{dataSorteio.split('-').reverse().join('/')}</strong>
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-4 h-4 text-primary shrink-0" /> Hora: <strong className="text-foreground">{horaSorteio}h</strong>
+                      </span>
+                    </div>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
+                    {/* BOTÃO COPIAR LINK DA RIFA */}
                     <Button 
-                      onClick={handleSortear} 
-                      className="bg-amber-600 hover:bg-amber-700 text-white font-bold h-10 px-4 rounded-xl gap-2 shadow-sm text-xs"
+                      onClick={handleCopiarLinkRifa} 
+                      className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-10 px-4 rounded-xl gap-2 shadow-sm text-xs"
                     >
-                      <Dices className="w-4 h-4" /> Sortear Ganhador
+                      <Share2 className="w-4 h-4" /> Copiar Link da Rifa
                     </Button>
+
                     <Button 
                       variant="outline" 
                       onClick={() => setRifaCriada(false)}
@@ -321,7 +359,7 @@ export const GeradorRifa = () => {
                         toast.success('Chave PIX copiada!');
                       }}
                     >
-                      <Copy className="w-3 h-3 mr-1" /> Copiar
+                      <Copy className="w-3 h-3 mr-1" /> Copiar PIX
                     </Button>
                   </div>
                 )}
@@ -457,42 +495,6 @@ export const GeradorRifa = () => {
               className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-9"
             >
               Marcar PAGO
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* MODAL DO SORTEIO DE GANHADOR */}
-      <Dialog open={modalSorteioOpen} onOpenChange={setModalSorteioOpen}>
-        <DialogContent className="sm:max-w-md text-center">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-black text-center flex items-center justify-center gap-2">
-              <Trophy className="w-6 h-6 text-amber-500" /> Vencedor Sorteado!
-            </DialogTitle>
-          </DialogHeader>
-
-          {ganhadorSorteado && (
-            <div className="py-6 space-y-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl my-2">
-              <span className="text-xs uppercase tracking-wider font-extrabold text-amber-600 dark:text-amber-400">
-                Número Sorteado
-              </span>
-              <div className="text-5xl font-black text-foreground">
-                {ganhadorSorteado.numero}
-              </div>
-              <div className="text-sm font-bold text-foreground">
-                Comprador: {ganhadorSorteado.nome || 'Não informado'}
-              </div>
-              {ganhadorSorteado.telefone && (
-                <div className="text-xs text-muted-foreground">
-                  Contato: {ganhadorSorteado.telefone}
-                </div>
-              )}
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button onClick={() => setModalSorteioOpen(false)} className="w-full font-bold h-10 rounded-xl">
-              Fechar
             </Button>
           </DialogFooter>
         </DialogContent>
