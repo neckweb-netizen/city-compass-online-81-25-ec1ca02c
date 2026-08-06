@@ -5,10 +5,10 @@ import { SearchContent } from '@/components/search/SearchContent';
 import { CategoriesContent } from '@/components/categories/CategoriesContent';
 import { CouponsContent } from '@/components/coupons/CouponsContent';
 import { ProfileContent } from '@/components/profile/ProfileContent';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
+import { useHomeSectionsOrder } from '@/hooks/useHomeSectionsOrder';
 import { 
   Hammer, 
   Clock, 
@@ -20,7 +20,6 @@ import {
   Globe, 
   ArrowRight,
   Search,
-  Calendar,
   Tag,
   AlertCircle,
   Wrench,
@@ -45,6 +44,9 @@ const Index = () => {
   const [searchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab') || 'home';
   const [activeTab, setActiveTab] = useState(tabFromUrl);
+
+  // Hook responsável por trazer a ordem e visibilidade dinâmicas configuradas no Painel Admin
+  const { sections: homeSections, isLoading: loadingSections } = useHomeSectionsOrder();
 
   // Estados de controle para o Modo Manutenção
   const [isMaintenance, setIsMaintenance] = useState(false);
@@ -182,7 +184,7 @@ const Index = () => {
     setActiveTab(tabFromUrl);
   }, [tabFromUrl]);
 
-  if (loadingConfig) {
+  if (loadingConfig || loadingSections) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0F0A19] text-white">
         <div className="flex flex-col items-center space-y-4">
@@ -291,161 +293,181 @@ const Index = () => {
     );
   }
 
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'home':
-        return (
-          <div className="space-y-6">
-            <HomeContent />
+  // RENDERIZAÇÃO DINÂMICA DAS SEÇÕES DE ACORDO COM A ORDEM DO BANCO DE DADOS
+  const renderHomeContentDinamico = () => {
+    // Seções ativas ordenadas por 'ordem'
+    const secoesAtivas = (homeSections || [])
+      .filter((s) => s.ativo)
+      .sort((a, b) => a.ordem - b.ordem);
+
+    return (
+      <div className="space-y-6">
+        {secoesAtivas.map((secao) => {
+          switch (secao.section_name) {
             
-            {/* SEÇÃO DE FERRAMENTAS EM DESTAQUE NA HOME */}
-            <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="bg-background border border-border/60 rounded-3xl p-6 sm:p-8 shadow-sm">
-                
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border/40 pb-4 mb-6">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="p-2 rounded-xl bg-primary/10 text-primary">
-                        <Wrench className="w-5 h-5" />
-                      </span>
-                      <h2 className="text-lg sm:text-xl font-bold text-foreground">
-                        Utilitários Gratuitos em Destaque
-                      </h2>
-                    </div>
-                    <p className="text-xs text-muted-foreground">Ferramentas práticas desenvolvidas para o seu dia a dia</p>
-                  </div>
-                  <Link
-                    to="/ferramentas"
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline transition-all group"
-                  >
-                    Ver todas as ferramentas <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
-                  </Link>
-                </div>
-
-                {/* GRID DOS 4 CARDS DE FERRAMENTAS */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {ferramentasDestaque.map((item) => {
-                    const Icone = item.icone;
-                    return (
-                      <Card 
-                        key={item.id}
-                        onClick={() => navigate(item.rota)}
-                        className="border border-border/60 hover:border-primary/50 shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer group rounded-2xl overflow-hidden bg-card flex flex-col justify-between"
+            // SEÇÃO DE FERRAMENTAS
+            case 'ferramentas':
+              return (
+                <section key={secao.id || 'ferramentas'} className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                  <div className="bg-background border border-border/60 rounded-3xl p-6 sm:p-8 shadow-sm">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border/40 pb-4 mb-6">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="p-2 rounded-xl bg-primary/10 text-primary">
+                            <Wrench className="w-5 h-5" />
+                          </span>
+                          <h2 className="text-lg sm:text-xl font-bold text-foreground">
+                            Utilitários Gratuitos em Destaque
+                          </h2>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Ferramentas práticas desenvolvidas para o seu dia a dia</p>
+                      </div>
+                      <Link
+                        to="/ferramentas"
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline transition-all group"
                       >
-                        <CardContent className="p-5 space-y-4 flex flex-col justify-between h-full">
-                          <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                              <div className={`p-3 rounded-2xl border ${item.corBg} ${item.corTexto} shadow-inner`}>
-                                <Icone className="w-5 h-5" />
-                              </div>
-                              <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] font-extrabold px-2 py-0.5 uppercase tracking-wider">
-                                {item.tag}
-                              </Badge>
-                            </div>
+                        Ver todas as ferramentas <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+                      </Link>
+                    </div>
 
-                            <div className="space-y-1">
-                              <h3 className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {ferramentasDestaque.map((item) => {
+                        const Icone = item.icone;
+                        return (
+                          <Card 
+                            key={item.id}
+                            onClick={() => navigate(item.rota)}
+                            className="border border-border/60 hover:border-primary/50 shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer group rounded-2xl overflow-hidden bg-card flex flex-col justify-between"
+                          >
+                            <CardContent className="p-5 space-y-4 flex flex-col justify-between h-full">
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <div className={`p-3 rounded-2xl border ${item.corBg} ${item.corTexto} shadow-inner`}>
+                                    <Icone className="w-5 h-5" />
+                                  </div>
+                                  <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] font-extrabold px-2 py-0.5 uppercase tracking-wider">
+                                    {item.tag}
+                                  </Badge>
+                                </div>
+
+                                <div className="space-y-1">
+                                  <h3 className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">
+                                    {item.titulo}
+                                  </h3>
+                                  <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2">
+                                    {item.descricao}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-1 text-xs font-bold text-primary pt-2 group-hover:translate-x-1 transition-transform">
+                                <span>Acessar agora</span>
+                                <ArrowRight className="w-3.5 h-3.5" />
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </section>
+              );
+
+            // SEÇÃO DE ACHADOS E PERDIDOS
+            case 'achados_perdidos':
+              return (
+                <section key={secao.id || 'achados_perdidos'} className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-6">
+                  <div className="bg-background border border-border/60 rounded-3xl p-6 sm:p-8 shadow-sm">                
+                    <div className="flex items-center justify-between border-b border-border/40 pb-4 mb-6">
+                      <div>
+                        <h2 className="text-lg sm:text-xl font-bold text-foreground flex items-center gap-2">
+                          <Search className="h-5 w-5 text-primary" /> Achados e Perdidos
+                        </h2>
+                        <p className="text-xs text-muted-foreground mt-0.5">Utilidade pública em Santo Antônio de Jesus</p>
+                      </div>
+                      <Link
+                        to="/achados-e-perdidos"
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline transition-all group"
+                      >
+                        Ver todos <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+                      </Link>
+                    </div>
+
+                    {loadingAchados ? (
+                      <div className="flex items-center justify-center py-10 gap-2">
+                        <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                        <span className="text-xs text-muted-foreground">Buscando itens...</span>
+                      </div>
+                    ) : itensAchados.length === 0 ? (
+                      <div className="text-center py-8 max-w-md mx-auto">
+                        <AlertCircle className="h-8 w-8 text-muted-foreground/60 mx-auto mb-2" />
+                        <p className="text-xs text-muted-foreground">Nenhum objeto perdido ou achado publicado recentemente.</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {itensAchados.map((item) => (
+                          <Link
+                            key={item.id}
+                            to="/achados-e-perdidos"
+                            className="bg-card text-card-foreground border border-border/40 rounded-2xl p-4 flex flex-col justify-between gap-4 shadow-sm hover:border-border/80 hover:shadow-md transition-all duration-200 group"
+                          >
+                            <div>
+                              <div className="flex items-center justify-between gap-2 mb-2.5">
+                                <span
+                                  className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                                    item.tipo === 'perdido'
+                                      ? 'bg-destructive/10 text-destructive border-destructive/20'
+                                      : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                                  }`}
+                                >
+                                  {item.tipo === 'perdido' ? 'Perdido' : 'Achado'}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground font-medium flex items-center gap-1 bg-muted/60 px-2 py-0.5 rounded-md">
+                                  <Tag className="h-2.5 w-2.5 text-muted-foreground/80" /> {item.categoria || "Geral"}
+                                </span>
+                              </div>
+                              <h3 className="font-bold text-foreground text-sm truncate group-hover:text-primary transition-colors duration-150 mb-1">
                                 {item.titulo}
                               </h3>
-                              <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2">
+                              <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
                                 {item.descricao}
                               </p>
                             </div>
-                          </div>
 
-                          <div className="flex items-center gap-1 text-xs font-bold text-primary pt-2 group-hover:translate-x-1 transition-transform">
-                            <span>Acessar agora</span>
-                            <ArrowRight className="w-3.5 h-3.5" />
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
+                            <div className="border-t border-border/40 pt-2.5 flex items-center justify-between text-xs text-muted-foreground">
+                              <div className="flex items-center gap-1 truncate max-w-[70%]">
+                                <MapPin className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
+                                <span className="truncate font-medium">{item.local_fato}</span>
+                              </div>
+                              <span className="text-[11px] text-muted-foreground/50 whitespace-nowrap">
+                                {new Date(item.created_at).toLocaleDateString('pt-BR')}
+                              </span>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </section>
+              );
+
+            // MÓDULOS PADRÃO DA HOME (Stories, Banners, Categorias, etc.)
+            default:
+              return (
+                <div key={secao.id || secao.section_name}>
+                  <HomeContent sectionName={secao.section_name} />
                 </div>
+              );
+          }
+        })}
+      </div>
+    );
+  };
 
-              </div>
-            </section>
-            
-            {/* Seção dinâmica de Achados e Perdidos adaptada ao Tema Claro/Escuro */}
-            <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
-              <div className="bg-background border border-border/60 rounded-3xl p-6 sm:p-8 shadow-sm">                
-                
-                {/* Header interno do Card */}
-                <div className="flex items-center justify-between border-b border-border/40 pb-4 mb-6">
-                  <div>
-                    <h2 className="text-lg sm:text-xl font-bold text-foreground flex items-center gap-2">
-                      <Search className="h-5 w-5 text-primary" /> Achados e Perdidos
-                    </h2>
-                    <p className="text-xs text-muted-foreground mt-0.5">Utilidade pública em Santo Antônio de Jesus</p>
-                  </div>
-                  <Link
-                    to="/achados-e-perdidos"
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline transition-all group"
-                  >
-                    Ver todos <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
-                  </Link>
-                </div>
-
-                {/* Grid de Itens internos */}
-                {loadingAchados ? (
-                  <div className="flex items-center justify-center py-10 gap-2">
-                    <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                    <span className="text-xs text-muted-foreground">Buscando itens...</span>
-                  </div>
-                ) : itensAchados.length === 0 ? (
-                  <div className="text-center py-8 max-w-md mx-auto">
-                    <AlertCircle className="h-8 w-8 text-muted-foreground/60 mx-auto mb-2" />
-                    <p className="text-xs text-muted-foreground">Nenhum objeto perdido ou achado publicado recentemente.</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {itensAchados.map((item) => (
-                      <Link
-                        key={item.id}
-                        to="/achados-e-perdidos"
-                        className="bg-card text-card-foreground border border-border/40 rounded-2xl p-4 flex flex-col justify-between gap-4 shadow-sm hover:border-border/80 hover:shadow-md transition-all duration-200 group"
-                      >
-                        <div>
-                          <div className="flex items-center justify-between gap-2 mb-2.5">
-                            <span
-                              className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
-                                item.tipo === 'perdido'
-                                  ? 'bg-destructive/10 text-destructive border-destructive/20'
-                                  : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
-                              }`}
-                            >
-                              {item.tipo === 'perdido' ? 'Perdido' : 'Achado'}
-                            </span>
-                            <span className="text-[10px] text-muted-foreground font-medium flex items-center gap-1 bg-muted/60 px-2 py-0.5 rounded-md">
-                              <Tag className="h-2.5 w-2.5 text-muted-foreground/80" /> {item.categoria || "Geral"}
-                            </span>
-                          </div>
-                          <h3 className="font-bold text-foreground text-sm truncate group-hover:text-primary transition-colors duration-150 mb-1">
-                            {item.titulo}
-                          </h3>
-                          <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                            {item.descricao}
-                          </p>
-                        </div>
-
-                        <div className="border-t border-border/40 pt-2.5 flex items-center justify-between text-xs text-muted-foreground">
-                          <div className="flex items-center gap-1 truncate max-w-[70%]">
-                            <MapPin className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
-                            <span className="truncate font-medium">{item.local_fato}</span>
-                          </div>
-                          <span className="text-[11px] text-muted-foreground/50 whitespace-nowrap">
-                            {new Date(item.created_at).toLocaleDateString('pt-BR')}
-                          </span>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                )}
-
-              </div>
-            </section>
-          </div>
-        );
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'home':
+        return renderHomeContentDinamico();
       case 'search':
         return <SearchContent />;
       case 'categories':
@@ -455,7 +477,7 @@ const Index = () => {
       case 'profile':
         return <ProfileContent />;
       default:
-        return <HomeContent />;
+        return renderHomeContentDinamico();
     }
   };
 
