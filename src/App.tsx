@@ -18,7 +18,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { BannersSection } from "@/components/home/BannersSection";
 
 // Import critical pages immediately
 import Index from "./pages/Index";
@@ -100,6 +99,53 @@ import { MainLayout } from "./components/layout/MainLayout";
 import { PublicLayout } from "./components/layout/PublicLayout";
 import { AdminLayout } from "./components/admin/AdminLayout";
 import { RoutePreloader } from "./components/layout/RoutePreloader";
+
+// COMPONENTE DE BANNER DINÂMICO PARA FERRAMENTAS
+const BannersFerramentas = () => {
+  const [banners, setBanners] = useState<any[]>([]);
+
+  useEffect(() => {
+    const buscarBanners = async () => {
+      try {
+        const { data } = await supabase
+          .from("banners" as any)
+          .select("*")
+          .eq("ativo", true)
+          .order("ordem", { ascending: true });
+
+        if (data && data.length > 0) {
+          setBanners(data);
+        }
+      } catch (err) {
+        console.error("Erro ao buscar banners para ferramentas:", err);
+      }
+    };
+
+    buscarBanners();
+  }, []);
+
+  if (banners.length === 0) return null;
+
+  return (
+    <div className="w-full space-y-3">
+      {banners.map((b) => (
+        <a
+          key={b.id}
+          href={b.link_destino || "#"}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block w-full rounded-2xl overflow-hidden shadow-sm border border-border/60 hover:opacity-95 transition-opacity"
+        >
+          <img
+            src={b.imagem_url || b.imagem}
+            alt={b.titulo || "Banner de Anúncio"}
+            className="w-full h-auto max-h-[160px] sm:max-h-[220px] object-cover"
+          />
+        </a>
+      ))}
+    </div>
+  );
+};
 
 // CATÁLOGO DE FERRAMENTAS COM BANNERS DE ANÚNCIO
 const FerramentasCatalogInternal = () => {
@@ -207,10 +253,8 @@ const FerramentasCatalogInternal = () => {
     <div className="min-h-screen bg-background py-10 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto space-y-8">
         
-        {/* BANNER DE ANÚNCIOS (GERENCIADO NO PAINEL ADMIN) */}
-        <div className="w-full rounded-2xl overflow-hidden shadow-sm border border-border/40">
-          <BannersSection />
-        </div>
+        {/* BANNERS DE ANÚNCIO (PUXADOS DO BANCO DE DADOS) */}
+        <BannersFerramentas />
 
         <div className="text-center space-y-4 max-w-2xl mx-auto">
           <Badge className="bg-primary/10 text-primary border-primary/20 px-3 py-1 text-xs uppercase tracking-wider font-bold inline-flex items-center gap-1.5">
