@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,8 +7,68 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, FileText, Download, Sparkles } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { ToolBanner } from '@/components/ui/ToolBanner';
+
+// BANNER EMBUTIDO LOCALMENTE (SEM DEPENDÊNCIA DE ARQUIVO EXTERNO)
+const ToolBanner = ({ secao }: { secao: string }) => {
+  const [banners, setBanners] = useState<any[]>([]);
+
+  useEffect(() => {
+    const buscarBanners = async () => {
+      try {
+        const { data } = await supabase
+          .from('banners' as any)
+          .select('*')
+          .eq('ativo', true)
+          .in('secao', [secao, 'ferramentas'])
+          .order('ordem', { ascending: true });
+
+        if (data && data.length > 0) {
+          setBanners(data);
+        }
+      } catch (err) {
+        console.error(`Erro ao carregar banners para ${secao}:`, err);
+      }
+    };
+
+    buscarBanners();
+  }, [secao]);
+
+  if (banners.length === 0) return null;
+
+  return (
+    <div className="w-full space-y-3 my-4">
+      {banners.map((b) => {
+        if (b.tipo_midia === 'codigo' && b.codigo_html) {
+          return (
+            <div 
+              key={b.id} 
+              className="w-full rounded-2xl overflow-hidden shadow-sm border border-border/60 bg-card p-2 text-center"
+              dangerouslySetInnerHTML={{ __html: b.codigo_html }}
+            />
+          );
+        }
+
+        return (
+          <a
+            key={b.id}
+            href={b.link_url || b.link_destino || '#'}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block w-full rounded-2xl overflow-hidden shadow-sm border border-border/60 hover:opacity-95 transition-opacity"
+          >
+            <img
+              src={b.imagem_url || b.imagem}
+              alt={b.titulo || 'Banner de Anúncio'}
+              className="w-full h-auto max-h-[160px] sm:max-h-[220px] object-cover"
+            />
+          </a>
+        );
+      })}
+    </div>
+  );
+};
 
 export const CriadorCurriculo = () => {
   const navigate = useNavigate();
@@ -41,7 +101,7 @@ export const CriadorCurriculo = () => {
           </Badge>
         </div>
 
-        {/* BANNER DINÂMICO PARA CRIADOR DE CURRÍCULO */}
+        {/* BANNER DINÂMICO EMBUTIDO */}
         <div className="print:hidden">
           <ToolBanner secao="criador_curriculo" />
         </div>
