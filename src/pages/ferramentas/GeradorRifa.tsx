@@ -288,7 +288,7 @@ export const GeradorRifa = () => {
 
       setRifaAtiva(prev => prev ? { ...prev, numeros: novosNumeros } : null);
       setModalReservaOpen(false);
-      toast.success(`Grupo/Número ${numeroSelecionado.numero} marcado como ${novoStatus.toUpperCase()}!`);
+      toast.success(`Grupo ${numeroSelecionado.numero} marcado como ${novoStatus.toUpperCase()}!`);
     } catch (err: any) {
       toast.error('Erro ao atualizar no banco: ' + err.message);
     }
@@ -319,7 +319,7 @@ export const GeradorRifa = () => {
 
       setRifaAtiva(prev => prev ? { ...prev, numeros: novosNumeros } : null);
       setModalReservaOpen(false);
-      toast.info(`Grupo/Número ${numeroSelecionado.numero} liberado novamente.`);
+      toast.info(`Grupo ${numeroSelecionado.numero} liberado novamente.`);
     } catch (err: any) {
       toast.error('Erro ao liberar número: ' + err.message);
     }
@@ -678,91 +678,111 @@ export const GeradorRifa = () => {
               </CardContent>
             </Card>
 
-            {/* TABELA ESTILIZADA DE CARTELA DA FAZENDINHA OU GRADE NUMÉRICA */}
-            <Card className="border-border/60 shadow-md overflow-hidden">
-              <CardHeader className="pb-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-muted/20 border-b">
-                <div>
-                  <CardTitle className="text-base font-bold">
-                    {tipoRifa === 'fazendinha' ? 'Cartela da Fazendinha (25 Grupos)' : 'Grade de Números'}
-                  </CardTitle>
-                  <CardDescription className="text-xs">
-                    {tipoRifa === 'fazendinha' 
-                      ? 'Clique no quadrado do animal para selecionar e reservar' 
-                      : 'Clique no número desejado para reservar'}
-                  </CardDescription>
-                </div>
+            {/* TABELA DE CARTELA DA FAZENDINHA (5 COLUNAS X 5 LINHAS IDÊNTICO À IMAGEM) */}
+            <Card className="border-2 border-pink-300 dark:border-pink-900 rounded-3xl shadow-lg overflow-hidden bg-pink-50/40 dark:bg-zinc-950/80">
+              <CardHeader className="pb-3 text-center bg-pink-100/80 dark:bg-pink-950/40 border-b border-pink-200 dark:border-pink-900">
+                <CardTitle className="text-lg font-black text-pink-900 dark:text-pink-300 uppercase tracking-tight">
+                  {tipoRifa === 'fazendinha' ? 'CARTELA DA FAZENDINHA' : 'GRADE DE NÚMEROS'}
+                </CardTitle>
+                <CardDescription className="text-xs text-pink-800/80 dark:text-pink-400 font-medium">
+                  {tipoRifa === 'fazendinha' 
+                    ? 'Escolha seu animal para reservar o grupo e concorrer com suas 4 dezenas' 
+                    : 'Clique no número desejado para reservar'}
+                </CardDescription>
               </CardHeader>
 
-              <CardContent className="p-3 sm:p-6 bg-pink-50/30 dark:bg-zinc-950/40">
+              <CardContent className="p-2 sm:p-4">
                 {tipoRifa === 'fazendinha' ? (
-                  /* DESIGN DE CARTELA QUADRADA DIVIDIDA EM COLUNAS */
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                    {LISTA_FAZENDINHA.map((bicho) => {
-                      const numItem = numeros.find(n => n.numero === bicho.grupo);
-                      const status = numItem?.status || 'livre';
+                  <div className="space-y-4">
+                    
+                    {/* GRADE DE 5 COLUNAS X 5 LINHAS COM BORDA INTERNA REFORÇADA */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3">
+                      {LISTA_FAZENDINHA.map((bicho) => {
+                        const numItem = numeros.find(n => n.numero === bicho.grupo);
+                        const status = numItem?.status || 'livre';
 
-                      // CORES DE STATUS ESTILIZADAS EM CARTELA
-                      let estiloStatus = 'bg-pink-100/80 hover:bg-pink-200/80 border-pink-300 dark:bg-pink-950/20 dark:border-pink-900/50';
-                      if (status === 'reservado') estiloStatus = 'bg-amber-100 border-amber-500 dark:bg-amber-950/40 dark:border-amber-500 font-bold';
-                      if (status === 'pago') estiloStatus = 'bg-emerald-100 border-emerald-500 dark:bg-emerald-950/40 dark:border-emerald-500 font-extrabold';
+                        let estiloStatus = 'bg-white dark:bg-zinc-900 border-pink-300 dark:border-pink-900 hover:border-pink-500 shadow-sm';
+                        if (status === 'reservado') estiloStatus = 'bg-amber-100 border-amber-500 dark:bg-amber-950/60 dark:border-amber-500 font-bold';
+                        if (status === 'pago') estiloStatus = 'bg-emerald-100 border-emerald-500 dark:bg-emerald-950/60 dark:border-emerald-500 font-extrabold';
 
-                      return (
-                        <button
-                          key={bicho.grupo}
-                          disabled={isModoComprador && status === 'pago'}
-                          onClick={() => {
-                            setNumeroSelecionado(numItem || { numero: bicho.grupo, status: 'livre' });
-                            setGrupoSelecionadoFazendinha(bicho);
-                            setNomeComprador(numItem?.nome || '');
-                            setTelefoneComprador(numItem?.telefone || '');
-                            setModalReservaOpen(true);
-                          }}
-                          className={`border-2 rounded-2xl p-2.5 flex items-center justify-between text-left transition-all duration-200 shadow-sm relative group ${estiloStatus}`}
-                        >
-                          {/* LADO ESQUERDO: GRUPO, ANIMAL E NOME */}
-                          <div className="flex flex-col justify-between h-full space-y-1">
-                            <span className="text-[11px] font-black font-mono text-pink-700 dark:text-pink-400">
-                              {bicho.grupo}
-                            </span>
-                            
-                            <div className="text-3xl my-1 select-none flex items-center justify-center">
-                              {bicho.emoji}
-                            </div>
-
-                            <span className="text-[10px] font-black tracking-tight text-foreground uppercase truncate max-w-[85px]">
-                              {bicho.nome}
-                            </span>
-                          </div>
-
-                          {/* LADO DIREITO: COLUNA DAS 4 DEZENAS */}
-                          <div className="flex flex-col items-end justify-between border-l border-pink-200/80 dark:border-pink-900/40 pl-2 space-y-0.5 font-mono text-[11px] font-bold text-foreground/80">
-                            {bicho.dezenas.map((dz) => (
-                              <span key={dz} className="leading-tight">
-                                {dz}
+                        return (
+                          <button
+                            key={bicho.grupo}
+                            disabled={isModoComprador && status === 'pago'}
+                            onClick={() => {
+                              setNumeroSelecionado(numItem || { numero: bicho.grupo, status: 'livre' });
+                              setGrupoSelecionadoFazendinha(bicho);
+                              setNomeComprador(numItem?.nome || '');
+                              setTelefoneComprador(numItem?.telefone || '');
+                              setModalReservaOpen(true);
+                            }}
+                            className={`border-2 rounded-2xl p-2 flex items-center justify-between text-left transition-all duration-200 relative overflow-hidden group min-h-[90px] ${estiloStatus}`}
+                          >
+                            {/* LADO ESQUERDO: GRUPO, ANIMAL E NOME */}
+                            <div className="flex flex-col justify-between h-full space-y-1">
+                              <span className="text-xs font-black text-pink-700 dark:text-pink-400">
+                                {bicho.grupo}
                               </span>
-                            ))}
-                          </div>
+                              
+                              <div className="text-2xl my-0.5 select-none flex items-center justify-center">
+                                {bicho.emoji}
+                              </div>
 
-                          {/* ETIQUETA DE STATUS */}
-                          {status !== 'livre' && (
-                            <div className="absolute top-1 right-1">
-                              {status === 'pago' && (
-                                <Badge className="bg-emerald-600 text-white text-[8px] px-1 py-0 uppercase">PAGO</Badge>
-                              )}
-                              {status === 'reservado' && (
-                                <Badge className="bg-amber-600 text-white text-[8px] px-1 py-0 uppercase">RES.</Badge>
-                              )}
+                              <span className="text-[9px] font-black tracking-tight text-foreground uppercase truncate max-w-[65px] leading-none">
+                                {bicho.nome}
+                              </span>
                             </div>
-                          )}
 
-                          {numItem?.nome && (
-                            <div className="absolute bottom-1 left-2 max-w-[70px] truncate text-[8px] font-semibold text-primary bg-background/80 px-1 rounded">
-                              {numItem.nome.split(' ')[0]}
+                            {/* LADO DIREITO: COLUNA VERTICAL DAS 4 DEZENAS */}
+                            <div className="flex flex-col items-end justify-between border-l border-pink-200 dark:border-pink-900/60 pl-2 space-y-0.5 font-mono text-[10px] font-extrabold text-foreground/80">
+                              {bicho.dezenas.map((dz) => (
+                                <span key={dz} className="leading-none">
+                                  {dz}
+                                </span>
+                              ))}
                             </div>
-                          )}
-                        </button>
-                      );
-                    })}
+
+                            {/* ETIQUETA DE STATUS */}
+                            {status !== 'livre' && (
+                              <div className="absolute top-1 right-1">
+                                {status === 'pago' && (
+                                  <Badge className="bg-emerald-600 text-white text-[7px] px-1 py-0 uppercase">PAGO</Badge>
+                                )}
+                                {status === 'reservado' && (
+                                  <Badge className="bg-amber-600 text-white text-[7px] px-1 py-0 uppercase">RES.</Badge>
+                                )}
+                              </div>
+                            )}
+
+                            {numItem?.nome && (
+                              <div className="absolute bottom-0.5 left-1 max-w-[60px] truncate text-[8px] font-bold text-primary bg-background/90 px-1 rounded shadow-sm">
+                                {numItem.nome.split(' ')[0]}
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* RODAPÉ FIEL À IMAGEM COM DESTAQUE DOS HORÁRIOS */}
+                    <div className="pt-3 border-t border-pink-200 dark:border-pink-900/60 flex flex-wrap items-center justify-around gap-2 text-center text-xs font-black text-pink-900 dark:text-pink-300">
+                      <div className="flex items-center gap-1 bg-white dark:bg-zinc-900 border border-pink-300 dark:border-pink-900 px-2.5 py-1 rounded-xl">
+                        <span>12H</span>
+                      </div>
+                      <div className="flex items-center gap-1 bg-white dark:bg-zinc-900 border border-pink-300 dark:border-pink-900 px-2.5 py-1 rounded-xl">
+                        <span>15H</span>
+                      </div>
+                      <div className="flex items-center gap-1 bg-white dark:bg-zinc-900 border border-pink-300 dark:border-pink-900 px-2.5 py-1 rounded-xl">
+                        <span>19H</span>
+                      </div>
+                      <div className="flex items-center gap-1 bg-white dark:bg-zinc-900 border border-pink-300 dark:border-pink-900 px-2.5 py-1 rounded-xl">
+                        <span>21H</span>
+                      </div>
+                      <div className="flex items-center gap-1 bg-white dark:bg-zinc-900 border border-pink-300 dark:border-pink-900 px-2.5 py-1 rounded-xl text-primary">
+                        <span>Federal</span>
+                      </div>
+                    </div>
+
                   </div>
                 ) : (
                   /* EXIBIÇÃO NUMÉRICA SEQUENCIAL */
