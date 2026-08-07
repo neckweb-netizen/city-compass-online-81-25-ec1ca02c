@@ -13,31 +13,31 @@ import { toast } from 'sonner';
 
 // LISTA OFICIAL DOS 25 ANIMAIS DA FAZENDINHA
 const LISTA_FAZENDINHA = [
-  { grupo: '01', nome: 'Avestruz', dezenas: ['01', '02', '03', '04'], emoji: '🦩' },
-  { grupo: '02', nome: 'Águia', dezenas: ['05', '06', '07', '08'], emoji: '🦅' },
-  { grupo: '03', nome: 'Burro', dezenas: ['09', '10', '11', '12'], emoji: '🫏' },
-  { grupo: '04', nome: 'Borboleta', dezenas: ['13', '14', '15', '16'], emoji: '🦋' },
-  { grupo: '05', nome: 'Cachorro', dezenas: ['17', '18', '19', '20'], emoji: '🐶' },
-  { grupo: '06', nome: 'Cabra', dezenas: ['21', '22', '23', '24'], emoji: '🐐' },
-  { grupo: '07', nome: 'Carneiro', dezenas: ['25', '26', '27', '28'], emoji: '🐑' },
-  { grupo: '08', nome: 'Camelo', dezenas: ['29', '30', '31', '32'], emoji: '🐪' },
-  { grupo: '09', nome: 'Cobra', dezenas: ['33', '34', '35', '36'], emoji: '🐍' },
-  { grupo: '10', nome: 'Coelho', dezenas: ['37', '38', '39', '40'], emoji: '🐇' },
-  { grupo: '11', nome: 'Cavalo', dezenas: ['41', '42', '43', '44'], emoji: '🐎' },
-  { grupo: '12', nome: 'Elefante', dezenas: ['45', '46', '47', '48'], emoji: '🐘' },
-  { grupo: '13', nome: 'Galo', dezenas: ['49', '50', '51', '52'], emoji: '🐓' },
-  { grupo: '14', nome: 'Gato', dezenas: ['53', '54', '55', '56'], emoji: '🐱' },
-  { grupo: '15', nome: 'Jacaré', dezenas: ['57', '58', '59', '60'], emoji: '🐊' },
-  { grupo: '16', nome: 'Leão', dezenas: ['61', '62', '63', '64'], emoji: '🦁' },
-  { grupo: '17', nome: 'Macaco', dezenas: ['65', '66', '67', '68'], emoji: '🐒' },
-  { grupo: '18', nome: 'Porco', dezenas: ['69', '70', '71', '72'], emoji: '🐖' },
-  { grupo: '19', nome: 'Pavão', dezenas: ['73', '74', '75', '76'], emoji: '🦚' },
-  { grupo: '20', nome: 'Perú', dezenas: ['77', '78', '79', '80'], emoji: '🦃' },
-  { grupo: '21', nome: 'Touro', dezenas: ['81', '82', '83', '84'], emoji: '🐂' },
-  { grupo: '22', nome: 'Tigre', dezenas: ['85', '86', '87', '88'], emoji: '🐅' },
-  { grupo: '23', nome: 'Urso', dezenas: ['89', '90', '91', '92'], emoji: '🐻' },
-  { grupo: '24', nome: 'Veado', dezenas: ['93', '94', '95', '96'], emoji: '🦌' },
-  { grupo: '25', nome: 'Vaca', dezenas: ['97', '98', '99', '00'], emoji: '🐄' },
+  { grupo: '01', nome: 'AVESTRUZ', dezenas: ['01', '02', '03', '04'], emoji: '🦩' },
+  { grupo: '02', nome: 'ÁGUIA', dezenas: ['05', '06', '07', '08'], emoji: '🦅' },
+  { grupo: '03', nome: 'BURRO', dezenas: ['09', '10', '11', '12'], emoji: '🫏' },
+  { grupo: '04', nome: 'BORBOLETA', dezenas: ['13', '14', '15', '16'], emoji: '🦋' },
+  { grupo: '05', nome: 'CACHORRO', dezenas: ['17', '18', '19', '20'], emoji: '🐶' },
+  { grupo: '06', nome: 'CABRA', dezenas: ['21', '22', '23', '24'], emoji: '🐐' },
+  { grupo: '07', nome: 'CARNEIRO', dezenas: ['25', '26', '27', '28'], emoji: '🐑' },
+  { grupo: '08', nome: 'CAMELO', dezenas: ['29', '30', '31', '32'], emoji: '🐪' },
+  { grupo: '09', nome: 'COBRA', dezenas: ['33', '34', '35', '36'], emoji: '🐍' },
+  { grupo: '10', nome: 'COELHO', dezenas: ['37', '38', '39', '40'], emoji: '🐇' },
+  { grupo: '11', nome: 'CAVALO', dezenas: ['41', '42', '43', '44'], emoji: '🐎' },
+  { grupo: '12', nome: 'ELEFANTE', dezenas: ['45', '46', '47', '48'], emoji: '🐘' },
+  { grupo: '13', nome: 'GALO', dezenas: ['49', '50', '51', '52'], emoji: '🐓' },
+  { grupo: '14', nome: 'GATO', dezenas: ['53', '54', '55', '56'], emoji: '🐱' },
+  { grupo: '15', nome: 'JACARÉ', dezenas: ['57', '58', '59', '60'], emoji: '🐊' },
+  { grupo: '16', nome: 'LEÃO', dezenas: ['61', '62', '63', '64'], emoji: '🦁' },
+  { grupo: '17', nome: 'MACACO', dezenas: ['65', '66', '67', '68'], emoji: '🐒' },
+  { grupo: '18', nome: 'PORCO', dezenas: ['69', '70', '71', '72'], emoji: '🐖' },
+  { grupo: '19', nome: 'PAVÃO', dezenas: ['73', '74', '75', '76'], emoji: '🦚' },
+  { grupo: '20', nome: 'PERÚ', dezenas: ['77', '78', '79', '80'], emoji: '🦃' },
+  { grupo: '21', nome: 'TOURO', dezenas: ['81', '82', '83', '84'], emoji: '🐂' },
+  { grupo: '22', nome: 'TIGRE', dezenas: ['85', '86', '87', '88'], emoji: '🐅' },
+  { grupo: '23', nome: 'URSO', dezenas: ['89', '90', '91', '92'], emoji: '🐻' },
+  { grupo: '24', nome: 'VEADO', dezenas: ['93', '94', '95', '96'], emoji: '🦌' },
+  { grupo: '25', nome: 'VACA', dezenas: ['97', '98', '99', '00'], emoji: '🐄' },
 ];
 
 interface NumeroRifa {
@@ -391,8 +391,8 @@ export const GeradorRifa = () => {
           </h1>
           <p className="text-muted-foreground max-w-xl mx-auto text-sm sm:text-base">
             {isModoComprador 
-              ? 'Escolha seu animal/grupo ou número da sorte abaixo e informe seus dados para reservar.' 
-              : 'Crie rifas tradicionais ou modelo Fazendinha (Grupos de Animais) com facilidade.'}
+              ? 'Escolha seu animal/grupo abaixo e informe seus dados para reservar.' 
+              : 'Crie rifas tradicionais ou modelo Fazendinha com layout de cartela.'}
           </p>
         </div>
 
@@ -443,7 +443,7 @@ export const GeradorRifa = () => {
                 <Ticket className="w-5 h-5 text-primary" /> Configurar Nova Rifa
               </CardTitle>
               <CardDescription className="text-xs">
-                Escolha entre o modelo Fazendinha (25 Bicho/Grupos) ou Números Sequenciais
+                Escolha entre o modelo Fazendinha (Cartela com 25 Grupos) ou Números Sequenciais
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -463,10 +463,10 @@ export const GeradorRifa = () => {
                       }`}
                     >
                       <span className="text-xs font-extrabold flex items-center gap-1.5">
-                        🐄 Rifa Fazendinha (Bicho)
+                        🐄 Rifa Fazendinha (Cartela)
                       </span>
                       <span className="text-[10px] text-muted-foreground mt-1 block">
-                        25 Grupos com 4 Dezenas cada (padrão tradicional)
+                        25 Quadrados de Animais com 4 Dezenas
                       </span>
                     </button>
 
@@ -483,7 +483,7 @@ export const GeradorRifa = () => {
                         🔢 Rifa Numérica
                       </span>
                       <span className="text-[10px] text-muted-foreground mt-1 block">
-                        Números em lista (ex: 00 a 99 ou 000 a 999)
+                        Números em lista simples (00 a 99)
                       </span>
                     </button>
                   </div>
@@ -595,7 +595,7 @@ export const GeradorRifa = () => {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <Badge variant="outline" className="text-primary border-primary/30 text-[10px] uppercase font-bold mb-1">
-                        {tipoRifa === 'fazendinha' ? 'Rifa Fazendinha (25 Grupos)' : 'Rifa Numérica'}
+                        {tipoRifa === 'fazendinha' ? 'Rifa Fazendinha (Cartela Bicho)' : 'Rifa Numérica'}
                       </Badge>
                       <Badge variant="outline" className="text-amber-600 border-amber-500/30 text-[10px] font-bold mb-1">
                         Sorteio em Breve
@@ -678,32 +678,33 @@ export const GeradorRifa = () => {
               </CardContent>
             </Card>
 
-            {/* TABELA DA FAZENDINHA OU GRADE NUMÉRICA */}
-            <Card className="border-border/60 shadow-md">
-              <CardHeader className="pb-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            {/* TABELA ESTILIZADA DE CARTELA DA FAZENDINHA OU GRADE NUMÉRICA */}
+            <Card className="border-border/60 shadow-md overflow-hidden">
+              <CardHeader className="pb-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-muted/20 border-b">
                 <div>
                   <CardTitle className="text-base font-bold">
-                    {tipoRifa === 'fazendinha' ? 'Tabela da Fazendinha (Grupos de Animais)' : 'Grade de Números'}
+                    {tipoRifa === 'fazendinha' ? 'Cartela da Fazendinha (25 Grupos)' : 'Grade de Números'}
                   </CardTitle>
                   <CardDescription className="text-xs">
                     {tipoRifa === 'fazendinha' 
-                      ? 'Clique no grupo do animal para reservar com as 4 dezenas do bicho' 
+                      ? 'Clique no quadrado do animal para selecionar e reservar' 
                       : 'Clique no número desejado para reservar'}
                   </CardDescription>
                 </div>
               </CardHeader>
 
-              <CardContent>
+              <CardContent className="p-3 sm:p-6 bg-pink-50/30 dark:bg-zinc-950/40">
                 {tipoRifa === 'fazendinha' ? (
-                  /* EXIBIÇÃO EM TABELA TIPO FAZENDINHA COM ANIMAIS */
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  /* DESIGN DE CARTELA QUADRADA DIVIDIDA EM COLUNAS */
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                     {LISTA_FAZENDINHA.map((bicho) => {
                       const numItem = numeros.find(n => n.numero === bicho.grupo);
                       const status = numItem?.status || 'livre';
 
-                      let corCard = 'bg-pink-500/10 border-pink-500/30 hover:border-pink-500';
-                      if (status === 'reservado') corCard = 'bg-amber-500/20 border-amber-500 font-bold';
-                      if (status === 'pago') corCard = 'bg-emerald-500/20 border-emerald-500 font-extrabold';
+                      // CORES DE STATUS ESTILIZADAS EM CARTELA
+                      let estiloStatus = 'bg-pink-100/80 hover:bg-pink-200/80 border-pink-300 dark:bg-pink-950/20 dark:border-pink-900/50';
+                      if (status === 'reservado') estiloStatus = 'bg-amber-100 border-amber-500 dark:bg-amber-950/40 dark:border-amber-500 font-bold';
+                      if (status === 'pago') estiloStatus = 'bg-emerald-100 border-emerald-500 dark:bg-emerald-950/40 dark:border-emerald-500 font-extrabold';
 
                       return (
                         <button
@@ -716,45 +717,49 @@ export const GeradorRifa = () => {
                             setTelefoneComprador(numItem?.telefone || '');
                             setModalReservaOpen(true);
                           }}
-                          className={`p-3 rounded-2xl border flex items-center justify-between text-left transition-all relative overflow-hidden group shadow-sm ${corCard}`}
+                          className={`border-2 rounded-2xl p-2.5 flex items-center justify-between text-left transition-all duration-200 shadow-sm relative group ${estiloStatus}`}
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-background/80 border flex items-center justify-center text-xl shrink-0 shadow-inner">
+                          {/* LADO ESQUERDO: GRUPO, ANIMAL E NOME */}
+                          <div className="flex flex-col justify-between h-full space-y-1">
+                            <span className="text-[11px] font-black font-mono text-pink-700 dark:text-pink-400">
+                              {bicho.grupo}
+                            </span>
+                            
+                            <div className="text-3xl my-1 select-none flex items-center justify-center">
                               {bicho.emoji}
                             </div>
-                            <div>
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-xs font-black text-primary">GR. {bicho.grupo}</span>
-                                <h4 className="text-xs sm:text-sm font-extrabold text-foreground uppercase">{bicho.nome}</h4>
-                              </div>
-                              <div className="flex items-center gap-1 mt-0.5">
-                                {bicho.dezenas.map((dz) => (
-                                  <span key={dz} className="text-[10px] font-mono bg-background/60 px-1 rounded border text-muted-foreground">
-                                    {dz}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
+
+                            <span className="text-[10px] font-black tracking-tight text-foreground uppercase truncate max-w-[85px]">
+                              {bicho.nome}
+                            </span>
                           </div>
 
-                          <div className="text-right">
-                            {status === 'pago' && (
-                              <Badge className="bg-emerald-600 text-white text-[9px] uppercase">PAGO</Badge>
-                            )}
-                            {status === 'reservado' && (
-                              <Badge className="bg-amber-600 text-white text-[9px] uppercase">RESERVADO</Badge>
-                            )}
-                            {status === 'livre' && (
-                              <Badge variant="outline" className="text-[9px] uppercase border-emerald-500/40 text-emerald-600">
-                                LIVRE
-                              </Badge>
-                            )}
-                            {numItem?.nome && (
-                              <span className="block text-[9px] text-muted-foreground truncate max-w-[80px] mt-0.5">
-                                {numItem.nome.split(' ')[0]}
+                          {/* LADO DIREITO: COLUNA DAS 4 DEZENAS */}
+                          <div className="flex flex-col items-end justify-between border-l border-pink-200/80 dark:border-pink-900/40 pl-2 space-y-0.5 font-mono text-[11px] font-bold text-foreground/80">
+                            {bicho.dezenas.map((dz) => (
+                              <span key={dz} className="leading-tight">
+                                {dz}
                               </span>
-                            )}
+                            ))}
                           </div>
+
+                          {/* ETIQUETA DE STATUS */}
+                          {status !== 'livre' && (
+                            <div className="absolute top-1 right-1">
+                              {status === 'pago' && (
+                                <Badge className="bg-emerald-600 text-white text-[8px] px-1 py-0 uppercase">PAGO</Badge>
+                              )}
+                              {status === 'reservado' && (
+                                <Badge className="bg-amber-600 text-white text-[8px] px-1 py-0 uppercase">RES.</Badge>
+                              )}
+                            </div>
+                          )}
+
+                          {numItem?.nome && (
+                            <div className="absolute bottom-1 left-2 max-w-[70px] truncate text-[8px] font-semibold text-primary bg-background/80 px-1 rounded">
+                              {numItem.nome.split(' ')[0]}
+                            </div>
+                          )}
                         </button>
                       );
                     })}
@@ -762,7 +767,7 @@ export const GeradorRifa = () => {
                 ) : (
                   /* EXIBIÇÃO NUMÉRICA SEQUENCIAL */
                   <div className="grid grid-cols-5 sm:grid-cols-10 md:grid-cols-12 gap-2 max-h-[500px] overflow-y-auto p-1">
-                    {numerosFiltrados.map((item) => {
+                    {numeros.map((item) => {
                       let estilos = 'bg-background hover:border-primary/60 text-foreground border-border cursor-pointer';
                       if (item.status === 'reservado') estilos = 'bg-amber-500/20 border-amber-500 text-amber-700 dark:text-amber-300 font-bold cursor-pointer';
                       if (item.status === 'pago') estilos = 'bg-emerald-500 text-white border-emerald-600 font-extrabold shadow-sm';
