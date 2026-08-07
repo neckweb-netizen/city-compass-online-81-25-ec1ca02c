@@ -368,7 +368,7 @@ export const GeradorRifa = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-background py-8 px-2 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto space-y-6">
 
         {/* CABEÇALHO */}
@@ -678,25 +678,25 @@ export const GeradorRifa = () => {
               </CardContent>
             </Card>
 
-            {/* TABELA DE CARTELA DA FAZENDINHA (5 COLUNAS X 5 LINHAS IDÊNTICO À IMAGEM) */}
+            {/* TABELA DE CARTELA DA FAZENDINHA (COM 5 COLUNAS NO MOBILE) */}
             <Card className="border-2 border-pink-300 dark:border-pink-900 rounded-3xl shadow-lg overflow-hidden bg-pink-50/40 dark:bg-zinc-950/80">
-              <CardHeader className="pb-3 text-center bg-pink-100/80 dark:bg-pink-950/40 border-b border-pink-200 dark:border-pink-900">
-                <CardTitle className="text-lg font-black text-pink-900 dark:text-pink-300 uppercase tracking-tight">
+              <CardHeader className="pb-2 text-center bg-pink-100/80 dark:bg-pink-950/40 border-b border-pink-200 dark:border-pink-900">
+                <CardTitle className="text-sm sm:text-lg font-black text-pink-900 dark:text-pink-300 uppercase tracking-tight">
                   {tipoRifa === 'fazendinha' ? 'CARTELA DA FAZENDINHA' : 'GRADE DE NÚMEROS'}
                 </CardTitle>
-                <CardDescription className="text-xs text-pink-800/80 dark:text-pink-400 font-medium">
+                <CardDescription className="text-[11px] text-pink-800/80 dark:text-pink-400 font-medium">
                   {tipoRifa === 'fazendinha' 
                     ? 'Escolha seu animal para reservar o grupo e concorrer com suas 4 dezenas' 
                     : 'Clique no número desejado para reservar'}
                 </CardDescription>
               </CardHeader>
 
-              <CardContent className="p-2 sm:p-4">
+              <CardContent className="p-1.5 sm:p-4">
                 {tipoRifa === 'fazendinha' ? (
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     
-                    {/* GRADE DE 5 COLUNAS X 5 LINHAS COM BORDA INTERNA REFORÇADA */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3">
+                    {/* GRADE DE 5 COLUNAS MESMO NO MOBILE */}
+                    <div className="grid grid-cols-5 gap-1 sm:gap-2">
                       {LISTA_FAZENDINHA.map((bicho) => {
                         const numItem = numeros.find(n => n.numero === bicho.grupo);
                         const status = numItem?.status || 'livre';
@@ -716,27 +716,27 @@ export const GeradorRifa = () => {
                               setTelefoneComprador(numItem?.telefone || '');
                               setModalReservaOpen(true);
                             }}
-                            className={`border-2 rounded-2xl p-2 flex items-center justify-between text-left transition-all duration-200 relative overflow-hidden group min-h-[90px] ${estiloStatus}`}
+                            className={`border rounded-lg sm:rounded-xl p-1 sm:p-2 flex items-center justify-between text-left transition-all duration-200 relative overflow-hidden group min-h-[68px] sm:min-h-[85px] ${estiloStatus}`}
                           >
-                            {/* LADO ESQUERDO: GRUPO, ANIMAL E NOME */}
-                            <div className="flex flex-col justify-between h-full space-y-1">
-                              <span className="text-xs font-black text-pink-700 dark:text-pink-400">
+                            {/* LADO ESQUERDO: GRUPO, EMOJI E NOME */}
+                            <div className="flex flex-col justify-between h-full space-y-0.5 overflow-hidden">
+                              <span className="text-[9px] sm:text-xs font-black text-pink-700 dark:text-pink-400 leading-none">
                                 {bicho.grupo}
                               </span>
                               
-                              <div className="text-2xl my-0.5 select-none flex items-center justify-center">
+                              <div className="text-base sm:text-2xl my-0.5 select-none flex items-center justify-center leading-none">
                                 {bicho.emoji}
                               </div>
 
-                              <span className="text-[9px] font-black tracking-tight text-foreground uppercase truncate max-w-[65px] leading-none">
+                              <span className="text-[7px] sm:text-[9px] font-black tracking-tighter text-foreground uppercase truncate max-w-[38px] sm:max-w-[65px] leading-none">
                                 {bicho.nome}
                               </span>
                             </div>
 
-                            {/* LADO DIREITO: COLUNA VERTICAL DAS 4 DEZENAS */}
-                            <div className="flex flex-col items-end justify-between border-l border-pink-200 dark:border-pink-900/60 pl-2 space-y-0.5 font-mono text-[10px] font-extrabold text-foreground/80">
+                            {/* LADO DIREITO: COLUNA VERTICAL DAS DEZENAS */}
+                            <div className="flex flex-col items-end justify-between border-l border-pink-200 dark:border-pink-900/60 pl-0.5 sm:pl-1.5 font-mono text-[8px] sm:text-[10px] font-extrabold text-foreground/80 leading-tight">
                               {bicho.dezenas.map((dz) => (
-                                <span key={dz} className="leading-none">
+                                <span key={dz} className="leading-tight">
                                   {dz}
                                 </span>
                               ))}
@@ -744,18 +744,18 @@ export const GeradorRifa = () => {
 
                             {/* ETIQUETA DE STATUS */}
                             {status !== 'livre' && (
-                              <div className="absolute top-1 right-1">
+                              <div className="absolute top-0.5 right-0.5">
                                 {status === 'pago' && (
-                                  <Badge className="bg-emerald-600 text-white text-[7px] px-1 py-0 uppercase">PAGO</Badge>
+                                  <Badge className="bg-emerald-600 text-white text-[6px] sm:text-[7px] px-0.5 py-0 uppercase leading-none">PAG</Badge>
                                 )}
                                 {status === 'reservado' && (
-                                  <Badge className="bg-amber-600 text-white text-[7px] px-1 py-0 uppercase">RES.</Badge>
+                                  <Badge className="bg-amber-600 text-white text-[6px] sm:text-[7px] px-0.5 py-0 uppercase leading-none">RES</Badge>
                                 )}
                               </div>
                             )}
 
                             {numItem?.nome && (
-                              <div className="absolute bottom-0.5 left-1 max-w-[60px] truncate text-[8px] font-bold text-primary bg-background/90 px-1 rounded shadow-sm">
+                              <div className="absolute bottom-0.5 left-0.5 max-w-[32px] sm:max-w-[50px] truncate text-[6px] sm:text-[8px] font-bold text-primary bg-background/90 px-0.5 rounded shadow-sm leading-none">
                                 {numItem.nome.split(' ')[0]}
                               </div>
                             )}
@@ -764,23 +764,13 @@ export const GeradorRifa = () => {
                       })}
                     </div>
 
-                    {/* RODAPÉ FIEL À IMAGEM COM DESTAQUE DOS HORÁRIOS */}
-                    <div className="pt-3 border-t border-pink-200 dark:border-pink-900/60 flex flex-wrap items-center justify-around gap-2 text-center text-xs font-black text-pink-900 dark:text-pink-300">
-                      <div className="flex items-center gap-1 bg-white dark:bg-zinc-900 border border-pink-300 dark:border-pink-900 px-2.5 py-1 rounded-xl">
-                        <span>12H</span>
-                      </div>
-                      <div className="flex items-center gap-1 bg-white dark:bg-zinc-900 border border-pink-300 dark:border-pink-900 px-2.5 py-1 rounded-xl">
-                        <span>15H</span>
-                      </div>
-                      <div className="flex items-center gap-1 bg-white dark:bg-zinc-900 border border-pink-300 dark:border-pink-900 px-2.5 py-1 rounded-xl">
-                        <span>19H</span>
-                      </div>
-                      <div className="flex items-center gap-1 bg-white dark:bg-zinc-900 border border-pink-300 dark:border-pink-900 px-2.5 py-1 rounded-xl">
-                        <span>21H</span>
-                      </div>
-                      <div className="flex items-center gap-1 bg-white dark:bg-zinc-900 border border-pink-300 dark:border-pink-900 px-2.5 py-1 rounded-xl text-primary">
-                        <span>Federal</span>
-                      </div>
+                    {/* RODAPÉ COM HORÁRIOS */}
+                    <div className="pt-2 border-t border-pink-200 dark:border-pink-900/60 flex items-center justify-between text-center text-[10px] sm:text-xs font-black text-pink-900 dark:text-pink-300">
+                      <div className="bg-white dark:bg-zinc-900 border border-pink-300 dark:border-pink-900 px-1.5 py-0.5 rounded-lg">12H</div>
+                      <div className="bg-white dark:bg-zinc-900 border border-pink-300 dark:border-pink-900 px-1.5 py-0.5 rounded-lg">15H</div>
+                      <div className="bg-white dark:bg-zinc-900 border border-pink-300 dark:border-pink-900 px-1.5 py-0.5 rounded-lg">19H</div>
+                      <div className="bg-white dark:bg-zinc-900 border border-pink-300 dark:border-pink-900 px-1.5 py-0.5 rounded-lg">21H</div>
+                      <div className="bg-white dark:bg-zinc-900 border border-pink-300 dark:border-pink-900 px-1.5 py-0.5 rounded-lg text-primary">Federal</div>
                     </div>
 
                   </div>
