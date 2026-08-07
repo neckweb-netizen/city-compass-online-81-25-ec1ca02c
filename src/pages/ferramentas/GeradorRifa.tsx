@@ -6,10 +6,39 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { ArrowLeft, Ticket, Trophy, QrCode, Sparkles, Copy, Trash2, Calendar, Clock, Share2, AlertTriangle, PlusCircle, ListFilter, Loader2 } from 'lucide-react';
+import { ArrowLeft, Ticket, Trophy, QrCode, Sparkles, Copy, Trash2, Calendar, Clock, Share2, PlusCircle, ListFilter, Loader2 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+
+// LISTA OFICIAL DOS 25 ANIMAIS DA FAZENDINHA
+const LISTA_FAZENDINHA = [
+  { grupo: '01', nome: 'Avestruz', dezenas: ['01', '02', '03', '04'], emoji: '🦩' },
+  { grupo: '02', nome: 'Águia', dezenas: ['05', '06', '07', '08'], emoji: '🦅' },
+  { grupo: '03', nome: 'Burro', dezenas: ['09', '10', '11', '12'], emoji: '🫏' },
+  { grupo: '04', nome: 'Borboleta', dezenas: ['13', '14', '15', '16'], emoji: '🦋' },
+  { grupo: '05', nome: 'Cachorro', dezenas: ['17', '18', '19', '20'], emoji: '🐶' },
+  { grupo: '06', nome: 'Cabra', dezenas: ['21', '22', '23', '24'], emoji: '🐐' },
+  { grupo: '07', nome: 'Carneiro', dezenas: ['25', '26', '27', '28'], emoji: '🐑' },
+  { grupo: '08', nome: 'Camelo', dezenas: ['29', '30', '31', '32'], emoji: '🐪' },
+  { grupo: '09', nome: 'Cobra', dezenas: ['33', '34', '35', '36'], emoji: '🐍' },
+  { grupo: '10', nome: 'Coelho', dezenas: ['37', '38', '39', '40'], emoji: '🐇' },
+  { grupo: '11', nome: 'Cavalo', dezenas: ['41', '42', '43', '44'], emoji: '🐎' },
+  { grupo: '12', nome: 'Elefante', dezenas: ['45', '46', '47', '48'], emoji: '🐘' },
+  { grupo: '13', nome: 'Galo', dezenas: ['49', '50', '51', '52'], emoji: '🐓' },
+  { grupo: '14', nome: 'Gato', dezenas: ['53', '54', '55', '56'], emoji: '🐱' },
+  { grupo: '15', nome: 'Jacaré', dezenas: ['57', '58', '59', '60'], emoji: '🐊' },
+  { grupo: '16', nome: 'Leão', dezenas: ['61', '62', '63', '64'], emoji: '🦁' },
+  { grupo: '17', nome: 'Macaco', dezenas: ['65', '66', '67', '68'], emoji: '🐒' },
+  { grupo: '18', nome: 'Porco', dezenas: ['69', '70', '71', '72'], emoji: '🐖' },
+  { grupo: '19', nome: 'Pavão', dezenas: ['73', '74', '75', '76'], emoji: '🦚' },
+  { grupo: '20', nome: 'Perú', dezenas: ['77', '78', '79', '80'], emoji: '🦃' },
+  { grupo: '21', nome: 'Touro', dezenas: ['81', '82', '83', '84'], emoji: '🐂' },
+  { grupo: '22', nome: 'Tigre', dezenas: ['85', '86', '87', '88'], emoji: '🐅' },
+  { grupo: '23', nome: 'Urso', dezenas: ['89', '90', '91', '92'], emoji: '🐻' },
+  { grupo: '24', nome: 'Veado', dezenas: ['93', '94', '95', '96'], emoji: '🦌' },
+  { grupo: '25', nome: 'Vaca', dezenas: ['97', '98', '99', '00'], emoji: '🐄' },
+];
 
 interface NumeroRifa {
   numero: string;
@@ -27,6 +56,7 @@ interface RifaDados {
   chave_pix: string;
   data_sorteio: string;
   hora_sorteio: string;
+  tipo_rifa: 'numerica' | 'fazendinha';
   qtd_numeros: '50' | '100' | '1000';
   numeros: NumeroRifa[];
   created_at?: string;
@@ -37,16 +67,17 @@ export const GeradorRifa = () => {
   const [searchParams] = useSearchParams();
   const idRifaPublica = searchParams.get('id');
 
-  // DADOS DO FORMULÁRIO
+  // FORMULÁRIO
   const [titulo, setTitulo] = useState('');
   const [premio, setPremio] = useState('');
   const [valorNumero, setValorNumero] = useState('');
   const [chavePix, setChavePix] = useState('');
   const [dataSorteio, setDataSorteio] = useState('');
   const [horaSorteio, setHoraSorteio] = useState('');
+  const [tipoRifa, setTipoRifa] = useState<'numerica' | 'fazendinha'>('fazendinha');
   const [qtdNumeros, setQtdNumeros] = useState<'50' | '100' | '1000'>('100');
 
-  // ESTADOS DO BANCO DE DADOS
+  // BANCO DE DADOS
   const [rifasUsuario, setRifasUsuario] = useState<RifaDados[]>([]);
   const [rifaAtiva, setRifaAtiva] = useState<RifaDados | null>(null);
   const [carregando, setCarregando] = useState(true);
@@ -56,21 +87,20 @@ export const GeradorRifa = () => {
   // ABA ATIVA: 'minhas' OU 'criar'
   const [abaExibicao, setAbaExibicao] = useState<'minhas' | 'criar'>('criar');
 
-  // ESTADO DOS NÚMEROS E FILTROS
+  // NÚMEROS E FILTROS
   const [numeros, setNumeros] = useState<NumeroRifa[]>([]);
   const [filtroStatus, setFiltroStatus] = useState<'todos' | 'livre' | 'reservado' | 'pago'>('todos');
 
   // MODAL
   const [numeroSelecionado, setNumeroSelecionado] = useState<NumeroRifa | null>(null);
+  const [grupoSelecionadoFazendinha, setGrupoSelecionadoFazendinha] = useState<any | null>(null);
   const [modalReservaOpen, setModalReservaOpen] = useState(false);
   const [nomeComprador, setNomeComprador] = useState('');
   const [telefoneComprador, setTelefoneComprador] = useState('');
 
-  // CARREGAR RIFA PÚBLICA OU DO USUÁRIO
   const inicializarRifas = async () => {
     try {
       setCarregando(true);
-
       await supabase.rpc('deletar_rifas_expiradas' as any);
 
       if (idRifaPublica) {
@@ -95,6 +125,7 @@ export const GeradorRifa = () => {
           chave_pix: data.chave_pix,
           data_sorteio: data.data_sorteio,
           hora_sorteio: data.hora_sorteio,
+          tipo_rifa: data.tipo_rifa || 'fazendinha',
           qtd_numeros: data.qtd_numeros,
           numeros: data.numeros || []
         };
@@ -124,6 +155,7 @@ export const GeradorRifa = () => {
           chave_pix: item.chave_pix,
           data_sorteio: item.data_sorteio,
           hora_sorteio: item.hora_sorteio,
+          tipo_rifa: item.tipo_rifa || 'fazendinha',
           qtd_numeros: item.qtd_numeros,
           numeros: item.numeros || [],
           created_at: item.created_at
@@ -157,15 +189,15 @@ export const GeradorRifa = () => {
     setChavePix(rifa.chave_pix);
     setDataSorteio(rifa.data_sorteio);
     setHoraSorteio(rifa.hora_sorteio);
+    setTipoRifa(rifa.tipo_rifa || 'fazendinha');
     setQtdNumeros(rifa.qtd_numeros);
   };
 
-  // CRIAR E SALVAR NOVA RIFA NO SUPABASE
   const handleCriarRifa = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!titulo || !premio || !valorNumero || !dataSorteio || !horaSorteio) {
-      toast.error('Preencha todos os campos obrigatórios (Título, Prêmio, Valor, Data e Horário)');
+      toast.error('Preencha todos os campos obrigatórios');
       return;
     }
 
@@ -174,18 +206,27 @@ export const GeradorRifa = () => {
       const { data: { session } } = await supabase.auth.getSession();
       const userId = session?.user?.id || null;
 
-      const total = parseInt(qtdNumeros);
+      const total = tipoRifa === 'fazendinha' ? 25 : parseInt(qtdNumeros);
       const lista: NumeroRifa[] = [];
 
-      for (let i = 0; i < total; i++) {
-        const numFormatado = qtdNumeros === '1000' 
-          ? i.toString().padStart(3, '0') 
-          : i.toString().padStart(2, '0');
-
-        lista.push({
-          numero: numFormatado,
-          status: 'livre',
+      if (tipoRifa === 'fazendinha') {
+        LISTA_FAZENDINHA.forEach((bicho) => {
+          lista.push({
+            numero: bicho.grupo,
+            status: 'livre',
+          });
         });
+      } else {
+        for (let i = 0; i < total; i++) {
+          const numFormatado = qtdNumeros === '1000' 
+            ? i.toString().padStart(3, '0') 
+            : i.toString().padStart(2, '0');
+
+          lista.push({
+            numero: numFormatado,
+            status: 'livre',
+          });
+        }
       }
 
       const { data, error } = await supabase
@@ -198,7 +239,8 @@ export const GeradorRifa = () => {
           chave_pix: chavePix,
           data_sorteio: dataSorteio,
           hora_sorteio: horaSorteio,
-          qtd_numeros: qtdNumeros,
+          tipo_rifa: tipoRifa,
+          qtd_numeros: tipoRifa === 'fazendinha' ? '100' : qtdNumeros,
           numeros: lista
         })
         .select()
@@ -206,7 +248,7 @@ export const GeradorRifa = () => {
 
       if (error) throw error;
 
-      toast.success('Rifa salva com sucesso no banco de dados!');
+      toast.success('Rifa criada e salva com sucesso!');
       await inicializarRifas();
     } catch (err: any) {
       toast.error('Erro ao salvar rifa: ' + err.message);
@@ -215,11 +257,10 @@ export const GeradorRifa = () => {
     }
   };
 
-  // RESERVAR / COMPRAR NÚMERO
   const handleSalvarReserva = async (novoStatus: 'reservado' | 'pago') => {
     if (!numeroSelecionado || !rifaAtiva?.id) return;
     if (!nomeComprador.trim()) {
-      toast.error('Informe o seu nome para reservar.');
+      toast.error('Informe o nome do comprador.');
       return;
     }
 
@@ -247,13 +288,12 @@ export const GeradorRifa = () => {
 
       setRifaAtiva(prev => prev ? { ...prev, numeros: novosNumeros } : null);
       setModalReservaOpen(false);
-      toast.success(`Número ${numeroSelecionado.numero} ${novoStatus === 'reservado' ? 'reservado' : 'pago'} com sucesso!`);
+      toast.success(`Grupo/Número ${numeroSelecionado.numero} marcado como ${novoStatus.toUpperCase()}!`);
     } catch (err: any) {
-      toast.error('Erro ao atualizar número: ' + err.message);
+      toast.error('Erro ao atualizar no banco: ' + err.message);
     }
   };
 
-  // LIBERAR NÚMERO
   const handleLiberarNumero = async () => {
     if (!numeroSelecionado || !rifaAtiva?.id) return;
 
@@ -279,17 +319,16 @@ export const GeradorRifa = () => {
 
       setRifaAtiva(prev => prev ? { ...prev, numeros: novosNumeros } : null);
       setModalReservaOpen(false);
-      toast.info(`Número ${numeroSelecionado.numero} liberado novamente.`);
+      toast.info(`Grupo/Número ${numeroSelecionado.numero} liberado novamente.`);
     } catch (err: any) {
       toast.error('Erro ao liberar número: ' + err.message);
     }
   };
 
-  // APAGAR RIFA DO BANCO DE DADOS
   const handleApagarRifaManual = async () => {
     if (!rifaAtiva?.id) return;
 
-    if (confirm('Tem certeza que deseja apagar esta rifa? Ela será removida permanentemente do banco de dados.')) {
+    if (confirm('Tem certeza que deseja apagar esta rifa? Ela será removida permanentemente.')) {
       try {
         const { error } = await supabase
           .from('rifas_usuarios' as any)
@@ -309,7 +348,7 @@ export const GeradorRifa = () => {
   const handleCopiarLinkRifa = () => {
     const linkFinal = `${window.location.origin}${window.location.pathname}?id=${rifaAtiva?.id}`;
     navigator.clipboard.writeText(linkFinal);
-    toast.success('Link público da Rifa copiado para compartilhar!');
+    toast.success('Link da Rifa copiado para compartilhar!');
   };
 
   const totalPagos = numeros.filter(n => n.status === 'pago').length;
@@ -317,17 +356,12 @@ export const GeradorRifa = () => {
   const totalLivres = numeros.filter(n => n.status === 'livre').length;
   const arrecadacaoTotal = totalPagos * (parseFloat(valorNumero.replace(',', '.')) || 0);
 
-  const numerosFiltrados = numeros.filter(n => {
-    if (filtroStatus === 'todos') return true;
-    return n.status === filtroStatus;
-  });
-
   if (carregando) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 text-primary animate-spin" />
-          <span className="text-xs text-muted-foreground font-semibold">Carregando dados da rifa...</span>
+          <span className="text-xs text-muted-foreground font-semibold">Carregando Rifa...</span>
         </div>
       </div>
     );
@@ -357,12 +391,12 @@ export const GeradorRifa = () => {
           </h1>
           <p className="text-muted-foreground max-w-xl mx-auto text-sm sm:text-base">
             {isModoComprador 
-              ? 'Escolha seu número da sorte abaixo e informe seus dados para reservar.' 
-              : 'Crie sua rifa personalizada e gerencie pagamentos no seu caderno virtual.'}
+              ? 'Escolha seu animal/grupo ou número da sorte abaixo e informe seus dados para reservar.' 
+              : 'Crie rifas tradicionais ou modelo Fazendinha (Grupos de Animais) com facilidade.'}
           </p>
         </div>
 
-        {/* NAVEGAÇÃO DE ABAS COM VISIBILIDADE E CONTRASTE CORRIGIDOS PARA O TEMA CLARO */}
+        {/* CONTROLES DE ABAS */}
         {!isModoComprador && (
           <div className="flex items-center justify-center gap-3 pt-2">
             {rifasUsuario.length > 0 && (
@@ -409,15 +443,56 @@ export const GeradorRifa = () => {
                 <Ticket className="w-5 h-5 text-primary" /> Configurar Nova Rifa
               </CardTitle>
               <CardDescription className="text-xs">
-                A rifa será pública e qualquer pessoa com o link poderá acessar sem estar logada
+                Escolha entre o modelo Fazendinha (25 Bicho/Grupos) ou Números Sequenciais
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleCriarRifa} className="space-y-4">
+                
+                {/* SELETOR DO TIPO DE RIFA */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">Modelo da Rifa *</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setTipoRifa('fazendinha')}
+                      className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all ${
+                        tipoRifa === 'fazendinha'
+                          ? 'border-primary bg-primary/10 text-primary font-bold shadow-sm'
+                          : 'border-border bg-background hover:bg-muted'
+                      }`}
+                    >
+                      <span className="text-xs font-extrabold flex items-center gap-1.5">
+                        🐄 Rifa Fazendinha (Bicho)
+                      </span>
+                      <span className="text-[10px] text-muted-foreground mt-1 block">
+                        25 Grupos com 4 Dezenas cada (padrão tradicional)
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setTipoRifa('numerica')}
+                      className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all ${
+                        tipoRifa === 'numerica'
+                          ? 'border-primary bg-primary/10 text-primary font-bold shadow-sm'
+                          : 'border-border bg-background hover:bg-muted'
+                      }`}
+                    >
+                      <span className="text-xs font-extrabold flex items-center gap-1.5">
+                        🔢 Rifa Numérica
+                      </span>
+                      <span className="text-[10px] text-muted-foreground mt-1 block">
+                        Números em lista (ex: 00 a 99 ou 000 a 999)
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold">Título / Nome da Rifa *</Label>
                   <Input 
-                    placeholder="Ex: Rifa Beneficente do Saxofone ou Ação entre Amigos" 
+                    placeholder="Ex: Rifa Fazendinha do Porco ou Ação entre Amigos" 
                     value={titulo} 
                     onChange={e => setTitulo(e.target.value)} 
                     required 
@@ -429,7 +504,7 @@ export const GeradorRifa = () => {
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold">Prêmio Principal *</Label>
                     <Input 
-                      placeholder="Ex: Cesta de Natal, R$ 500 no PIX, Smartphone" 
+                      placeholder="Ex: Porco Assado, R$ 500 no PIX, Cesta" 
                       value={premio} 
                       onChange={e => setPremio(e.target.value)} 
                       required 
@@ -438,7 +513,7 @@ export const GeradorRifa = () => {
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold">Valor por Número (R$) *</Label>
+                    <Label className="text-xs font-semibold">Valor por Grupo/Número (R$) *</Label>
                     <Input 
                       placeholder="Ex: 10,00" 
                       value={valorNumero} 
@@ -473,7 +548,7 @@ export const GeradorRifa = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {tipoRifa === 'numerica' && (
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold">Quantidade de Números</Label>
                     <Select value={qtdNumeros} onValueChange={(v: '50' | '100' | '1000') => setQtdNumeros(v)}>
@@ -487,16 +562,16 @@ export const GeradorRifa = () => {
                       </SelectContent>
                     </Select>
                   </div>
+                )}
 
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold">Chave PIX (Opcional)</Label>
-                    <Input 
-                      placeholder="CPF, Telefone ou E-mail para pagamento" 
-                      value={chavePix} 
-                      onChange={e => setChavePix(e.target.value)} 
-                      className="h-10 text-sm"
-                    />
-                  </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">Chave PIX (Opcional)</Label>
+                  <Input 
+                    placeholder="CPF, Telefone ou E-mail para pagamento" 
+                    value={chavePix} 
+                    onChange={e => setChavePix(e.target.value)} 
+                    className="h-10 text-sm"
+                  />
                 </div>
 
                 <Button 
@@ -511,26 +586,8 @@ export const GeradorRifa = () => {
             </CardContent>
           </Card>
         ) : (
-          /* PAINEL DA RIFA (VISÃO DO COMPRADOR OU ORGANIZADOR) */
+          /* PAINEL DA RIFA ATIVA */
           <div className="space-y-6">
-
-            {/* SELETOR SE FOR ORGANIZADOR COM VÁRIAS RIFAS */}
-            {!isModoComprador && rifasUsuario.length > 1 && (
-              <div className="flex items-center gap-2 overflow-x-auto pb-2">
-                <span className="text-xs font-bold text-muted-foreground whitespace-nowrap">Alternar Rifa:</span>
-                {rifasUsuario.map(r => (
-                  <Button
-                    key={r.id}
-                    variant={rifaAtiva?.id === r.id ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => selecionarRifaParaExibir(r)}
-                    className="text-xs rounded-xl h-8 whitespace-nowrap"
-                  >
-                    {r.titulo}
-                  </Button>
-                ))}
-              </div>
-            )}
 
             <Card className="border-border/60 shadow-md">
               <CardContent className="p-6 space-y-4">
@@ -538,7 +595,7 @@ export const GeradorRifa = () => {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <Badge variant="outline" className="text-primary border-primary/30 text-[10px] uppercase font-bold mb-1">
-                        Rifa Oficial ({qtdNumeros} números)
+                        {tipoRifa === 'fazendinha' ? 'Rifa Fazendinha (25 Grupos)' : 'Rifa Numérica'}
                       </Badge>
                       <Badge variant="outline" className="text-amber-600 border-amber-500/30 text-[10px] font-bold mb-1">
                         Sorteio em Breve
@@ -579,10 +636,10 @@ export const GeradorRifa = () => {
                   </div>
                 </div>
 
-                {/* PAINEL DE MÉTRICAS */}
+                {/* MÉTRICAS */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
                   <div className="p-3 bg-muted/40 rounded-xl border text-center">
-                    <span className="text-[10px] text-muted-foreground uppercase font-semibold block">Valor/Número</span>
+                    <span className="text-[10px] text-muted-foreground uppercase font-semibold block">Valor/Grupo</span>
                     <strong className="text-sm sm:text-base text-foreground font-extrabold">R$ {valorNumero}</strong>
                   </div>
                   <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-center">
@@ -603,7 +660,7 @@ export const GeradorRifa = () => {
                   <div className="p-3 bg-primary/5 border border-primary/20 rounded-xl flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
                       <QrCode className="w-4 h-4 text-primary shrink-0" />
-                      <span>Chave PIX para Pagamento: <strong>{chavePix}</strong></span>
+                      <span>Chave PIX: <strong>{chavePix}</strong></span>
                     </div>
                     <Button 
                       variant="ghost" 
@@ -621,77 +678,119 @@ export const GeradorRifa = () => {
               </CardContent>
             </Card>
 
-            {/* GRADE INTERATIVA DE NÚMEROS */}
+            {/* TABELA DA FAZENDINHA OU GRADE NUMÉRICA */}
             <Card className="border-border/60 shadow-md">
               <CardHeader className="pb-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div>
-                  <CardTitle className="text-base font-bold">Escolha seu Número</CardTitle>
+                  <CardTitle className="text-base font-bold">
+                    {tipoRifa === 'fazendinha' ? 'Tabela da Fazendinha (Grupos de Animais)' : 'Grade de Números'}
+                  </CardTitle>
                   <CardDescription className="text-xs">
-                    {isModoComprador 
-                      ? 'Clique em qualquer número livre para informar seu nome e realizar a reserva' 
-                      : 'Clique no número para gerenciar ou marcar como Pago'}
+                    {tipoRifa === 'fazendinha' 
+                      ? 'Clique no grupo do animal para reservar com as 4 dezenas do bicho' 
+                      : 'Clique no número desejado para reservar'}
                   </CardDescription>
-                </div>
-
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {(['todos', 'livre', 'reservado', 'pago'] as const).map(st => (
-                    <Button
-                      key={st}
-                      variant={filtroStatus === st ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setFiltroStatus(st)}
-                      className="text-[11px] h-7 px-2.5 capitalize rounded-lg"
-                    >
-                      {st}
-                    </Button>
-                  ))}
                 </div>
               </CardHeader>
 
               <CardContent>
-                <div className="grid grid-cols-5 sm:grid-cols-10 md:grid-cols-12 gap-2 max-h-[500px] overflow-y-auto p-1">
-                  {numerosFiltrados.map((item) => {
-                    let estilos = 'bg-background hover:border-primary/60 text-foreground border-border cursor-pointer';
-                    if (item.status === 'reservado') estilos = 'bg-amber-500/20 border-amber-500 text-amber-700 dark:text-amber-300 font-bold cursor-pointer';
-                    if (item.status === 'pago') estilos = 'bg-emerald-500 text-white border-emerald-600 font-extrabold shadow-sm';
+                {tipoRifa === 'fazendinha' ? (
+                  /* EXIBIÇÃO EM TABELA TIPO FAZENDINHA COM ANIMAIS */
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {LISTA_FAZENDINHA.map((bicho) => {
+                      const numItem = numeros.find(n => n.numero === bicho.grupo);
+                      const status = numItem?.status || 'livre';
 
-                    return (
-                      <button
-                        key={item.numero}
-                        disabled={isModoComprador && item.status === 'pago'}
-                        onClick={() => {
-                          setNumeroSelecionado(item);
-                          setNomeComprador(item.nome || '');
-                          setTelefoneComprador(item.telefone || '');
-                          setModalReservaOpen(true);
-                        }}
-                        className={`h-10 rounded-xl border text-xs sm:text-sm transition-all duration-150 flex flex-col items-center justify-center relative group ${estilos}`}
-                      >
-                        <span>{item.numero}</span>
-                        {item.nome && (
-                          <span className="text-[8px] truncate max-w-[90%] px-0.5 opacity-90 leading-tight">
-                            {item.nome.split(' ')[0]}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+                      let corCard = 'bg-pink-500/10 border-pink-500/30 hover:border-pink-500';
+                      if (status === 'reservado') corCard = 'bg-amber-500/20 border-amber-500 font-bold';
+                      if (status === 'pago') corCard = 'bg-emerald-500/20 border-emerald-500 font-extrabold';
 
-                <div className="flex items-center justify-center gap-6 pt-6 text-xs text-muted-foreground border-t mt-6">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-full border border-border bg-background" />
-                    <span>Livre</span>
+                      return (
+                        <button
+                          key={bicho.grupo}
+                          disabled={isModoComprador && status === 'pago'}
+                          onClick={() => {
+                            setNumeroSelecionado(numItem || { numero: bicho.grupo, status: 'livre' });
+                            setGrupoSelecionadoFazendinha(bicho);
+                            setNomeComprador(numItem?.nome || '');
+                            setTelefoneComprador(numItem?.telefone || '');
+                            setModalReservaOpen(true);
+                          }}
+                          className={`p-3 rounded-2xl border flex items-center justify-between text-left transition-all relative overflow-hidden group shadow-sm ${corCard}`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-background/80 border flex items-center justify-center text-xl shrink-0 shadow-inner">
+                              {bicho.emoji}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs font-black text-primary">GR. {bicho.grupo}</span>
+                                <h4 className="text-xs sm:text-sm font-extrabold text-foreground uppercase">{bicho.nome}</h4>
+                              </div>
+                              <div className="flex items-center gap-1 mt-0.5">
+                                {bicho.dezenas.map((dz) => (
+                                  <span key={dz} className="text-[10px] font-mono bg-background/60 px-1 rounded border text-muted-foreground">
+                                    {dz}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="text-right">
+                            {status === 'pago' && (
+                              <Badge className="bg-emerald-600 text-white text-[9px] uppercase">PAGO</Badge>
+                            )}
+                            {status === 'reservado' && (
+                              <Badge className="bg-amber-600 text-white text-[9px] uppercase">RESERVADO</Badge>
+                            )}
+                            {status === 'livre' && (
+                              <Badge variant="outline" className="text-[9px] uppercase border-emerald-500/40 text-emerald-600">
+                                LIVRE
+                              </Badge>
+                            )}
+                            {numItem?.nome && (
+                              <span className="block text-[9px] text-muted-foreground truncate max-w-[80px] mt-0.5">
+                                {numItem.nome.split(' ')[0]}
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-full bg-amber-500/20 border border-amber-500" />
-                    <span>Reservado</span>
+                ) : (
+                  /* EXIBIÇÃO NUMÉRICA SEQUENCIAL */
+                  <div className="grid grid-cols-5 sm:grid-cols-10 md:grid-cols-12 gap-2 max-h-[500px] overflow-y-auto p-1">
+                    {numerosFiltrados.map((item) => {
+                      let estilos = 'bg-background hover:border-primary/60 text-foreground border-border cursor-pointer';
+                      if (item.status === 'reservado') estilos = 'bg-amber-500/20 border-amber-500 text-amber-700 dark:text-amber-300 font-bold cursor-pointer';
+                      if (item.status === 'pago') estilos = 'bg-emerald-500 text-white border-emerald-600 font-extrabold shadow-sm';
+
+                      return (
+                        <button
+                          key={item.numero}
+                          disabled={isModoComprador && item.status === 'pago'}
+                          onClick={() => {
+                            setNumeroSelecionado(item);
+                            setGrupoSelecionadoFazendinha(null);
+                            setNomeComprador(item.nome || '');
+                            setTelefoneComprador(item.telefone || '');
+                            setModalReservaOpen(true);
+                          }}
+                          className={`h-10 rounded-xl border text-xs sm:text-sm transition-all duration-150 flex flex-col items-center justify-center relative group ${estilos}`}
+                        >
+                          <span>{item.numero}</span>
+                          {item.nome && (
+                            <span className="text-[8px] truncate max-w-[90%] px-0.5 opacity-90 leading-tight">
+                              {item.nome.split(' ')[0]}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-full bg-emerald-500" />
-                    <span>Pago</span>
-                  </div>
-                </div>
+                )}
               </CardContent>
             </Card>
 
@@ -700,17 +799,20 @@ export const GeradorRifa = () => {
 
       </div>
 
-      {/* MODAL DE RESERVA / COMPRA DO NÚMERO */}
+      {/* MODAL DE RESERVA / COMPRA */}
       <Dialog open={modalReservaOpen} onOpenChange={setModalReservaOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base font-bold">
-              <Ticket className="w-5 h-5 text-primary" /> Número {numeroSelecionado?.numero}
+              <Ticket className="w-5 h-5 text-primary" /> 
+              {grupoSelecionadoFazendinha 
+                ? `Grupo ${grupoSelecionadoFazendinha.grupo} - ${grupoSelecionadoFazendinha.nome} ${grupoSelecionadoFazendinha.emoji}`
+                : `Número ${numeroSelecionado?.numero}`}
             </DialogTitle>
             <DialogDescription className="text-xs">
-              {isModoComprador 
-                ? 'Informe seu nome e WhatsApp para confirmar a reserva do número.' 
-                : 'Gerencie ou atualize os dados do comprador para este número.'}
+              {grupoSelecionadoFazendinha 
+                ? `Ao reservar este grupo, você concorre com as dezenas: ${grupoSelecionadoFazendinha.dezenas.join(', ')}.`
+                : 'Informe seu nome e WhatsApp para confirmar a reserva.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -743,7 +845,7 @@ export const GeradorRifa = () => {
                 onClick={handleLiberarNumero}
                 className="text-destructive border-destructive/30 hover:bg-destructive/10 text-xs h-9"
               >
-                Liberar Número
+                Liberar Grupo
               </Button>
             )}
 
