@@ -11,6 +11,53 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+// COMPONENTE DE BANNER DINÂMICO INTERNO
+const BannersRifa = () => {
+  const [banners, setBanners] = useState<any[]>([]);
+
+  useEffect(() => {
+    const buscarBanners = async () => {
+      try {
+        const { data } = await supabase
+          .from("banners" as any)
+          .select("*")
+          .eq("ativo", true)
+          .order("ordem", { ascending: true });
+
+        if (data && data.length > 0) {
+          setBanners(data);
+        }
+      } catch (err) {
+        console.error("Erro ao buscar banners para rifa:", err);
+      }
+    };
+
+    buscarBanners();
+  }, []);
+
+  if (banners.length === 0) return null;
+
+  return (
+    <div className="w-full space-y-3 my-4">
+      {banners.map((b) => (
+        <a
+          key={b.id}
+          href={b.link_destino || "#"}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block w-full rounded-2xl overflow-hidden shadow-sm border border-border/60 hover:opacity-95 transition-opacity"
+        >
+          <img
+            src={b.imagem_url || b.imagem}
+            alt={b.titulo || "Banner de Anúncio"}
+            className="w-full h-auto max-h-[160px] sm:max-h-[220px] object-cover"
+          />
+        </a>
+      ))}
+    </div>
+  );
+};
+
 // LISTA OFICIAL DOS 25 ANIMAIS DA FAZENDINHA
 const LISTA_FAZENDINHA = [
   { grupo: '01', nome: 'AVESTRUZ', dezenas: ['01', '02', '03', '04'], emoji: '🦩' },
@@ -383,6 +430,9 @@ export const GeradorRifa = () => {
             <Sparkles className="w-3.5 h-3.5" /> {isModoComprador ? 'Rifa Pública' : 'Ações & Rifas'}
           </Badge>
         </div>
+
+        {/* BANNER DE ANÚNCIO NO TOPO DA PÁGINA DA RIFA */}
+        <BannersRifa />
 
         <div className="text-center space-y-2">
           <h1 className="text-3xl sm:text-4xl font-extrabold text-foreground tracking-tight flex items-center justify-center gap-2">
