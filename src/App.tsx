@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { BannersSection } from "@/components/home/BannersSection";
 
 // Import critical pages immediately
 import Index from "./pages/Index";
@@ -100,7 +101,7 @@ import { PublicLayout } from "./components/layout/PublicLayout";
 import { AdminLayout } from "./components/admin/AdminLayout";
 import { RoutePreloader } from "./components/layout/RoutePreloader";
 
-// CATÁLOGO DE FERRAMENTAS
+// CATÁLOGO DE FERRAMENTAS COM BANNERS DE ANÚNCIO
 const FerramentasCatalogInternal = () => {
   const navigate = useNavigate();
   const [busca, setBusca] = useState('');
@@ -206,6 +207,11 @@ const FerramentasCatalogInternal = () => {
     <div className="min-h-screen bg-background py-10 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto space-y-8">
         
+        {/* BANNER DE ANÚNCIOS (GERENCIADO NO PAINEL ADMIN) */}
+        <div className="w-full rounded-2xl overflow-hidden shadow-sm border border-border/40">
+          <BannersSection />
+        </div>
+
         <div className="text-center space-y-4 max-w-2xl mx-auto">
           <Badge className="bg-primary/10 text-primary border-primary/20 px-3 py-1 text-xs uppercase tracking-wider font-bold inline-flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5" /> Central de Utilitários SAJ TEM
