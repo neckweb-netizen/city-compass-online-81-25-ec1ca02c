@@ -27,7 +27,24 @@ const bannerSchema = z.object({
   }, 'URL do link inválida'),
   ativo: z.boolean(),
   ordem: z.number().min(1, 'Ordem deve ser no mínimo 1').max(999, 'Ordem deve ser no máximo 999'),
-  secao: z.enum(['home', 'locais', 'eventos', 'categorias', 'busca', 'canal_video', 'domino'], {
+  secao: z.enum([
+    'home', 
+    'locais', 
+    'eventos', 
+    'categorias', 
+    'busca', 
+    'canal_video', 
+    'domino', 
+    'ferramentas', 
+    'gerador_rifa',
+    'gerador_cobranca',
+    'criador_curriculo',
+    'gestao_cobrancas',
+    'calculadora_orcamento',
+    'calculadora_margem',
+    'simulador_rescisao',
+    'leitor_voz'
+  ], {
     errorMap: () => ({ message: 'Seção é obrigatória' })
   }),
   tipo_midia: z.enum(['imagem', 'video', 'codigo'], {
@@ -63,6 +80,15 @@ const secaoOptions = [
   { value: 'busca', label: 'Busca' },
   { value: 'canal_video', label: 'Canal Informativo - Vídeos' },
   { value: 'domino', label: 'Jogo Dominó' },
+  { value: 'ferramentas', label: 'Central de Ferramentas (Catálogo Geral)' },
+  { value: 'gerador_rifa', label: 'Ferramenta - Gerador & Caderno de Rifas' },
+  { value: 'gerador_cobranca', label: 'Ferramenta - Gerador de Cobrança PIX' },
+  { value: 'criador_curriculo', label: 'Ferramenta - Criador de Currículo PDF' },
+  { value: 'gestao_cobrancas', label: 'Ferramenta - Gestão de Cobranças (Micro CRM)' },
+  { value: 'calculadora_orcamento', label: 'Ferramenta - Calculadora de Orçamento' },
+  { value: 'calculadora_margem', label: 'Ferramenta - Calculadora de Maquininha & Margem' },
+  { value: 'simulador_rescisao', label: 'Ferramenta - Simulador de Rescisão (CLT)' },
+  { value: 'leitor_voz', label: 'Ferramenta - Leitor de Texto em Voz Alta' },
 ];
 
 export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerFormProps) => {
