@@ -10,7 +10,6 @@ import { ArrowLeft, NotebookPen, Plus, Trash2, CheckCircle2, Clock, Sparkles } f
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-// BANNER DINÂMICO EMBUTIDO
 const ToolBanner = ({ secao }: { secao: string }) => {
   const [banners, setBanners] = useState<any[]>([]);
 
@@ -129,7 +128,6 @@ export const GestaoCobrancas = () => {
           </Badge>
         </div>
 
-        {/* BANNER DINÂMICO PARA GESTÃO DE COBRANÇAS */}
         <ToolBanner secao="gestao_cobrancas" />
 
         <div className="text-center space-y-2">
