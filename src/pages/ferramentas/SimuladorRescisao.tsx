@@ -5,8 +5,8 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/raw-switch';
-import { ArrowLeft, FileSpreadsheet, Calculator, Sparkles, AlertCircle, Info, DollarSign, HelpCircle, RefreshCw } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { ArrowLeft, FileSpreadsheet, Calculator, Sparkles, AlertCircle, Info, DollarSign, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -140,7 +140,7 @@ export const SimuladorRescisao = () => {
     // 3. 13º SALÁRIO PROPORCIONAL
     let valorDecimoTerceiro = 0;
     if (motivoRescisao !== 'com_justa_causa') {
-      const fracao13 = (motivoRescisao === 'acordo') ? mesesTrabalhadosAno : mesesTrabalhadosAno;
+      const fracao13 = mesesTrabalhadosAno;
       valorDecimoTerceiro = (salario / 12) * fracao13;
     }
 
@@ -343,7 +343,7 @@ export const SimuladorRescisao = () => {
                     </div>
                     <Switch 
                       checked={possuiFeriasVencidas} 
-                      onChange={setPossuiFeriasVencidas} 
+                      onCheckedChange={setPossuiFeriasVencidas} 
                     />
                   </div>
 
