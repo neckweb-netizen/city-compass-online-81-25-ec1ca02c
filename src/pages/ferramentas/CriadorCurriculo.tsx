@@ -10,7 +10,6 @@ import { ArrowLeft, FileText, Download, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-// BANNER EMBUTIDO LOCALMENTE (SEM DEPENDÊNCIA DE ARQUIVO EXTERNO)
 const ToolBanner = ({ secao }: { secao: string }) => {
   const [banners, setBanners] = useState<any[]>([]);
 
@@ -101,7 +100,6 @@ export const CriadorCurriculo = () => {
           </Badge>
         </div>
 
-        {/* BANNER DINÂMICO EMBUTIDO */}
         <div className="print:hidden">
           <ToolBanner secao="criador_curriculo" />
         </div>
@@ -168,7 +166,6 @@ export const CriadorCurriculo = () => {
             </CardContent>
           </Card>
 
-          {/* PRÉVIA A4 DO CURRÍCULO */}
           <Card className="border-border/60 shadow-md p-6 bg-white text-zinc-900 rounded-none print:shadow-none print:border-none print:p-0">
             <div className="space-y-4">
               <div className="border-b pb-4">
