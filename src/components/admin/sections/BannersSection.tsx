@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Edit, Trash2, ExternalLink, Image as ImageIcon, AlertCircle, Copy, Code, Video } from 'lucide-react';
 import { useAdminBanners, Banner } from '@/hooks/useAdminBanners';
-import { BannerForm } from './BannerForm'; // Ou ajuste conforme o caminho exato caso esteja na mesma pasta
+import { BannerForm } from '../forms/BannerForm';
 import { DuplicateBannerModal } from '../forms/DuplicateBannerModal';
 import {
   AlertDialog,
@@ -41,6 +41,8 @@ export const BannersSection = () => {
 
   const handleSubmit = async (data: any) => {
     try {
+      console.log('Submitting banner data:', data);
+      
       if (editingBanner) {
         await updateBanner.mutateAsync({ ...data, id: editingBanner.id });
       } else {
@@ -48,40 +50,45 @@ export const BannersSection = () => {
       }
       setShowForm(false);
       setEditingBanner(undefined);
-    } catch (err) {
-      console.error('Erro ao salvar banner:', err);
+    } catch (error) {
+      console.error('Erro ao salvar banner:', error);
     }
   };
 
   const handleEdit = (banner: Banner) => {
+    console.log('Editing banner:', banner);
     setEditingBanner(banner);
     setShowForm(true);
   };
 
   const handleDelete = async (id: string) => {
     try {
+      console.log('Deleting banner:', id);
       await deleteBanner.mutateAsync(id);
-    } catch (err) {
-      console.error('Erro ao deletar banner:', err);
+    } catch (error) {
+      console.error('Erro ao deletar banner:', error);
     }
   };
 
   const handleDuplicate = (banner: Banner) => {
+    console.log('Opening duplicate modal for banner:', banner);
     setDuplicatingBanner(banner);
     setShowDuplicateModal(true);
   };
 
   const handleDuplicateConfirm = async (bannerId: string, newSecao: Banner['secao']) => {
     try {
+      console.log('Duplicating banner:', bannerId, 'to section:', newSecao);
       await duplicateBanner.mutateAsync({ id: bannerId, newSecao });
       setShowDuplicateModal(false);
       setDuplicatingBanner(null);
-    } catch (err) {
-      console.error('Erro ao duplicar banner:', err);
+    } catch (error) {
+      console.error('Erro ao duplicar banner:', error);
     }
   };
 
   const handleCancel = () => {
+    console.log('Form cancelled');
     setShowForm(false);
     setEditingBanner(undefined);
   };
@@ -91,7 +98,7 @@ export const BannersSection = () => {
     return option ? option.label : secao;
   };
 
-  if (showForm && typeof BannerForm !== 'undefined') {
+  if (showForm) {
     return (
       <BannerForm
         banner={editingBanner}
@@ -151,7 +158,7 @@ export const BannersSection = () => {
 
       {isLoading ? (
         <div className="text-center py-8">Carregando banners...</div>
-      ) : !banners || banners.length === 0 ? (
+      ) : banners.length === 0 ? (
         <Card>
           <CardContent className="text-center py-8">
             <ImageIcon className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
@@ -321,18 +328,16 @@ export const BannersSection = () => {
         </div>
       )}
 
-      {typeof DuplicateBannerModal !== 'undefined' && (
-        <DuplicateBannerModal
-          banner={duplicatingBanner}
-          isOpen={showDuplicateModal}
-          onClose={() => {
-            setShowDuplicateModal(false);
-            setDuplicatingBanner(null);
-          }}
-          onDuplicate={handleDuplicateConfirm}
-          isLoading={duplicateBanner.isPending}
-        />
-      )}
+      <DuplicateBannerModal
+        banner={duplicatingBanner}
+        isOpen={showDuplicateModal}
+        onClose={() => {
+          setShowDuplicateModal(false);
+          setDuplicatingBanner(null);
+        }}
+        onDuplicate={handleDuplicateConfirm}
+        isLoading={duplicateBanner.isPending}
+      />
     </div>
   );
 };
