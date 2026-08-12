@@ -2,7 +2,7 @@ import { supabase } from './supabase'; // Importe seu cliente configurado do Sup
 
 /**
  * Função Universal para enviar mídias (imagens/vídeos) ao Cloudflare R2
- * usando a Edge Function do Supabase de forma segura.
+ * usando a Edge Function do Supabase de forma segura...
  * 
  * @param file Arquivo vindo do <input type="file">
  * @param subpasta Pasta de destino no bucket (ex: 'imagens/empresas', 'videos/stories', 'imagens/avatars')
