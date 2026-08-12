@@ -60,7 +60,7 @@ const SimuladorRescisao = lazy(() => import("./pages/ferramentas/SimuladorRescis
 const LeitorVoz = lazy(() => import("./pages/ferramentas/LeitorVoz").then(m => ({ default: m.LeitorVoz })));
 const GeradorRifa = lazy(() => import("./pages/ferramentas/GeradorRifa").then(m => ({ default: m.GeradorRifa })));
 
-// Admin pages
+// Admin pages com resolução resiliente do AdminBanners
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminAchadosPerdidos = lazy(() => import("./pages/admin/AdminAchadosPerdidos"));
 const AdminLocais = lazy(() => import("./pages/admin/AdminLocais"));
@@ -70,7 +70,7 @@ const AdminEventos = lazy(() => import("./pages/admin/AdminEventos").then(m => (
 const AdminCidades = lazy(() => import("./pages/admin/AdminCidades").then(m => ({ default: m.AdminCidades })));
 const AdminCategorias = lazy(() => import("./pages/admin/AdminCategorias").then(m => ({ default: m.AdminCategorias })));
 const AdminUsuarios = lazy(() => import("./pages/admin/AdminUsuarios").then(m => ({ default: m.AdminUsuarios })));
-const AdminBanners = lazy(() => import("./pages/admin/AdminBanners"));
+const AdminBanners = lazy(() => import("./pages/admin/AdminBanners").then(m => ({ default: m.AdminBanners || m.default })));
 const AdminCanalInformativo = lazy(() => import("./pages/admin/AdminCanalInformativo").then(m => ({ default: m.AdminCanalInformativo })));
 const AdminStories = lazy(() => import("./pages/admin/AdminStories"));
 const AdminCupons = lazy(() => import("./pages/admin/AdminCupons").then(m => ({ default: m.AdminCupons })));
