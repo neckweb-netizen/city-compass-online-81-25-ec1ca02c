@@ -100,7 +100,7 @@ export const BannersSection = () => {
     return option ? option.label : secao;
   };
 
-  if (showForm) {
+  if (showForm && typeof BannerForm !== 'undefined') {
     return (
       <BannerForm
         banner={editingBanner}
@@ -160,7 +160,7 @@ export const BannersSection = () => {
 
       {isLoading ? (
         <div className="text-center py-8">Carregando banners...</div>
-      ) : banners.length === 0 ? (
+      ) : !banners || banners.length === 0 ? (
         <Card>
           <CardContent className="text-center py-8">
             <ImageIcon className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
@@ -330,7 +330,6 @@ export const BannersSection = () => {
         </div>
       )}
 
-      {/* MODAL DE DUPLICAÇÃO INLINE (LIVRE DE ERROS DE IMPORT) */}
       <Dialog open={showDuplicateModal} onOpenChange={setShowDuplicateModal}>
         <DialogContent>
           <DialogHeader>
