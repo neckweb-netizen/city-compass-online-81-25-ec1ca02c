@@ -9,8 +9,10 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ImageUpload } from '@/components/ui/image-upload';
 import { Banner } from '@/hooks/useAdminBanners';
+import { uploadParaR2 } from '@/lib/r2';
+import { Upload, X, Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const bannerSchema = z.object({
   titulo: z.string().min(1, 'Título é obrigatório').max(255, 'Título deve ter no máximo 255 caracteres'),
@@ -92,6 +94,9 @@ const secaoOptions = [
 ];
 
 export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerFormProps) => {
+  const [uploading, setUploading] = useState(false);
+  const { toast } = useToast();
+
   const { register, handleSubmit, formState: { errors }, watch, setValue, trigger } = useForm<BannerFormData>({
     resolver: zodResolver(bannerSchema),
     defaultValues: {
@@ -108,39 +113,48 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
 
   const ativo = watch('ativo');
   const imagemUrl = watch('imagem_url');
-  const codigoHtml = watch('codigo_html');
   const secao = watch('secao');
   const tipoMidia = watch('tipo_midia');
 
-  const handleImageChange = (url: string) => {
-    console.log('Image URL changed:', url);
-    setValue('imagem_url', url);
-    trigger('imagem_url');
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploading(true);
+      // Envia para o Cloudflare R2 na pasta 'banners'
+      const url = await uploadParaR2(file, 'banners');
+      setValue('imagem_url', url);
+      trigger('imagem_url');
+      toast({ title: 'Mídia enviada com sucesso para o R2!' });
+    } catch (error: any) {
+      toast({
+        title: 'Erro no envio da mídia',
+        description: error.message || 'Falha ao enviar arquivo para o Cloudflare R2.',
+        variant: 'destructive',
+      });
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleImageRemove = () => {
-    console.log('Image removed');
     setValue('imagem_url', '');
     trigger('imagem_url');
   };
 
   const handleSecaoChange = (value: string) => {
-    console.log('Section changed:', value);
     setValue('secao', value as any);
     trigger(['secao', 'tipo_midia']);
   };
 
   const handleTipoMidiaChange = (value: string) => {
-    console.log('Media type changed:', value);
     setValue('tipo_midia', value as any);
     trigger(['tipo_midia', 'imagem_url', 'codigo_html']);
   };
 
   const handleFormSubmit = (data: BannerFormData) => {
-    console.log('Form submitted with data:', data);
-    
     if (!data.titulo.trim()) {
-      console.error('Título é obrigatório');
       return;
     }
 
@@ -153,7 +167,6 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
       ordem: ordem,
     };
 
-    console.log('Submitting formatted data:', formattedData);
     onSubmit(formattedData);
   };
 
@@ -216,43 +229,87 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
           {/* RENDERING DINÂMICO CONFORME O TIPO SELECIONADO */}
           {tipoMidia === 'imagem' && (
             <div>
-              <Label>Imagem do Banner *</Label>
-              <ImageUpload
-                value={imagemUrl || ''}
-                onChange={handleImageChange}
-                onRemove={handleImageRemove}
-                bucket="banners"
-                accept="image/*,image/gif"
-                maxSize={10}
-                className="mt-2"
-              />
+              <Label>Imagem do Banner * (Cloudflare R2)</Label>
+              <div className="mt-2">
+                {imagemUrl ? (
+                  <div className="relative w-full h-48 rounded-lg overflow-hidden border">
+                    <img src={imagemUrl} alt="Banner" className="w-full h-full object-cover" />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-2 right-2"
+                      onClick={handleImageRemove}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      {uploading ? (
+                        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                      ) : (
+                        <>
+                          <Upload className="w-8 h-8 mb-2 text-muted-foreground" />
+                          <p className="text-sm text-muted-foreground">Clique para enviar a imagem do banner</p>
+                          <p className="text-xs text-muted-foreground">JPG, PNG, GIF ou WebP via Cloudflare R2</p>
+                        </>
+                      )}
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={uploading}
+                      onChange={handleFileUpload}
+                    />
+                  </label>
+                )}
+              </div>
               {errors.imagem_url && (
                 <p className="text-sm text-destructive mt-1">{errors.imagem_url.message}</p>
               )}
               <p className="text-xs text-muted-foreground mt-1">
-                Formatos aceitos: JPG, PNG, GIF • Tamanho recomendado: 1200x400px
+                Formatos aceitos: JPG, PNG, GIF, WebP • Tamanho recomendado: 1200x400px
               </p>
             </div>
           )}
 
           {tipoMidia === 'video' && (
             <div>
-              <Label>URL do Vídeo *</Label>
-              <Input
-                value={imagemUrl || ''}
-                onChange={(e) => {
-                  setValue('imagem_url', e.target.value);
-                  trigger('imagem_url');
-                }}
-                placeholder="https://youtube.com/watch?v=... ou URL direta do vídeo"
-                type="url"
-                className="mt-2"
-              />
+              <Label>URL ou Upload de Vídeo *</Label>
+              <div className="space-y-2 mt-2">
+                <Input
+                  value={imagemUrl || ''}
+                  onChange={(e) => {
+                    setValue('imagem_url', e.target.value);
+                    trigger('imagem_url');
+                  }}
+                  placeholder="https://youtube.com/watch?v=... ou insira o link direto"
+                  type="url"
+                />
+                
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">ou faça upload do vídeo direto no R2:</span>
+                  <label className="cursor-pointer inline-flex items-center gap-1 text-xs bg-secondary hover:bg-secondary/80 px-3 py-1.5 rounded-md font-medium">
+                    {uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+                    Upload Vídeo
+                    <input
+                      type="file"
+                      accept="video/*"
+                      className="hidden"
+                      disabled={uploading}
+                      onChange={handleFileUpload}
+                    />
+                  </label>
+                </div>
+              </div>
               {errors.imagem_url && (
                 <p className="text-sm text-destructive mt-1">{errors.imagem_url.message}</p>
               )}
               <p className="text-xs text-muted-foreground mt-1">
-                Suporta URLs do YouTube, Vimeo ou links diretos de vídeo (.mp4, .webm)
+                Suporta URLs do YouTube/Vimeo ou envio direto de arquivos .mp4
               </p>
             </div>
           )}
@@ -320,10 +377,10 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
           </div>
 
           <div className="flex gap-2 pt-4">
-            <Button type="submit" disabled={isLoading}>
+            <Button type="submit" disabled={isLoading || uploading}>
               {isLoading ? 'Salvando...' : (banner ? 'Atualizar' : 'Criar')}
             </Button>
-            <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
+            <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading || uploading}>
               Cancelar
             </Button>
           </div>
