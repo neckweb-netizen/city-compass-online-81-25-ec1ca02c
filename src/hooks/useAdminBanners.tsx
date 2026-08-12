@@ -52,6 +52,25 @@ export const useAdminBanners = (secao?: string) => {
     },
   });
 
+  // Função auxiliar para buscar a próxima ordem livre de uma seção
+  const getProximaOrdemLivre = async (secaoDestino: string): Promise<number> => {
+    try {
+      const { data } = await supabase
+        .from('banners_publicitarios')
+        .select('ordem')
+        .eq('secao', secaoDestino as any)
+        .order('ordem', { ascending: false })
+        .limit(1);
+
+      if (data && data.length > 0) {
+        return Math.min(999, (data[0].ordem || 0) + 1);
+      }
+      return 1;
+    } catch {
+      return 1;
+    }
+  };
+
   const createBanner = useMutation({
     mutationFn: async (banner: Omit<Banner, 'id' | 'criado_em' | 'atualizado_em'>) => {
       console.log('Creating banner with data:', banner);
@@ -76,7 +95,7 @@ export const useAdminBanners = (secao?: string) => {
       }
 
       // Ensure ordem is a valid integer between 1 and 999
-      const ordem = Math.max(1, Math.min(999, Math.floor(Number(banner.ordem) || 1)));
+      let ordem = Math.max(1, Math.min(999, Math.floor(Number(banner.ordem) || 1)));
       
       // Preparar dados para inserção
       const bannerData = {
@@ -92,16 +111,35 @@ export const useAdminBanners = (secao?: string) => {
 
       console.log('Inserting banner data with validated ordem:', bannerData);
 
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('banners_publicitarios')
         .insert([bannerData])
         .select('id, titulo, imagem_url, codigo_html, tipo_midia, link_url, ativo, ordem, secao, criado_em, atualizado_em')
         .single();
 
+      // Tratamento automático de ordem duplicada (erro 23505)
+      if (error && error.code === '23505') {
+        console.warn('Ordem duplicada detectada. Calculando próxima ordem disponível...');
+        const proximaOrdem = await getProximaOrdemLivre(banner.secao);
+        bannerData.ordem = proximaOrdem;
+
+        const retryResult = await supabase
+          .from('banners_publicitarios')
+          .insert([bannerData])
+          .select('id, titulo, imagem_url, codigo_html, tipo_midia, link_url, ativo, ordem, secao, criado_em, atualizado_em')
+          .single();
+
+        data = retryResult.data;
+        error = retryResult.error;
+      }
+
       if (error) {
         console.error('Error creating banner:', error);
         if (error.code === '23514') {
           throw new Error('Ordem deve ser um número entre 1 e 999');
+        }
+        if (error.code === '23505') {
+          throw new Error('Já existe um banner com esta ordem nesta seção. Tente outro número de ordem.');
         }
         throw error;
       }
@@ -125,7 +163,6 @@ export const useAdminBanners = (secao?: string) => {
       if (error instanceof Error) {
         if (error.message.includes('não autenticado')) {
           errorMessage = 'Sessão expirada. Faça login novamente.';
-          // Redirect to login or refresh session
           window.location.reload();
           return;
         }
@@ -162,6 +199,9 @@ export const useAdminBanners = (secao?: string) => {
         throw fetchError;
       }
 
+      // Calcula a próxima ordem livre para evitar conflitos na seção de destino
+      const proximaOrdem = await getProximaOrdemLivre(newSecao);
+
       // Criar novo banner baseado no original
       const duplicatedBannerData = {
         titulo: `${originalBanner.titulo} (Cópia)`,
@@ -170,7 +210,7 @@ export const useAdminBanners = (secao?: string) => {
         tipo_midia: originalBanner.tipo_midia,
         link_url: originalBanner.link_url,
         ativo: originalBanner.ativo,
-        ordem: originalBanner.ordem,
+        ordem: proximaOrdem,
         secao: newSecao as any
       };
 
@@ -184,6 +224,9 @@ export const useAdminBanners = (secao?: string) => {
 
       if (error) {
         console.error('Error duplicating banner:', error);
+        if (error.code === '23505') {
+          throw new Error('Já existe um banner com esta ordem na seção de destino.');
+        }
         throw error;
       }
 
@@ -255,6 +298,9 @@ export const useAdminBanners = (secao?: string) => {
         console.error('Error updating banner:', error);
         if (error.code === '23514') {
           throw new Error('Ordem deve ser um número entre 1 e 999');
+        }
+        if (error.code === '23505') {
+          throw new Error('Já existe outro banner utilizando este número de ordem nesta mesma seção.');
         }
         throw error;
       }
