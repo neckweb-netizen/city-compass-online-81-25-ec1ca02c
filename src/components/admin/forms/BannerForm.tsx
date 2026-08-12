@@ -122,11 +122,10 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
 
     try {
       setUploading(true);
-      // Envia para o Cloudflare R2 na pasta 'banners'
       const url = await uploadParaR2(file, 'banners');
       setValue('imagem_url', url);
       trigger('imagem_url');
-      toast({ title: 'Mídia enviada com sucesso para o R2!' });
+      toast({ title: 'Mídia enviada para o R2 com sucesso!' });
     } catch (error: any) {
       toast({
         title: 'Erro no envio da mídia',
@@ -143,20 +142,8 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
     trigger('imagem_url');
   };
 
-  const handleSecaoChange = (value: string) => {
-    setValue('secao', value as any);
-    trigger(['secao', 'tipo_midia']);
-  };
-
-  const handleTipoMidiaChange = (value: string) => {
-    setValue('tipo_midia', value as any);
-    trigger(['tipo_midia', 'imagem_url', 'codigo_html']);
-  };
-
   const handleFormSubmit = (data: BannerFormData) => {
-    if (!data.titulo.trim()) {
-      return;
-    }
+    if (!data.titulo.trim()) return;
 
     const ordem = Math.max(1, Math.min(999, Math.floor(Number(data.ordem) || 1)));
 
@@ -192,7 +179,7 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
 
           <div>
             <Label htmlFor="secao">Seção *</Label>
-            <Select value={secao} onValueChange={handleSecaoChange}>
+            <Select value={secao} onValueChange={(val) => { setValue('secao', val as any); trigger(['secao']); }}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione a seção" />
               </SelectTrigger>
@@ -211,7 +198,7 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
 
           <div>
             <Label htmlFor="tipo-midia">Tipo de Mídia *</Label>
-            <Select value={tipoMidia} onValueChange={handleTipoMidiaChange}>
+            <Select value={tipoMidia} onValueChange={(val) => { setValue('tipo_midia', val as any); trigger(['tipo_midia']); }}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione o tipo" />
               </SelectTrigger>
@@ -226,7 +213,6 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
             )}
           </div>
 
-          {/* RENDERING DINÂMICO CONFORME O TIPO SELECIONADO */}
           {tipoMidia === 'imagem' && (
             <div>
               <Label>Imagem do Banner * (Cloudflare R2)</Label>
@@ -253,7 +239,6 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
                         <>
                           <Upload className="w-8 h-8 mb-2 text-muted-foreground" />
                           <p className="text-sm text-muted-foreground">Clique para enviar a imagem do banner</p>
-                          <p className="text-xs text-muted-foreground">JPG, PNG, GIF ou WebP via Cloudflare R2</p>
                         </>
                       )}
                     </div>
@@ -270,9 +255,6 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
               {errors.imagem_url && (
                 <p className="text-sm text-destructive mt-1">{errors.imagem_url.message}</p>
               )}
-              <p className="text-xs text-muted-foreground mt-1">
-                Formatos aceitos: JPG, PNG, GIF, WebP • Tamanho recomendado: 1200x400px
-              </p>
             </div>
           )}
 
@@ -286,12 +268,12 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
                     setValue('imagem_url', e.target.value);
                     trigger('imagem_url');
                   }}
-                  placeholder="https://youtube.com/watch?v=... ou insira o link direto"
+                  placeholder="https://youtube.com/watch?v=... ou link direto"
                   type="url"
                 />
                 
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">ou faça upload do vídeo direto no R2:</span>
+                  <span className="text-xs text-muted-foreground">ou faça upload direto no R2:</span>
                   <label className="cursor-pointer inline-flex items-center gap-1 text-xs bg-secondary hover:bg-secondary/80 px-3 py-1.5 rounded-md font-medium">
                     {uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
                     Upload Vídeo
@@ -308,9 +290,6 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
               {errors.imagem_url && (
                 <p className="text-sm text-destructive mt-1">{errors.imagem_url.message}</p>
               )}
-              <p className="text-xs text-muted-foreground mt-1">
-                Suporta URLs do YouTube/Vimeo ou envio direto de arquivos .mp4
-              </p>
             </div>
           )}
 
@@ -320,15 +299,12 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
               <Textarea
                 id="codigo_html"
                 {...register('codigo_html')}
-                placeholder={`<script async src="https://pagead2.googlesyndication.com/..."></script>\n<ins class="adsbygoogle" ...></ins>`}
+                placeholder={`<script async src="..."></script>`}
                 className="mt-2 font-mono text-xs min-h-[120px]"
               />
               {errors.codigo_html && (
                 <p className="text-sm text-destructive mt-1">{errors.codigo_html.message}</p>
               )}
-              <p className="text-xs text-muted-foreground mt-1">
-                Cole aqui o bloco de código gerado pelo Google AdSense ou qualquer HTML/Script de anúncio.
-              </p>
             </div>
           )}
 
@@ -341,12 +317,6 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
                 placeholder="https://exemplo.com"
                 type="url"
               />
-              {errors.link_url && (
-                <p className="text-sm text-destructive mt-1">{errors.link_url.message}</p>
-              )}
-              <p className="text-xs text-muted-foreground mt-1">
-                Deixe em branco se o banner não deve redirecionar para nenhum link
-              </p>
             </div>
           )}
 
@@ -359,12 +329,6 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
               max="999"
               {...register('ordem', { valueAsNumber: true })}
             />
-            {errors.ordem && (
-              <p className="text-sm text-destructive mt-1">{errors.ordem.message}</p>
-            )}
-            <p className="text-xs text-muted-foreground mt-1">
-              Ordem de exibição do banner (1 = primeiro)
-            </p>
           </div>
 
           <div className="flex items-center space-x-2">
