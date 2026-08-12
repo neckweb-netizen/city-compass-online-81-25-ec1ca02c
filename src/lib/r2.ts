@@ -5,21 +5,19 @@ import imageCompression from 'browser-image-compression';
  * Reduz e comprime imagens no navegador antes do upload
  */
 async function otimizarImagem(file: File): Promise<File> {
-  // Se não for imagem (ex: vídeo), retorna o arquivo original
   if (!file.type.startsWith('image/')) {
     return file;
   }
 
   const options = {
-    maxSizeMB: 2, // Limite máximo de 2MB após compressão
-    maxWidthOrHeight: 1920, // Redimensiona para resolução Full HD
+    maxSizeMB: 2,
+    maxWidthOrHeight: 1920,
     useWebWorker: true,
-    fileType: 'image/webp', // Converte para o formato leve WebP
+    fileType: 'image/webp',
   };
 
   try {
     const compressedBlob = await imageCompression(file, options);
-    // Retorna o arquivo modificado preservando o nome original
     return new File([compressedBlob], file.name.replace(/\.[^/.]+$/, '') + '.webp', {
       type: 'image/webp',
     });
@@ -34,21 +32,29 @@ async function otimizarImagem(file: File): Promise<File> {
  */
 export async function uploadParaR2(file: File, subpasta: string = 'imagens/geral'): Promise<string> {
   try {
-    // 1. Otimiza a imagem antes de fazer a requisição
+    // 1. Otimiza a imagem antes do envio
     const arquivoPronto = await otimizarImagem(file);
 
-    // 2. Monta o FormData com o arquivo otimizado
+    // 2. Obtém a URL do Supabase garantindo fallback caso a variável VITE não esteja no bundle
+    const supabaseUrl = 
+      import.meta.env.VITE_SUPABASE_URL || 
+      (supabase as any).supabaseUrl || 
+      'https://uyleozhwzngnvyddfvni.supabase.co';
+
+    // 3. Monta o FormData
     const formData = new FormData();
     formData.append('file', arquivoPronto);
     formData.append('folder', subpasta);
 
-    // 3. Pega o token de autenticação
+    // 4. Pega a sessão/token de autenticação
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY;
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 
-    // 4. Dispara a requisição HTTP para a Edge Function
-    const response = await fetch(`${supabaseUrl}/functions/v1/upload-r2`, {
+    // 5. Dispara a requisição para o endpoint correto da Edge Function no Supabase
+    const endpoint = `${supabaseUrl.replace(/\/$/, '')}/functions/v1/upload-r2`;
+    console.log('📤 Enviando arquivo para Edge Function:', endpoint);
+
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
