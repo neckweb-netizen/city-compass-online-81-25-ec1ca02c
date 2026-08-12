@@ -1,9 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import imageCompression from 'browser-image-compression';
 
-/**
- * Reduz e comprime imagens no navegador antes do upload
- */
 async function otimizarImagem(file: File): Promise<File> {
   if (!file.type.startsWith('image/')) {
     return file;
@@ -22,37 +19,35 @@ async function otimizarImagem(file: File): Promise<File> {
       type: 'image/webp',
     });
   } catch (error) {
-    console.warn('Não foi possível comprimir a imagem, enviando original:', error);
+    console.warn('[FRONTEND R2] Erro na compressão, enviando arquivo original:', error);
     return file;
   }
 }
 
-/**
- * Função Universal para envio de mídia ao Cloudflare R2 via Edge Function
- */
 export async function uploadParaR2(file: File, subpasta: string = 'imagens/geral'): Promise<string> {
+  console.log('[FRONTEND R2] Iniciando processo de upload...');
   try {
-    // 1. Otimiza a imagem antes do envio
     const arquivoPronto = await otimizarImagem(file);
+    console.log('[FRONTEND R2] Arquivo preparado:', {
+      nome: arquivoPronto.name,
+      tamanhoKB: (arquivoPronto.size / 1024).toFixed(2),
+      tipo: arquivoPronto.type,
+    });
 
-    // 2. Obtém a URL do Supabase garantindo fallback caso a variável VITE não esteja no bundle
     const supabaseUrl = 
       import.meta.env.VITE_SUPABASE_URL || 
       (supabase as any).supabaseUrl || 
       'https://uyleozhwzngnvyddfvni.supabase.co';
 
-    // 3. Monta o FormData
     const formData = new FormData();
     formData.append('file', arquivoPronto);
     formData.append('folder', subpasta);
 
-    // 4. Pega a sessão/token de autenticação
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-    // 5. Dispara a requisição para o endpoint correto da Edge Function no Supabase
     const endpoint = `${supabaseUrl.replace(/\/$/, '')}/functions/v1/upload-r2`;
-    console.log('📤 Enviando arquivo para Edge Function:', endpoint);
+    console.log('[FRONTEND R2] Disparando POST para:', endpoint);
 
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -62,23 +57,30 @@ export async function uploadParaR2(file: File, subpasta: string = 'imagens/geral
       body: formData,
     });
 
-    const responseText = await response.text();
-    let data;
+    console.log('[FRONTEND R2] Resposta recebida:', {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok,
+    });
 
+    const responseText = await response.text();
+    console.log('[FRONTEND R2] Corpo da resposta:', responseText);
+
+    let data;
     try {
       data = JSON.parse(responseText);
     } catch {
-      console.error('Resposta não-JSON da Edge Function:', responseText);
-      throw new Error(`A Edge Function retornou status ${response.status}: ${responseText || 'Sem resposta de texto'}`);
+      throw new Error(`Servidor respondeu com status ${response.status} em formato não-JSON: ${responseText || '(vazio)'}`);
     }
 
     if (!response.ok) {
-      throw new Error(data.error || data.message || 'Erro ao realizar upload no Cloudflare R2');
+      throw new Error(data.error || data.message || `Erro no servidor (Status ${response.status})`);
     }
 
+    console.log('[FRONTEND R2] Sucesso! URL devolvida:', data.url);
     return data.url;
   } catch (error: any) {
-    console.error('Erro no uploadParaR2:', error);
-    throw new Error(error.message || 'Falha ao enviar arquivo.');
+    console.error('[FRONTEND R2] Falha no uploadParaR2:', error);
+    throw new Error(error.message || 'Falha de comunicação ao enviar o arquivo.');
   }
 }
