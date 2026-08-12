@@ -6,7 +6,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Plus, Edit, Trash2, ExternalLink, Image as ImageIcon, AlertCircle, Copy, Code, Video } from 'lucide-react';
 import { useAdminBanners, Banner } from '@/hooks/useAdminBanners';
 import { BannerForm } from '../forms/BannerForm';
-import { DuplicateBannerModal } from '../forms/DuplicateBannerModal';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,6 +17,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const secaoOptions = [
@@ -38,11 +44,10 @@ export const BannersSection = () => {
   const [editingBanner, setEditingBanner] = useState<Banner | undefined>();
   const [duplicatingBanner, setDuplicatingBanner] = useState<Banner | null>(null);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [targetSecao, setTargetSecao] = useState<string>('home');
 
   const handleSubmit = async (data: any) => {
     try {
-      console.log('Submitting banner data:', data);
-      
       if (editingBanner) {
         await updateBanner.mutateAsync({ ...data, id: editingBanner.id });
       } else {
@@ -50,45 +55,42 @@ export const BannersSection = () => {
       }
       setShowForm(false);
       setEditingBanner(undefined);
-    } catch (error) {
-      console.error('Erro ao salvar banner:', error);
+    } catch (err) {
+      console.error('Erro ao salvar banner:', err);
     }
   };
 
   const handleEdit = (banner: Banner) => {
-    console.log('Editing banner:', banner);
     setEditingBanner(banner);
     setShowForm(true);
   };
 
   const handleDelete = async (id: string) => {
     try {
-      console.log('Deleting banner:', id);
       await deleteBanner.mutateAsync(id);
-    } catch (error) {
-      console.error('Erro ao deletar banner:', error);
+    } catch (err) {
+      console.error('Erro ao deletar banner:', err);
     }
   };
 
   const handleDuplicate = (banner: Banner) => {
-    console.log('Opening duplicate modal for banner:', banner);
     setDuplicatingBanner(banner);
+    setTargetSecao(banner.secao);
     setShowDuplicateModal(true);
   };
 
-  const handleDuplicateConfirm = async (bannerId: string, newSecao: Banner['secao']) => {
+  const handleDuplicateConfirm = async () => {
+    if (!duplicatingBanner) return;
     try {
-      console.log('Duplicating banner:', bannerId, 'to section:', newSecao);
-      await duplicateBanner.mutateAsync({ id: bannerId, newSecao });
+      await duplicateBanner.mutateAsync({ id: duplicatingBanner.id, newSecao: targetSecao as any });
       setShowDuplicateModal(false);
       setDuplicatingBanner(null);
-    } catch (error) {
-      console.error('Erro ao duplicar banner:', error);
+    } catch (err) {
+      console.error('Erro ao duplicar banner:', err);
     }
   };
 
   const handleCancel = () => {
-    console.log('Form cancelled');
     setShowForm(false);
     setEditingBanner(undefined);
   };
@@ -328,16 +330,39 @@ export const BannersSection = () => {
         </div>
       )}
 
-      <DuplicateBannerModal
-        banner={duplicatingBanner}
-        isOpen={showDuplicateModal}
-        onClose={() => {
-          setShowDuplicateModal(false);
-          setDuplicatingBanner(null);
-        }}
-        onDuplicate={handleDuplicateConfirm}
-        isLoading={duplicateBanner.isPending}
-      />
+      {/* MODAL DE DUPLICAÇÃO INLINE (LIVRE DE ERROS DE IMPORT) */}
+      <Dialog open={showDuplicateModal} onOpenChange={setShowDuplicateModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Duplicar Banner</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">
+              Selecione para qual seção deseja duplicar o banner <strong>"{duplicatingBanner?.titulo}"</strong>:
+            </p>
+            <Select value={targetSecao} onValueChange={setTargetSecao}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione a seção de destino" />
+              </SelectTrigger>
+              <SelectContent>
+                {secaoOptions.filter(opt => opt.value !== 'all').map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDuplicateModal(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleDuplicateConfirm} disabled={duplicateBanner.isPending}>
+              {duplicateBanner.isPending ? 'Duplicando...' : 'Confirmar Duplicação'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
