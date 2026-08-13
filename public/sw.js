@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sajtem-v3';
+const CACHE_NAME = 'sajtem-v4';
 
 // Instalação do Service Worker
 self.addEventListener('install', (event) => {
@@ -25,8 +25,11 @@ self.addEventListener('activate', (event) => {
 
 // Interceptação de requisições com busca direta na rede primeiro (Network First)
 self.addEventListener('fetch', (event) => {
+  const requestUrl = new URL(event.request.url);
+
   // Ignora requisições do Supabase Realtime, WebSockets e APIs de terceiros
   if (
+    requestUrl.origin !== self.location.origin ||
     event.request.url.includes('supabase.co') ||
     event.request.url.includes('websocket') ||
     event.request.method !== 'GET'

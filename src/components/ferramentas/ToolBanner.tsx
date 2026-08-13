@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { BannerCodeRender } from '@/components/home/BannerCodeRender';
 import { cn } from '@/lib/utils';
+import type { SyntheticEvent } from 'react';
 
 interface ToolBannerProps {
   secao: string;
@@ -18,6 +19,19 @@ interface ToolBannerItem {
   tipo_midia?: 'imagem' | 'video' | 'codigo' | null;
   codigo_html?: string | null;
 }
+
+const retryImageOnce = (event: SyntheticEvent<HTMLImageElement>, originalUrl: string) => {
+  const image = event.currentTarget;
+
+  if (image.dataset.retryAttempted === 'true') {
+    image.hidden = true;
+    return;
+  }
+
+  image.dataset.retryAttempted = 'true';
+  const separator = originalUrl.includes('?') ? '&' : '?';
+  image.src = `${originalUrl}${separator}retry=${Date.now()}`;
+};
 
 export const ToolBanner = ({ secao, className }: ToolBannerProps) => {
   const { data: banners = [] } = useQuery({
@@ -65,6 +79,7 @@ export const ToolBanner = ({ secao, className }: ToolBannerProps) => {
             alt={banner.titulo || 'Banner de anúncio'}
             loading="lazy"
             decoding="async"
+            onError={(event) => retryImageOnce(event, mediaUrl)}
             className="w-full h-auto max-h-[160px] sm:max-h-[220px] object-cover"
           />
         ) : null;
