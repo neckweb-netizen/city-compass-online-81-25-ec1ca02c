@@ -89,7 +89,7 @@ export const EventosSlider = () => {
   }
 
   return (
-    <NeonCard className="mx-2 sm:mx-4 p-4">
+    <NeonCard className="mx-2 sm:mx-4 rounded-3xl border border-border/60 bg-card p-4 shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
           Próximos Eventos

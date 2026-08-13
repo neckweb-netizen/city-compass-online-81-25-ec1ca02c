@@ -63,6 +63,7 @@ export const useEmpresasDestaque = (cidadeId: string) => {
       if (error) throw error;
       return data;
     },
+    enabled: !!cidadeId,
   });
 };
 

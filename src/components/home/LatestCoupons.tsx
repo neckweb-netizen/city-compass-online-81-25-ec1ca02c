@@ -158,7 +158,7 @@ export const LatestCoupons = ({ cidadeId }: LatestCouponsProps) => {
 
   return (
     <section className="w-full max-w-7xl mx-auto px-2 sm:px-4 py-4">
-      <NeonCard className="overflow-hidden">
+      <NeonCard className="overflow-hidden rounded-3xl border border-border/60 bg-card shadow-sm">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">

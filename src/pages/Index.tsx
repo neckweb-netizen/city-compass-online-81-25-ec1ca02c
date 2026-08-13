@@ -292,7 +292,7 @@ const Index = () => {
   // COMPONENTES DAS SEÇÕES
   const ComponenteFerramentas = (
     <section key="secao-ferramentas" className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 my-6">
-      <div className="bg-background border border-border/60 rounded-3xl p-6 sm:p-8 shadow-sm">
+      <div className="bg-card border border-border/60 rounded-3xl p-6 sm:p-8 shadow-sm">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border/40 pb-4 mb-6">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
@@ -320,7 +320,7 @@ const Index = () => {
               <Card 
                 key={item.id}
                 onClick={() => navigate(item.rota)}
-                className="border border-border/60 hover:border-primary/50 shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer group rounded-2xl overflow-hidden bg-card flex flex-col justify-between"
+                className="border border-border/60 hover:border-primary/50 shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer group rounded-2xl overflow-hidden bg-muted/40 flex flex-col justify-between"
               >
                 <CardContent className="p-5 space-y-4 flex flex-col justify-between h-full">
                   <div className="space-y-3">
@@ -358,7 +358,7 @@ const Index = () => {
 
   const ComponenteAchados = (
     <section key="secao-achados" className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 my-6">
-      <div className="bg-background border border-border/60 rounded-3xl p-6 sm:p-8 shadow-sm">                
+      <div className="bg-card border border-border/60 rounded-3xl p-6 sm:p-8 shadow-sm">
         <div className="flex items-center justify-between border-b border-border/40 pb-4 mb-6">
           <div>
             <h2 className="text-lg sm:text-xl font-bold text-foreground flex items-center gap-2">
@@ -390,7 +390,7 @@ const Index = () => {
               <Link
                 key={item.id}
                 to="/achados-e-perdidos"
-                className="bg-card text-card-foreground border border-border/40 rounded-2xl p-4 flex flex-col justify-between gap-4 shadow-sm hover:border-border/80 hover:shadow-md transition-all duration-200 group"
+                className="bg-muted/40 text-card-foreground border border-border/40 rounded-2xl p-4 flex flex-col justify-between gap-4 shadow-sm hover:border-border/80 hover:shadow-md transition-all duration-200 group"
               >
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-2.5">

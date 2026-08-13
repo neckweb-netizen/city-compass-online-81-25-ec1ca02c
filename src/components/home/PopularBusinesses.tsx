@@ -39,7 +39,7 @@ export const PopularBusinesses = () => {
   }
 
   return (
-    <NeonCard className="mx-2 sm:mx-4 p-4 sm:p-6">
+    <NeonCard className="mx-2 sm:mx-4 rounded-3xl border border-border/60 bg-card p-4 shadow-sm sm:p-6">
       <div className="flex items-center justify-between mb-4 sm:mb-6">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold">Locais em Destaque</h2>

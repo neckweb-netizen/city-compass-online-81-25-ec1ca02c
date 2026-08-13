@@ -46,7 +46,7 @@ export const VozDoPovoSection = () => {
           <div className="grid gap-4 md:grid-cols-3">
             {problemasRecentes.map((problema) => (
               <Link key={problema.id} to={`/reclamacoes/${problema.id}`}>
-                <Card className="h-full rounded-2xl border-border/60 transition-all hover:border-primary/40 hover:shadow-md">
+                <Card className="h-full rounded-2xl border-border/60 bg-muted/40 transition-all hover:border-primary/40 hover:shadow-md">
                   <CardContent className="flex h-full flex-col p-4">
                     <div className="mb-2 flex items-center justify-between gap-2">
                       <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-primary">

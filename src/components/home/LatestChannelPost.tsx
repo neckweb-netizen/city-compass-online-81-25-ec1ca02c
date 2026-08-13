@@ -61,7 +61,7 @@ export const LatestChannelPost = () => {
 
   return (
     <section className="w-full max-w-4xl mx-auto px-4 py-4">
-      <NeonCard>
+      <NeonCard className="rounded-3xl border border-border/60 bg-card shadow-sm">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">

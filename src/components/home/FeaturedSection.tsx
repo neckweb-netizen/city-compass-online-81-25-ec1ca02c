@@ -17,7 +17,7 @@ export const FeaturedSection = ({ cidadeId }: FeaturedSectionProps) => {
 
   if (isLoading) {
     return (
-      <NeonCard className="mx-2 sm:mx-4 lg:mx-6 p-4">
+      <NeonCard className="mx-2 sm:mx-4 lg:mx-6 rounded-3xl border border-border/60 bg-card p-4 shadow-sm">
         <div className="flex items-center justify-between mb-3 sm:mb-4">
           <div className="flex items-center space-x-1 sm:space-x-2">
             <h2 className="text-lg sm:text-xl font-bold">⭐ Em Destaque</h2>
@@ -54,7 +54,7 @@ export const FeaturedSection = ({ cidadeId }: FeaturedSectionProps) => {
   };
 
   return (
-    <NeonCard className="mx-2 sm:mx-4 lg:mx-6 p-4">
+    <NeonCard className="mx-2 sm:mx-4 lg:mx-6 rounded-3xl border border-border/60 bg-card p-4 shadow-sm">
       <div className="flex items-center justify-between mb-3 sm:mb-4">
         <div className="flex items-center space-x-1 sm:space-x-2">
           <h2 className="text-lg sm:text-xl font-bold">⭐ Em Destaque</h2>
@@ -74,7 +74,7 @@ export const FeaturedSection = ({ cidadeId }: FeaturedSectionProps) => {
         {empresasDestaque.slice(0, 6).map((empresa) => (
           <NeonCard 
             key={empresa.id} 
-            className="min-w-64 sm:min-w-72 lg:min-w-80 bg-gradient-to-br from-card to-muted/50 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:scale-[1.02]"
+            className="min-w-64 sm:min-w-72 lg:min-w-80 rounded-2xl bg-muted/40 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:scale-[1.02]"
             onClick={() => handleEmpresaClick(empresa.id)}
           >
             <CardContent className="p-0">

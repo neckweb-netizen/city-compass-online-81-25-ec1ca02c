@@ -105,7 +105,7 @@ export const StoriesSection = () => {
 
   return (
     <>
-      <NeonCard className="mx-2 p-4">
+      <NeonCard className="mx-2 rounded-3xl border border-border/60 bg-card p-4 shadow-sm">
         <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
           {groupedStories.map((groupedStory) => (
             <div

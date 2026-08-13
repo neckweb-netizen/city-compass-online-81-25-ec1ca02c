@@ -37,7 +37,7 @@ export const FeaturedProducts = () => {
 
   if (isLoading) {
     return (
-      <NeonCard className="p-4">
+      <NeonCard className="rounded-3xl border border-border/60 bg-card p-4 shadow-sm">
         <div className="flex items-center space-x-2 mb-4">
           <ShoppingBag className="h-5 w-5 text-primary" />
           <h2 className="text-xl font-bold">Produtos em Destaque</h2>
@@ -64,7 +64,7 @@ export const FeaturedProducts = () => {
 
 
   return (
-    <NeonCard className="p-4">
+    <NeonCard className="rounded-3xl border border-border/60 bg-card p-4 shadow-sm">
       <div className="flex items-center space-x-2 mb-4">
         <ShoppingBag className="h-5 w-5 text-primary" />
         <h2 className="text-xl font-bold">Produtos em Destaque</h2>
@@ -72,7 +72,7 @@ export const FeaturedProducts = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {currentProducts.map((produto) => (
-          <NeonCard key={produto.id} className="hover-scale overflow-hidden group border-0 shadow-sm">
+          <NeonCard key={produto.id} className="hover-scale overflow-hidden group rounded-2xl border border-border/40 bg-muted/40 shadow-sm">
             <div className="aspect-[4/3] relative overflow-hidden">
               {produto.imagem_principal_url ? (
                 <img

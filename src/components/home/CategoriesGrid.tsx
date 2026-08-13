@@ -60,7 +60,7 @@ export const CategoriesGrid = () => {
 
   if (isLoading) {
     return (
-      <NeonCard className="py-6 sm:py-8 lg:py-12 mx-2 sm:mx-4">
+      <NeonCard className="py-6 sm:py-8 lg:py-12 mx-2 sm:mx-4 rounded-3xl border border-border/60 bg-card shadow-sm">
         <div className="text-center mb-6 sm:mb-8">
           <h2 className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-4">Categorias</h2>
           <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto px-4">
@@ -89,7 +89,7 @@ export const CategoriesGrid = () => {
   }
 
   return (
-    <NeonCard className="py-6 sm:py-8 lg:py-12 mx-2 sm:mx-4">
+    <NeonCard className="py-6 sm:py-8 lg:py-12 mx-2 sm:mx-4 rounded-3xl border border-border/60 bg-card shadow-sm">
       <div className="text-center mb-6 sm:mb-8">
         <h2 className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-4">Categorias</h2>
         <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto px-4">
@@ -125,7 +125,7 @@ export const CategoriesGrid = () => {
             {categorias.map((categoria) => (
               <Card 
                 key={categoria.id}
-                className="min-w-20 sm:min-w-24 flex-shrink-0 hover:shadow-lg transition-all duration-300 cursor-pointer border-0 bg-gradient-to-br from-primary/5 to-primary/10 hover:scale-105"
+                className="min-w-20 sm:min-w-24 flex-shrink-0 hover:shadow-lg transition-all duration-300 cursor-pointer border border-border/40 bg-muted/40 hover:scale-105"
                 onClick={() => handleCategoriaClick(categoria.slug)}
               >
                 <CardContent className="p-2 sm:p-3 text-center space-y-1 sm:space-y-2">
