@@ -58,26 +58,18 @@ export const EnqueteSection = () => {
   };
 
   return (
-    <Card className="enquete-gradient-subtle enquete-border-glow relative overflow-hidden">
-      {/* Efeito de vidro no fundo */}
-      <div className="absolute inset-0 enquete-glass" />
-      
-      {/* Padrão decorativo */}
-      <div className="absolute top-0 right-0 w-32 h-32 opacity-10">
-        <div className="absolute inset-0 bg-gradient-to-br from-enquete-text/20 to-transparent rounded-full transform rotate-45" />
-      </div>
-      
+    <Card className="relative overflow-hidden rounded-3xl border border-border/60 bg-card text-card-foreground shadow-sm">
       <CardHeader className="pb-4 relative z-10">
         <div className="flex items-center space-x-2">
-          <Vote className="h-6 w-6 text-enquete-text drop-shadow-sm" />
-          <CardTitle className="text-xl font-bold text-enquete-text drop-shadow-sm">
+          <Vote className="h-6 w-6 text-primary" />
+          <CardTitle className="text-xl font-bold text-foreground">
             {enqueteAtiva.titulo}
           </CardTitle>
         </div>
         {enqueteAtiva.descricao && (
-          <p className="text-sm text-enquete-muted font-medium">{enqueteAtiva.descricao}</p>
+          <p className="text-sm text-muted-foreground font-medium">{enqueteAtiva.descricao}</p>
         )}
-        <div className="flex items-center space-x-4 text-sm text-enquete-muted">
+        <div className="flex items-center space-x-4 text-sm text-muted-foreground">
           <div className="flex items-center space-x-1">
             <Users className="h-4 w-4" />
             <span className="font-medium">{enqueteAtiva.total_votos} votos</span>
@@ -101,7 +93,7 @@ export const EnqueteSection = () => {
                 {enqueteAtiva.opcoes.map((opcao, index) => (
                   <div 
                     key={index} 
-                    className="flex items-center space-x-3 p-3 rounded-lg bg-white/10 hover:bg-white/20 transition-all duration-200 backdrop-blur-sm"
+                    className="flex items-center space-x-3 rounded-xl border border-border/40 bg-muted/40 p-3 transition-colors hover:bg-muted/60"
                   >
                     <Checkbox
                       id={`opcao-${index}`}
@@ -109,11 +101,11 @@ export const EnqueteSection = () => {
                       onCheckedChange={(checked) => 
                         handleOptionChange(index, checked as boolean)
                       }
-                      className="border-enquete-text data-[state=checked]:bg-enquete-text data-[state=checked]:text-enquete-primary"
+                      className="border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
                     />
                     <Label 
                       htmlFor={`opcao-${index}`}
-                      className="flex-1 cursor-pointer text-enquete-text font-medium"
+                      className="flex-1 cursor-pointer text-foreground font-medium"
                     >
                       {opcao}
                     </Label>
@@ -130,16 +122,16 @@ export const EnqueteSection = () => {
                 {enqueteAtiva.opcoes.map((opcao, index) => (
                   <div 
                     key={index} 
-                    className="flex items-center space-x-3 p-3 rounded-lg bg-white/10 hover:bg-white/20 transition-all duration-200 backdrop-blur-sm"
+                    className="flex items-center space-x-3 rounded-xl border border-border/40 bg-muted/40 p-3 transition-colors hover:bg-muted/60"
                   >
                     <RadioGroupItem 
                       value={index.toString()} 
                       id={`opcao-${index}`}
-                      className="border-enquete-text text-enquete-text"
+                      className="border-primary text-primary"
                     />
                     <Label 
                       htmlFor={`opcao-${index}`}
-                      className="flex-1 cursor-pointer text-enquete-text font-medium"
+                      className="flex-1 cursor-pointer text-foreground font-medium"
                     >
                       {opcao}
                     </Label>
@@ -151,7 +143,7 @@ export const EnqueteSection = () => {
             <Button 
               onClick={handleVote}
               disabled={selectedOpcoes.length === 0 || votarEnquete.isPending}
-              className="w-full bg-white text-enquete-primary hover:bg-white/90 font-bold py-3 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02]"
+              className="w-full font-bold py-3 shadow-sm"
             >
               {votarEnquete.isPending ? 'Votando...' : 'Votar Agora'}
             </Button>
@@ -159,11 +151,11 @@ export const EnqueteSection = () => {
         ) : isAdmin ? (
           // Resultados da enquete (apenas para admins)
           <div className="space-y-4">
-            <div className="text-center p-4 rounded-lg bg-white/20 backdrop-blur-sm">
-              <p className="text-enquete-text font-bold text-lg mb-1">
+            <div className="text-center p-4 rounded-xl bg-muted/40">
+              <p className="text-foreground font-bold text-lg mb-1">
                 ✨ Obrigado pelo seu voto!
               </p>
-              <p className="text-enquete-muted text-sm">
+              <p className="text-muted-foreground text-sm">
                 Veja os resultados em tempo real:
               </p>
             </div>
@@ -178,30 +170,30 @@ export const EnqueteSection = () => {
                   key={index} 
                   className={`space-y-2 p-3 rounded-lg transition-all duration-200 ${
                     isSelected 
-                      ? 'bg-white/30 ring-2 ring-white/50' 
-                      : 'bg-white/10'
+                      ? 'bg-primary/10 ring-2 ring-primary/30'
+                      : 'bg-muted/40'
                   }`}
                 >
                   <div className="flex justify-between items-center text-sm">
                     <span className={`font-medium ${
                       isSelected 
-                        ? 'text-enquete-text font-bold' 
-                        : 'text-enquete-text'
+                        ? 'text-foreground font-bold'
+                        : 'text-foreground'
                     }`}>
                       {opcao}
                       {isSelected && ' ✨'}
                     </span>
-                    <span className="text-enquete-muted font-bold">
+                    <span className="text-muted-foreground font-bold">
                       {votes} votos ({percentage.toFixed(1)}%)
                     </span>
                   </div>
                   <div className="relative">
                     <Progress 
                       value={percentage} 
-                      className="h-3 bg-white/20"
+                      className="h-3 bg-muted"
                     />
                     <div 
-                      className="absolute top-0 left-0 h-3 bg-gradient-to-r from-white to-white/80 rounded-full transition-all duration-500 ease-out"
+                      className="absolute top-0 left-0 h-3 bg-primary rounded-full transition-all duration-500 ease-out"
                       style={{ width: `${percentage}%` }}
                     />
                   </div>
@@ -211,11 +203,11 @@ export const EnqueteSection = () => {
           </div>
         ) : (
           // Mensagem de agradecimento sem resultados
-          <div className="text-center p-8 rounded-lg bg-white/20 backdrop-blur-sm">
-            <p className="text-enquete-text font-bold text-lg mb-2">
+          <div className="text-center p-8 rounded-xl bg-muted/40">
+            <p className="text-foreground font-bold text-lg mb-2">
               ✨ Obrigado pelo seu voto!
             </p>
-            <p className="text-enquete-muted text-sm">
+            <p className="text-muted-foreground text-sm">
               Seu voto foi registrado com sucesso. Os resultados estão sendo analisados pela administração.
             </p>
           </div>
