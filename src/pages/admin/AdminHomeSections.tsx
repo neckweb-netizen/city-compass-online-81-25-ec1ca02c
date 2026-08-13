@@ -21,7 +21,8 @@ import {
   ChevronUp,
   ChevronDown,
   Vote,
-  Wrench
+  Wrench,
+  Megaphone
 } from "lucide-react";
 import { useHomeSectionsOrder } from "@/hooks/useHomeSectionsOrder";
 
@@ -44,7 +45,8 @@ const sectionIcons: SectionIconMap = {
   stats_section: BarChart3,
   featured_products: Briefcase,
   achados_perdidos: Search,
-  ferramentas: Wrench
+  ferramentas: Wrench,
+  voz_do_povo: Megaphone
 };
 
 export function AdminHomeSections() {

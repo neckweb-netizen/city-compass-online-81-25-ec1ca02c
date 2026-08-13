@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useAuth } from "@/hooks/useAuth";
 import { StoriesSection } from './StoriesSection';
 import { SearchBar } from './SearchBar';
@@ -13,6 +14,7 @@ import { PopularBusinesses } from './PopularBusinesses';
 import { FeaturedProducts } from './FeaturedProducts';
 import { AondeIrButton } from './AondeIrButton';
 import { EnqueteSection } from './EnqueteSection';
+import { VozDoPovoSection } from './VozDoPovoSection';
 import { useCidadePadrao } from '@/hooks/useCidadePadrao';
 import { useHomeSectionsOrder } from "@/hooks/useHomeSectionsOrder";
 
@@ -31,11 +33,14 @@ const sectionComponents = {
   eventos_slider: (cidadeId?: string) => <EventosSlider />,
   stats_section: (cidadeId?: string) => <StatsSection />,
   featured_products: (cidadeId?: string) => <FeaturedProducts />,
-  // Mapeamos a chave da seção adicionada no banco de dados para evitar o descarte de renderização
-  achados_perdidos: (cidadeId?: string) => null 
+  voz_do_povo: (cidadeId?: string) => <VozDoPovoSection />,
 };
 
-export const HomeContent = () => {
+interface HomeContentProps {
+  extraSections?: Record<string, ReactNode>;
+}
+
+export const HomeContent = ({ extraSections = {} }: HomeContentProps) => {
   const { user } = useAuth();
   const { data: cidadePadrao } = useCidadePadrao();
   const { sections, isLoading } = useHomeSectionsOrder();
@@ -80,6 +85,10 @@ export const HomeContent = () => {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-4 space-y-6 pb-20">
         {activeSections.map((section) => {
+          if (Object.prototype.hasOwnProperty.call(extraSections, section.section_name)) {
+            return <div key={section.id}>{extraSections[section.section_name]}</div>;
+          }
+
           const Component = sectionComponents[section.section_name as keyof typeof sectionComponents];
           if (!Component) return null;
           

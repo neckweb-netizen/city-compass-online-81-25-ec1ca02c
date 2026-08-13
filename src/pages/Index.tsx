@@ -8,7 +8,6 @@ import { ProfileContent } from '@/components/profile/ProfileContent';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
-import { useHomeSectionsOrder } from '@/hooks/useHomeSectionsOrder';
 import { 
   Hammer, 
   Clock, 
@@ -44,9 +43,6 @@ const Index = () => {
   const [searchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab') || 'home';
   const [activeTab, setActiveTab] = useState(tabFromUrl);
-
-  // Hook com ordem e visibilidade configuradas no Admin
-  const { sections: homeSections, isLoading: loadingSections } = useHomeSectionsOrder();
 
   // Estados de controle para o Modo Manutenção
   const [isMaintenance, setIsMaintenance] = useState(false);
@@ -184,7 +180,7 @@ const Index = () => {
     setActiveTab(tabFromUrl);
   }, [tabFromUrl]);
 
-  if (loadingConfig || loadingSections) {
+  if (loadingConfig) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0F0A19] text-white">
         <div className="flex flex-col items-center space-y-4">
@@ -438,32 +434,14 @@ const Index = () => {
 
   // RENDERIZAÇÃO ORGANIZADA
   const renderHomeOrganizado = () => {
-    const secaoFerramentas = (homeSections || []).find(s => s.section_name === 'ferramentas');
-    const secaoAchados = (homeSections || []).find(s => s.section_name === 'achados_perdidos');
-
-    const ferramentasAtivas = secaoFerramentas ? secaoFerramentas.ativo : true;
-    const achadosAtivos = secaoAchados ? secaoAchados.ativo : true;
-
-    const ordemFerramentas = secaoFerramentas ? secaoFerramentas.ordem : 99;
-    const ordemAchados = secaoAchados ? secaoAchados.ordem : 100;
-
-    if (ordemFerramentas <= ordemAchados) {
-      return (
-        <div className="space-y-6">
-          <HomeContent />
-          {ferramentasAtivas && ComponenteFerramentas}
-          {achadosAtivos && ComponenteAchados}
-        </div>
-      );
-    } else {
-      return (
-        <div className="space-y-6">
-          <HomeContent />
-          {achadosAtivos && ComponenteAchados}
-          {ferramentasAtivas && ComponenteFerramentas}
-        </div>
-      );
-    }
+    return (
+      <HomeContent
+        extraSections={{
+          ferramentas: ComponenteFerramentas,
+          achados_perdidos: ComponenteAchados,
+        }}
+      />
+    );
   };
 
   const renderContent = () => {
