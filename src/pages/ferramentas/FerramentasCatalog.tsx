@@ -8,6 +8,7 @@ import {
   Search, ShieldCheck, Wrench, Lock 
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { ToolBanner } from '@/components/ferramentas/ToolBanner';
 
 interface Ferramenta {
   id: string;
@@ -97,6 +98,8 @@ export const FerramentasCatalog = () => {
           </div>
         </div>
 
+        <ToolBanner secao="ferramentas" />
+
         {/* GRID DE FERRAMENTAS */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4">
           {ferramentasFiltradas.map((item) => {
@@ -159,4 +162,3 @@ export const FerramentasCatalog = () => {
 };
 
 export default FerramentasCatalog;
-

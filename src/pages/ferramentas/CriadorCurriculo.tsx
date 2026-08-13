@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Download, Printer, Plus, Trash2, User, Briefcase, GraduationCap, Sparkles, Award, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { ToolBanner } from '@/components/ferramentas/ToolBanner';
 
 interface Experiencia {
   id: string;
@@ -183,6 +184,8 @@ export const CriadorCurriculo = () => {
             <Sparkles className="w-3.5 h-3.5" /> Ferramenta Gratuita
           </span>
         </div>
+
+        <ToolBanner secao="criador_curriculo" className="no-print" />
 
         <div className="text-center space-y-2 no-print">
           <h1 className="text-3xl sm:text-4xl font-extrabold text-foreground tracking-tight">

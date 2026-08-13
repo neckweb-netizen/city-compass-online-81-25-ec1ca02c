@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -6,69 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Calculator, Sparkles, Clock, DollarSign, RefreshCw, FileText, Info, Percent } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { SafeHtml } from '@/components/security/SafeHtml';
-
-// COMPONENTE DE BANNER LOCAL
-const ToolBanner = ({ secao }: { secao: string }) => {
-  const [banners, setBanners] = useState<any[]>([]);
-
-  useEffect(() => {
-    const buscarBanners = async () => {
-      try {
-        const { data } = await supabase
-          .from('banners' as any)
-          .select('*')
-          .eq('ativo', true)
-          .in('secao', [secao, 'ferramentas'])
-          .order('ordem', { ascending: true });
-
-        if (data && data.length > 0) {
-          setBanners(data);
-        }
-      } catch (err) {
-        console.error(`Erro ao carregar banners para ${secao}:`, err);
-      }
-    };
-
-    buscarBanners();
-  }, [secao]);
-
-  if (banners.length === 0) return null;
-
-  return (
-    <div className="w-full space-y-3 my-4">
-      {banners.map((b) => {
-        if (b.tipo_midia === 'codigo' && b.codigo_html) {
-          return (
-            <SafeHtml
-              key={b.id} 
-              html={b.codigo_html}
-              className="w-full rounded-2xl overflow-hidden shadow-sm border border-border/60 bg-card p-2 text-center"
-            />
-          );
-        }
-
-        return (
-          <a
-            key={b.id}
-            href={b.link_url || b.link_destino || '#'}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block w-full rounded-2xl overflow-hidden shadow-sm border border-border/60 hover:opacity-95 transition-opacity"
-          >
-            <img
-              src={b.imagem_url || b.imagem}
-              alt={b.titulo || 'Banner de Anúncio'}
-              className="w-full h-auto max-h-[160px] sm:max-h-[220px] object-cover"
-            />
-          </a>
-        );
-      })}
-    </div>
-  );
-};
+import { ToolBanner } from '@/components/ferramentas/ToolBanner';
 
 export const CalculadoraOrcamento = () => {
   const navigate = useNavigate();
