@@ -21,7 +21,7 @@ interface ToolBannerItem {
 
 export const ToolBanner = ({ secao, className }: ToolBannerProps) => {
   const { data: banners = [] } = useQuery({
-    queryKey: ['tool-banners', secao],
+    queryKey: ['banners-publicitarios', secao],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('banners_publicitarios')

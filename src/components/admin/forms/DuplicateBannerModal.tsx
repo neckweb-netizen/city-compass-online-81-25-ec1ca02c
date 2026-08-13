@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Banner } from '@/hooks/useAdminBanners';
+import { BANNER_SECTION_OPTIONS } from '@/lib/bannerSections';
 
 interface DuplicateBannerModalProps {
   banner: Banner | null;
@@ -20,14 +21,6 @@ interface DuplicateBannerModalProps {
   onDuplicate: (bannerId: string, newSecao: Banner['secao']) => void;
   isLoading?: boolean;
 }
-
-const secaoOptions = [
-  { value: 'home', label: 'Página Inicial' },
-  { value: 'locais', label: 'Locais' },
-  { value: 'eventos', label: 'Eventos' },
-  { value: 'categorias', label: 'Categorias' },
-  { value: 'busca', label: 'Busca' },
-];
 
 export const DuplicateBannerModal = ({
   banner,
@@ -50,7 +43,7 @@ export const DuplicateBannerModal = ({
     onClose();
   };
 
-  const availableSections = secaoOptions.filter(option => 
+  const availableSections = BANNER_SECTION_OPTIONS.filter(option =>
     option.value !== banner?.secao
   );
 
@@ -87,7 +80,7 @@ export const DuplicateBannerModal = ({
                 <strong>Banner original:</strong> {banner.titulo}
               </p>
               <p className="text-sm text-muted-foreground">
-                <strong>Seção atual:</strong> {secaoOptions.find(s => s.value === banner.secao)?.label}
+                <strong>Seção atual:</strong> {BANNER_SECTION_OPTIONS.find(s => s.value === banner.secao)?.label}
               </p>
             </div>
           )}

@@ -25,16 +25,11 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { BANNER_SECTION_OPTIONS } from '@/lib/bannerSections';
 
 const secaoOptions = [
   { value: 'all', label: 'Todas as Seções' },
-  { value: 'home', label: 'Página Inicial' },
-  { value: 'locais', label: 'Locais' },
-  { value: 'eventos', label: 'Eventos' },
-  { value: 'categorias', label: 'Categorias' },
-  { value: 'busca', label: 'Busca' },
-  { value: 'canal_video', label: 'Canal Informativo - Vídeos' },
-  { value: 'domino', label: 'Jogo Dominó' },
+  ...BANNER_SECTION_OPTIONS,
 ];
 
 export const BannersSection = () => {

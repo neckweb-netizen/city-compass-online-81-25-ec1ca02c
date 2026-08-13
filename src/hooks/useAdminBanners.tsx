@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import type { BannerSection } from '@/lib/bannerSections';
 
 export interface Banner {
   id: string;
@@ -11,7 +12,7 @@ export interface Banner {
   link_url?: string | null;
   ativo: boolean;
   ordem: number;
-  secao: 'home' | 'locais' | 'eventos' | 'categorias' | 'busca' | 'canal_video' | 'empresas' | 'domino';
+  secao: BannerSection;
   criado_em: string;
   atualizado_em: string;
 }
@@ -95,7 +96,7 @@ export const useAdminBanners = (secao?: string) => {
       }
 
       // Ensure ordem is a valid integer between 1 and 999
-      let ordem = Math.max(1, Math.min(999, Math.floor(Number(banner.ordem) || 1)));
+      const ordem = Math.max(1, Math.min(999, Math.floor(Number(banner.ordem) || 1)));
       
       // Preparar dados para inserção
       const bannerData = {

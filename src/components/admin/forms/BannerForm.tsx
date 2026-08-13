@@ -13,6 +13,7 @@ import { Banner } from '@/hooks/useAdminBanners';
 import { uploadParaR2 } from '@/lib/r2';
 import { Upload, X, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { BANNER_SECTION_OPTIONS, BANNER_SECTION_VALUES } from '@/lib/bannerSections';
 
 const bannerSchema = z.object({
   titulo: z.string().min(1, 'Título é obrigatório').max(255, 'Título deve ter no máximo 255 caracteres'),
@@ -29,24 +30,7 @@ const bannerSchema = z.object({
   }, 'URL do link inválida'),
   ativo: z.boolean(),
   ordem: z.number().min(1, 'Ordem deve ser no mínimo 1').max(999, 'Ordem deve ser no máximo 999'),
-  secao: z.enum([
-    'home', 
-    'locais', 
-    'eventos', 
-    'categorias', 
-    'busca', 
-    'canal_video', 
-    'domino', 
-    'ferramentas', 
-    'gerador_rifa',
-    'gerador_cobranca',
-    'criador_curriculo',
-    'gestao_cobrancas',
-    'calculadora_orcamento',
-    'calculadora_margem',
-    'simulador_rescisao',
-    'leitor_voz'
-  ], {
+  secao: z.enum(BANNER_SECTION_VALUES, {
     errorMap: () => ({ message: 'Seção é obrigatória' })
   }),
   tipo_midia: z.enum(['imagem', 'video', 'codigo'], {
@@ -74,25 +58,6 @@ interface BannerFormProps {
   isLoading?: boolean;
 }
 
-const secaoOptions = [
-  { value: 'home', label: 'Página Inicial' },
-  { value: 'locais', label: 'Locais' },
-  { value: 'eventos', label: 'Eventos' },
-  { value: 'categorias', label: 'Categorias' },
-  { value: 'busca', label: 'Busca' },
-  { value: 'canal_video', label: 'Canal Informativo - Vídeos' },
-  { value: 'domino', label: 'Jogo Dominó' },
-  { value: 'ferramentas', label: 'Central de Ferramentas (Catálogo Geral)' },
-  { value: 'gerador_rifa', label: 'Ferramenta - Gerador & Caderno de Rifas' },
-  { value: 'gerador_cobranca', label: 'Ferramenta - Gerador de Cobrança PIX' },
-  { value: 'criador_curriculo', label: 'Ferramenta - Criador de Currículo PDF' },
-  { value: 'gestao_cobrancas', label: 'Ferramenta - Gestão de Cobranças (Micro CRM)' },
-  { value: 'calculadora_orcamento', label: 'Ferramenta - Calculadora de Orçamento' },
-  { value: 'calculadora_margem', label: 'Ferramenta - Calculadora de Maquininha & Margem' },
-  { value: 'simulador_rescisao', label: 'Ferramenta - Simulador de Rescisão (CLT)' },
-  { value: 'leitor_voz', label: 'Ferramenta - Leitor de Texto em Voz Alta' },
-];
-
 export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerFormProps) => {
   const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
@@ -106,7 +71,7 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
       link_url: banner?.link_url || '',
       ativo: banner?.ativo ?? true,
       ordem: banner?.ordem || 1,
-      secao: banner?.secao === 'empresas' ? 'locais' : (banner?.secao as any) || 'home',
+      secao: banner?.secao || 'home',
       tipo_midia: (banner as any)?.tipo_midia || 'imagem',
     },
   });
@@ -184,7 +149,7 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
                 <SelectValue placeholder="Selecione a seção" />
               </SelectTrigger>
               <SelectContent>
-                {secaoOptions.map((option) => (
+                {BANNER_SECTION_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
                   </SelectItem>
