@@ -8,6 +8,7 @@ import { ArrowLeft, Calculator, Sparkles, Clock, DollarSign, RefreshCw, FileText
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { SafeHtml } from '@/components/security/SafeHtml';
 
 // COMPONENTE DE BANNER LOCAL
 const ToolBanner = ({ secao }: { secao: string }) => {
@@ -41,10 +42,10 @@ const ToolBanner = ({ secao }: { secao: string }) => {
       {banners.map((b) => {
         if (b.tipo_midia === 'codigo' && b.codigo_html) {
           return (
-            <div 
+            <SafeHtml
               key={b.id} 
+              html={b.codigo_html}
               className="w-full rounded-2xl overflow-hidden shadow-sm border border-border/60 bg-card p-2 text-center"
-              dangerouslySetInnerHTML={{ __html: b.codigo_html }}
             />
           );
         }

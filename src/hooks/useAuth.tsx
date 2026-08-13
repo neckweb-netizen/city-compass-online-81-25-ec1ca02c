@@ -256,7 +256,9 @@ export const useAuth = () => {
         options: {
           data: {
             nome,
-            tipo_conta: tipoConta,
+            // Papéis privilegiados nunca são escolhidos pelo navegador.
+            tipo_conta: 'usuario',
+            tipo_conta_solicitada: tipoConta,
             ...additionalData
           },
           emailRedirectTo: `${window.location.origin}/`

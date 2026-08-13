@@ -30,7 +30,7 @@
       "name": "Empresas",
       "short_name": "Empresas",
       "description": "Ver empresas locais",
-      "url": "/empresas",
+      "url": "/locais",
       "icons": [{ "src": "/Logo.png", "sizes": "96x96" }]
     },
     {

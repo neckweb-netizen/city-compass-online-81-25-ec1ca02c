@@ -22,6 +22,9 @@ type AtribuicaoAdmin = {
   } | null;
 };
 
+const firstRelation = <T,>(value: T | T[] | null | undefined): T | null =>
+  Array.isArray(value) ? value[0] ?? null : value ?? null;
+
 export const useEmpresaAdmins = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -44,7 +47,11 @@ export const useEmpresaAdmins = () => {
         .order('nome');
 
       if (error) throw error;
-      return data;
+      return (data ?? []).map((empresa: any) => ({
+        ...empresa,
+        categorias: firstRelation(empresa.categorias),
+        cidades: firstRelation(empresa.cidades),
+      }));
     },
   });
 
@@ -119,8 +126,8 @@ export const useEmpresaAdmins = () => {
         empresas: {
           id: empresa.id,
           nome: empresa.nome,
-          categorias: empresa.categorias,
-          cidades: empresa.cidades
+          categorias: firstRelation(empresa.categorias) ?? { nome: '' },
+          cidades: firstRelation(empresa.cidades) ?? { nome: '' }
         }
       })) || [];
 
@@ -151,7 +158,14 @@ export const useEmpresaAdmins = () => {
           ...atribuicao,
           tipo_atribuicao: 'manual' as const,
           usuarios: usuarios?.find(u => u.id === atribuicao.usuario_id) || null,
-          empresas: empresas?.find(e => e.id === atribuicao.empresa_id) || null,
+          empresas: (() => {
+            const empresa = empresas?.find(e => e.id === atribuicao.empresa_id);
+            return empresa ? {
+              ...empresa,
+              categorias: firstRelation(empresa.categorias) ?? { nome: '' },
+              cidades: firstRelation(empresa.cidades) ?? { nome: '' },
+            } : null;
+          })(),
         }));
 
         todasAtribuicoes = [...todasAtribuicoes, ...atribuicoesManuaisCompletas];

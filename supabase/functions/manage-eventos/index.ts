@@ -1,9 +1,5 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.52.1'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.112.3'
+import { corsHeaders, errorResponse, HttpError, jsonResponse, requireUser } from '../_shared/security.ts'
 
 interface Database {
   public: {
@@ -23,10 +19,17 @@ interface Database {
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    return new Response(null, { headers: corsHeaders(req) })
   }
 
   try {
+    if (req.method !== 'POST') throw new HttpError(405, 'Método não permitido')
+    const cronSecret = Deno.env.get('CRON_SECRET')
+    const validCronRequest = Boolean(cronSecret) && req.headers.get('x-cron-secret') === cronSecret
+    if (!validCronRequest) {
+      await requireUser(req, ['admin_geral'])
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     
@@ -54,31 +57,13 @@ Deno.serve(async (req) => {
 
     console.log('Eventos finalizados antigos deletados com sucesso')
 
-    return new Response(
-      JSON.stringify({ 
+    return jsonResponse(req, {
         success: true, 
         message: 'Gerenciamento de eventos executado com sucesso',
         timestamp: new Date().toISOString()
-      }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 
-      }
-    )
+      })
 
   } catch (error) {
-    console.error('Erro no gerenciamento de eventos:', error)
-    
-    return new Response(
-      JSON.stringify({ 
-        error: 'Erro interno do servidor',
-        details: error.message,
-        timestamp: new Date().toISOString()
-      }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500 
-      }
-    )
+    return errorResponse(req, error)
   }
 })

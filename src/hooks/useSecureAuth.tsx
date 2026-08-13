@@ -33,27 +33,38 @@ export const useSecureAuth = () => {
   const { toast } = useToast();
 
   // Rate limiting for auth attempts
-  const [authAttempts, setAuthAttempts] = useState<{ [key: string]: number }>({});
+  const [authAttempts, setAuthAttempts] = useState<Record<string, { count: number; windowStartedAt: number }>>({});
   
   const checkRateLimit = useCallback((email: string): boolean => {
     const now = Date.now();
-    const attempts = authAttempts[email] || 0;
+    const attempt = authAttempts[email];
     
     // Reset attempts after 15 minutes
-    if (attempts > 0 && now - attempts > 15 * 60 * 1000) {
-      setAuthAttempts(prev => ({ ...prev, [email]: 0 }));
+    if (attempt && now - attempt.windowStartedAt > 15 * 60 * 1000) {
+      setAuthAttempts(prev => {
+        const next = { ...prev };
+        delete next[email];
+        return next;
+      });
       return true;
     }
     
     // Max 5 attempts per 15 minutes
-    return attempts < 5;
+    return !attempt || attempt.count < 5;
   }, [authAttempts]);
 
   const recordAuthAttempt = useCallback((email: string) => {
-    setAuthAttempts(prev => ({
-      ...prev,
-      [email]: (prev[email] || 0) + 1
-    }));
+    setAuthAttempts(prev => {
+      const now = Date.now();
+      const current = prev[email];
+      const expired = !current || now - current.windowStartedAt > 15 * 60 * 1000;
+      return {
+        ...prev,
+        [email]: expired
+          ? { count: 1, windowStartedAt: now }
+          : { ...current, count: current.count + 1 },
+      };
+    });
   }, []);
 
   // Session validation with activity tracking
@@ -204,18 +215,6 @@ export const useSecureAuth = () => {
         console.error('❌ Secure sign in error:', error);
         recordAuthAttempt(email);
         
-        // Log failed attempt
-        await supabase.functions.invoke('log-security-event', {
-          body: {
-            event_type: 'login_failed',
-            metadata: {
-              email,
-              error: error.message,
-              ip_address: securityContext.ipAddress
-            }
-          }
-        });
-
         setLoading(false);
         return { error };
       }
@@ -280,7 +279,9 @@ export const useSecureAuth = () => {
         options: {
           data: {
             nome,
-            tipo_conta: tipoConta,
+            // Papéis privilegiados nunca são escolhidos pelo navegador.
+            tipo_conta: 'usuario',
+            tipo_conta_solicitada: tipoConta,
             ...additionalData
           },
           emailRedirectTo: `${window.location.origin}/`

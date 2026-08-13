@@ -1,13 +1,8 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
+import { escapeHtml, validateEmail } from "../_shared/email.ts";
+import { corsHeaders as getCorsHeaders, errorResponse, HttpError, requireUser } from "../_shared/security.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
 
 interface EmpresaNotificationRequest {
   email: string;
@@ -18,13 +13,22 @@ interface EmpresaNotificationRequest {
 }
 
 const handler = async (req: Request): Promise<Response> => {
+  const corsHeaders = getCorsHeaders(req);
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { email, nome_usuario, nome_empresa, status, observacoes }: EmpresaNotificationRequest = await req.json();
+    if (req.method !== "POST") throw new HttpError(405, "Método não permitido");
+    await requireUser(req, ["admin_geral", "admin_cidade"]);
+    const input: EmpresaNotificationRequest = await req.json();
+    const email = validateEmail(input.email);
+    const nome_usuario = escapeHtml(input.nome_usuario, 100);
+    const nome_empresa = escapeHtml(input.nome_empresa, 200);
+    const status = input.status;
+    const observacoes = escapeHtml(input.observacoes, 1000);
+    if (!['aprovado', 'rejeitado'].includes(status)) throw new HttpError(400, 'Status inválido');
 
     const getNotificationContent = (status: string) => {
       if (status === 'aprovado') {
@@ -96,16 +100,9 @@ const handler = async (req: Request): Promise<Response> => {
         ...corsHeaders,
       },
     });
-  } catch (error: any) {
-    console.error("Error sending empresa notification:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
-    );
+  } catch (error) {
+    return errorResponse(req, error);
   }
 };
 
-serve(handler);
+Deno.serve(handler);

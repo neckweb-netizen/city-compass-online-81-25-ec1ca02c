@@ -1,63 +1,27 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { corsHeaders, enforceRateLimit, errorResponse, HttpError, jsonResponse } from '../_shared/security.ts'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders(req) })
 
   try {
+    enforceRateLimit(req, 'weather', 60, 60 * 1000)
     const apiKey = Deno.env.get('OPENWEATHER_API_KEY')
-    
-    if (!apiKey) {
-      throw new Error('API key not configured')
-    }
+    if (!apiKey) throw new HttpError(503, 'Serviço de clima não configurado')
 
-    // Coordenadas de Santo Antônio de Jesus
-    const lat = -12.9674
-    const lon = -39.2609
-    
     const response = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric&lang=pt_br`
+      `https://api.openweathermap.org/data/2.5/weather?lat=-12.9674&lon=-39.2609&appid=${apiKey}&units=metric&lang=pt_br`,
     )
-    
-    if (!response.ok) {
-      throw new Error('Failed to fetch weather data')
-    }
-    
+    if (!response.ok) throw new HttpError(502, 'Não foi possível consultar o clima')
+
     const data = await response.json()
-    
-    const weatherData = {
+    return jsonResponse(req, {
       temp: Math.round(data.main.temp),
       description: data.weather[0].description,
       humidity: data.main.humidity,
       windSpeed: data.wind.speed,
-      icon: data.weather[0].icon
-    }
-
-    return new Response(
-      JSON.stringify(weatherData),
-      { 
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json' 
-        } 
-      }
-    )
+      icon: data.weather[0].icon,
+    })
   } catch (error) {
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { 
-        status: 500,
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json' 
-        } 
-      }
-    )
+    return errorResponse(req, error)
   }
 })

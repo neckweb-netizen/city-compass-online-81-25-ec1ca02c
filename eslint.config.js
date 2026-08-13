@@ -18,12 +18,22 @@ export default tseslint.config(
       "react-refresh": reactRefresh,
     },
     rules: {
-      ...reactHooks.configs.recommended.rules,
+      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/exhaustive-deps": "warn",
       "react-refresh/only-export-components": [
         "warn",
         { allowConstantExport: true },
       ],
       "@typescript-eslint/no-unused-vars": "off",
+      // The legacy project uses flexible payloads for database and browser APIs.
+      // Keep these as warnings while the generated schema types are being refreshed.
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-non-null-asserted-optional-chain": "warn",
+      "@typescript-eslint/no-require-imports": "warn",
+      "no-empty": "warn",
+      "no-extra-boolean-cast": "warn",
+      "prefer-const": "warn",
+      "prefer-rest-params": "warn",
     },
   }
 );

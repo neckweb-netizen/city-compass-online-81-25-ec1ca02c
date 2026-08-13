@@ -1,13 +1,8 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
+import { escapeHtml, validateEmail } from "../_shared/email.ts";
+import { corsHeaders as getCorsHeaders, errorResponse, HttpError, requireUser } from "../_shared/security.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
 
 interface WelcomeEmailRequest {
   email: string;
@@ -16,13 +11,19 @@ interface WelcomeEmailRequest {
 }
 
 const handler = async (req: Request): Promise<Response> => {
+  const corsHeaders = getCorsHeaders(req);
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { email, nome, tipo_conta }: WelcomeEmailRequest = await req.json();
+    if (req.method !== "POST") throw new HttpError(405, "Método não permitido");
+    const { user, profile } = await requireUser(req);
+    const input: WelcomeEmailRequest = await req.json();
+    const email = validateEmail(user.email);
+    const nome = escapeHtml(profile?.nome || user.user_metadata?.nome || input.nome || "Usuário", 100);
+    const tipo_conta = profile?.tipo_conta || "usuario";
 
     const getWelcomeMessage = (tipo: string) => {
       switch (tipo) {
@@ -87,16 +88,9 @@ const handler = async (req: Request): Promise<Response> => {
         ...corsHeaders,
       },
     });
-  } catch (error: any) {
-    console.error("Error sending welcome email:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
-    );
+  } catch (error) {
+    return errorResponse(req, error);
   }
 };
 
-serve(handler);
+Deno.serve(handler);

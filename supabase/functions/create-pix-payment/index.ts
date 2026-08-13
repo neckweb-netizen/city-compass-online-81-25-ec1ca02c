@@ -1,58 +1,39 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { corsHeaders, enforceRateLimit, errorResponse, HttpError, jsonResponse, requireUser } from '../_shared/security.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-serve(async (req) => {
+Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders(req) });
   }
 
   try {
+    if (req.method !== 'POST') throw new HttpError(405, 'Método não permitido');
+    enforceRateLimit(req, 'pix', 10, 10 * 60 * 1000);
+    const { user, profile, admin: supabase } = await requireUser(req);
     const { planoId, userInfo } = await req.json();
-
-    // Inicializar cliente Supabase
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    if (!planoId || typeof planoId !== 'string') throw new HttpError(400, 'Plano inválido');
 
     // Buscar dados do plano
     const { data: plano, error: planoError } = await supabase
       .from('planos')
       .select('*')
       .eq('id', planoId)
+      .eq('ativo', true)
       .single();
 
     if (planoError || !plano) {
       console.error('Erro ao buscar plano:', planoError);
-      return new Response(
-        JSON.stringify({ error: 'Plano não encontrado' }), 
-        {
-          status: 404,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
+      throw new HttpError(404, 'Plano não encontrado');
     }
+
+    const amount = Number(plano.preco_mensal);
+    if (!Number.isFinite(amount) || amount <= 0) throw new HttpError(400, 'Preço do plano inválido');
 
     // Buscar token do Mercado Pago das secrets
     const token = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN');
     
-    console.log('Token encontrado:', token ? 'SIM' : 'NÃO');
-    console.log('Prefixo do token:', token ? token.substring(0, 10) + '...' : 'NENHUM');
-    
     if (!token) {
-      console.error('MERCADO_PAGO_ACCESS_TOKEN não configurado nas secrets');
-      return new Response(
-        JSON.stringify({ error: 'Token do Mercado Pago não configurado nas secrets do projeto' }), 
-        {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
+      throw new HttpError(500, 'Serviço de pagamento indisponível');
     }
 
     // Criar pagamento Pix
@@ -60,20 +41,20 @@ serve(async (req) => {
     
     const paymentData = {
       description: `Assinatura do plano ${plano.nome}`,
-      transaction_amount: plano.preco_mensal,
+      transaction_amount: amount,
       payment_method_id: "pix",
       payer: {
-        email: userInfo.email,
-        first_name: userInfo.nome.split(' ')[0],
-        last_name: userInfo.nome.split(' ').slice(1).join(' ') || 'Silva',
+        email: user.email,
+        first_name: (profile?.nome || user.user_metadata?.nome || 'Cliente').split(' ')[0],
+        last_name: (profile?.nome || user.user_metadata?.nome || 'Cliente').split(' ').slice(1).join(' ') || 'Cliente',
         identification: {
-          type: userInfo.tipoDocumento || "CPF",
-          number: userInfo.documento || userInfo.cpf
+          type: userInfo?.tipoDocumento === 'CNPJ' ? 'CNPJ' : 'CPF',
+          number: String(userInfo?.documento || userInfo?.cpf || '').replace(/\D/g, '')
         }
       }
     };
 
-    console.log('Criando pagamento:', paymentData);
+    if (!paymentData.payer.identification.number) throw new HttpError(400, 'Documento obrigatório');
 
     const mercadoPagoResponse = await fetch('https://api.mercadopago.com/v1/payments', {
       method: 'POST',
@@ -88,39 +69,21 @@ serve(async (req) => {
     const paymentResult = await mercadoPagoResponse.json();
     
     if (!mercadoPagoResponse.ok) {
-      console.error('Erro na API do Mercado Pago:', paymentResult);
-      return new Response(
-        JSON.stringify({ error: 'Erro ao criar pagamento', details: paymentResult }), 
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
+      console.error('Erro na API do Mercado Pago:', paymentResult?.message || mercadoPagoResponse.status);
+      throw new HttpError(502, 'Não foi possível criar o pagamento');
     }
 
     // Retornar dados do pagamento
-    return new Response(
-      JSON.stringify({
+    return jsonResponse(req, {
         id: paymentResult.id,
         status: paymentResult.status,
         qr_code: paymentResult.point_of_interaction?.transaction_data?.qr_code,
         qr_code_base64: paymentResult.point_of_interaction?.transaction_data?.qr_code_base64,
         ticket_url: paymentResult.point_of_interaction?.transaction_data?.ticket_url,
         transaction_amount: paymentResult.transaction_amount,
-        description: paymentResult.description
-      }), 
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    );
+        description: paymentResult.description,
+      });
   } catch (error) {
-    console.error('Erro ao criar pagamento:', error);
-    return new Response(
-      JSON.stringify({ error: 'Erro interno do servidor', details: error.message }), 
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    );
+    return errorResponse(req, error);
   }
 });

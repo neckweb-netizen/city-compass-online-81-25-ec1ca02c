@@ -1,35 +1,27 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { corsHeaders, errorResponse, HttpError, jsonResponse, requireUser } from '../_shared/security.ts';
 
 interface SecurityEvent {
   event_type: string;
-  user_id?: string;
   metadata?: any;
-  ip_address?: string;
-  user_agent?: string;
 }
 
-serve(async (req) => {
+const ALLOWED_EVENTS = new Set(['user_creation', 'login_success', 'signup_success', 'logout', 'unauthorized_access']);
+
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders(req) });
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    if (req.method !== 'POST') throw new HttpError(405, 'Método não permitido');
+    const { user, admin: supabase } = await requireUser(req);
+    const { event_type, metadata }: SecurityEvent = await req.json();
+    if (!ALLOWED_EVENTS.has(event_type)) throw new HttpError(400, 'Tipo de evento inválido');
+    if (JSON.stringify(metadata ?? {}).length > 4000) throw new HttpError(400, 'Metadados muito grandes');
 
-    const { event_type, user_id, metadata, ip_address }: SecurityEvent = await req.json();
-
-    // Get IP address from request if not provided
-    const clientIP = ip_address || req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+    // Nunca confiar em identidade ou IP enviados pelo navegador.
+    const clientIP = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
     const userAgent = req.headers.get('user-agent') || 'unknown';
 
     // Log to security_logs table
@@ -37,7 +29,7 @@ serve(async (req) => {
       .from('security_logs')
       .insert({
         event_type,
-        user_id,
+        user_id: user.id,
         ip_address: clientIP,
         user_agent: userAgent,
         metadata: metadata || {},
@@ -46,20 +38,14 @@ serve(async (req) => {
 
     if (error) {
       console.error('Error logging security event:', error);
-      return new Response(
-        JSON.stringify({ error: 'Failed to log security event' }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+      throw new HttpError(500, 'Não foi possível registrar o evento');
     }
 
     // Additional alerting for critical events
-    const criticalEvents = ['login_failed', 'unauthorized_access', 'suspicious_activity'];
+    const criticalEvents = ['unauthorized_access'];
     if (criticalEvents.includes(event_type)) {
       console.log(`🚨 CRITICAL SECURITY EVENT: ${event_type}`, {
-        user_id,
+        user_id: user.id,
         ip_address: clientIP,
         metadata
       });
@@ -68,21 +54,9 @@ serve(async (req) => {
       // like LogSnag, Sentry, or send notifications
     }
 
-    return new Response(
-      JSON.stringify({ success: true, logged: true }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    );
+    return jsonResponse(req, { success: true, logged: true });
 
   } catch (error) {
-    console.error('Security logging error:', error);
-    return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    );
+    return errorResponse(req, error);
   }
 });

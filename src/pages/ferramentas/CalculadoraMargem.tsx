@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowLeft, Calculator, Copy, Send, Sparkles, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { SafeHtml } from '@/components/security/SafeHtml';
 
 // COMPONENTE DE BANNER EMBUTIDO LOCALMENTE (PREVINE ERRO DE IMPORTAÇÃO NO VERCEL)
 const ToolBanner = ({ secao }: { secao: string }) => {
@@ -40,10 +41,10 @@ const ToolBanner = ({ secao }: { secao: string }) => {
       {banners.map((b) => {
         if (b.tipo_midia === 'codigo' && b.codigo_html) {
           return (
-            <div 
+            <SafeHtml
               key={b.id} 
+              html={b.codigo_html}
               className="w-full rounded-2xl overflow-hidden shadow-sm border border-border/60 bg-card p-2 text-center"
-              dangerouslySetInnerHTML={{ __html: b.codigo_html }}
             />
           );
         }

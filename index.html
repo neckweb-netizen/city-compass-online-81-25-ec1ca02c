@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -30,7 +30,6 @@
     <!-- Performance optimizations -->
     <link rel="preconnect" href="https://uyleozhwzngnvyddfvni.supabase.co" crossorigin>
     <link rel="dns-prefetch" href="https://uyleozhwzngnvyddfvni.supabase.co">
-    <link rel="modulepreload" href="/src/main.tsx">
     
     <!-- Critical inline CSS for first paint -->
     <style>
@@ -54,10 +53,6 @@
     
     <link rel="preload" href="https://fonts.googleapis.com" as="connect" crossorigin>
     
-    <!-- Critical Resource Hints -->
-    <link rel="prefetch" href="/src/components/layout/MainLayout.tsx">
-    <link rel="prefetch" href="/src/components/layout/PublicLayout.tsx">
-
     <meta property="og:title" content="Saj Tem - Santo Antônio de Jesus" />
     <meta property="og:description" content="Guia completo de Santo Antônio de Jesus - BA" />
     <meta property="og:type" content="website" />
@@ -72,68 +67,5 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <script>
-      // Make CSS non-blocking by loading it asynchronously
-      const loadCSS = function(href, before, media) {
-        const doc = window.document;
-        const ss = doc.createElement("link");
-        let ref;
-        if (before) {
-          ref = before;
-        } else {
-          const refs = (doc.body || doc.getElementsByTagName("head")[0]).childNodes;
-          ref = refs[refs.length - 1];
-        }
-        const sheets = doc.styleSheets;
-        ss.rel = "stylesheet";
-        ss.href = href;
-        ss.media = "only x";
-        function ready(cb) {
-          if (doc.body) return cb();
-          setTimeout(function() {
-            ready(cb);
-          });
-        }
-        ready(function() {
-          ref.parentNode.insertBefore(ss, (before ? ref : ref.nextSibling));
-        });
-        const onloadcssdefined = function(cb) {
-          let resolvedHref = ss.href;
-          let i = sheets.length;
-          while (i--) {
-            if (sheets[i].href === resolvedHref) {
-              return cb();
-            }
-          }
-          setTimeout(function() {
-            onloadcssdefined(cb);
-          });
-        };
-        function loadCB() {
-          if (ss.addEventListener) {
-            ss.removeEventListener("load", loadCB);
-          }
-          ss.media = media || "all";
-        }
-        if (ss.addEventListener) {
-          ss.addEventListener("load", loadCB);
-        }
-        ss.onloadcssdefined = onloadcssdefined;
-        onloadcssdefined(loadCB);
-        return ss;
-      };
-    </script>
-    
-    <!-- Register optimized service worker -->
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw-optimized.js')
-            .catch(() => {
-              // Silently fail - don't block functionality
-            });
-        });
-      }
-    </script>
   </body>
 </html>

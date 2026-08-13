@@ -114,7 +114,8 @@ export const CadastrarEmpresaDialog = ({
           options: {
             data: {
               nome: data.nome,
-              tipo_conta: 'empresa',
+              tipo_conta: 'usuario',
+              tipo_conta_solicitada: 'empresa',
               telefone: data.telefone_usuario
             },
             emailRedirectTo: `${window.location.origin}/`

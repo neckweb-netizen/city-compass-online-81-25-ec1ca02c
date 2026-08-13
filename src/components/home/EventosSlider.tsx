@@ -55,7 +55,12 @@ export const EventosSlider = () => {
         .limit(10);
 
       if (error) throw error;
-      return data as Evento[];
+      return (data ?? []).map((evento: any): Evento => ({
+        ...evento,
+        categorias: Array.isArray(evento.categorias) ? evento.categorias[0] : evento.categorias,
+        empresas: Array.isArray(evento.empresas) ? evento.empresas[0] : evento.empresas,
+        cidades: Array.isArray(evento.cidades) ? evento.cidades[0] : evento.cidades,
+      }));
     },
     enabled: !!cidadePadrao?.id,
   });

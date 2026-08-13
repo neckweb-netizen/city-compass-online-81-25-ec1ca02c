@@ -1,5 +1,5 @@
 
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSecureAuth } from '@/hooks/useSecureAuth';
 import { Card, CardContent } from '@/components/ui/card';
@@ -25,6 +25,10 @@ export const SecureRoute = ({
   const { user, profile, loading, securityContext } = useSecureAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const allowedRoles = useMemo(
+    () => requiredRoles || (requiredRole ? [requiredRole] : []),
+    [requiredRole, requiredRoles]
+  );
 
   useEffect(() => {
     if (loading) return;
@@ -56,7 +60,6 @@ export const SecureRoute = ({
     }
 
     // Check role-based access
-    const allowedRoles = requiredRoles || (requiredRole ? [requiredRole] : []);
     if (allowedRoles.length > 0 && !allowedRoles.includes(profile.tipo_conta as RequiredRole)) {
       console.log('🚫 SecureRoute: Insufficient permissions. Required:', allowedRoles, 'Has:', profile.tipo_conta);
       navigate('/unauthorized');
@@ -64,7 +67,7 @@ export const SecureRoute = ({
     }
 
     console.log('✅ SecureRoute: Access granted for user:', profile.nome);
-  }, [user, profile, loading, requiredRole, requiredRoles, fallbackPath, requireEmailVerification, securityContext.sessionValid, navigate, location.pathname]);
+  }, [user, profile, loading, allowedRoles, fallbackPath, requireEmailVerification, securityContext.sessionValid, navigate, location.pathname]);
 
   if (loading) {
     return (
@@ -111,6 +114,14 @@ export const SecureRoute = ({
 
   if (!securityContext.sessionValid) {
     return null; // Redirect will happen in useEffect
+  }
+
+  if (!profile) {
+    return null;
+  }
+
+  if (allowedRoles.length > 0 && !allowedRoles.includes(profile.tipo_conta as RequiredRole)) {
+    return null;
   }
 
   return <>{children}</>;

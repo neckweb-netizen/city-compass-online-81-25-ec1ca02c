@@ -1,13 +1,8 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
+import { escapeHtml, validateEmail } from "../_shared/email.ts";
+import { corsHeaders as getCorsHeaders, errorResponse, HttpError, requireUser } from "../_shared/security.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
 
 interface EventNotificationRequest {
   email: string;
@@ -20,21 +15,24 @@ interface EventNotificationRequest {
 }
 
 const handler = async (req: Request): Promise<Response> => {
+  const corsHeaders = getCorsHeaders(req);
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { 
-      email, 
-      nome_usuario, 
-      titulo_evento, 
-      data_evento, 
-      local_evento, 
-      status, 
-      observacoes 
-    }: EventNotificationRequest = await req.json();
+    if (req.method !== "POST") throw new HttpError(405, "Método não permitido");
+    await requireUser(req, ["admin_geral", "admin_cidade"]);
+    const input: EventNotificationRequest = await req.json();
+    const email = validateEmail(input.email);
+    const nome_usuario = escapeHtml(input.nome_usuario, 100);
+    const titulo_evento = escapeHtml(input.titulo_evento, 200);
+    const data_evento = input.data_evento;
+    const local_evento = escapeHtml(input.local_evento, 300);
+    const status = input.status;
+    const observacoes = escapeHtml(input.observacoes, 1000);
+    if (!['aprovado', 'rejeitado'].includes(status)) throw new HttpError(400, 'Status inválido');
 
     const formatDate = (dateString: string) => {
       return new Date(dateString).toLocaleDateString('pt-BR', {
@@ -116,16 +114,9 @@ const handler = async (req: Request): Promise<Response> => {
         ...corsHeaders,
       },
     });
-  } catch (error: any) {
-    console.error("Error sending event notification:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
-    );
+  } catch (error) {
+    return errorResponse(req, error);
   }
 };
 
-serve(handler);
+Deno.serve(handler);

@@ -41,7 +41,12 @@ export const useEmpresas = (cidadeId?: string, categoriaId?: string) => {
       const { data, error } = await query;
       
       if (error) throw error;
-      return data;
+      return (data ?? []).map((empresa: any) => ({
+        ...empresa,
+        categorias: Array.isArray(empresa.categorias) ? empresa.categorias[0] : empresa.categorias,
+        cidades: Array.isArray(empresa.cidades) ? empresa.cidades[0] : empresa.cidades,
+        estatisticas: Array.isArray(empresa.estatisticas) ? empresa.estatisticas[0] : empresa.estatisticas,
+      }));
     },
   });
 };

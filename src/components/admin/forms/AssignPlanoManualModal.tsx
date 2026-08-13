@@ -48,7 +48,10 @@ export const AssignPlanoManualModal = ({ open, onOpenChange, onSuccess }: Assign
         .eq('ativo', true);
 
       if (error) throw error;
-      return data;
+      return (data ?? []).map((item: any) => ({
+        ...item,
+        usuarios: Array.isArray(item.usuarios) ? item.usuarios[0] : item.usuarios,
+      }));
     },
     enabled: open,
   });

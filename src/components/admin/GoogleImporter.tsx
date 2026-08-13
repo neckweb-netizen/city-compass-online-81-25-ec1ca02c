@@ -6,9 +6,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { Search, Download, MapPin, Loader2, Landmark, Tag, SlidersHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 
-// INSIRA AQUI A SUA CHAVE GERADA NO GOOGLE CLOUD CONSOLE
-const GOOGLE_MAPS_KEY = "AIzaSyCLx8QE_91chIyYdbIczKAyjpi5M7exVoc";
-
 // Lista de categorias comerciais nativas suportadas pela API do Google Places
 const GOOGLE_MAPS_CATEGORIES = [
   { id: 'restaurant', nome: 'Restaurantes / Bares / Lanchonetes' },
@@ -70,9 +67,8 @@ export default function GoogleImporter() {
       const termoFormatadoficial = `${busca} ${labelCategoria} Santo Antônio de Jesus BA`.trim();
       console.log('🔍 Executando busca otimizada no Google Maps:', termoFormatadoficial);
 
-      const { data, error } = await supabase.rpc('buscar_locais_google', {
-        busca_termo: termoFormatadoficial,
-        google_key: GOOGLE_MAPS_KEY
+      const { data, error } = await supabase.functions.invoke('google-places-admin', {
+        body: { action: 'search', query: termoFormatadoficial }
       });
 
       if (error) throw error;
@@ -191,10 +187,8 @@ export default function GoogleImporter() {
 
     setImportingId(placeId);
     try {
-      const { data, error } = await supabase.rpc('importar_detalhes_google', {
-        p_place_id: placeId,
-        google_key: GOOGLE_MAPS_KEY,
-        p_categoria_id: categoriaDefinidaId
+      const { data, error } = await supabase.functions.invoke('google-places-admin', {
+        body: { action: 'import', placeId, categoryId: categoriaDefinidaId }
       });
 
       if (error) throw error;

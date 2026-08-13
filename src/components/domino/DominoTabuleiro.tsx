@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, RefreshCw, Trophy, User, Maximize2, Minimize2, ShieldAlert, Award, MessageSquare, Timer, Move, ExternalLink } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { SafeHtml } from '@/components/security/SafeHtml';
 
 interface DominoTabuleiroProps {
   usuarioId: string;
@@ -29,36 +30,7 @@ interface BannerPublicitario {
 
 // COMPONENTE AUXILIAR PARA RENDERIZAR BANNER DE CÓDIGO/ADSENSE
 const BannerCodeContainer: React.FC<{ codigoHtml: string }> = ({ codigoHtml }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!containerRef.current || !codigoHtml) return;
-
-    containerRef.current.innerHTML = codigoHtml;
-
-    // Re-executa tags <script> contidas no código colado
-    const scriptElements = Array.from(containerRef.current.querySelectorAll('script'));
-    scriptElements.forEach((oldScript) => {
-      const newScript = document.createElement('script');
-      Array.from(oldScript.attributes).forEach((attr) => {
-        newScript.setAttribute(attr.name, attr.value);
-      });
-      newScript.appendChild(document.createTextNode(oldScript.innerHTML));
-      if (oldScript.parentNode) {
-        oldScript.parentNode.replaceChild(newScript, oldScript);
-      }
-    });
-
-    try {
-      if (codigoHtml.includes('adsbygoogle')) {
-        ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({});
-      }
-    } catch (e) {
-      console.warn('AdSense push error:', e);
-    }
-  }, [codigoHtml]);
-
-  return <div ref={containerRef} className="w-full h-full flex items-center justify-center overflow-hidden" />;
+  return <SafeHtml html={codigoHtml} className="w-full h-full flex items-center justify-center overflow-hidden" />;
 };
 
 // SINTETIZADOR WEB AUDIO API PARA EFEITOS SONOROS
@@ -324,7 +296,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         }
         setIsFullscreen(true);
         if (screen.orientation && screen.orientation.unlock) {
-          screen.orientation.unlock().catch(() => {});
+          screen.orientation.unlock();
         }
       } else {
         if (document.exitFullscreen) {
