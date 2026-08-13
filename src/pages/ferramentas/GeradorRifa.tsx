@@ -18,11 +18,17 @@ const BannersRifa = () => {
   useEffect(() => {
     const buscarBanners = async () => {
       try {
-        const { data } = await supabase
-          .from("banners" as any)
+        const { data, error } = await supabase
+          .from("banners_publicitarios")
           .select("*")
+          .eq("secao", "gerador_rifa")
           .eq("ativo", true)
           .order("ordem", { ascending: true });
+
+        if (error) {
+          console.error("Erro na busca de banners da rifa:", error);
+          return;
+        }
 
         if (data && data.length > 0) {
           setBanners(data);
@@ -42,16 +48,20 @@ const BannersRifa = () => {
       {banners.map((b) => (
         <a
           key={b.id}
-          href={b.link_destino || "#"}
+          href={b.link_url || b.link_destino || "#"}
           target="_blank"
           rel="noopener noreferrer"
           className="block w-full rounded-2xl overflow-hidden shadow-sm border border-border/60 hover:opacity-95 transition-opacity"
         >
-          <img
-            src={b.imagem_url || b.imagem}
-            alt={b.titulo || "Banner de Anúncio"}
-            className="w-full h-auto max-h-[160px] sm:max-h-[220px] object-cover"
-          />
+          {b.tipo_midia === 'codigo' && b.codigo_html ? (
+            <div dangerouslySetInnerHTML={{ __html: b.codigo_html }} />
+          ) : (
+            <img
+              src={b.imagem_url || b.imagem}
+              alt={b.titulo || "Banner de Anúncio"}
+              className="w-full h-auto max-h-[160px] sm:max-h-[220px] object-cover"
+            />
+          )}
         </a>
       ))}
     </div>
