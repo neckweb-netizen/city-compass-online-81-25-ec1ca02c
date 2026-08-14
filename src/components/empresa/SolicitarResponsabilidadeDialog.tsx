@@ -43,27 +43,15 @@ export const SolicitarResponsabilidadeDialog = ({
         return;
       }
 
-      // Criar uma notificação para os admins
-      const { error } = await supabase
-        .from('notificacoes')
-        .insert({
-          titulo: `Solicitação de Responsabilidade - ${empresaNome}`,
-          conteudo: `
-            O usuário ${formData.nome} (${user.email}) solicitou responsabilidade pela empresa "${empresaNome}".
-            
-            Dados do solicitante:
-            - Nome: ${formData.nome}
-            - Telefone: ${formData.telefone}
-            - WhatsApp: ${formData.whatsapp}
-            - Email: ${formData.email}
-            
-            Observações: ${formData.observacoes || 'Nenhuma observação adicional'}
-          `,
-          tipo: 'solicitacao_responsabilidade',
-          referencia_tipo: 'empresa',
-          referencia_id: empresaId,
-          usuario_id: user.id
-        });
+      const { error } = await (supabase as any).rpc('create_responsibility_request_notification', {
+        p_empresa_id: empresaId,
+        p_empresa_nome: empresaNome,
+        p_nome: formData.nome,
+        p_telefone: formData.telefone,
+        p_whatsapp: formData.whatsapp || null,
+        p_email: formData.email || user.email || null,
+        p_observacoes: formData.observacoes || null,
+      });
 
       if (error) throw error;
 

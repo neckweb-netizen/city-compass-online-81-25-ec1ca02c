@@ -9,7 +9,7 @@ export class HttpError extends Error {
   }
 }
 
-const configuredOrigins = (Deno.env.get("ALLOWED_ORIGINS") ?? "https://sajtem.com,https://www.sajtem.com")
+const configuredOrigins = (Deno.env.get("ALLOWED_ORIGINS") ?? "https://sajtem.com,https://www.sajtem.com,https://sajtem.vercel.app")
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
@@ -61,7 +61,7 @@ export function jsonResponse(req: Request, body: unknown, status = 200): Respons
 
 export interface AuthContext {
   user: User;
-  profile: { id: string; tipo_conta: string; nome: string | null; email: string | null } | null;
+  profile: { id: string; tipo_conta: string; nome: string | null; email: string | null; cidade_id: string | null } | null;
   admin: ReturnType<typeof createClient>;
 }
 
@@ -90,7 +90,7 @@ export async function requireUser(req: Request, allowedRoles?: string[]): Promis
   });
   const { data: profile, error: profileError } = await admin
     .from("usuarios")
-    .select("id, tipo_conta, nome, email")
+    .select("id, tipo_conta, nome, email, cidade_id")
     .eq("id", user.id)
     .maybeSingle();
 

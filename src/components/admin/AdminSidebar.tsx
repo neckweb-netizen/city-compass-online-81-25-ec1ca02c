@@ -149,7 +149,7 @@ export const AdminSidebar = ({ activeSection, onSectionChange }: AdminSidebarPro
         { icon: Image, label: 'Banners', path: '/admin/banners', section: 'banners', badge: 0 },
         { icon: BookOpen, label: 'Stories', path: '/admin/stories', section: 'stories', badge: 0 },
         { icon: Vote, label: 'Enquetes', path: '/admin/enquetes', section: 'enquetes', badge: 0 },
-        { icon: Bell, label: 'Avisos do Sistema', path: '/admin/avisos', section: 'avisos', badge: 0 },
+        { icon: Bell, label: 'Central de Notificações', path: '/admin/avisos', section: 'avisos', badge: 0 },
         { icon: CreditCard, label: 'Cupons', path: '/admin/cupons', section: 'cupons', badge: 0 },
         { icon: Star, label: 'Avaliações', path: '/admin/avaliacoes', section: 'avaliacoes', badge: 0 },
       ]

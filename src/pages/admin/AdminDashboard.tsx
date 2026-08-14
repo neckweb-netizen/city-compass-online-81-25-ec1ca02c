@@ -15,7 +15,6 @@ import { BannersSection } from '@/components/admin/sections/BannersSection';
 import { AuditLogsSection } from '@/components/admin/sections/AuditLogsSection';
 import { CanalInformativoSection } from '@/components/admin/sections/CanalInformativoSection';
 import { MenuConfiguracoesSection } from '@/components/admin/sections/MenuConfiguracoesSection';
-import { AvisosSistemaSection } from '@/components/admin/sections/AvisosSistemaSection';
 import { EnquetesSection } from '@/components/admin/sections/EnquetesSection';
 import { AdminHomeSections } from './AdminHomeSections';
 
@@ -46,8 +45,6 @@ export const AdminDashboard = ({ activeSection = 'dashboard' }: AdminDashboardPr
         return <BannersSection />;
       case 'canal-informativo':
         return <CanalInformativoSection />;
-      case 'avisos-sistema':
-        return <AvisosSistemaSection />;
       case 'enquetes':
         return <EnquetesSection />;
       case 'planos':

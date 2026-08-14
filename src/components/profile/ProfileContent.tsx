@@ -10,7 +10,6 @@ import { FavoritosDialog } from './FavoritosDialog';
 import { AvaliacoesDialog } from './AvaliacoesDialog';
 import { ConfiguracoesDialog } from './ConfiguracoesDialog';
 import { CadastrarEmpresaDialog } from './CadastrarEmpresaDialog';
-import { CreateNotificationTest } from '@/components/test/CreateNotificationTest';
 import { 
   User, 
   Heart, 
@@ -225,11 +224,6 @@ export const ProfileContent = () => {
       )}
       
       {/* Componente de teste para notificações (apenas em desenvolvimento) */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="mt-6">
-          <CreateNotificationTest />
-        </div>
-      )}
     </div>
   );
 };

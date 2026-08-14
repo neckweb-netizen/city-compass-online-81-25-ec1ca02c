@@ -59,6 +59,10 @@ export const Header = () => {
     if (!notification.read) {
       markAsRead(notification.id);
     }
+    if (notification.action_url) {
+      if (notification.action_url.startsWith('/')) navigate(notification.action_url);
+      else window.location.assign(notification.action_url);
+    }
   };
 
   const formatarTempo = (dataString: string) => {
@@ -158,7 +162,7 @@ export const Header = () => {
                              variant="destructive" 
                              className="absolute -top-1 -right-1 h-5 w-5 sm:h-6 sm:w-6 flex items-center justify-center p-0 text-xs animate-pulse"
                            >
-                             {totalUnread}
+                             {totalUnread > 99 ? '99+' : totalUnread}
                            </Badge>
                          </>
                        ) : (
@@ -194,7 +198,7 @@ export const Header = () => {
                          Carregando notificações...
                        </div>
                      ) : notifications.length > 0 ? (
-                       notifications.slice(0, 10).map((notification) => (
+                       notifications.slice(0, 8).map((notification) => (
                          <DropdownMenuItem 
                            key={notification.id} 
                             className={`flex flex-col items-start p-4 hover:bg-accent cursor-pointer ${
@@ -227,6 +231,13 @@ export const Header = () => {
                          Nenhuma notificação
                        </DropdownMenuItem>
                      )}
+                     <DropdownMenuSeparator />
+                     <DropdownMenuItem
+                       className="justify-center font-medium text-primary cursor-pointer"
+                       onClick={() => navigate('/notificacoes')}
+                     >
+                       Ver todas as notificações
+                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}

@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { PushNotificationsProvider } from "@/contexts/PushNotificationsContext";
 
 // Import critical pages immediately
 import Index from "./pages/Index";
@@ -46,6 +47,7 @@ const Busca = lazy(() => import("./pages/Busca"));
 const CadastroLocal = lazy(() => import("./pages/CadastroLocal"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Configuracoes = lazy(() => import("./pages/Configuracoes"));
+const Notifications = lazy(() => import("./pages/Notifications"));
 const ContactPage = lazy(() => import("./pages/ContactPage").then(m => ({ default: m.ContactPage })));
 const AnuncieGratis = lazy(() => import("./pages/AnuncieGratis").then(m => ({ default: m.AnuncieGratis })));
 
@@ -563,15 +565,17 @@ const App = () => {
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <AnalyticsTracker />
-          <RoutePreloader />
-          <Suspense fallback={<LoadingFallback />}>
-            <Routes>
+          <PushNotificationsProvider>
+            <AnalyticsTracker />
+            <RoutePreloader />
+            <Suspense fallback={<LoadingFallback />}>
+              <Routes>
               <Route path="/" element={<PublicLayout />}>
                 <Route index element={<Index />} />
                 <Route path="achados-e-perdidos" element={<AchadosPerdidos />} />
                 <Route path="profile" element={<Profile />} />
                 <Route path="configuracoes" element={<Configuracoes />} />
+                <Route path="notificacoes" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
                 <Route path="busca" element={<Busca />} />
                 <Route path="search" element={<SearchPage />} />
                 <Route path="locais" element={<Locais />} />
@@ -654,8 +658,9 @@ const App = () => {
               </Route>
 
               <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
+              </Routes>
+            </Suspense>
+          </PushNotificationsProvider>
         </BrowserRouter>
       </TooltipProvider>
     </ThemeProvider>

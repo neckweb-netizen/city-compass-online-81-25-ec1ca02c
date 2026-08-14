@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sajtem-v4';
+const CACHE_NAME = 'sajtem-v5';
 
 // Instalação do Service Worker
 self.addEventListener('install', (event) => {
@@ -53,5 +53,58 @@ self.addEventListener('fetch', (event) => {
         // Se estiver offline, aí sim busca do cache
         return caches.match(event.request);
       })
+  );
+});
+
+// Firebase Cloud Messaging entrega o payload por meio do evento Push.
+self.addEventListener('push', (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch {
+    payload = { data: { body: event.data?.text() || '' } };
+  }
+
+  const data = payload.data || {};
+  const notification = payload.notification || data.notification || {};
+  const title = notification.title || data.title || 'Saj Tem';
+  const body = notification.body || data.body || 'Você recebeu uma nova notificação.';
+  const icon = notification.icon || data.icon_url || '/Logo.png';
+  const actionUrl = data.action_url || notification.click_action || '/notificacoes';
+  const notificationId = data.notification_id || payload.messageId || `sajtem-${Date.now()}`;
+
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      icon,
+      badge: notification.badge || icon,
+      image: notification.image || data.image_url,
+      tag: notification.tag || notificationId,
+      renotify: notification.renotify === true || data.priority === 'urgent',
+      requireInteraction: notification.requireInteraction === true || data.priority === 'urgent',
+      vibrate: notification.vibrate || [200, 100, 200],
+      data: {
+        ...data,
+        action_url: actionUrl,
+        notification_id: notificationId,
+      },
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = new URL(event.notification.data?.action_url || '/notificacoes', self.location.origin).href;
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        if ('focus' in client) {
+          if ('navigate' in client) return client.navigate(target).then(() => client.focus());
+          return client.focus();
+        }
+      }
+      return self.clients.openWindow ? self.clients.openWindow(target) : undefined;
+    })
   );
 });

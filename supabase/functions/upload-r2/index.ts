@@ -9,7 +9,7 @@ Deno.serve(async (req) => {
 
   try {
     if (req.method !== 'POST') throw new HttpError(405, 'Método não permitido');
-    await requireUser(req);
+    const { profile } = await requireUser(req);
 
     const formData = await req.formData();
     const file = formData.get('file') as File;
@@ -22,6 +22,9 @@ Deno.serve(async (req) => {
       throw new HttpError(400, 'Pasta de destino inválida');
     }
     const folder = requestedFolder.replace(/^\/+|\/+$/g, '') || 'geral';
+    if (folder.startsWith('notifications/') && !['admin_geral', 'admin_cidade'].includes(profile?.tipo_conta || '')) {
+      throw new HttpError(403, 'Apenas administradores podem enviar mídia de notificações');
+    }
 
     const endpoint = Deno.env.get('R2_ENDPOINT');
     const accessKeyId = Deno.env.get('R2_ACCESS_KEY_ID');
