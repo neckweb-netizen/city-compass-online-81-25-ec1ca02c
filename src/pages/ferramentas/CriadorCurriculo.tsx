@@ -7,6 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Download, Printer, Plus, Trash2, User, Briefcase, GraduationCap, Sparkles, Award, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ToolBanner } from '@/components/ferramentas/ToolBanner';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
+import { toast } from 'sonner';
 
 interface Experiencia {
   id: string;
@@ -35,6 +38,7 @@ export const CriadorCurriculo = () => {
   const [email, setEmail] = useState('');
   const [resumo, setResumo] = useState('');
   const [informacoesAdicionais, setInformacoesAdicionais] = useState('');
+  const [gerandoPdf, setGerandoPdf] = useState(false);
 
   const [formacoes, setFormacoes] = useState<Formacao[]>([
     { id: '1', descricao: '' }
@@ -94,44 +98,103 @@ export const CriadorCurriculo = () => {
   };
 
   // 2️⃣ BOTÃO BAIXAR DIRETO: GERADOR DE ARQUIVO E DOWNLOAD AUTOMÁTICO SEM TELA INTERMEDIÁRIA
-  const handleBaixarDireto = () => {
+  const handleBaixarDireto = async () => {
     const folha = document.getElementById('folha-curriculo');
     if (!folha) return;
 
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    const rect = folha.getBoundingClientRect();
+    setGerandoPdf(true);
 
-    canvas.width = rect.width * 2;
-    canvas.height = rect.height * 2;
+    try {
+      // Mantém o documento no formato A4 independentemente do tamanho da tela.
+      const canvas = await html2canvas(folha, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        windowWidth: 900,
+        onclone: (documentoClonado) => {
+          const folhaClonada = documentoClonado.getElementById('folha-curriculo');
+          if (!folhaClonada) return;
 
-    if (!ctx) return;
+          Object.assign(folhaClonada.style, {
+            width: '794px',
+            minHeight: '1123px',
+            height: 'auto',
+            maxWidth: 'none',
+            padding: '56px',
+            border: 'none',
+            borderRadius: '0',
+            boxShadow: 'none',
+            backgroundColor: '#ffffff',
+            color: '#111827',
+          });
+        },
+      });
 
-    const data = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="${rect.width}" height="${rect.height}">
-        <foreignObject width="100%" height="100%">
-          <div xmlns="http://www.w3.org/1999/xhtml">
-            ${folha.outerHTML}
-          </div>
-        </foreignObject>
-      </svg>
-    `;
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const larguraPagina = pdf.internal.pageSize.getWidth();
+      const alturaPagina = pdf.internal.pageSize.getHeight();
+      const alturaPaginaEmPixels = Math.ceil(canvas.width * (alturaPagina / larguraPagina));
 
-    const img = new Image();
-    const svgUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(data);
+      let posicaoVertical = 0;
+      let pagina = 0;
 
-    img.onload = () => {
-      ctx.scale(2, 2);
-      ctx.drawImage(img, 0, 0);
+      while (posicaoVertical < canvas.height) {
+        const alturaFatia = Math.min(alturaPaginaEmPixels, canvas.height - posicaoVertical);
+        const canvasPagina = document.createElement('canvas');
+        canvasPagina.width = canvas.width;
+        canvasPagina.height = alturaPaginaEmPixels;
 
-      const a = document.createElement('a');
-      const nomeLimpo = nome.trim() ? `curriculo_${nome.toLowerCase().replace(/\s+/g, '_')}.png` : 'curriculo.png';
-      a.download = nomeLimpo;
-      a.href = canvas.toDataURL('image/png');
-      a.click();
-    };
+        const contextoPagina = canvasPagina.getContext('2d');
+        if (!contextoPagina) throw new Error('Não foi possível preparar a página do PDF.');
 
-    img.src = svgUrl;
+        contextoPagina.fillStyle = '#ffffff';
+        contextoPagina.fillRect(0, 0, canvasPagina.width, canvasPagina.height);
+        contextoPagina.drawImage(
+          canvas,
+          0,
+          posicaoVertical,
+          canvas.width,
+          alturaFatia,
+          0,
+          0,
+          canvas.width,
+          alturaFatia,
+        );
+
+        if (pagina > 0) pdf.addPage();
+        pdf.addImage(
+          canvasPagina.toDataURL('image/png'),
+          'PNG',
+          0,
+          0,
+          larguraPagina,
+          alturaPagina,
+          undefined,
+          'FAST',
+        );
+
+        posicaoVertical += alturaFatia;
+        pagina += 1;
+      }
+
+      const nomeArquivo = nome.trim()
+        ? `curriculo_${nome
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '_')
+            .replace(/^_+|_+$/g, '')}.pdf`
+        : 'curriculo.pdf';
+
+      pdf.save(nomeArquivo);
+      toast.success('Currículo baixado em PDF.');
+    } catch (error) {
+      console.error('Erro ao gerar PDF do currículo:', error);
+      toast.error('Não foi possível gerar o PDF. Tente novamente.');
+    } finally {
+      setGerandoPdf(false);
+    }
   };
 
   return (
@@ -362,9 +425,10 @@ export const CriadorCurriculo = () => {
 
               <Button 
                 onClick={handleBaixarDireto}
+                disabled={gerandoPdf}
                 className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-12 rounded-xl flex items-center justify-center gap-2 shadow-lg"
               >
-                <Download className="w-5 h-5" /> Baixar PDF
+                <Download className="w-5 h-5" /> {gerandoPdf ? 'Gerando PDF...' : 'Baixar PDF'}
               </Button>
             </div>
           </div>
