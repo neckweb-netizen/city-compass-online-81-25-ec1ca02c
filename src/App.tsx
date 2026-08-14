@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PushNotificationsProvider } from "@/contexts/PushNotificationsContext";
+import { PushPermissionPrompt } from "@/components/notifications/PushPermissionPrompt";
 
 // Import critical pages immediately
 import Index from "./pages/Index";
@@ -566,6 +567,7 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <PushNotificationsProvider>
+            <PushPermissionPrompt />
             <AnalyticsTracker />
             <RoutePreloader />
             <Suspense fallback={<LoadingFallback />}>

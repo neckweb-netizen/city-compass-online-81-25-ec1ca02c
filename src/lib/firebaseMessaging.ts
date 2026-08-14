@@ -12,7 +12,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 
 interface PublicFirebaseConfig extends FirebaseOptions {
-  vapidKey?: string;
+  vapidKey: string;
 }
 
 const FID_STORAGE_KEY = 'sajtem-firebase-fid';
@@ -21,28 +21,36 @@ let messagingPromise: Promise<{ messaging: Messaging; config: PublicFirebaseConf
 
 async function loadFirebaseConfig(): Promise<PublicFirebaseConfig> {
   if (!configPromise) {
-    configPromise = (async () => {
+    const request = (async () => {
       const { data, error } = await supabase.functions.invoke('firebase-public-config', {
         method: 'POST',
       });
       if (error) throw new Error(error.message || 'Não foi possível carregar a configuração do Firebase.');
-      if (!data?.apiKey || !data?.projectId || !data?.messagingSenderId || !data?.appId) {
+      if (!data?.apiKey || !data?.projectId || !data?.messagingSenderId || !data?.appId || !data?.vapidKey) {
         throw new Error('Configuração pública do Firebase incompleta.');
       }
       return data as PublicFirebaseConfig;
     })();
+    configPromise = request.catch((error) => {
+      configPromise = null;
+      throw error;
+    });
   }
   return configPromise;
 }
 
 async function getMessagingClient(): Promise<{ messaging: Messaging; config: PublicFirebaseConfig }> {
   if (!messagingPromise) {
-    messagingPromise = (async () => {
+    const request = (async () => {
       if (!(await isSupported())) throw new Error('Este navegador não oferece suporte a notificações push.');
       const config = await loadFirebaseConfig();
       const app: FirebaseApp = getApps()[0] || initializeApp(config);
       return { messaging: getMessaging(app), config };
     })();
+    messagingPromise = request.catch((error) => {
+      messagingPromise = null;
+      throw error;
+    });
   }
   return messagingPromise;
 }
@@ -93,15 +101,19 @@ export async function enableFirebasePush(): Promise<string> {
 
   const { messaging, config } = await getMessagingClient();
   const serviceWorkerRegistration = await getServiceWorkerRegistration();
+  let unsubscribe = () => undefined;
+  let timeout: number | undefined;
+  const cleanup = () => {
+    if (timeout !== undefined) window.clearTimeout(timeout);
+    unsubscribe();
+  };
   const fidPromise = new Promise<string>((resolve, reject) => {
-    let unsubscribe = () => undefined;
-    const timeout = window.setTimeout(() => {
-      unsubscribe();
+    timeout = window.setTimeout(() => {
+      cleanup();
       reject(new Error('O Firebase demorou para registrar este dispositivo. Tente novamente.'));
     }, 20_000);
     unsubscribe = onRegistered(messaging, async (fid) => {
-      window.clearTimeout(timeout);
-      unsubscribe();
+      cleanup();
       try {
         await saveRegistration(fid);
         resolve(fid);
@@ -111,10 +123,15 @@ export async function enableFirebasePush(): Promise<string> {
     });
   });
 
-  await register(messaging, {
-    serviceWorkerRegistration,
-    ...(config.vapidKey ? { vapidKey: config.vapidKey } : {}),
-  });
+  try {
+    await register(messaging, {
+      serviceWorkerRegistration,
+      vapidKey: config.vapidKey,
+    });
+  } catch (error) {
+    cleanup();
+    throw error;
+  }
   return fidPromise;
 }
 

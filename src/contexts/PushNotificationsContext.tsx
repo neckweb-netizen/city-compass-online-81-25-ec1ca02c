@@ -24,6 +24,7 @@ interface PushNotificationsContextValue {
   supported: boolean;
   permission: NotificationPermission | 'unsupported';
   enabled: boolean;
+  preferencesReady: boolean;
   loading: boolean;
   error: string | null;
   preferences: NotificationPreferences;
@@ -48,6 +49,7 @@ export const PushNotificationsProvider = ({ children }: { children: ReactNode })
   const [supported, setSupported] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>('default');
   const [enabled, setEnabled] = useState(false);
+  const [preferencesReady, setPreferencesReady] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preferences, setPreferences] = useState(defaultPreferences);
@@ -71,8 +73,10 @@ export const PushNotificationsProvider = ({ children }: { children: ReactNode })
     if (!user?.id) {
       setEnabled(false);
       setPreferences(defaultPreferences);
+      setPreferencesReady(false);
       return;
     }
+    setPreferencesReady(false);
     let active = true;
     (supabase as any)
       .from('notification_preferences')
@@ -83,6 +87,7 @@ export const PushNotificationsProvider = ({ children }: { children: ReactNode })
         if (!active) return;
         if (queryError) console.warn('Falha ao carregar preferências de notificação:', queryError);
         if (data) setPreferences({ ...defaultPreferences, ...data });
+        setPreferencesReady(true);
       });
     return () => { active = false; };
   }, [user?.id]);
@@ -165,13 +170,14 @@ export const PushNotificationsProvider = ({ children }: { children: ReactNode })
     supported,
     permission,
     enabled,
+    preferencesReady,
     loading,
     error,
     preferences,
     enable,
     disable,
     savePreferences,
-  }), [supported, permission, enabled, loading, error, preferences, enable, disable, savePreferences]);
+  }), [supported, permission, enabled, preferencesReady, loading, error, preferences, enable, disable, savePreferences]);
 
   return <PushNotificationsContext.Provider value={value}>{children}</PushNotificationsContext.Provider>;
 };
