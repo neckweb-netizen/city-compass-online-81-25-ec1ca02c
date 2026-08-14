@@ -18,6 +18,7 @@ interface PublicFirebaseConfig extends FirebaseOptions {
 const FID_STORAGE_KEY = 'sajtem-firebase-fid';
 let configPromise: Promise<PublicFirebaseConfig> | null = null;
 let messagingPromise: Promise<{ messaging: Messaging; config: PublicFirebaseConfig }> | null = null;
+let registrationPromise: Promise<string> | null = null;
 
 async function loadFirebaseConfig(): Promise<PublicFirebaseConfig> {
   if (!configPromise) {
@@ -90,7 +91,7 @@ export async function isFirebasePushSupported(): Promise<boolean> {
   return 'Notification' in window && 'serviceWorker' in navigator && await isSupported();
 }
 
-export async function enableFirebasePush(): Promise<string> {
+async function registerFirebasePush(): Promise<string> {
   if (!(await isFirebasePushSupported())) throw new Error('Notificações push não são suportadas neste navegador.');
   const permission = await Notification.requestPermission();
   if (permission !== 'granted') {
@@ -133,6 +134,16 @@ export async function enableFirebasePush(): Promise<string> {
     throw error;
   }
   return fidPromise;
+}
+
+export function enableFirebasePush(): Promise<string> {
+  if (!registrationPromise) {
+    const request = registerFirebasePush();
+    registrationPromise = request.finally(() => {
+      registrationPromise = null;
+    });
+  }
+  return registrationPromise;
 }
 
 export async function syncFirebasePushIfGranted(): Promise<string | null> {
