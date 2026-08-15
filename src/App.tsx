@@ -576,7 +576,7 @@ const App = () => {
                 <Route index element={<Index />} />
                 <Route path="achados-e-perdidos" element={<AchadosPerdidos />} />
                 <Route path="profile" element={<Profile />} />
-                <Route path="configuracoes" element={<Configuracoes />} />
+                <Route path="configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
                 <Route path="notificacoes" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
                 <Route path="busca" element={<Busca />} />
                 <Route path="search" element={<SearchPage />} />

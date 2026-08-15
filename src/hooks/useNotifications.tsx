@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { usePushNotifications } from '@/contexts/PushNotificationsContext';
 
 export interface AppNotification {
   id: string;
@@ -32,8 +33,10 @@ const notificationColumns = [
 
 export const useNotifications = () => {
   const { user } = useAuth();
+  const { preferences, preferencesReady } = usePushNotifications();
   const queryClient = useQueryClient();
   const queryKey = useMemo(() => ['notifications', user?.id] as const, [user?.id]);
+  const inAppEnabled = preferencesReady && preferences.in_app_enabled;
 
   const notificationsQuery = useQuery({
     queryKey,
@@ -50,7 +53,7 @@ export const useNotifications = () => {
       if (error) throw error;
       return (data || []) as AppNotification[];
     },
-    enabled: Boolean(user?.id),
+    enabled: Boolean(user?.id && inAppEnabled),
     staleTime: 30_000,
   });
 
@@ -68,12 +71,12 @@ export const useNotifications = () => {
       if (error) throw error;
       return count || 0;
     },
-    enabled: Boolean(user?.id),
+    enabled: Boolean(user?.id && inAppEnabled),
     staleTime: 15_000,
   });
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id || !inAppEnabled) return;
     const channel = supabase
       .channel(`notifications-${user.id}`)
       .on('postgres_changes', {
@@ -94,7 +97,7 @@ export const useNotifications = () => {
       })
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
-  }, [queryClient, queryKey, user?.id]);
+  }, [inAppEnabled, queryClient, queryKey, user?.id]);
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey });
@@ -141,12 +144,12 @@ export const useNotifications = () => {
     onError: () => toast.error('Não foi possível arquivar a notificação.'),
   });
 
-  const notifications = notificationsQuery.data || [];
+  const notifications = inAppEnabled ? notificationsQuery.data || [] : [];
   return {
     notifications,
     unreadNotifications: notifications.filter(item => !item.read),
-    totalUnread: unreadCountQuery.data || 0,
-    loading: notificationsQuery.isLoading || unreadCountQuery.isLoading,
+    totalUnread: inAppEnabled ? unreadCountQuery.data || 0 : 0,
+    loading: !preferencesReady || (inAppEnabled && (notificationsQuery.isLoading || unreadCountQuery.isLoading)),
     error: notificationsQuery.error || unreadCountQuery.error,
     markAsRead: markAsReadMutation.mutate,
     markAllAsRead: markAllAsReadMutation.mutate,
