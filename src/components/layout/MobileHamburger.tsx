@@ -93,7 +93,14 @@ export const MobileHamburger = () => {
       icone: 'Megaphone',
       rota: '/reclamacoes',
       categoria: 'principal'
-    }, 
+    },
+    {
+      id: 'ferramentas',
+      nome_item: 'Ferramentas',
+      icone: 'Wrench',
+      rota: '/ferramentas',
+      categoria: 'principal'
+    },
     {
       id: 'buscar',
       nome_item: 'Buscar',
