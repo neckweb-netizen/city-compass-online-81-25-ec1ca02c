@@ -2874,7 +2874,9 @@ export type Database = {
           created_by: string | null
           expires_at: string | null
           id: string
+          link_type: string
           original_url: string
+          resource_id: string | null
           short_code: string
           updated_at: string
         }
@@ -2884,7 +2886,9 @@ export type Database = {
           created_by?: string | null
           expires_at?: string | null
           id?: string
+          link_type?: string
           original_url: string
+          resource_id?: string | null
           short_code: string
           updated_at?: string
         }
@@ -2894,7 +2898,9 @@ export type Database = {
           created_by?: string | null
           expires_at?: string | null
           id?: string
+          link_type?: string
           original_url?: string
+          resource_id?: string | null
           short_code?: string
           updated_at?: string
         }
@@ -4046,6 +4052,10 @@ export type Database = {
         }[]
       }
       finalizar_eventos_expirados: { Args: never; Returns: undefined }
+      create_raffle_short_url: {
+        Args: { p_raffle_id: string }
+        Returns: string
+      }
       generate_short_code: { Args: never; Returns: string }
       gerar_codigo_suporte: { Args: never; Returns: string }
       get_admin_site_stats: { Args: never; Returns: Json }
@@ -4164,6 +4174,10 @@ export type Database = {
       limpar_sessoes_expiradas: { Args: never; Returns: undefined }
       limpar_urls_google: { Args: never; Returns: undefined }
       normalizar_telefone: { Args: { p_telefone: string }; Returns: string }
+      resolve_short_url: {
+        Args: { p_short_code: string }
+        Returns: string
+      }
       obter_sessao_suporte: {
         Args: { p_telefone: string }
         Returns: {

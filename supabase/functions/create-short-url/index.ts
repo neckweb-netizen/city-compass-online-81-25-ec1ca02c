@@ -50,8 +50,8 @@ Deno.serve(async (req) => {
       throw new HttpError(500, 'Erro ao criar URL curta')
     }
 
-    const siteUrl = (Deno.env.get('SITE_URL') || 'https://sajtem.com').replace(/\/$/, '')
-    const shortUrl = `${siteUrl}/${data.short_code}`;
+    const siteUrl = (Deno.env.get('SITE_URL') || 'https://sajtem.vercel.app').replace(/\/$/, '')
+    const shortUrl = `${siteUrl}/s/${data.short_code}`;
 
     return jsonResponse(req, {
         short_url: shortUrl,

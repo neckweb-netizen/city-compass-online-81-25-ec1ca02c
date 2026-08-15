@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { ArrowLeft, Ticket, Trophy, QrCode, Sparkles, Copy, Trash2, Calendar, Clock, Share2, PlusCircle, ListFilter, Loader2 } from 'lucide-react';
+import { ArrowLeft, Ticket, Trophy, QrCode, Sparkles, Copy, Trash2, Calendar, Clock, Share2, PlusCircle, ListFilter, Loader2, MessageCircle } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -99,7 +99,9 @@ export const GeradorRifa = () => {
   const [telefoneComprador, setTelefoneComprador] = useState('');
   const [salvandoReserva, setSalvandoReserva] = useState(false);
   const [compartilhando, setCompartilhando] = useState(false);
+  const [gerandoLink, setGerandoLink] = useState(false);
   const cartelaRef = useRef<HTMLDivElement | null>(null);
+  const linksCurtosRef = useRef<Record<string, string>>({});
 
   const inicializarRifas = async () => {
     try {
@@ -379,11 +381,61 @@ export const GeradorRifa = () => {
     }
   };
 
-  const getLinkRifa = () => `${window.location.origin}${window.location.pathname}?id=${rifaAtiva?.id}`;
+  const getLinkOriginalRifa = () => {
+    if (!rifaAtiva?.id) return window.location.href;
+
+    const url = new URL('/ferramentas/gerador-rifa', window.location.origin);
+    url.searchParams.set('id', rifaAtiva.id);
+    return url.toString();
+  };
+
+  const getTextoCompartilhamento = () =>
+    `🎟️ Participe da rifa “${titulo}” e concorra a ${premio}! Escolha seu número antes que acabe.`;
+
+  const getLinkRifa = async () => {
+    if (!rifaAtiva?.id) return getLinkOriginalRifa();
+
+    const linkEmCache = linksCurtosRef.current[rifaAtiva.id];
+    if (linkEmCache) return linkEmCache;
+
+    const { data, error } = await supabase.rpc('create_raffle_short_url', {
+      p_raffle_id: rifaAtiva.id,
+    });
+
+    if (error || !data) {
+      console.error('Não foi possível gerar o link curto da rifa:', error);
+      return getLinkOriginalRifa();
+    }
+
+    const linkCurto = `${window.location.origin}/s/${data}`;
+    linksCurtosRef.current[rifaAtiva.id] = linkCurto;
+    return linkCurto;
+  };
 
   const handleCopiarLinkRifa = async () => {
-    await navigator.clipboard.writeText(getLinkRifa());
-    toast.success('Link da Rifa copiado para compartilhar!');
+    try {
+      setGerandoLink(true);
+      const link = await getLinkRifa();
+      await navigator.clipboard.writeText(link);
+      toast.success('Link curto da rifa copiado!');
+    } catch {
+      toast.error('Não foi possível copiar o link.');
+    } finally {
+      setGerandoLink(false);
+    }
+  };
+
+  const handleCompartilharWhatsApp = async () => {
+    try {
+      setGerandoLink(true);
+      const link = await getLinkRifa();
+      const mensagem = `${getTextoCompartilhamento()}\n\n${link}`;
+      window.location.assign(`https://wa.me/?text=${encodeURIComponent(mensagem)}`);
+    } catch {
+      toast.error('Não foi possível abrir o compartilhamento do WhatsApp.');
+    } finally {
+      setGerandoLink(false);
+    }
   };
 
   const handleCompartilharCartela = async () => {
@@ -392,8 +444,8 @@ export const GeradorRifa = () => {
     let areaCaptura: HTMLDivElement | null = null;
     try {
       setCompartilhando(true);
-      const link = getLinkRifa();
-      const texto = `🎟️ Participe da rifa “${titulo}” e concorra a ${premio}! Escolha seu número antes que acabe.`;
+      const link = await getLinkRifa();
+      const texto = getTextoCompartilhamento();
       const { default: html2canvas } = await import('html2canvas');
 
       areaCaptura = document.createElement('div');
@@ -462,13 +514,22 @@ export const GeradorRifa = () => {
       const arquivo = new File([blob], `${nomeArquivo || 'cartela-rifa'}.png`, { type: 'image/png' });
 
       if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [arquivo] }))) {
+        const linkCopiado = await navigator.clipboard
+          ?.writeText(`${texto}\n\n${link}`)
+          .then(() => true)
+          .catch(() => false);
+
         await navigator.share({
           title: `Rifa: ${titulo}`,
           text: `${texto}\n\n${link}`,
           url: link,
           files: [arquivo],
         });
-        toast.success('Cartela compartilhada!');
+        toast.success(
+          linkCopiado
+            ? 'Cartela compartilhada! O texto com o link também foi copiado.'
+            : 'Cartela compartilhada!',
+        );
         return;
       }
 
@@ -769,20 +830,33 @@ export const GeradorRifa = () => {
                   <div className="flex flex-wrap items-center gap-2">
                     <Button
                       type="button"
-                      onClick={() => void handleCompartilharCartela()}
-                      disabled={compartilhando}
+                      onClick={() => void handleCompartilharWhatsApp()}
+                      disabled={gerandoLink}
                       className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-10 px-4 rounded-xl gap-2 shadow-sm text-xs"
                     >
+                      {gerandoLink ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageCircle className="w-4 h-4" />}
+                      {gerandoLink ? 'Gerando link...' : 'Compartilhar no WhatsApp'}
+                    </Button>
+
+                    <Button
+                      type="button"
+                      onClick={() => void handleCompartilharCartela()}
+                      disabled={compartilhando}
+                      variant="outline"
+                      className="font-bold h-10 px-4 rounded-xl gap-2 shadow-sm text-xs"
+                    >
                       {compartilhando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
-                      {compartilhando ? 'Gerando imagem...' : 'Compartilhar cartela'}
+                      {compartilhando ? 'Gerando imagem...' : 'Compartilhar imagem'}
                     </Button>
 
                     <Button 
                       onClick={() => void handleCopiarLinkRifa()}
+                      disabled={gerandoLink}
                       variant="outline"
                       className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-10 px-4 rounded-xl gap-2 shadow-sm text-xs"
                     >
-                      <Share2 className="w-4 h-4" /> Copiar Link da Rifa
+                      {gerandoLink ? <Loader2 className="w-4 h-4 animate-spin" /> : <Copy className="w-4 h-4" />}
+                      Copiar link curto
                     </Button>
 
                     {!isModoComprador && (

@@ -619,6 +619,7 @@ const App = () => {
                 <Route path="ferramentas/simulador-rescisao" element={<ProtectedRoute><SimuladorRescisao /></ProtectedRoute>} />
                 <Route path="ferramentas/leitor-voz" element={<ProtectedRoute><LeitorVoz /></ProtectedRoute>} />
                 
+                <Route path="s/:shortCode" element={<ShortUrlRedirect />} />
                 <Route path=":shortCode" element={<ShortUrlRedirect />} />
               </Route>
 

@@ -27,7 +27,8 @@ Deno.serve(async (req) => {
       throw new HttpError(404, 'URL não encontrada ou expirada')
     }
 
-    const parsed = new URL(data.original_url)
+    const siteUrl = (Deno.env.get('SITE_URL') || 'https://sajtem.vercel.app').replace(/\/$/, '')
+    const parsed = new URL(data.original_url, siteUrl)
     if (!['http:', 'https:'].includes(parsed.protocol)) {
       throw new HttpError(400, 'Destino inválido')
     }
@@ -35,7 +36,7 @@ Deno.serve(async (req) => {
     const { error: clickError } = await admin.rpc('increment_url_clicks', { code: shortCode })
     if (clickError) console.error('Falha ao contabilizar clique:', clickError)
 
-    return jsonResponse(req, { original_url: data.original_url })
+    return jsonResponse(req, { original_url: parsed.toString() })
   } catch (error) {
     return errorResponse(req, error)
   }

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useParams, Navigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function ShortUrlRedirect() {
@@ -10,38 +10,36 @@ export default function ShortUrlRedirect() {
       if (!shortCode) return;
 
       try {
-        const { data, error } = await supabase
-          .from('short_urls')
-          .select('original_url')
-          .eq('short_code', shortCode)
-          .maybeSingle();
+        const { data, error } = await supabase.rpc('resolve_short_url', {
+          p_short_code: shortCode,
+        });
 
         if (error || !data) {
           console.error('URL não encontrada:', error);
-          window.location.href = '/';
+          window.location.replace('/');
           return;
         }
 
-        // Increment click count
-        await supabase.rpc('increment_url_clicks', { code: shortCode });
+        const destination = new URL(data, window.location.origin);
+        if (!['http:', 'https:'].includes(destination.protocol)) {
+          throw new Error('Destino inválido');
+        }
 
-        // Redirect to original URL
-        window.location.href = data.original_url;
+        window.location.replace(destination.toString());
       } catch (error) {
         console.error('Erro ao redirecionar:', error);
-        window.location.href = '/';
+        window.location.replace('/');
       }
     };
 
     redirectToOriginalUrl();
   }, [shortCode]);
 
-  // Show loading while redirecting
   return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="text-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-        <p className="mt-4 text-muted-foreground">Redirecionando...</p>
+        <p className="mt-4 text-muted-foreground">Abrindo o link...</p>
       </div>
     </div>
   );

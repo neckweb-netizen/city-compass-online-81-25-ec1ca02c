@@ -39,14 +39,19 @@ export const useShortUrls = () => {
         return null;
       }
 
-      console.log('URL curta criada:', data);
+      const response: ShortUrlResponse = {
+        ...data,
+        short_url: getShortUrl(data.short_code),
+      };
+
+      console.log('URL curta criada:', response);
       
       toast({
         title: "Sucesso",
         description: "URL curta criada com sucesso!",
       });
 
-      return data;
+      return response;
     } catch (error) {
       console.error('Erro ao criar URL curta:', error);
       toast({
@@ -62,7 +67,7 @@ export const useShortUrls = () => {
 
   const getShortUrl = (shortCode: string): string => {
     // Use the current app's domain, not the Supabase domain
-    return `${window.location.origin}/${shortCode}`;
+    return `${window.location.origin}/s/${shortCode}`;
   };
 
   const copyToClipboard = async (url: string) => {
