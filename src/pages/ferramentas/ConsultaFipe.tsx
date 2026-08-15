@@ -38,6 +38,13 @@ interface FipeDetails {
   vehicleType: number;
 }
 
+interface DailyUsage {
+  used: number;
+  remaining: number;
+  limit: number;
+  date: string;
+}
+
 const vehicleOptions: Array<{ value: VehicleType; label: string; icon: typeof CarFront }> = [
   { value: 'cars', label: 'Carros', icon: CarFront },
   { value: 'motorcycles', label: 'Motos', icon: Bike },
@@ -49,6 +56,13 @@ async function queryFipe<T>(body: Record<string, string>): Promise<T> {
   if (error) throw new Error('Não foi possível concluir a consulta. Tente novamente.');
   if (data?.error) throw new Error(data.error);
   return data.data as T;
+}
+
+async function queryFipeDetails(body: Record<string, string>): Promise<{ data: FipeDetails; usage: DailyUsage }> {
+  const { data, error } = await supabase.functions.invoke('fipe-consulta', { body });
+  if (error) throw new Error('Não foi possível concluir a consulta. Verifique seu limite diário e tente novamente.');
+  if (data?.error) throw new Error(data.error);
+  return data as { data: FipeDetails; usage: DailyUsage };
 }
 
 export const ConsultaFipe = () => {
@@ -63,6 +77,7 @@ export const ConsultaFipe = () => {
   const [models, setModels] = useState<Option[]>([]);
   const [years, setYears] = useState<Option[]>([]);
   const [result, setResult] = useState<FipeDetails | null>(null);
+  const [usage, setUsage] = useState<DailyUsage | null>(null);
   const [loading, setLoading] = useState('initial');
 
   const loadInitial = useCallback(async () => {
@@ -74,7 +89,11 @@ export const ConsultaFipe = () => {
     setModels([]);
     setYears([]);
     try {
-      const refs = await queryFipe<Reference[]>({ action: 'references' });
+      const [refs, dailyUsage] = await Promise.all([
+        queryFipe<Reference[]>({ action: 'references' }),
+        queryFipe<DailyUsage>({ action: 'usage' }),
+      ]);
+      setUsage(dailyUsage);
       const latestReference = refs[0]?.code ?? '';
       setReferences(refs.slice(0, 24));
       setReference(latestReference);
@@ -147,13 +166,20 @@ export const ConsultaFipe = () => {
   };
 
   const consult = async () => {
-    if (!brandId || !modelId || !yearId) return;
+    if (!brandId || !modelId || !yearId || !usage?.remaining) return;
     setLoading('details');
     setResult(null);
     try {
-      setResult(await queryFipe<FipeDetails>({ action: 'details', vehicleType, brandId, modelId, yearId, reference }));
+      const response = await queryFipeDetails({ action: 'details', vehicleType, brandId, modelId, yearId, reference });
+      setResult(response.data);
+      setUsage(response.usage);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Erro ao consultar o veículo.');
+      try {
+        setUsage(await queryFipe<DailyUsage>({ action: 'usage' }));
+      } catch {
+        // Mantém o último estado conhecido se a verificação também falhar.
+      }
     } finally {
       setLoading('');
     }
@@ -180,8 +206,10 @@ export const ConsultaFipe = () => {
           <Button variant="ghost" onClick={() => navigate('/ferramentas')} className="gap-2 text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" /> Voltar para Ferramentas
           </Button>
-          <Badge className="border-sky-500/20 bg-sky-500/10 px-3 py-1 text-sky-600 dark:text-sky-300">
-            Consulta atualizada
+          <Badge className={usage?.remaining === 0
+            ? 'border-red-500/20 bg-red-500/10 px-3 py-1 text-red-600 dark:text-red-300'
+            : 'border-sky-500/20 bg-sky-500/10 px-3 py-1 text-sky-600 dark:text-sky-300'}>
+            {usage ? `${usage.remaining} de ${usage.limit} consultas restantes hoje` : 'Consulta atualizada'}
           </Badge>
         </div>
 
@@ -253,7 +281,7 @@ export const ConsultaFipe = () => {
             )}
 
             <div className="flex flex-col gap-3 sm:flex-row">
-              <Button onClick={consult} disabled={isBusy || !yearId} className="h-11 flex-1 gap-2 bg-sky-600 hover:bg-sky-700">
+              <Button onClick={consult} disabled={isBusy || !yearId || usage?.remaining === 0} className="h-11 flex-1 gap-2 bg-sky-600 hover:bg-sky-700">
                 {loading === 'details' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                 Consultar valor FIPE
               </Button>
@@ -261,6 +289,12 @@ export const ConsultaFipe = () => {
                 <RefreshCw className="h-4 w-4" /> Limpar
               </Button>
             </div>
+
+            {usage?.remaining === 0 && (
+              <p className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-center text-sm font-medium text-amber-700 dark:text-amber-300">
+                Você já utilizou suas 2 consultas de hoje. O limite será renovado amanhã.
+              </p>
+            )}
           </CardContent>
         </Card>
 
