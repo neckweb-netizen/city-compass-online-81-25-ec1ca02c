@@ -963,9 +963,22 @@ export const GeradorRifa = () => {
                         >
                           {/* LADO ESQUERDO: GRUPO, EMOJI E NOME */}
                           <div className="flex flex-col justify-between h-full space-y-0.5 overflow-hidden">
-                            <span className="text-[9px] sm:text-xs font-black text-pink-700 dark:text-pink-400 leading-none">
-                              {bicho.grupo}
-                            </span>
+                            <div className="flex items-center gap-0.5">
+                              <span className="text-[9px] sm:text-xs font-black text-pink-700 dark:text-pink-400 leading-none">
+                                {bicho.grupo}
+                              </span>
+
+                              {status === 'pago' && (
+                                <Badge className="h-2.5 bg-emerald-600 px-0.5 py-0 text-[5px] font-black uppercase leading-none text-white sm:h-3 sm:text-[7px]">
+                                  PAG
+                                </Badge>
+                              )}
+                              {status === 'reservado' && (
+                                <Badge className="h-2.5 bg-amber-600 px-0.5 py-0 text-[5px] font-black uppercase leading-none text-white sm:h-3 sm:text-[7px]">
+                                  RES
+                                </Badge>
+                              )}
+                            </div>
                             
                             <div className="text-base sm:text-2xl my-0.5 select-none flex items-center justify-center leading-none">
                               {bicho.emoji}
@@ -995,18 +1008,6 @@ export const GeradorRifa = () => {
                               </span>
                             )}
                           </div>
-
-                          {/* ETIQUETA DE STATUS */}
-                          {status !== 'livre' && (
-                            <div className="absolute top-0.5 right-0.5">
-                              {status === 'pago' && (
-                                <Badge className="bg-emerald-600 text-white text-[6px] sm:text-[7px] px-0.5 py-0 uppercase leading-none">PAG</Badge>
-                              )}
-                              {status === 'reservado' && (
-                                <Badge className="bg-amber-600 text-white text-[6px] sm:text-[7px] px-0.5 py-0 uppercase leading-none">RES</Badge>
-                              )}
-                            </div>
-                          )}
 
                         </button>
                       );
