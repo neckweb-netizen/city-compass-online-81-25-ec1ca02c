@@ -12,10 +12,10 @@ const FIPE_API_URL = "https://fipe.parallelum.com.br/api/v2";
 const CACHE_TIMEOUT_MS = 4_000;
 const CACHE_TTL_MS: Record<Exclude<Action, "usage">, number> = {
   references: 6 * 60 * 60 * 1_000,
-  brands: 30 * 24 * 60 * 60 * 1_000,
-  models: 30 * 24 * 60 * 60 * 1_000,
-  years: 30 * 24 * 60 * 60 * 1_000,
-  details: 30 * 24 * 60 * 60 * 1_000,
+  brands: 7 * 24 * 60 * 60 * 1_000,
+  models: 7 * 24 * 60 * 60 * 1_000,
+  years: 7 * 24 * 60 * 60 * 1_000,
+  details: 6 * 60 * 60 * 1_000,
 };
 const vehicleTypes = new Set(["cars", "motorcycles", "trucks"]);
 const safeNumericId = /^\d+$/;

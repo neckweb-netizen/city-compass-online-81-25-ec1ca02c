@@ -5,8 +5,10 @@ import {
   Bike,
   CalendarDays,
   CarFront,
+  Check,
   CheckCircle2,
   Copy,
+  ChevronsUpDown,
   Fuel,
   Hash,
   Loader2,
@@ -19,8 +21,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 
 type VehicleType = 'cars' | 'motorcycles' | 'trucks';
 type Option = { code: string; name: string };
@@ -258,17 +263,27 @@ export const ConsultaFipe = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>Marca</Label>
-                  <Select value={brandId} onValueChange={changeBrand} disabled={isBusy || brands.length === 0}>
-                    <SelectTrigger><SelectValue placeholder={loading === 'brands' ? 'Carregando...' : 'Selecione a marca'} /></SelectTrigger>
-                    <SelectContent>{brands.map((item) => <SelectItem key={item.code} value={item.code}>{item.name}</SelectItem>)}</SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={brandId}
+                    options={brands}
+                    onValueChange={changeBrand}
+                    disabled={isBusy || brands.length === 0}
+                    placeholder={loading === 'brands' ? 'Carregando...' : 'Selecione ou pesquise a marca'}
+                    searchPlaceholder="Digite o nome da marca..."
+                    emptyMessage="Nenhuma marca encontrada."
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Modelo</Label>
-                  <Select value={modelId} onValueChange={changeModel} disabled={isBusy || !brandId}>
-                    <SelectTrigger><SelectValue placeholder={loading === 'models' ? 'Carregando...' : 'Selecione o modelo'} /></SelectTrigger>
-                    <SelectContent>{models.map((item) => <SelectItem key={item.code} value={item.code}>{item.name}</SelectItem>)}</SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={modelId}
+                    options={models}
+                    onValueChange={changeModel}
+                    disabled={isBusy || !brandId || models.length === 0}
+                    placeholder={loading === 'models' ? 'Carregando...' : 'Selecione ou pesquise o modelo'}
+                    searchPlaceholder="Digite o nome do modelo..."
+                    emptyMessage="Nenhum modelo encontrado."
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Ano e combustível</Label>
@@ -339,5 +354,71 @@ const ResultItem = ({ icon: Icon, label, value }: { icon: typeof CarFront; label
     <p className="font-bold text-foreground">{value}</p>
   </div>
 );
+
+interface SearchableSelectProps {
+  value: string;
+  options: Option[];
+  onValueChange: (value: string) => void;
+  disabled?: boolean;
+  placeholder: string;
+  searchPlaceholder: string;
+  emptyMessage: string;
+}
+
+const SearchableSelect = ({
+  value,
+  options,
+  onValueChange,
+  disabled,
+  placeholder,
+  searchPlaceholder,
+  emptyMessage,
+}: SearchableSelectProps) => {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((option) => option.code === value);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          disabled={disabled}
+          className="w-full justify-between px-3 font-normal"
+        >
+          <span className={cn('truncate text-left', !selected && 'text-muted-foreground')}>
+            {selected?.name ?? placeholder}
+          </span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+        <Command>
+          <CommandInput placeholder={searchPlaceholder} />
+          <CommandList>
+            <CommandEmpty>{emptyMessage}</CommandEmpty>
+            <CommandGroup>
+              {options.map((option) => (
+                <CommandItem
+                  key={option.code}
+                  value={`${option.name} ${option.code}`}
+                  onSelect={() => {
+                    onValueChange(option.code);
+                    setOpen(false);
+                  }}
+                >
+                  <Check className={cn('mr-2 h-4 w-4', value === option.code ? 'opacity-100' : 'opacity-0')} />
+                  <span className="truncate">{option.name}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+};
 
 export default ConsultaFipe;
