@@ -227,12 +227,6 @@ export const ConfiguracoesDialog = ({ open, onOpenChange }: ConfiguracoesDialogP
                         <AlertCircle className="h-4 w-4 shrink-0" /> {pushError}
                       </div>
                     )}
-                    {pushEnabled && (
-                      <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 p-3 text-xs text-emerald-700 dark:text-emerald-300">
-                        <CheckCircle2 className="h-4 w-4" /> Firebase ativo neste dispositivo.
-                      </div>
-                    )}
-
                     <Separator />
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Categorias permitidas</p>
                     <PreferenceSwitch id="notificacoes-sistema" label="Conta e segurança" checked={configuracoes.sistema} onChange={(checked) => setConfiguracoes(prev => ({ ...prev, sistema: checked }))} />
