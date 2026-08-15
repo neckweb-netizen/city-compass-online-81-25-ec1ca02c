@@ -9,6 +9,14 @@ import {
 } from "../_shared/security.ts";
 
 const FIPE_API_URL = "https://fipe.parallelum.com.br/api/v2";
+const CACHE_TIMEOUT_MS = 4_000;
+const CACHE_TTL_MS: Record<Exclude<Action, "usage">, number> = {
+  references: 6 * 60 * 60 * 1_000,
+  brands: 30 * 24 * 60 * 60 * 1_000,
+  models: 30 * 24 * 60 * 60 * 1_000,
+  years: 30 * 24 * 60 * 60 * 1_000,
+  details: 30 * 24 * 60 * 60 * 1_000,
+};
 const vehicleTypes = new Set(["cars", "motorcycles", "trucks"]);
 const safeNumericId = /^\d+$/;
 const safeYearId = /^\d{4}-\d$/;
@@ -31,6 +39,12 @@ interface DailyUsage {
   remaining: number;
   limit: number;
   date: string;
+}
+
+interface SheetCacheResponse {
+  ok?: boolean;
+  hit?: boolean;
+  data?: unknown;
 }
 
 function getBahiaDate(): string {
@@ -126,6 +140,72 @@ function buildPath(body: RequestBody): string {
   throw new HttpError(400, "Consulta inválida");
 }
 
+function buildCacheKey(body: RequestBody): string {
+  return [
+    "fipe-v1",
+    body.action ?? "",
+    body.vehicleType ?? "",
+    body.brandId ?? "",
+    body.modelId ?? "",
+    body.yearId ?? "",
+    body.reference ?? "",
+  ].map((value) => encodeURIComponent(value)).join(":");
+}
+
+function getSheetCacheConfig(): { url: string; secret: string } | null {
+  const url = Deno.env.get("FIPE_SHEETS_WEB_APP_URL");
+  const secret = Deno.env.get("FIPE_SHEETS_SECRET");
+  return url && secret ? { url, secret } : null;
+}
+
+async function callSheetCache(payload: Record<string, unknown>): Promise<SheetCacheResponse | null> {
+  const config = getSheetCacheConfig();
+  if (!config) return null;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), CACHE_TIMEOUT_MS);
+  try {
+    const response = await fetch(config.url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...payload, secret: config.secret }),
+      signal: controller.signal,
+    });
+    if (!response.ok) return null;
+    const result = await response.json() as SheetCacheResponse;
+    return result.ok ? result : null;
+  } catch (error) {
+    console.error("Cache FIPE no Google Sheets indisponível", error instanceof Error ? error.name : "erro");
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function readFromSheetCache(cacheKey: string): Promise<SheetCacheResponse | null> {
+  return await callSheetCache({ operation: "get", cacheKey });
+}
+
+async function writeToSheetCache(
+  cacheKey: string,
+  body: RequestBody,
+  data: unknown,
+): Promise<void> {
+  const action = body.action as Exclude<Action, "usage">;
+  await callSheetCache({
+    operation: "put",
+    cacheKey,
+    action,
+    vehicleType: body.vehicleType,
+    brandId: body.brandId,
+    modelId: body.modelId,
+    yearId: body.yearId,
+    reference: body.reference,
+    response: data,
+    expiresAt: new Date(Date.now() + CACHE_TTL_MS[action]).toISOString(),
+  });
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders(req) });
@@ -150,9 +230,6 @@ Deno.serve(async (req: Request) => {
     }
 
     const path = buildPath(body);
-    const apiKey = Deno.env.get("FIPE_API_KEY");
-    if (!apiKey) throw new HttpError(503, "Consulta FIPE temporariamente indisponível");
-
     const upstreamUrl = new URL(`${FIPE_API_URL}${path}`);
     if (body.reference) {
       upstreamUrl.searchParams.set("reference", requireNumericId(body.reference, "Referência"));
@@ -164,6 +241,15 @@ Deno.serve(async (req: Request) => {
     }
 
     try {
+      const cacheKey = buildCacheKey(body);
+      const cached = await readFromSheetCache(cacheKey);
+      if (cached?.hit && cached.data !== undefined) {
+        return jsonResponse(req, { data: cached.data, usage: reservation?.usage, cached: true });
+      }
+
+      const apiKey = Deno.env.get("FIPE_API_KEY");
+      if (!apiKey) throw new HttpError(503, "Consulta FIPE temporariamente indisponível");
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 12_000);
       let response: Response;
@@ -183,7 +269,8 @@ Deno.serve(async (req: Request) => {
       if (!response.ok) throw new HttpError(502, "Não foi possível consultar a Tabela FIPE");
 
       const data = await response.json();
-      return jsonResponse(req, { data, usage: reservation?.usage });
+      await writeToSheetCache(cacheKey, body, data);
+      return jsonResponse(req, { data, usage: reservation?.usage, cached: false });
     } catch (error) {
       if (reservation) {
         await releaseDailyUsage(admin, user.id, usageDate, reservation.slot);
