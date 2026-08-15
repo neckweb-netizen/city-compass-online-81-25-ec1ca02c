@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -6,10 +6,177 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, FileSpreadsheet, Calculator, Sparkles, AlertCircle, Info, DollarSign, RefreshCw } from 'lucide-react';
+import {
+  AlertCircle,
+  ArrowLeft,
+  Calculator,
+  CalendarDays,
+  DollarSign,
+  FileSpreadsheet,
+  Landmark,
+  MinusCircle,
+  PlusCircle,
+  RefreshCw,
+  Sparkles,
+  WalletCards,
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ToolBanner } from '@/components/ferramentas/ToolBanner';
+
+type MotivoRescisao = 'sem_justa_causa' | 'com_justa_causa' | 'pedido_demissao' | 'acordo';
+type TipoAvisoPrevio = 'indenizado' | 'trabalhado' | 'nao_cumprido';
+
+interface ResultadoRescisao {
+  diasTrabalhadosMes: number;
+  diasAvisoProporcional: number;
+  avosDecimoTerceiro: number;
+  avosFerias: number;
+  anosCompletos: number;
+  tempoServicoTexto: string;
+  valorSaldoSalario: number;
+  valorAvisoPrevio: number;
+  valorDecimoTerceiro: number;
+  valorFeriasProporcionais: number;
+  valorTercoFeriasProporcionais: number;
+  valorFeriasVencidas: number;
+  valorTercoFeriasVencidas: number;
+  saldoFgtsInformado: number;
+  percentualMultaFgts: number;
+  valorMultaFgts: number;
+  descontoInssSaldo: number;
+  descontoInssDecimoTerceiro: number;
+  descontoAvisoPrevio: number;
+  proventos: number;
+  descontos: number;
+  valorLiquidoRescisao: number;
+  totalComMultaFgts: number;
+}
+
+const formatarMoeda = (valor: number) =>
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
+
+const parseMoeda = (valor: string) => {
+  const normalizado = valor.trim().replace(/\s/g, '').replace(/R\$/gi, '');
+  if (!normalizado) return 0;
+
+  const usaVirgulaDecimal = normalizado.includes(',');
+  const numero = usaVirgulaDecimal
+    ? normalizado.replace(/\./g, '').replace(',', '.')
+    : normalizado;
+
+  return Number.parseFloat(numero) || 0;
+};
+
+const parseDataLocal = (valor: string) => {
+  const [ano, mes, dia] = valor.split('-').map(Number);
+  return new Date(ano, mes - 1, dia);
+};
+
+const diferencaEmDias = (inicio: Date, fim: Date) =>
+  Math.floor((fim.getTime() - inicio.getTime()) / 86_400_000) + 1;
+
+const calcularInss2026 = (base: number) => {
+  const faixas = [
+    { limite: 1621, aliquota: 0.075 },
+    { limite: 2902.84, aliquota: 0.09 },
+    { limite: 4354.27, aliquota: 0.12 },
+    { limite: 8475.55, aliquota: 0.14 },
+  ];
+
+  let contribuicao = 0;
+  let limiteAnterior = 0;
+  const baseLimitada = Math.min(Math.max(base, 0), faixas.at(-1)?.limite ?? 0);
+
+  for (const faixa of faixas) {
+    if (baseLimitada <= limiteAnterior) break;
+    const parcela = Math.min(baseLimitada, faixa.limite) - limiteAnterior;
+    contribuicao += parcela * faixa.aliquota;
+    limiteAnterior = faixa.limite;
+  }
+
+  return contribuicao;
+};
+
+const contarAvosDecimoTerceiro = (admissao: Date, demissao: Date) => {
+  const inicioAno = new Date(demissao.getFullYear(), 0, 1);
+  const inicio = admissao > inicioAno ? admissao : inicioAno;
+  let avos = 0;
+
+  for (let mes = inicio.getMonth(); mes <= demissao.getMonth(); mes += 1) {
+    const inicioMes = new Date(demissao.getFullYear(), mes, 1);
+    const fimMes = new Date(demissao.getFullYear(), mes + 1, 0);
+    const inicioTrabalhado = inicio > inicioMes ? inicio : inicioMes;
+    const fimTrabalhado = demissao < fimMes ? demissao : fimMes;
+
+    if (fimTrabalhado >= inicioTrabalhado && diferencaEmDias(inicioTrabalhado, fimTrabalhado) >= 15) {
+      avos += 1;
+    }
+  }
+
+  return Math.min(12, avos);
+};
+
+const contarAvosFerias = (admissao: Date, demissao: Date) => {
+  let inicioPeriodo = new Date(demissao.getFullYear(), admissao.getMonth(), admissao.getDate());
+  if (inicioPeriodo > demissao) {
+    inicioPeriodo = new Date(demissao.getFullYear() - 1, admissao.getMonth(), admissao.getDate());
+  }
+  if (inicioPeriodo < admissao) inicioPeriodo = admissao;
+
+  const diasNoPeriodo = Math.max(0, diferencaEmDias(inicioPeriodo, demissao));
+  const mesesCompletos = Math.floor(diasNoPeriodo / 30);
+  const fracao = diasNoPeriodo % 30;
+  return Math.min(12, mesesCompletos + (fracao >= 15 ? 1 : 0));
+};
+
+const descreverTempoServico = (admissao: Date, demissao: Date) => {
+  let anos = demissao.getFullYear() - admissao.getFullYear();
+  let meses = demissao.getMonth() - admissao.getMonth();
+  if (demissao.getDate() < admissao.getDate()) meses -= 1;
+  if (meses < 0) {
+    anos -= 1;
+    meses += 12;
+  }
+
+  const partes = [];
+  if (anos > 0) partes.push(`${anos} ${anos === 1 ? 'ano' : 'anos'}`);
+  if (meses > 0) partes.push(`${meses} ${meses === 1 ? 'mês' : 'meses'}`);
+  return partes.join(' e ') || 'menos de 1 mês';
+};
+
+const calcularAnosCompletos = (admissao: Date, demissao: Date) => {
+  let anos = demissao.getFullYear() - admissao.getFullYear();
+  const aniversarioNoAno = new Date(
+    admissao.getFullYear() + anos,
+    admissao.getMonth(),
+    admissao.getDate(),
+  );
+  if (aniversarioNoAno > demissao) anos -= 1;
+  return Math.max(0, anos);
+};
+
+const LinhaCalculo = ({
+  titulo,
+  descricao,
+  valor,
+  desconto = false,
+}: {
+  titulo: string;
+  descricao: string;
+  valor: number;
+  desconto?: boolean;
+}) => (
+  <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-b border-border/50 py-2.5 last:border-b-0">
+    <div className="min-w-0">
+      <span className="block text-xs font-semibold text-foreground">{titulo}</span>
+      <span className="mt-0.5 block text-[10px] leading-relaxed text-muted-foreground">{descricao}</span>
+    </div>
+    <strong className={`self-center whitespace-nowrap font-mono text-xs sm:text-sm ${desconto ? 'text-destructive' : 'text-foreground'}`}>
+      {desconto ? '− ' : ''}{formatarMoeda(valor)}
+    </strong>
+  </div>
+);
 
 export const SimuladorRescisao = () => {
   const navigate = useNavigate();
@@ -18,25 +185,36 @@ export const SimuladorRescisao = () => {
   const [salarioBruto, setSalarioBruto] = useState('');
   const [dataAdmissao, setDataAdmissao] = useState('');
   const [dataDemissao, setDataDemissao] = useState('');
-  const [motivoRescisao, setMotivoRescisao] = useState<'sem_justa_causa' | 'com_justa_causa' | 'pedido_demissao' | 'acordo'>('sem_justa_causa');
-  const [avisoPrevio, setAvisoPrevio] = useState<'indenizado' | 'trabalhado' | 'nao_cumprido'>('indenizado');
+  const [motivoRescisao, setMotivoRescisao] = useState<MotivoRescisao>('sem_justa_causa');
+  const [avisoPrevio, setAvisoPrevio] = useState<TipoAvisoPrevio>('indenizado');
   const [possuiFeriasVencidas, setPossuiFeriasVencidas] = useState(false);
   const [saldoFgts, setSaldoFgts] = useState('');
-  const [dependentes, setDependentes] = useState('0');
 
   // RESULTADOS CALCULADOS
-  const [resultado, setResultado] = useState<any | null>(null);
+  const [resultado, setResultado] = useState<ResultadoRescisao | null>(null);
+
+  const handleMotivoRescisao = (motivo: MotivoRescisao) => {
+    setMotivoRescisao(motivo);
+    if (motivo === 'pedido_demissao') setAvisoPrevio('trabalhado');
+    else if (motivo === 'com_justa_causa') setAvisoPrevio('trabalhado');
+    else setAvisoPrevio('indenizado');
+    setResultado(null);
+  };
 
   // CÁLCULO COMPLETO DA RESCISÃO
   const calcularRescisao = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const salario = parseFloat(salarioBruto.replace(',', '.')) || 0;
-    const fgts = parseFloat(saldoFgts.replace(',', '.')) || 0;
-    const numDependentes = parseInt(dependentes) || 0;
+    const salario = parseMoeda(salarioBruto);
+    const fgts = parseMoeda(saldoFgts);
 
     if (salario <= 0) {
       toast.error('Informe um valor de salário bruto válido.');
+      return;
+    }
+
+    if (fgts < 0) {
+      toast.error('O saldo do FGTS não pode ser negativo.');
       return;
     }
 
@@ -45,8 +223,8 @@ export const SimuladorRescisao = () => {
       return;
     }
 
-    const admissao = new Date(dataAdmissao);
-    const demissao = new Date(dataDemissao);
+    const admissao = parseDataLocal(dataAdmissao);
+    const demissao = parseDataLocal(dataDemissao);
 
     if (demissao < admissao) {
       toast.error('A data de demissão não pode ser anterior à data de admissão.');
@@ -54,15 +232,23 @@ export const SimuladorRescisao = () => {
     }
 
     // CÁLCULO DE TEMPO E DIAS
-    const diasTrabalhadosMes = demissao.getDate();
-    const mesesTrabalhadosAno = demissao.getMonth() + (diasTrabalhadosMes >= 15 ? 1 : 0);
+    const mesmoMesDaAdmissao = admissao.getFullYear() === demissao.getFullYear()
+      && admissao.getMonth() === demissao.getMonth();
+    const primeiroDiaTrabalhado = mesmoMesDaAdmissao ? admissao.getDate() : 1;
+    const ultimoDiaDoMes = new Date(demissao.getFullYear(), demissao.getMonth() + 1, 0).getDate();
+    const trabalhouMesCompleto = primeiroDiaTrabalhado === 1 && demissao.getDate() === ultimoDiaDoMes;
+    const diasTrabalhadosMes = trabalhouMesCompleto
+      ? 30
+      : Math.min(30, demissao.getDate() - primeiroDiaTrabalhado + 1);
+    const avosDecimoTerceiro = contarAvosDecimoTerceiro(admissao, demissao);
+    const avosFerias = contarAvosFerias(admissao, demissao);
 
     // 1. SALDO DE SALÁRIO
     const valorSaldoSalario = (salario / 30) * diasTrabalhadosMes;
 
     // 2. AVISO PRÉVIO
     let valorAvisoPrevio = 0;
-    const anosCompletos = Math.floor((demissao.getTime() - admissao.getTime()) / (1000 * 60 * 60 * 24 * 365.25));
+    const anosCompletos = calcularAnosCompletos(admissao, demissao);
     const diasAvisoProporcional = Math.min(90, 30 + (anosCompletos * 3));
 
     if (motivoRescisao === 'sem_justa_causa') {
@@ -80,24 +266,24 @@ export const SimuladorRescisao = () => {
     // 3. 13º SALÁRIO PROPORCIONAL
     let valorDecimoTerceiro = 0;
     if (motivoRescisao !== 'com_justa_causa') {
-      const fracao13 = mesesTrabalhadosAno;
-      valorDecimoTerceiro = (salario / 12) * fracao13;
+      valorDecimoTerceiro = (salario / 12) * avosDecimoTerceiro;
     }
 
     // 4. FÉRIAS (PROPORCIONAIS + VENCIDAS + 1/3)
     let valorFeriasProporcionais = 0;
     let valorFeriasVencidas = 0;
-    let valorUmTercasFerias = 0;
+    let valorTercoFeriasProporcionais = 0;
+    let valorTercoFeriasVencidas = 0;
 
     if (motivoRescisao !== 'com_justa_causa') {
-      valorFeriasProporcionais = (salario / 12) * mesesTrabalhadosAno;
+      valorFeriasProporcionais = (salario / 12) * avosFerias;
+      valorTercoFeriasProporcionais = valorFeriasProporcionais / 3;
     }
 
     if (possuiFeriasVencidas) {
       valorFeriasVencidas = salario;
+      valorTercoFeriasVencidas = valorFeriasVencidas / 3;
     }
-
-    valorUmTercasFerias = (valorFeriasProporcionais + valorFeriasVencidas) / 3;
 
     // 5. MULTA DO FGTS (40% OU 20% NO ACORDO)
     let valorMultaFgts = 0;
@@ -107,33 +293,43 @@ export const SimuladorRescisao = () => {
       valorMultaFgts = fgts * 0.20;
     }
 
-    // 6. ESTIMATIVA DE DESCONTOS (INSS)
-    let descontoInss = 0;
-    const baseInss = valorSaldoSalario;
-    if (baseInss <= 1412) descontoInss = baseInss * 0.075;
-    else if (baseInss <= 2666.68) descontoInss = baseInss * 0.09 - 21.18;
-    else if (baseInss <= 4000.03) descontoInss = baseInss * 0.12 - 101.18;
-    else descontoInss = Math.min(908.85, baseInss * 0.14 - 181.18);
-
-    descontoInss = Math.max(0, descontoInss);
+    // 6. ESTIMATIVA DE DESCONTOS (INSS PROGRESSIVO 2026)
+    const descontoInssSaldo = calcularInss2026(valorSaldoSalario);
+    const descontoInssDecimoTerceiro = calcularInss2026(valorDecimoTerceiro);
+    const descontoAvisoPrevio = Math.abs(Math.min(0, valorAvisoPrevio));
 
     // TOTALIZADORES
-    const proventos = valorSaldoSalario + Math.max(0, valorAvisoPrevio) + valorDecimoTerceiro + valorFeriasProporcionais + valorFeriasVencidas + valorUmTercasFerias;
-    const descontos = Math.abs(Math.min(0, valorAvisoPrevio)) + descontoInss;
+    const proventos = valorSaldoSalario
+      + Math.max(0, valorAvisoPrevio)
+      + valorDecimoTerceiro
+      + valorFeriasProporcionais
+      + valorTercoFeriasProporcionais
+      + valorFeriasVencidas
+      + valorTercoFeriasVencidas;
+    const descontos = descontoAvisoPrevio + descontoInssSaldo + descontoInssDecimoTerceiro;
     const valorLiquidoRescisao = Math.max(0, proventos - descontos);
     const totalComMultaFgts = valorLiquidoRescisao + valorMultaFgts;
 
     setResultado({
       diasTrabalhadosMes,
       diasAvisoProporcional,
+      avosDecimoTerceiro,
+      avosFerias,
+      anosCompletos,
+      tempoServicoTexto: descreverTempoServico(admissao, demissao),
       valorSaldoSalario,
       valorAvisoPrevio,
       valorDecimoTerceiro,
       valorFeriasProporcionais,
+      valorTercoFeriasProporcionais,
       valorFeriasVencidas,
-      valorUmTercasFerias,
+      valorTercoFeriasVencidas,
+      saldoFgtsInformado: fgts,
+      percentualMultaFgts: motivoRescisao === 'sem_justa_causa' ? 40 : motivoRescisao === 'acordo' ? 20 : 0,
       valorMultaFgts,
-      descontoInss,
+      descontoInssSaldo,
+      descontoInssDecimoTerceiro,
+      descontoAvisoPrevio,
       proventos,
       descontos,
       valorLiquidoRescisao,
@@ -148,13 +344,15 @@ export const SimuladorRescisao = () => {
     setDataAdmissao('');
     setDataDemissao('');
     setSaldoFgts('');
+    setMotivoRescisao('sem_justa_causa');
+    setAvisoPrevio('indenizado');
     setPossuiFeriasVencidas(false);
     setResultado(null);
   };
 
   return (
     <div className="min-h-screen bg-background py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto space-y-6">
 
         {/* CABEÇALHO */}
         <div className="flex items-center justify-between">
@@ -182,10 +380,10 @@ export const SimuladorRescisao = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-5 lg:items-start">
 
           {/* FORMULÁRIO DE ENTRADA */}
-          <div className="lg:col-span-2 space-y-4">
+          <div className="space-y-4 lg:col-span-3">
             <Card className="border-border/60 shadow-md">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base font-bold flex items-center gap-2">
@@ -203,8 +401,12 @@ export const SimuladorRescisao = () => {
                       <Label className="text-xs font-semibold">Último Salário Bruto (R$) *</Label>
                       <Input 
                         placeholder="Ex: 2500,00" 
+                        inputMode="decimal"
                         value={salarioBruto} 
-                        onChange={e => setSalarioBruto(e.target.value)} 
+                        onChange={e => {
+                          setSalarioBruto(e.target.value);
+                          setResultado(null);
+                        }}
                         required 
                         className="h-10 text-sm"
                       />
@@ -214,10 +416,17 @@ export const SimuladorRescisao = () => {
                       <Label className="text-xs font-semibold">Saldo Atual do FGTS (R$)</Label>
                       <Input 
                         placeholder="Ex: 5000,00" 
+                        inputMode="decimal"
                         value={saldoFgts} 
-                        onChange={e => setSaldoFgts(e.target.value)} 
+                        onChange={e => {
+                          setSaldoFgts(e.target.value);
+                          setResultado(null);
+                        }}
                         className="h-10 text-sm"
                       />
+                      <span className="block text-[10px] leading-relaxed text-muted-foreground">
+                        Usado apenas para estimar a multa rescisória. Consulte o extrato no app FGTS.
+                      </span>
                     </div>
                   </div>
 
@@ -227,7 +436,10 @@ export const SimuladorRescisao = () => {
                       <Input 
                         type="date"
                         value={dataAdmissao} 
-                        onChange={e => setDataAdmissao(e.target.value)} 
+                        onChange={e => {
+                          setDataAdmissao(e.target.value);
+                          setResultado(null);
+                        }}
                         required 
                         className="h-10 text-sm"
                       />
@@ -238,7 +450,10 @@ export const SimuladorRescisao = () => {
                       <Input 
                         type="date"
                         value={dataDemissao} 
-                        onChange={e => setDataDemissao(e.target.value)} 
+                        onChange={e => {
+                          setDataDemissao(e.target.value);
+                          setResultado(null);
+                        }}
                         required 
                         className="h-10 text-sm"
                       />
@@ -248,7 +463,7 @@ export const SimuladorRescisao = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label className="text-xs font-semibold">Motivo da Rescisão *</Label>
-                      <Select value={motivoRescisao} onValueChange={(v: any) => setMotivoRescisao(v)}>
+                      <Select value={motivoRescisao} onValueChange={(v) => handleMotivoRescisao(v as MotivoRescisao)}>
                         <SelectTrigger className="h-10 text-sm">
                           <SelectValue placeholder="Selecione..." />
                         </SelectTrigger>
@@ -263,16 +478,32 @@ export const SimuladorRescisao = () => {
 
                     <div className="space-y-1.5">
                       <Label className="text-xs font-semibold">Aviso Prévio</Label>
-                      <Select value={avisoPrevio} onValueChange={(v: any) => setAvisoPrevio(v)}>
-                        <SelectTrigger className="h-10 text-sm">
-                          <SelectValue placeholder="Selecione..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="indenizado">Indenizado (Pago pela Empresa)</SelectItem>
-                          <SelectItem value="trabalhado">Trabalhado</SelectItem>
-                          <SelectItem value="nao_cumprido">Não Cumprido (Descontado do Funcionário)</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      {motivoRescisao === 'com_justa_causa' ? (
+                        <div className="flex h-10 items-center rounded-md border border-input bg-muted/40 px-3 text-sm text-muted-foreground">
+                          Não se aplica à justa causa
+                        </div>
+                      ) : (
+                        <Select
+                          value={avisoPrevio}
+                          onValueChange={(v) => {
+                            setAvisoPrevio(v as TipoAvisoPrevio);
+                            setResultado(null);
+                          }}
+                        >
+                          <SelectTrigger className="h-10 text-sm">
+                            <SelectValue placeholder="Selecione..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {motivoRescisao !== 'pedido_demissao' && (
+                              <SelectItem value="indenizado">Indenizado (pago pela empresa)</SelectItem>
+                            )}
+                            <SelectItem value="trabalhado">Trabalhado</SelectItem>
+                            {motivoRescisao === 'pedido_demissao' && (
+                              <SelectItem value="nao_cumprido">Não cumprido (pode ser descontado)</SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      )}
                     </div>
                   </div>
 
@@ -283,7 +514,10 @@ export const SimuladorRescisao = () => {
                     </div>
                     <Switch 
                       checked={possuiFeriasVencidas} 
-                      onCheckedChange={setPossuiFeriasVencidas} 
+                      onCheckedChange={(checked) => {
+                        setPossuiFeriasVencidas(checked);
+                        setResultado(null);
+                      }}
                     />
                   </div>
 
@@ -311,103 +545,207 @@ export const SimuladorRescisao = () => {
           </div>
 
           {/* PAINEL DE RESULTADOS DA RESCISÃO */}
-          <div className="space-y-4">
-            <Card className="border-border/60 shadow-md bg-gradient-to-b from-card via-card to-cyan-500/5">
-              <CardHeader className="pb-3 border-b">
-                <CardTitle className="text-base font-bold flex items-center gap-2">
-                  <DollarSign className="w-5 h-5 text-cyan-500" /> Resumo do Acerto Estimado
+          <div className="space-y-4 lg:col-span-2">
+            <Card className="overflow-hidden border-border/60 bg-gradient-to-b from-card via-card to-cyan-500/5 shadow-md">
+              <CardHeader className="border-b bg-muted/20 pb-3">
+                <CardTitle className="flex items-center gap-2 text-base font-bold">
+                  <DollarSign className="h-5 w-5 text-cyan-500" /> Demonstrativo da Rescisão
                 </CardTitle>
+                <CardDescription className="text-xs">
+                  Confira cada verba e desconto antes do valor final estimado.
+                </CardDescription>
               </CardHeader>
 
-              <CardContent className="p-5 space-y-4">
+              <CardContent className="space-y-5 p-4 sm:p-5">
                 {resultado ? (
-                  <div className="space-y-4">
-                    
-                    {/* DESTAQUE DO VALOR LÍQUIDO */}
-                    <div className="p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-2xl text-center space-y-1">
-                      <span className="text-[11px] text-cyan-700 dark:text-cyan-300 font-extrabold uppercase tracking-wider block">
-                        Valor Líquido da Rescisão
-                      </span>
-                      <strong className="text-3xl font-black text-cyan-700 dark:text-cyan-400 block">
-                        R$ {resultado.valorLiquidoRescisao.toFixed(2)}
-                      </strong>
-                      <span className="text-[10px] text-muted-foreground block">
-                        (Sem considerar saques do FGTS)
-                      </span>
+                  <div className="space-y-5">
+                    <div className="grid grid-cols-2 gap-2 rounded-xl border border-border/60 bg-muted/20 p-3 text-xs">
+                      <div>
+                        <span className="block text-[10px] uppercase tracking-wide text-muted-foreground">Tempo de serviço</span>
+                        <strong className="mt-0.5 block text-foreground">{resultado.tempoServicoTexto}</strong>
+                      </div>
+                      <div>
+                        <span className="block text-[10px] uppercase tracking-wide text-muted-foreground">Aviso calculado</span>
+                        <strong className="mt-0.5 block text-foreground">{resultado.diasAvisoProporcional} dias</strong>
+                      </div>
                     </div>
 
-                    {resultado.valorMultaFgts > 0 && (
-                      <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-center">
-                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase block">
-                          + Multa Rescisória do FGTS
+                    {/* 1. VERBAS A RECEBER */}
+                    <section aria-labelledby="titulo-proventos">
+                      <div className="mb-1 flex items-center gap-2">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                          <PlusCircle className="h-4 w-4" />
                         </span>
-                        <strong className="text-lg font-extrabold text-emerald-600 dark:text-emerald-400 block">
-                          R$ {resultado.valorMultaFgts.toFixed(2)}
+                        <div>
+                          <h2 id="titulo-proventos" className="text-sm font-extrabold text-foreground">1. Verbas a receber</h2>
+                          <p className="text-[10px] text-muted-foreground">Valores brutos que compõem o acerto</p>
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-border/60 bg-background/50 px-3">
+                        <LinhaCalculo
+                          titulo={`Saldo de salário — ${resultado.diasTrabalhadosMes} dias`}
+                          descricao="Último salário dividido por 30 e multiplicado pelos dias trabalhados no mês."
+                          valor={resultado.valorSaldoSalario}
+                        />
+                        {resultado.valorAvisoPrevio > 0 && (
+                          <LinhaCalculo
+                            titulo={`Aviso prévio indenizado — ${resultado.diasAvisoProporcional} dias`}
+                            descricao={motivoRescisao === 'acordo' ? 'No acordo, o aviso indenizado é pago pela metade.' : 'Proporcional ao tempo de serviço, limitado a 90 dias.'}
+                            valor={resultado.valorAvisoPrevio}
+                          />
+                        )}
+                        <LinhaCalculo
+                          titulo={`13º salário proporcional — ${resultado.avosDecimoTerceiro}/12 avos`}
+                          descricao="Cada mês com pelo menos 15 dias trabalhados conta como um avo."
+                          valor={resultado.valorDecimoTerceiro}
+                        />
+                        <LinhaCalculo
+                          titulo={`Férias proporcionais — ${resultado.avosFerias}/12 avos`}
+                          descricao="Estimativa do período aquisitivo atual, sem incluir o adicional constitucional."
+                          valor={resultado.valorFeriasProporcionais}
+                        />
+                        <LinhaCalculo
+                          titulo="1/3 sobre férias proporcionais"
+                          descricao="Adicional constitucional calculado separadamente para facilitar a conferência."
+                          valor={resultado.valorTercoFeriasProporcionais}
+                        />
+                        {resultado.valorFeriasVencidas > 0 && (
+                          <>
+                            <LinhaCalculo
+                              titulo="Férias vencidas"
+                              descricao="Um período informado como adquirido e ainda não usufruído."
+                              valor={resultado.valorFeriasVencidas}
+                            />
+                            <LinhaCalculo
+                              titulo="1/3 sobre férias vencidas"
+                              descricao="Adicional constitucional sobre o período vencido informado."
+                              valor={resultado.valorTercoFeriasVencidas}
+                            />
+                          </>
+                        )}
+                      </div>
+
+                      <div className="mt-2 flex items-center justify-between rounded-lg bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+                        <span className="font-bold">Subtotal de verbas</span>
+                        <strong className="font-mono">{formatarMoeda(resultado.proventos)}</strong>
+                      </div>
+                    </section>
+
+                    {/* 2. DESCONTOS */}
+                    <section aria-labelledby="titulo-descontos">
+                      <div className="mb-1 flex items-center gap-2">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-500/10 text-destructive">
+                          <MinusCircle className="h-4 w-4" />
+                        </span>
+                        <div>
+                          <h2 id="titulo-descontos" className="text-sm font-extrabold text-foreground">2. Descontos estimados</h2>
+                          <p className="text-[10px] text-muted-foreground">Deduções consideradas nesta simulação</p>
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-border/60 bg-background/50 px-3">
+                        <LinhaCalculo
+                          titulo="INSS sobre saldo de salário"
+                          descricao="Cálculo progressivo pelas faixas previdenciárias vigentes em 2026."
+                          valor={resultado.descontoInssSaldo}
+                          desconto
+                        />
+                        {resultado.descontoInssDecimoTerceiro > 0 && (
+                          <LinhaCalculo
+                            titulo="INSS sobre 13º proporcional"
+                            descricao="O 13º possui apuração previdenciária separada do salário mensal."
+                            valor={resultado.descontoInssDecimoTerceiro}
+                            desconto
+                          />
+                        )}
+                        {resultado.descontoAvisoPrevio > 0 && (
+                          <LinhaCalculo
+                            titulo="Aviso prévio não cumprido"
+                            descricao="Estimativa de um salário descontado no pedido de demissão."
+                            valor={resultado.descontoAvisoPrevio}
+                            desconto
+                          />
+                        )}
+                      </div>
+
+                      <div className="mt-2 flex items-center justify-between rounded-lg bg-red-500/10 px-3 py-2 text-sm text-destructive">
+                        <span className="font-bold">Total de descontos</span>
+                        <strong className="font-mono">− {formatarMoeda(resultado.descontos)}</strong>
+                      </div>
+                    </section>
+
+                    {/* 3. FGTS */}
+                    <section aria-labelledby="titulo-fgts">
+                      <div className="mb-1 flex items-center gap-2">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                          <Landmark className="h-4 w-4" />
+                        </span>
+                        <div>
+                          <h2 id="titulo-fgts" className="text-sm font-extrabold text-foreground">3. FGTS — separado do acerto</h2>
+                          <p className="text-[10px] text-muted-foreground">O saldo da conta não é somado ao pagamento da empresa</p>
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-border/60 bg-background/50 px-3">
+                        <LinhaCalculo
+                          titulo="Saldo do FGTS informado"
+                          descricao="Valor de referência digitado por você; confirme no extrato oficial."
+                          valor={resultado.saldoFgtsInformado}
+                        />
+                        <LinhaCalculo
+                          titulo={`Multa rescisória do FGTS — ${resultado.percentualMultaFgts}%`}
+                          descricao={resultado.percentualMultaFgts > 0 ? 'Calculada sobre o saldo informado e exibida fora do líquido da rescisão.' : 'Não há multa estimada para o motivo de desligamento selecionado.'}
+                          valor={resultado.valorMultaFgts}
+                        />
+                      </div>
+                    </section>
+
+                    {/* 4. TOTAL FINAL, APÓS O DETALHAMENTO */}
+                    <section aria-labelledby="titulo-total" className="space-y-3 border-t border-border pt-5">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-600 dark:text-cyan-400">
+                          <WalletCards className="h-4 w-4" />
+                        </span>
+                        <div>
+                          <h2 id="titulo-total" className="text-sm font-extrabold text-foreground">4. Resultado final estimado</h2>
+                          <p className="text-[10px] text-muted-foreground">Total exibido somente após toda a memória de cálculo</p>
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-cyan-500/30 bg-cyan-500/10 p-4 text-center">
+                        <span className="block text-[10px] font-extrabold uppercase tracking-wider text-cyan-700 dark:text-cyan-300">
+                          Líquido estimado da rescisão
+                        </span>
+                        <strong className="mt-1 block text-3xl font-black text-cyan-700 dark:text-cyan-400">
+                          {formatarMoeda(resultado.valorLiquidoRescisao)}
                         </strong>
-                      </div>
-                    )}
-
-                    {/* DETALHAMENTO DOS PROVENTOS */}
-                    <div className="space-y-2 text-xs border-t pt-3">
-                      <span className="font-extrabold uppercase text-[10px] text-muted-foreground block">
-                        Detalhamento de Proventos (Receber)
-                      </span>
-
-                      <div className="flex justify-between py-1 border-b border-border/40">
-                        <span className="text-muted-foreground">Saldo de Salário ({resultado.diasTrabalhadosMes} dias):</span>
-                        <strong className="font-mono text-foreground">R$ {resultado.valorSaldoSalario.toFixed(2)}</strong>
+                        <span className="mt-1 block text-[10px] text-muted-foreground">
+                          Verbas de {formatarMoeda(resultado.proventos)} menos descontos de {formatarMoeda(resultado.descontos)}
+                        </span>
                       </div>
 
-                      {resultado.valorAvisoPrevio > 0 && (
-                        <div className="flex justify-between py-1 border-b border-border/40">
-                          <span className="text-muted-foreground">Aviso Prévio Indenizado ({resultado.diasAvisoProporcional} dias):</span>
-                          <strong className="font-mono text-foreground">R$ {resultado.valorAvisoPrevio.toFixed(2)}</strong>
+                      {resultado.valorMultaFgts > 0 && (
+                        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3">
+                          <div className="flex items-center justify-between gap-3 text-sm text-emerald-700 dark:text-emerald-300">
+                            <span className="font-semibold">Acerto líquido + multa do FGTS</span>
+                            <strong className="whitespace-nowrap font-mono">{formatarMoeda(resultado.totalComMultaFgts)}</strong>
+                          </div>
+                          <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
+                            Referência combinada. A multa e o saldo do FGTS seguem regras e canais de pagamento próprios.
+                          </p>
                         </div>
                       )}
-
-                      <div className="flex justify-between py-1 border-b border-border/40">
-                        <span className="text-muted-foreground">13º Salário Proporcional:</span>
-                        <strong className="font-mono text-foreground">R$ {resultado.valorDecimoTerceiro.toFixed(2)}</strong>
-                      </div>
-
-                      <div className="flex justify-between py-1 border-b border-border/40">
-                        <span className="text-muted-foreground">Férias Proporcionais + 1/3:</span>
-                        <strong className="font-mono text-foreground">R$ {(resultado.valorFeriasProporcionais + (resultado.valorFeriasProporcionais / 3)).toFixed(2)}</strong>
-                      </div>
-
-                      {resultado.valorFeriasVencidas > 0 && (
-                        <div className="flex justify-between py-1 border-b border-border/40">
-                          <span className="text-muted-foreground">Férias Vencidas + 1/3:</span>
-                          <strong className="font-mono text-foreground">R$ {(resultado.valorFeriasVencidas + (resultado.valorFeriasVencidas / 3)).toFixed(2)}</strong>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* DETALHAMENTO DOS DESCONTOS */}
-                    <div className="space-y-2 text-xs border-t pt-2">
-                      <span className="font-extrabold uppercase text-[10px] text-muted-foreground block">
-                        Descontos Estimados
-                      </span>
-
-                      <div className="flex justify-between py-1 border-b border-border/40 text-destructive">
-                        <span>Desconto INSS (Saldo Salário):</span>
-                        <strong className="font-mono">- R$ {resultado.descontoInss.toFixed(2)}</strong>
-                      </div>
-
-                      {resultado.valorAvisoPrevio < 0 && (
-                        <div className="flex justify-between py-1 border-b border-border/40 text-destructive">
-                          <span>Desconto Aviso Prévio Não Cumprido:</span>
-                          <strong className="font-mono">- R$ {Math.abs(resultado.valorAvisoPrevio).toFixed(2)}</strong>
-                        </div>
-                      )}
-                    </div>
-
+                    </section>
                   </div>
                 ) : (
-                  <div className="py-8 text-center space-y-2">
-                    <Info className="w-8 h-8 text-muted-foreground/50 mx-auto" />
-                    <p className="text-xs text-muted-foreground">
-                      Preencha o formulário e clique em <strong>Calcular Rescisão</strong> para ver o resultado detalhado.
+                  <div className="py-10 text-center">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400">
+                      <CalendarDays className="h-7 w-7" />
+                    </div>
+                    <h2 className="mt-4 text-sm font-bold text-foreground">Seu demonstrativo aparecerá aqui</h2>
+                    <p className="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">
+                      Preencha os dados do contrato e calcule para conferir verbas, descontos, FGTS e total final em ordem.
                     </p>
                   </div>
                 )}
@@ -419,7 +757,7 @@ export const SimuladorRescisao = () => {
                 <AlertCircle className="w-3.5 h-3.5 text-amber-500" /> Nota Informativa
               </span>
               <p className="leading-relaxed">
-                Este cálculo é uma simulação demonstrativa baseada na CLT. Valores exatos podem variar conforme convenções coletivas de cada categoria.
+                Estimativa informativa baseada nas regras gerais da CLT e nas faixas progressivas do INSS de 2026. Não inclui IRRF, médias de adicionais, faltas, adiantamentos, pensão, férias em dobro ou regras de convenção coletiva. Confirme o TRCT com o RH, sindicato ou profissional habilitado.
               </p>
             </div>
           </div>
