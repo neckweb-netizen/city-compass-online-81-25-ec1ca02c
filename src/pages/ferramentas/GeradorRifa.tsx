@@ -959,7 +959,7 @@ export const GeradorRifa = () => {
                             setTelefoneComprador(numItem?.telefone || '');
                             setModalReservaOpen(true);
                           }}
-                          className={`border rounded-lg sm:rounded-xl p-1 sm:p-2 flex items-center justify-between text-left transition-all duration-200 relative overflow-hidden group min-h-[68px] sm:min-h-[85px] ${estiloStatus}`}
+                          className={`border rounded-lg sm:rounded-xl p-1 sm:p-2 flex items-center justify-between text-left transition-all duration-200 relative overflow-hidden group min-h-[74px] sm:min-h-[85px] ${estiloStatus}`}
                         >
                           {/* LADO ESQUERDO: GRUPO, EMOJI E NOME */}
                           <div className="flex flex-col justify-between h-full space-y-0.5 overflow-hidden">
@@ -976,13 +976,24 @@ export const GeradorRifa = () => {
                             </span>
                           </div>
 
-                          {/* LADO DIREITO: COLUNA VERTICAL DAS DEZENAS */}
-                          <div className="flex flex-col items-end justify-between border-l border-pink-200 dark:border-pink-900/60 pl-0.5 sm:pl-1.5 font-mono text-[8px] sm:text-[10px] font-extrabold text-foreground/80 leading-tight">
-                            {bicho.dezenas.map((dz) => (
-                              <span key={dz} className="leading-tight">
-                                {dz}
+                          {/* LADO DIREITO: DEZENAS E NOME DO COMPRADOR */}
+                          <div className="flex h-full min-w-0 flex-col items-end justify-between border-l border-pink-200 pl-0.5 dark:border-pink-900/60 sm:pl-1.5">
+                            <div className="flex flex-col items-end font-mono text-[8px] font-extrabold leading-tight text-foreground/80 sm:text-[10px]">
+                              {bicho.dezenas.map((dz) => (
+                                <span key={dz} className="leading-tight">
+                                  {dz}
+                                </span>
+                              ))}
+                            </div>
+
+                            {numItem?.nome && (
+                              <span
+                                title={numItem.nome}
+                                className="mt-0.5 max-w-[34px] truncate rounded bg-background/90 px-0.5 text-right font-sans text-[6px] font-bold leading-none text-primary shadow-sm sm:max-w-[52px] sm:text-[8px]"
+                              >
+                                {numItem.nome.split(' ')[0]}
                               </span>
-                            ))}
+                            )}
                           </div>
 
                           {/* ETIQUETA DE STATUS */}
@@ -997,11 +1008,6 @@ export const GeradorRifa = () => {
                             </div>
                           )}
 
-                          {numItem?.nome && (
-                            <div className="absolute bottom-0.5 left-0.5 max-w-[32px] sm:max-w-[50px] truncate text-[6px] sm:text-[8px] font-bold text-primary bg-background/90 px-0.5 rounded shadow-sm leading-none">
-                              {numItem.nome.split(' ')[0]}
-                            </div>
-                          )}
                         </button>
                       );
                     })}
