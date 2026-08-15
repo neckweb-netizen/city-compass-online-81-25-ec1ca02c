@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -97,6 +97,9 @@ export const GeradorRifa = () => {
   const [modalReservaOpen, setModalReservaOpen] = useState(false);
   const [nomeComprador, setNomeComprador] = useState('');
   const [telefoneComprador, setTelefoneComprador] = useState('');
+  const [salvandoReserva, setSalvandoReserva] = useState(false);
+  const [compartilhando, setCompartilhando] = useState(false);
+  const cartelaRef = useRef<HTMLDivElement | null>(null);
 
   const inicializarRifas = async () => {
     try {
@@ -179,6 +182,31 @@ export const GeradorRifa = () => {
   useEffect(() => {
     inicializarRifas();
   }, [idRifaPublica]);
+
+  useEffect(() => {
+    const rifaId = rifaAtiva?.id;
+    if (!rifaId) return;
+
+    const channel = supabase
+      .channel(`rifa-tempo-real:${rifaId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'rifas_usuarios', filter: `id=eq.${rifaId}` },
+        (payload) => {
+          const atualizada = payload.new as { numeros?: NumeroRifa[] };
+          if (!Array.isArray(atualizada.numeros)) return;
+          setNumeros(atualizada.numeros);
+          setRifaAtiva(prev => prev ? { ...prev, numeros: atualizada.numeros! } : prev);
+          setNumeroSelecionado(prev => {
+            if (!prev) return prev;
+            return atualizada.numeros!.find(item => item.numero === prev.numero) || prev;
+          });
+        },
+      )
+      .subscribe();
+
+    return () => { void supabase.removeChannel(channel); };
+  }, [rifaAtiva?.id]);
 
   const selecionarRifaParaExibir = (rifa: RifaDados) => {
     setRifaAtiva(rifa);
@@ -263,65 +291,71 @@ export const GeradorRifa = () => {
       toast.error('Informe o nome do comprador.');
       return;
     }
-
-    const novosNumeros = numeros.map(item => {
-      if (item.numero === numeroSelecionado.numero) {
-        return {
-          ...item,
-          status: novoStatus,
-          nome: nomeComprador,
-          telefone: telefoneComprador,
-        };
-      }
-      return item;
-    });
+    if (telefoneComprador.replace(/\D/g, '').length < 8) {
+      toast.error('Informe um telefone válido.');
+      return;
+    }
 
     try {
-      setNumeros(novosNumeros);
-
-      const { error } = await supabase
-        .from('rifas_usuarios' as any)
-        .update({ numeros: novosNumeros })
-        .eq('id', rifaAtiva.id);
+      setSalvandoReserva(true);
+      const { data, error } = await supabase.rpc('atualizar_numero_rifa' as any, {
+        p_rifa_id: rifaAtiva.id,
+        p_numero: numeroSelecionado.numero,
+        p_status: novoStatus,
+        p_nome: nomeComprador.trim(),
+        p_telefone: telefoneComprador.trim(),
+      });
 
       if (error) throw error;
 
+      const novosNumeros = (data || []) as unknown as NumeroRifa[];
+      setNumeros(novosNumeros);
       setRifaAtiva(prev => prev ? { ...prev, numeros: novosNumeros } : null);
       setModalReservaOpen(false);
       toast.success(`Grupo ${numeroSelecionado.numero} marcado como ${novoStatus.toUpperCase()}!`);
     } catch (err: any) {
-      toast.error('Erro ao atualizar no banco: ' + err.message);
+      const { data } = await supabase
+        .from('rifas_usuarios' as any)
+        .select('numeros')
+        .eq('id', rifaAtiva.id)
+        .maybeSingle();
+      if (Array.isArray(data?.numeros)) {
+        setNumeros(data.numeros as NumeroRifa[]);
+        setRifaAtiva(prev => prev ? { ...prev, numeros: data.numeros as NumeroRifa[] } : null);
+      }
+      const message = String(err?.message || 'Não foi possível concluir a reserva.');
+      toast.error(message.includes('acabou de ser reservado')
+        ? 'Este número acabou de ser reservado por outra pessoa. Escolha outro.'
+        : message);
+    } finally {
+      setSalvandoReserva(false);
     }
   };
 
   const handleLiberarNumero = async () => {
     if (!numeroSelecionado || !rifaAtiva?.id) return;
 
-    const novosNumeros = numeros.map(item => {
-      if (item.numero === numeroSelecionado.numero) {
-        return {
-          numero: item.numero,
-          status: 'livre' as const,
-        };
-      }
-      return item;
-    });
-
     try {
-      setNumeros(novosNumeros);
-
-      const { error } = await supabase
-        .from('rifas_usuarios' as any)
-        .update({ numeros: novosNumeros })
-        .eq('id', rifaAtiva.id);
+      setSalvandoReserva(true);
+      const { data, error } = await supabase.rpc('atualizar_numero_rifa' as any, {
+        p_rifa_id: rifaAtiva.id,
+        p_numero: numeroSelecionado.numero,
+        p_status: 'livre',
+        p_nome: null,
+        p_telefone: null,
+      });
 
       if (error) throw error;
 
+      const novosNumeros = (data || []) as unknown as NumeroRifa[];
+      setNumeros(novosNumeros);
       setRifaAtiva(prev => prev ? { ...prev, numeros: novosNumeros } : null);
       setModalReservaOpen(false);
       toast.info(`Grupo ${numeroSelecionado.numero} liberado novamente.`);
     } catch (err: any) {
       toast.error('Erro ao liberar número: ' + err.message);
+    } finally {
+      setSalvandoReserva(false);
     }
   };
 
@@ -345,10 +379,123 @@ export const GeradorRifa = () => {
     }
   };
 
-  const handleCopiarLinkRifa = () => {
-    const linkFinal = `${window.location.origin}${window.location.pathname}?id=${rifaAtiva?.id}`;
-    navigator.clipboard.writeText(linkFinal);
+  const getLinkRifa = () => `${window.location.origin}${window.location.pathname}?id=${rifaAtiva?.id}`;
+
+  const handleCopiarLinkRifa = async () => {
+    await navigator.clipboard.writeText(getLinkRifa());
     toast.success('Link da Rifa copiado para compartilhar!');
+  };
+
+  const handleCompartilharCartela = async () => {
+    if (!rifaAtiva?.id || !cartelaRef.current) return;
+
+    let areaCaptura: HTMLDivElement | null = null;
+    try {
+      setCompartilhando(true);
+      const link = getLinkRifa();
+      const texto = `🎟️ Participe da rifa “${titulo}” e concorra a ${premio}! Escolha seu número antes que acabe.`;
+      const { default: html2canvas } = await import('html2canvas');
+
+      areaCaptura = document.createElement('div');
+      const largura = Math.max(cartelaRef.current.getBoundingClientRect().width, 340);
+      Object.assign(areaCaptura.style, {
+        position: 'fixed',
+        left: '-10000px',
+        top: '0',
+        width: `${largura}px`,
+        padding: '14px',
+        background: '#ffffff',
+        color: '#18181b',
+        zIndex: '-1',
+      });
+
+      const cartelaClone = cartelaRef.current.cloneNode(true) as HTMLElement;
+      cartelaClone.style.width = '100%';
+      const gradeNumerica = cartelaClone.querySelector<HTMLElement>('[data-raffle-number-grid]');
+      if (gradeNumerica) {
+        gradeNumerica.style.maxHeight = 'none';
+        gradeNumerica.style.overflow = 'visible';
+      }
+      areaCaptura.appendChild(cartelaClone);
+
+      const rodape = document.createElement('div');
+      Object.assign(rodape.style, {
+        marginTop: '12px',
+        padding: '14px',
+        borderRadius: '14px',
+        background: '#f3e8ff',
+        border: '1px solid #d8b4fe',
+        textAlign: 'center',
+        fontFamily: 'Arial, sans-serif',
+      });
+      const chamada = document.createElement('strong');
+      chamada.textContent = 'Escolha seu número e participe pelo Saj Tem';
+      chamada.style.display = 'block';
+      chamada.style.fontSize = '15px';
+      chamada.style.color = '#581c87';
+      const endereco = document.createElement('span');
+      endereco.textContent = link;
+      endereco.style.display = 'block';
+      endereco.style.marginTop = '6px';
+      endereco.style.fontSize = '11px';
+      endereco.style.wordBreak = 'break-all';
+      endereco.style.color = '#6b21a8';
+      rodape.append(chamada, endereco);
+      areaCaptura.appendChild(rodape);
+      document.body.appendChild(areaCaptura);
+
+      const canvas = await html2canvas(areaCaptura, {
+        backgroundColor: '#ffffff',
+        scale: Math.min(window.devicePixelRatio || 1, 2),
+        useCORS: true,
+        logging: false,
+      });
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob(value => value ? resolve(value) : reject(new Error('Falha ao gerar a imagem.')), 'image/png', 0.95);
+      });
+      const nomeArquivo = `rifa-${titulo || rifaAtiva.id}`
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9-_]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .toLowerCase();
+      const arquivo = new File([blob], `${nomeArquivo || 'cartela-rifa'}.png`, { type: 'image/png' });
+
+      if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [arquivo] }))) {
+        await navigator.share({
+          title: `Rifa: ${titulo}`,
+          text: `${texto}\n\n${link}`,
+          url: link,
+          files: [arquivo],
+        });
+        toast.success('Cartela compartilhada!');
+        return;
+      }
+
+      const downloadUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = downloadUrl;
+      anchor.download = arquivo.name;
+      anchor.click();
+      URL.revokeObjectURL(downloadUrl);
+      const textoCopiado = await navigator.clipboard
+        .writeText(`${texto}\n\n${link}`)
+        .then(() => true)
+        .catch(() => false);
+
+      toast.success(
+        textoCopiado
+          ? 'Imagem baixada e texto com link copiado.'
+          : 'Imagem baixada. Compartilhe junto com o link da rifa.',
+      );
+    } catch (err: any) {
+      if (err?.name !== 'AbortError') {
+        toast.error(err?.message || 'Não foi possível compartilhar a cartela.');
+      }
+    } finally {
+      areaCaptura?.remove();
+      setCompartilhando(false);
+    }
   };
 
   const totalPagos = numeros.filter(n => n.status === 'pago').length;
@@ -620,8 +767,19 @@ export const GeradorRifa = () => {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      onClick={() => void handleCompartilharCartela()}
+                      disabled={compartilhando}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-10 px-4 rounded-xl gap-2 shadow-sm text-xs"
+                    >
+                      {compartilhando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
+                      {compartilhando ? 'Gerando imagem...' : 'Compartilhar cartela'}
+                    </Button>
+
                     <Button 
-                      onClick={handleCopiarLinkRifa} 
+                      onClick={() => void handleCopiarLinkRifa()}
+                      variant="outline"
                       className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-10 px-4 rounded-xl gap-2 shadow-sm text-xs"
                     >
                       <Share2 className="w-4 h-4" /> Copiar Link da Rifa
@@ -682,7 +840,7 @@ export const GeradorRifa = () => {
             </Card>
 
             {/* TABELA DE CARTELA DA FAZENDINHA (5 COLUNAS SEM RODAPÉ DE HORÁRIOS) */}
-            <Card className="border-2 border-pink-300 dark:border-pink-900 rounded-3xl shadow-lg overflow-hidden bg-pink-50/40 dark:bg-zinc-950/80">
+            <Card ref={cartelaRef} className="border-2 border-pink-300 dark:border-pink-900 rounded-3xl shadow-lg overflow-hidden bg-pink-50/40 dark:bg-zinc-950/80">
               <CardHeader className="pb-2 text-center bg-pink-100/80 dark:bg-pink-950/40 border-b border-pink-200 dark:border-pink-900">
                 <CardTitle className="text-sm sm:text-lg font-black text-pink-900 dark:text-pink-300 uppercase tracking-tight">
                   {tipoRifa === 'fazendinha' ? 'CARTELA DA FAZENDINHA' : 'GRADE DE NÚMEROS'}
@@ -708,7 +866,7 @@ export const GeradorRifa = () => {
                       return (
                         <button
                           key={bicho.grupo}
-                          disabled={isModoComprador && status === 'pago'}
+                          disabled={isModoComprador && status !== 'livre'}
                           onClick={() => {
                             setNumeroSelecionado(numItem || { numero: bicho.grupo, status: 'livre' });
                             setGrupoSelecionadoFazendinha(bicho);
@@ -765,7 +923,7 @@ export const GeradorRifa = () => {
                   </div>
                 ) : (
                   /* EXIBIÇÃO NUMÉRICA SEQUENCIAL */
-                  <div className="grid grid-cols-5 sm:grid-cols-10 md:grid-cols-12 gap-2 max-h-[500px] overflow-y-auto p-1">
+                  <div data-raffle-number-grid className="grid grid-cols-5 sm:grid-cols-10 md:grid-cols-12 gap-2 max-h-[500px] overflow-y-auto p-1">
                     {numeros.map((item) => {
                       let estilos = 'bg-background hover:border-primary/60 text-foreground border-border cursor-pointer';
                       if (item.status === 'reservado') estilos = 'bg-amber-500/20 border-amber-500 text-amber-700 dark:text-amber-300 font-bold cursor-pointer';
@@ -774,7 +932,7 @@ export const GeradorRifa = () => {
                       return (
                         <button
                           key={item.numero}
-                          disabled={isModoComprador && item.status === 'pago'}
+                          disabled={isModoComprador && item.status !== 'livre'}
                           onClick={() => {
                             setNumeroSelecionado(item);
                             setGrupoSelecionadoFazendinha(null);
@@ -847,6 +1005,7 @@ export const GeradorRifa = () => {
               <Button 
                 variant="outline" 
                 onClick={handleLiberarNumero}
+                disabled={salvandoReserva}
                 className="text-destructive border-destructive/30 hover:bg-destructive/10 text-xs h-9"
               >
                 Liberar Grupo
@@ -855,14 +1014,17 @@ export const GeradorRifa = () => {
 
             <Button 
               onClick={() => handleSalvarReserva('reservado')} 
+              disabled={salvandoReserva || (isModoComprador && numeroSelecionado?.status !== 'livre')}
               className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs h-9"
             >
-              Confirmar Reserva
+              {salvandoReserva && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+              {isModoComprador && numeroSelecionado?.status !== 'livre' ? 'Número indisponível' : 'Confirmar Reserva'}
             </Button>
 
             {!isModoComprador && (
               <Button 
                 onClick={() => handleSalvarReserva('pago')} 
+                disabled={salvandoReserva}
                 className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-9"
               >
                 Marcar PAGO
