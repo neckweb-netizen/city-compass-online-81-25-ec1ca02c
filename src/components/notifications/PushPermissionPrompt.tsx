@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BellRing, Loader2, ShieldCheck, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { usePushNotifications } from '@/contexts/PushNotificationsContext';
 
-const DISMISS_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
-const PROMPT_DELAY_MS = 1_500;
+const FIRST_PROMPT_DELAY_MS = 5_000;
+const REMINDER_DELAY_MS = 90_000;
+const MAX_APPEARANCES_PER_VISIT = 2;
 
 export const PushPermissionPrompt = () => {
   const { user, loading: authLoading } = useAuth();
@@ -14,60 +15,55 @@ export const PushPermissionPrompt = () => {
     permission,
     enabled,
     preferencesReady,
+    pushStateReady,
     loading,
     error,
     preferences,
     enable,
   } = usePushNotifications();
   const [visible, setVisible] = useState(false);
+  const [appearances, setAppearances] = useState(0);
 
-  const dismissalKey = useMemo(
-    () => user?.id ? `sajtem-push-prompt-dismissed-until:${user.id}` : null,
-    [user?.id],
-  );
+  const eligible = !authLoading
+    && Boolean(user?.id)
+    && preferencesReady
+    && pushStateReady
+    && supported
+    && permission !== 'unsupported'
+    && !enabled
+    && preferences.push_enabled;
 
   useEffect(() => {
     setVisible(false);
+    setAppearances(0);
+  }, [user?.id]);
 
-    if (
-      authLoading
-      || !user?.id
-      || !preferencesReady
-      || !supported
-      || permission === 'denied'
-      || permission === 'unsupported'
-      || enabled
-      || !preferences.push_enabled
-      || !dismissalKey
-    ) return;
+  useEffect(() => {
+    if (!eligible) {
+      setVisible(false);
+      return;
+    }
+    if (visible || appearances >= MAX_APPEARANCES_PER_VISIT) return;
 
-    const dismissedUntil = Number(localStorage.getItem(dismissalKey) || 0);
-    if (dismissedUntil > Date.now()) return;
-
-    const timer = window.setTimeout(() => setVisible(true), PROMPT_DELAY_MS);
+    const delay = appearances === 0 ? FIRST_PROMPT_DELAY_MS : REMINDER_DELAY_MS;
+    const timer = window.setTimeout(() => {
+      setAppearances(current => current + 1);
+      setVisible(true);
+    }, delay);
     return () => window.clearTimeout(timer);
   }, [
-    authLoading,
-    dismissalKey,
-    enabled,
-    permission,
-    preferences.push_enabled,
-    preferencesReady,
-    supported,
-    user?.id,
+    appearances,
+    eligible,
+    visible,
   ]);
 
   const handleDismiss = () => {
-    if (dismissalKey) {
-      localStorage.setItem(dismissalKey, String(Date.now() + DISMISS_DURATION_MS));
-    }
     setVisible(false);
   };
 
   const handleEnable = async () => {
     try {
       await enable();
-      if (dismissalKey) localStorage.removeItem(dismissalKey);
       setVisible(false);
     } catch {
       setVisible(true);

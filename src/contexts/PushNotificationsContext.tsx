@@ -25,6 +25,7 @@ interface PushNotificationsContextValue {
   permission: NotificationPermission | 'unsupported';
   enabled: boolean;
   preferencesReady: boolean;
+  pushStateReady: boolean;
   loading: boolean;
   error: string | null;
   preferences: NotificationPreferences;
@@ -49,7 +50,9 @@ export const PushNotificationsProvider = ({ children }: { children: ReactNode })
   const [supported, setSupported] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>('default');
   const [enabled, setEnabled] = useState(false);
+  const [supportReady, setSupportReady] = useState(false);
   const [preferencesReady, setPreferencesReady] = useState(false);
+  const [pushStateReady, setPushStateReady] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preferences, setPreferences] = useState(defaultPreferences);
@@ -60,10 +63,12 @@ export const PushNotificationsProvider = ({ children }: { children: ReactNode })
       if (!active) return;
       setSupported(value);
       setPermission(value ? Notification.permission : 'unsupported');
+      setSupportReady(true);
     }).catch(() => {
       if (active) {
         setSupported(false);
         setPermission('unsupported');
+        setSupportReady(true);
       }
     });
     return () => { active = false; };
@@ -74,6 +79,7 @@ export const PushNotificationsProvider = ({ children }: { children: ReactNode })
       setEnabled(false);
       setPreferences(defaultPreferences);
       setPreferencesReady(false);
+      setPushStateReady(false);
       return;
     }
     setPreferencesReady(false);
@@ -99,9 +105,28 @@ export const PushNotificationsProvider = ({ children }: { children: ReactNode })
       .then((fid) => { if (active) setEnabled(Boolean(fid)); })
       .catch((syncError) => {
         if (active) setError(syncError instanceof Error ? syncError.message : 'Falha ao sincronizar notificações.');
-      });
+      })
+      .finally(() => { if (active) setPushStateReady(true); });
     return () => { active = false; };
   }, [user?.id, supported, preferences.push_enabled]);
+
+  useEffect(() => {
+    setPushStateReady(false);
+    if (!user?.id || !supportReady || !preferencesReady) return;
+
+    if (!supported || permission !== 'granted' || !preferences.push_enabled) {
+      setPushStateReady(true);
+      return;
+    }
+
+    if (enabled) {
+      setPushStateReady(true);
+      return;
+    }
+
+    // The Firebase effect above marks this ready only after its initial sync settles.
+    return;
+  }, [enabled, permission, preferences.push_enabled, preferencesReady, supportReady, supported, user?.id]);
 
   useEffect(() => {
     if (!user?.id || !supported) return;
@@ -171,13 +196,14 @@ export const PushNotificationsProvider = ({ children }: { children: ReactNode })
     permission,
     enabled,
     preferencesReady,
+    pushStateReady,
     loading,
     error,
     preferences,
     enable,
     disable,
     savePreferences,
-  }), [supported, permission, enabled, preferencesReady, loading, error, preferences, enable, disable, savePreferences]);
+  }), [supported, permission, enabled, preferencesReady, pushStateReady, loading, error, preferences, enable, disable, savePreferences]);
 
   return <PushNotificationsContext.Provider value={value}>{children}</PushNotificationsContext.Provider>;
 };
