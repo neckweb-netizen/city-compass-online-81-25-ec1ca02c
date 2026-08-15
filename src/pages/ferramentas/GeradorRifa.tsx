@@ -521,7 +521,7 @@ export const GeradorRifa = () => {
 
         await navigator.share({
           title: `Rifa: ${titulo}`,
-          text: `${texto}\n\n${link}`,
+          text: texto,
           url: link,
           files: [arquivo],
         });
