@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   Hammer, Clock, MapPin, Mail, MessageSquare, Instagram, Facebook, 
   ArrowRight, Sparkles, DollarSign, FileText, NotebookPen, Search, 
-  ShieldCheck, Globe, Calculator, Percent, FileSpreadsheet, Volume2, Grid, Ticket 
+  ShieldCheck, Globe, Calculator, Percent, FileSpreadsheet, Volume2, Grid, Ticket, CarFront
 } from "lucide-react";
 import { initGA, logPageView } from "@/utils/analytics";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -62,6 +62,7 @@ const CalculadoraMargem = lazy(() => import("./pages/ferramentas/CalculadoraMarg
 const SimuladorRescisao = lazy(() => import("./pages/ferramentas/SimuladorRescisao").then(m => ({ default: m.SimuladorRescisao })));
 const LeitorVoz = lazy(() => import("./pages/ferramentas/LeitorVoz").then(m => ({ default: m.LeitorVoz })));
 const GeradorRifa = lazy(() => import("./pages/ferramentas/GeradorRifa").then(m => ({ default: m.GeradorRifa })));
+const ConsultaFipe = lazy(() => import("./pages/ferramentas/ConsultaFipe").then(m => ({ default: m.ConsultaFipe })));
 
 // Admin pages com resolução resiliente do AdminBanners
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
@@ -236,6 +237,16 @@ const FerramentasCatalogInternal = () => {
       categoria: 'Acessibilidade',
       corGradiente: 'from-indigo-500/20 via-indigo-500/5 to-transparent border-indigo-500/30',
       corTexto: 'text-indigo-500',
+    },
+    {
+      id: 'consulta-fipe',
+      titulo: 'Consulta Tabela FIPE',
+      descricao: 'Consulte o valor atualizado de carros, motos e caminhões por marca, modelo e ano.',
+      icone: CarFront,
+      rota: '/ferramentas/consulta-fipe',
+      categoria: 'Veículos',
+      corGradiente: 'from-sky-500/20 via-sky-500/5 to-transparent border-sky-500/30',
+      corTexto: 'text-sky-500',
     },
   ];
 
@@ -618,6 +629,7 @@ const App = () => {
                 <Route path="ferramentas/calculadora-margem" element={<ProtectedRoute><CalculadoraMargem /></ProtectedRoute>} />
                 <Route path="ferramentas/simulador-rescisao" element={<ProtectedRoute><SimuladorRescisao /></ProtectedRoute>} />
                 <Route path="ferramentas/leitor-voz" element={<ProtectedRoute><LeitorVoz /></ProtectedRoute>} />
+                <Route path="ferramentas/consulta-fipe" element={<ProtectedRoute><ConsultaFipe /></ProtectedRoute>} />
                 
                 <Route path="s/:shortCode" element={<ShortUrlRedirect />} />
                 <Route path=":shortCode" element={<ShortUrlRedirect />} />
