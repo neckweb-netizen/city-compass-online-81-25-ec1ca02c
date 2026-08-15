@@ -11,6 +11,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ToolBanner } from '@/components/ferramentas/ToolBanner';
+import { useAuth } from '@/hooks/useAuth';
 
 // LISTA OFICIAL DOS 25 ANIMAIS DA FAZENDINHA
 const LISTA_FAZENDINHA = [
@@ -65,6 +66,7 @@ interface RifaDados {
 
 export const GeradorRifa = () => {
   const navigate = useNavigate();
+  const { user, profile } = useAuth();
   const [searchParams] = useSearchParams();
   const idRifaPublica = searchParams.get('id');
 
@@ -124,6 +126,7 @@ export const GeradorRifa = () => {
 
         const rifaPub: RifaDados = {
           id: data.id,
+          user_id: data.user_id,
           titulo: data.titulo,
           premio: data.premio,
           valor_numero: data.valor_numero,
@@ -336,6 +339,10 @@ export const GeradorRifa = () => {
 
   const handleLiberarNumero = async () => {
     if (!numeroSelecionado || !rifaAtiva?.id) return;
+    if (!podeGerenciarRifa) {
+      toast.error('Somente o criador da rifa ou um administrador pode liberar este número.');
+      return;
+    }
 
     try {
       setSalvandoReserva(true);
@@ -563,6 +570,10 @@ export const GeradorRifa = () => {
   const totalReservados = numeros.filter(n => n.status === 'reservado').length;
   const totalLivres = numeros.filter(n => n.status === 'livre').length;
   const arrecadacaoTotal = totalPagos * (parseFloat(valorNumero.replace(',', '.')) || 0);
+  const isAdmin = profile?.tipo_conta === 'admin_geral' || profile?.tipo_conta === 'admin_cidade';
+  const isCriadorRifa = Boolean(user?.id && rifaAtiva?.user_id === user.id);
+  const podeGerenciarRifa = isCriadorRifa || isAdmin;
+  const numeroOcupado = Boolean(numeroSelecionado && numeroSelecionado.status !== 'livre');
 
   if (carregando) {
     return (
@@ -940,7 +951,7 @@ export const GeradorRifa = () => {
                       return (
                         <button
                           key={bicho.grupo}
-                          disabled={isModoComprador && status !== 'livre'}
+                          disabled={isModoComprador && status !== 'livre' && !podeGerenciarRifa}
                           onClick={() => {
                             setNumeroSelecionado(numItem || { numero: bicho.grupo, status: 'livre' });
                             setGrupoSelecionadoFazendinha(bicho);
@@ -1006,7 +1017,7 @@ export const GeradorRifa = () => {
                       return (
                         <button
                           key={item.numero}
-                          disabled={isModoComprador && item.status !== 'livre'}
+                          disabled={isModoComprador && item.status !== 'livre' && !podeGerenciarRifa}
                           onClick={() => {
                             setNumeroSelecionado(item);
                             setGrupoSelecionadoFazendinha(null);
@@ -1046,9 +1057,11 @@ export const GeradorRifa = () => {
                 : `Número ${numeroSelecionado?.numero}`}
             </DialogTitle>
             <DialogDescription className="text-xs">
-              {grupoSelecionadoFazendinha 
-                ? `Ao reservar este grupo, você concorre com as dezenas: ${grupoSelecionadoFazendinha.dezenas.join(', ')}.`
-                : 'Informe seu nome e WhatsApp para confirmar a reserva.'}
+              {podeGerenciarRifa && numeroOcupado
+                ? 'Este número está ocupado. Você pode liberá-lo novamente para a cartela.'
+                : grupoSelecionadoFazendinha
+                  ? `Ao reservar este grupo, você concorre com as dezenas: ${grupoSelecionadoFazendinha.dezenas.join(', ')}.`
+                  : 'Informe seu nome e WhatsApp para confirmar a reserva.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -1075,14 +1088,14 @@ export const GeradorRifa = () => {
           </div>
 
           <DialogFooter className="flex-col sm:flex-row gap-2">
-            {!isModoComprador && numeroSelecionado?.status !== 'livre' && (
+            {podeGerenciarRifa && numeroOcupado && (
               <Button 
                 variant="outline" 
                 onClick={handleLiberarNumero}
                 disabled={salvandoReserva}
                 className="text-destructive border-destructive/30 hover:bg-destructive/10 text-xs h-9"
               >
-                Liberar Grupo
+                {grupoSelecionadoFazendinha ? 'Liberar Grupo' : 'Liberar Número'}
               </Button>
             )}
 
