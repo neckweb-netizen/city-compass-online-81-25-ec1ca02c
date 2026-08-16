@@ -231,10 +231,23 @@ const EmpresaProfile = () => {
             Voltar
           </Button>
           <div className="flex space-x-2">
-            <Button variant="ghost" size="sm" onClick={handleFavorite} disabled={adicionarFavorito.isPending || removerFavorito.isPending}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleFavorite}
+              disabled={adicionarFavorito.isPending || removerFavorito.isPending}
+              className="bg-card text-card-foreground border-border shadow-sm hover:bg-accent"
+              aria-label={isFavorito ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+            >
               <Heart className={`h-4 w-4 ${isFavorito ? 'fill-red-500 text-red-500' : ''}`} />
             </Button>
-            <Button variant="ghost" size="sm" onClick={handleShare}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleShare}
+              className="bg-card text-card-foreground border-border shadow-sm hover:bg-accent"
+              aria-label="Compartilhar empresa"
+            >
               <Share2 className="h-4 w-4" />
             </Button>
           </div>
@@ -293,7 +306,7 @@ const EmpresaProfile = () => {
 
         {/* Botão de compartilhar flutuante apenas no mobile */}
         <div className="md:hidden">
-          <Button variant="outline" size="sm" onClick={handleShare} className="fixed top-20 right-4 z-40 bg-white/90 backdrop-blur-sm border-gray-200 shadow-lg rounded-full w-10 h-10 p-0">
+          <Button variant="outline" size="sm" onClick={handleShare} className="fixed top-20 right-4 z-40 bg-card/95 text-card-foreground backdrop-blur-sm border-border shadow-lg rounded-full w-10 h-10 p-0 hover:bg-accent" aria-label="Compartilhar empresa">
             <Share2 className="h-4 w-4" />
           </Button>
         </div>
