@@ -38,6 +38,50 @@ interface ItemAchadoPerdido {
   created_at: string;
 }
 
+// A ordem deste cadastro também é usada como desempate enquanto as contagens são iguais.
+const FERRAMENTAS_DESTAQUE = [
+  {
+    id: 'gerador-rifa',
+    titulo: 'Gerador & Caderno de Rifas',
+    descricao: 'Crie rifas personalizadas, controle os pagamentos e compartilhe o link público.',
+    icone: Ticket,
+    rota: '/ferramentas/gerador-rifa',
+    tag: 'NOVO & GRÁTIS',
+    corTexto: 'text-orange-500',
+    corBg: 'bg-orange-500/10 border-orange-500/20',
+  },
+  {
+    id: 'simulador-rescisao',
+    titulo: 'Simulador de Rescisão (CLT)',
+    descricao: 'Calcule aviso prévio, férias, 13º e multa do FGTS em segundos.',
+    icone: FileSpreadsheet,
+    rota: '/ferramentas/simulador-rescisao',
+    tag: 'Útil',
+    corTexto: 'text-cyan-500',
+    corBg: 'bg-cyan-500/10 border-cyan-500/20',
+  },
+  {
+    id: 'calculadora-margem',
+    titulo: 'Calculadora de Maquininha',
+    descricao: 'Descubra o preço ideal de venda considerando as taxas dos cartões.',
+    icone: Percent,
+    rota: '/ferramentas/calculadora-margem',
+    tag: 'Vendas',
+    corTexto: 'text-pink-500',
+    corBg: 'bg-pink-500/10 border-pink-500/20',
+  },
+  {
+    id: 'leitor-voz',
+    titulo: 'Leitor de Texto em Voz Alta',
+    descricao: 'Converta qualquer texto em áudio narrado com voz natural e ajustes.',
+    icone: Volume2,
+    rota: '/ferramentas/leitor-voz',
+    tag: 'IA Grátis',
+    corTexto: 'text-indigo-500',
+    corBg: 'bg-indigo-500/10 border-indigo-500/20',
+  },
+];
+
 const Index = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -52,50 +96,13 @@ const Index = () => {
   // Estado para armazenar os itens recentes de achados e perdidos
   const [itensAchados, setItensAchados] = useState<ItemAchadoPerdido[]>([]);
   const [loadingAchados, setLoadingAchados] = useState(false);
+  const [visualizacoesFerramentas, setVisualizacoesFerramentas] = useState<Record<string, number>>({});
 
-  // As 4 ferramentas principais em destaque para a Home (Gerador de Rifas em primeiro)
-  const ferramentasDestaque = [
-    {
-      id: 'gerador-rifa',
-      titulo: 'Gerador & Caderno de Rifas',
-      descricao: 'Crie rifas personalizadas, controle os pagamentos e compartilhe o link público.',
-      icone: Ticket,
-      rota: '/ferramentas/gerador-rifa',
-      tag: 'NOVO & GRÁTIS',
-      corTexto: 'text-orange-500',
-      corBg: 'bg-orange-500/10 border-orange-500/20',
-    },
-    {
-      id: 'simulador-rescisao',
-      titulo: 'Simulador de Rescisão (CLT)',
-      descricao: 'Calcule aviso prévio, férias, 13º e multa do FGTS em segundos.',
-      icone: FileSpreadsheet,
-      rota: '/ferramentas/simulador-rescisao',
-      tag: 'Útil',
-      corTexto: 'text-cyan-500',
-      corBg: 'bg-cyan-500/10 border-cyan-500/20',
-    },
-    {
-      id: 'calculadora-margem',
-      titulo: 'Calculadora de Maquininha',
-      descricao: 'Descubra o preço ideal de venda considerando as taxas dos cartões.',
-      icone: Percent,
-      rota: '/ferramentas/calculadora-margem',
-      tag: 'Mais Usado',
-      corTexto: 'text-pink-500',
-      corBg: 'bg-pink-500/10 border-pink-500/20',
-    },
-    {
-      id: 'leitor-voz',
-      titulo: 'Leitor de Texto em Voz Alta',
-      descricao: 'Converta qualquer texto em áudio narrado com voz natural e ajustes.',
-      icone: Volume2,
-      rota: '/ferramentas/leitor-voz',
-      tag: 'IA Grátis',
-      corTexto: 'text-indigo-500',
-      corBg: 'bg-indigo-500/10 border-indigo-500/20',
-    },
-  ];
+  const ferramentasOrdenadas = [...FERRAMENTAS_DESTAQUE].sort((a, b) => {
+    if (a.id === 'gerador-rifa') return -1;
+    if (b.id === 'gerador-rifa') return 1;
+    return (visualizacoesFerramentas[b.id] ?? 0) - (visualizacoesFerramentas[a.id] ?? 0);
+  });
 
   // Carrega e monitora o status de manutenção do banco de dados
   useEffect(() => {
@@ -174,6 +181,32 @@ const Index = () => {
     };
 
     buscarUltimosAchados();
+  }, [activeTab, isMaintenance]);
+
+  useEffect(() => {
+    const buscarVisualizacoesFerramentas = async () => {
+      if (activeTab !== 'home' || isMaintenance) return;
+
+      const ids = FERRAMENTAS_DESTAQUE.map((ferramenta) => ferramenta.id);
+      const { data, error } = await supabase
+        .from('tool_view_counts' as any)
+        .select('tool_slug, view_count')
+        .in('tool_slug', ids);
+
+      if (error) {
+        console.error('Erro ao carregar popularidade das ferramentas:', error);
+        return;
+      }
+
+      const contagens = (data ?? []).reduce<Record<string, number>>((resultado, item: any) => {
+        resultado[item.tool_slug] = Number(item.view_count) || 0;
+        return resultado;
+      }, {});
+
+      setVisualizacoesFerramentas(contagens);
+    };
+
+    void buscarVisualizacoesFerramentas();
   }, [activeTab, isMaintenance]);
 
   useEffect(() => {
@@ -314,8 +347,11 @@ const Index = () => {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {ferramentasDestaque.map((item) => {
+          {ferramentasOrdenadas.map((item, index) => {
             const Icone = item.icone;
+            const tag = index === 1 && (visualizacoesFerramentas[item.id] ?? 0) > 0
+              ? 'Mais Usado'
+              : item.tag;
             return (
               <Card 
                 key={item.id}
@@ -329,7 +365,7 @@ const Index = () => {
                         <Icone className="w-5 h-5" />
                       </div>
                       <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] font-extrabold px-2 py-0.5 uppercase tracking-wider">
-                        {item.tag}
+                        {tag}
                       </Badge>
                     </div>
 

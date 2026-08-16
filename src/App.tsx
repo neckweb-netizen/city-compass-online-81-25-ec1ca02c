@@ -13,6 +13,7 @@ import {
   ShieldCheck, Globe, Calculator, Percent, FileSpreadsheet, Volume2, Grid, Ticket, CarFront
 } from "lucide-react";
 import { initGA, logPageView } from "@/utils/analytics";
+import { trackToolView } from "@/lib/toolAnalytics";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -409,6 +410,7 @@ const AnalyticsTracker = () => {
 
   useEffect(() => {
     logPageView(location.pathname + location.search);
+    void trackToolView(location.pathname);
   }, [location]);
 
   return null;
