@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   Hammer, Clock, MapPin, Mail, MessageSquare, Instagram, Facebook, 
   ArrowRight, Sparkles, DollarSign, FileText, NotebookPen, Search, 
-  ShieldCheck, Globe, Calculator, Percent, FileSpreadsheet, Volume2, Grid, Ticket, CarFront, HeartPulse
+  ShieldCheck, Globe, Calculator, Percent, FileSpreadsheet, Volume2, Grid, Ticket, CarFront, HeartPulse, WalletCards
 } from "lucide-react";
 import { initGA, logPageView } from "@/utils/analytics";
 import { trackToolView } from "@/lib/toolAnalytics";
@@ -65,6 +65,7 @@ const LeitorVoz = lazy(() => import("./pages/ferramentas/LeitorVoz").then(m => (
 const GeradorRifa = lazy(() => import("./pages/ferramentas/GeradorRifa").then(m => ({ default: m.GeradorRifa })));
 const ConsultaFipe = lazy(() => import("./pages/ferramentas/ConsultaFipe").then(m => ({ default: m.ConsultaFipe })));
 const CicloMenstrual = lazy(() => import("./pages/ferramentas/CicloMenstrual"));
+const ControleFinanceiro = lazy(() => import("./pages/ferramentas/ControleFinanceiro").then(m => ({ default: m.ControleFinanceiro })));
 
 // Admin pages com resolução resiliente do AdminBanners
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
@@ -249,6 +250,16 @@ const FerramentasCatalogInternal = () => {
       categoria: 'Saúde',
       corGradiente: 'from-rose-500/20 via-rose-500/5 to-transparent border-rose-500/30',
       corTexto: 'text-rose-500',
+    },
+    {
+      id: 'controle-financeiro',
+      titulo: 'Controle Financeiro Pessoal',
+      descricao: 'Organize receitas, despesas, contas a vencer, calendário financeiro, orçamento e metas com dados privados no aparelho.',
+      icone: WalletCards,
+      rota: '/ferramentas/controle-financeiro',
+      categoria: 'Financeiro',
+      corGradiente: 'from-emerald-500/20 via-teal-500/5 to-transparent border-emerald-500/30',
+      corTexto: 'text-emerald-600',
     },
     {
       id: 'consulta-fipe',
@@ -633,6 +644,7 @@ const App = () => {
                 <Route path="ferramentas" element={<FerramentasCatalogInternal />} />
                 <Route path="ferramentas/gerador-rifa" element={<GeradorRifa />} />
                 <Route path="ferramentas/ciclo-menstrual" element={<CicloMenstrual />} />
+                <Route path="ferramentas/controle-financeiro" element={<ControleFinanceiro />} />
 
                 {/* FERRAMENTAS PROTEGIDAS */}
                 <Route path="ferramentas/gerador-cobranca" element={<ProtectedRoute><GeradorCobranca /></ProtectedRoute>} />
