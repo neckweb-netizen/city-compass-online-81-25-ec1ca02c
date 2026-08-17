@@ -1,6 +1,5 @@
-
 import { useState } from 'react';
-import { useCanalInformativo } from '@/hooks/useCanalInformativo';
+import { CanalInformativoItem, useCanalInformativo } from '@/hooks/useCanalInformativo';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -49,11 +48,27 @@ const getTypeLabel = (tipo: string) => {
 export const CanalInformativoSection = () => {
   const { items, loading, deleteItem } = useCanalInformativo();
   const [activeTab, setActiveTab] = useState('list');
+  const [editingItem, setEditingItem] = useState<CanalInformativoItem | null>(null);
 
   const handleDelete = (id: string) => {
-    if (confirm('Tem certeza que deseja remover esta publicação?')) {
+    if (window.confirm('Tem certeza que deseja remover esta publicação?')) {
       deleteItem(id);
     }
+  };
+
+  const handleEdit = (item: CanalInformativoItem) => {
+    setEditingItem(item);
+    setActiveTab('edit');
+  };
+
+  const handleEditFinished = () => {
+    setEditingItem(null);
+    setActiveTab('list');
+  };
+
+  const handleTabChange = (value: string) => {
+    if (value !== 'edit') setEditingItem(null);
+    setActiveTab(value);
   };
 
   return (
@@ -62,15 +77,16 @@ export const CanalInformativoSection = () => {
         <div>
           <h2 className="text-2xl font-bold text-foreground">Canal Informativo</h2>
           <p className="text-muted-foreground">
-            Gerencie as publicações do canal informativo
+            Gerencie, crie e edite as publicações do canal informativo
           </p>
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList>
           <TabsTrigger value="list">Publicações</TabsTrigger>
           <TabsTrigger value="create">Nova Publicação</TabsTrigger>
+          {editingItem && <TabsTrigger value="edit">Editar Publicação</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="list" className="space-y-4">
@@ -91,9 +107,7 @@ export const CanalInformativoSection = () => {
             <Card>
               <CardContent className="py-8 text-center">
                 <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground mb-4">
-                  Nenhuma publicação encontrada
-                </p>
+                <p className="text-muted-foreground mb-4">Nenhuma publicação encontrada</p>
                 <Button onClick={() => setActiveTab('create')}>
                   <Plus className="w-4 h-4 mr-2" />
                   Criar Primeira Publicação
@@ -105,41 +119,59 @@ export const CanalInformativoSection = () => {
               {items.map((item) => (
                 <Card key={item.id}>
                   <CardHeader>
-                    <div className="flex items-start justify-between">
+                    <div className="flex items-start justify-between gap-4">
                       <CardTitle className="text-lg">{item.titulo}</CardTitle>
+
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="flex items-center gap-1">
                           {getTypeIcon(item.tipo_conteudo)}
                           {getTypeLabel(item.tipo_conteudo)}
                         </Badge>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(item)}
+                          title="Editar publicação"
+                        >
+                          <Edit className="w-4 h-4 mr-2" />
+                          Editar
+                        </Button>
+
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleDelete(item.id)}
+                          title="Remover publicação"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
                     </div>
+
                     <p className="text-sm text-muted-foreground">
-                      {formatDistanceToNow(new Date(item.criado_em), { 
-                        addSuffix: true, 
-                        locale: ptBR 
+                      {formatDistanceToNow(new Date(item.criado_em), {
+                        addSuffix: true,
+                        locale: ptBR,
                       })}
                     </p>
                   </CardHeader>
-                  
+
                   <CardContent className="space-y-2">
-                    {item.conteudo && (
-                      <p className="text-sm line-clamp-3">{item.conteudo}</p>
-                    )}
+                    {item.conteudo && <p className="text-sm line-clamp-3">{item.conteudo}</p>}
 
                     {item.tipo_conteudo === 'resultado_sorteio' && item.resultado_sorteio && (
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Trophy className="w-4 h-4" />
-                          <span>Sorteio: {new Date(item.resultado_sorteio.data_sorteio).toLocaleDateString('pt-BR')}</span>
+                          <span>
+                            Sorteio:{' '}
+                            {new Date(
+                              `${item.resultado_sorteio.data_sorteio}T12:00:00`
+                            ).toLocaleDateString('pt-BR')}
+                          </span>
                         </div>
+
                         <Table>
                           <TableHeader>
                             <TableRow>
@@ -150,7 +182,7 @@ export const CanalInformativoSection = () => {
                           </TableHeader>
                           <TableBody>
                             {item.resultado_sorteio.premios.slice(0, 3).map((premio, index) => (
-                              <TableRow key={index}>
+                              <TableRow key={`${premio.premio}-${index}`}>
                                 <TableCell className="font-medium">{premio.premio}</TableCell>
                                 <TableCell>{premio.milhar || '-'}</TableCell>
                                 <TableCell>{premio.grupo || '-'}</TableCell>
@@ -158,6 +190,7 @@ export const CanalInformativoSection = () => {
                             ))}
                           </TableBody>
                         </Table>
+
                         {item.resultado_sorteio.premios.length > 3 && (
                           <p className="text-xs text-muted-foreground">
                             E mais {item.resultado_sorteio.premios.length - 3} prêmios...
@@ -165,7 +198,7 @@ export const CanalInformativoSection = () => {
                         )}
                       </div>
                     )}
-                    
+
                     <div className="flex gap-2 text-xs text-muted-foreground">
                       {item.url_midia && (
                         <Badge variant="outline" className="text-xs">
@@ -187,8 +220,18 @@ export const CanalInformativoSection = () => {
         </TabsContent>
 
         <TabsContent value="create">
-          <CanalInformativoForm />
+          <CanalInformativoForm onSuccess={() => setActiveTab('list')} />
         </TabsContent>
+
+        {editingItem && (
+          <TabsContent value="edit">
+            <CanalInformativoForm
+              item={editingItem}
+              onSuccess={handleEditFinished}
+              onCancel={handleEditFinished}
+            />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
