@@ -1,7 +1,17 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+
+export interface PremioSorteio {
+  premio: string;
+  milhar: string;
+  grupo: string;
+}
+
+export interface ResultadoSorteioData {
+  data_sorteio: string;
+  premios: PremioSorteio[];
+}
 
 export interface CanalInformativoItem {
   id: string;
@@ -14,14 +24,8 @@ export interface CanalInformativoItem {
   ativo: boolean;
   criado_em: string;
   atualizado_em: string;
-  resultado_sorteio?: {
+  resultado_sorteio?: ResultadoSorteioData & {
     id: string;
-    data_sorteio: string;
-    premios: Array<{
-      premio: string;
-      milhar: string;
-      grupo: string;
-    }>;
   };
 }
 
@@ -31,15 +35,17 @@ export interface CreateCanalInformativoData {
   tipo_conteudo: 'noticia' | 'video' | 'imagem' | 'resultado_sorteio';
   url_midia?: string;
   link_externo?: string;
-  resultado_sorteio?: {
-    data_sorteio: string;
-    premios: Array<{
-      premio: string;
-      milhar: string;
-      grupo: string;
-    }>;
-  };
+  resultado_sorteio?: ResultadoSorteioData;
 }
+
+export interface UpdateCanalInformativoData extends CreateCanalInformativoData {
+  id: string;
+}
+
+const limparValorOpcional = (valor?: string) => {
+  const valorLimpo = valor?.trim();
+  return valorLimpo ? valorLimpo : null;
+};
 
 export const useCanalInformativo = () => {
   const { toast } = useToast();
@@ -48,114 +54,97 @@ export const useCanalInformativo = () => {
   const canalQuery = useQuery({
     queryKey: ['canal-informativo'],
     queryFn: async () => {
-      console.log('Buscando dados do canal informativo...');
-      
-      // Buscar itens do canal informativo
       const { data: canalData, error: canalError } = await supabase
         .from('canal_informativo')
         .select('*')
         .eq('ativo', true)
         .order('criado_em', { ascending: false });
 
-      if (canalError) {
-        console.error('Erro ao buscar canal informativo:', canalError);
-        throw canalError;
-      }
+      if (canalError) throw canalError;
 
-      console.log('Dados do canal informativo:', canalData);
-
-      // Processar cada item e buscar dados relacionados de sorteio se necessário
       const canalItems = await Promise.all(
-        canalData.map(async (item) => {
-          console.log('Processando item:', item.id, 'tipo:', item.tipo_conteudo);
-          
-          if (item.tipo_conteudo === 'resultado_sorteio') {
-            try {
-              console.log('Buscando resultado de sorteio para item:', item.id);
-              
-              // Usar função RPC para buscar resultados do sorteio
-              const { data: rpcData, error: rpcError } = await supabase
-                .rpc('buscar_resultado_sorteio', { canal_id: item.id });
+        (canalData ?? []).map(async (item) => {
+          if (item.tipo_conteudo !== 'resultado_sorteio') {
+            return item;
+          }
 
-              if (rpcError) {
-                console.error('Erro no RPC buscar_resultado_sorteio:', rpcError);
-                return { ...item, resultado_sorteio: undefined };
-              }
+          const { data: rpcData, error: rpcError } = await supabase
+            .rpc('buscar_resultado_sorteio', { canal_id: item.id });
 
-              console.log('Dados do RPC buscar_resultado_sorteio:', rpcData);
-              const resultado = Array.isArray(rpcData) ? rpcData[0] : rpcData;
-              
-              return {
-                ...item,
-                resultado_sorteio: resultado ? {
+          if (rpcError) {
+            console.error('Erro ao buscar resultado de sorteio:', rpcError);
+            return { ...item, resultado_sorteio: undefined };
+          }
+
+          const resultado = Array.isArray(rpcData) ? rpcData[0] : rpcData;
+
+          return {
+            ...item,
+            resultado_sorteio: resultado
+              ? {
                   id: resultado.id,
                   data_sorteio: resultado.data_sorteio,
-                  premios: Array.isArray(resultado.premios) ? resultado.premios : []
-                } : undefined
-              };
-              
-            } catch (error) {
-              console.error('Erro ao processar resultado do sorteio:', error);
-              return { ...item, resultado_sorteio: undefined };
-            }
-          }
-          return item;
+                  premios: Array.isArray(resultado.premios)
+                    ? (resultado.premios as unknown as PremioSorteio[])
+                    : [],
+                }
+              : undefined,
+          };
         })
       );
 
-      console.log('Itens processados finais:', canalItems);
       return canalItems as CanalInformativoItem[];
     },
   });
 
   const createMutation = useMutation({
     mutationFn: async (data: CreateCanalInformativoData) => {
-      console.log('Criando item do canal:', data);
-      
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user?.id) throw new Error('Usuário não autenticado');
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+
+      if (authError) throw authError;
+      if (!authData.user?.id) throw new Error('Usuário não autenticado');
 
       const { data: canalItem, error: canalError } = await supabase
         .from('canal_informativo')
-        .insert([{
-          titulo: data.titulo,
-          conteudo: data.conteudo,
-          tipo_conteudo: data.tipo_conteudo,
-          url_midia: data.url_midia,
-          link_externo: data.link_externo,
-          autor_id: user.user.id
-        }])
+        .insert([
+          {
+            titulo: data.titulo.trim(),
+            conteudo: limparValorOpcional(data.conteudo),
+            tipo_conteudo: data.tipo_conteudo,
+            url_midia: limparValorOpcional(data.url_midia),
+            link_externo: limparValorOpcional(data.link_externo),
+            autor_id: authData.user.id,
+          },
+        ])
         .select()
         .single();
 
-      if (canalError) {
-        console.error('Erro ao criar item do canal:', canalError);
-        throw canalError;
-      }
+      if (canalError) throw canalError;
 
-      console.log('Item do canal criado:', canalItem);
+      if (data.tipo_conteudo === 'resultado_sorteio') {
+        if (!data.resultado_sorteio?.data_sorteio) {
+          await supabase.from('canal_informativo').delete().eq('id', canalItem.id);
+          throw new Error('A data do sorteio é obrigatória.');
+        }
 
-      // Se for resultado de sorteio, criar o registro relacionado usando RPC
-      if (data.tipo_conteudo === 'resultado_sorteio' && data.resultado_sorteio) {
-        console.log('Criando resultado de sorteio:', data.resultado_sorteio);
-        
-        try {
-          const { error: resultadoError } = await supabase
-            .rpc('criar_resultado_sorteio', {
-              canal_id: canalItem.id,
-              data_sorteio_param: data.resultado_sorteio.data_sorteio,
-              premios_param: data.resultado_sorteio.premios
-            });
+        const premiosValidos = data.resultado_sorteio.premios.filter(
+          (premio) => premio.milhar.trim() || premio.grupo.trim()
+        );
 
-          if (resultadoError) {
-            console.error('Erro ao criar resultado de sorteio:', resultadoError);
-            throw new Error(`Erro ao criar resultado de sorteio: ${resultadoError.message}`);
-          } else {
-            console.log('Resultado de sorteio criado com sucesso');
-          }
-        } catch (error) {
-          console.error('Erro ao chamar RPC criar_resultado_sorteio:', error);
-          throw error;
+        if (premiosValidos.length === 0) {
+          await supabase.from('canal_informativo').delete().eq('id', canalItem.id);
+          throw new Error('Informe pelo menos um resultado do sorteio.');
+        }
+
+        const { error: resultadoError } = await supabase.rpc('criar_resultado_sorteio', {
+          canal_id: canalItem.id,
+          data_sorteio_param: data.resultado_sorteio.data_sorteio,
+          premios_param: data.resultado_sorteio.premios,
+        });
+
+        if (resultadoError) {
+          await supabase.from('canal_informativo').delete().eq('id', canalItem.id);
+          throw new Error(`Erro ao criar resultado de sorteio: ${resultadoError.message}`);
         }
       }
 
@@ -165,34 +154,103 @@ export const useCanalInformativo = () => {
       queryClient.invalidateQueries({ queryKey: ['canal-informativo'] });
       toast({ title: 'Publicação criada com sucesso!' });
     },
-    onError: (error: any) => {
-      console.error('Erro na criação:', error);
-      toast({ 
-        title: 'Erro ao criar publicação', 
+    onError: (error: Error) => {
+      toast({
+        title: 'Erro ao criar publicação',
         description: error.message,
-        variant: 'destructive' 
+        variant: 'destructive',
       });
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, ...data }: Partial<CanalInformativoItem> & { id: string }) => {
-      const { error } = await supabase
+    mutationFn: async ({ id, resultado_sorteio, ...data }: UpdateCanalInformativoData) => {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+
+      if (authError) throw authError;
+      if (!authData.user?.id) throw new Error('Usuário não autenticado');
+
+      const { data: itemAtual, error: itemAtualError } = await supabase
         .from('canal_informativo')
-        .update(data)
+        .select('id, tipo_conteudo')
+        .eq('id', id)
+        .single();
+
+      if (itemAtualError) throw itemAtualError;
+
+      const { error: updateError } = await supabase
+        .from('canal_informativo')
+        .update({
+          titulo: data.titulo.trim(),
+          conteudo: limparValorOpcional(data.conteudo),
+          tipo_conteudo: data.tipo_conteudo,
+          url_midia: limparValorOpcional(data.url_midia),
+          link_externo: limparValorOpcional(data.link_externo),
+          atualizado_em: new Date().toISOString(),
+        })
         .eq('id', id);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
+
+      if (data.tipo_conteudo === 'resultado_sorteio') {
+        if (!resultado_sorteio?.data_sorteio) {
+          throw new Error('A data do sorteio é obrigatória.');
+        }
+
+        const premiosValidos = resultado_sorteio.premios.filter(
+          (premio) => premio.milhar.trim() || premio.grupo.trim()
+        );
+
+        if (premiosValidos.length === 0) {
+          throw new Error('Informe pelo menos um resultado do sorteio.');
+        }
+
+        const { data: resultadoExistente, error: resultadoBuscaError } = await supabase
+          .from('resultados_sorteio')
+          .select('id')
+          .eq('canal_informativo_id', id)
+          .maybeSingle();
+
+        if (resultadoBuscaError) throw resultadoBuscaError;
+
+        if (resultadoExistente) {
+          const { error: resultadoUpdateError } = await supabase
+            .from('resultados_sorteio')
+            .update({
+              data_sorteio: resultado_sorteio.data_sorteio,
+              premios: resultado_sorteio.premios,
+              atualizado_em: new Date().toISOString(),
+            })
+            .eq('id', resultadoExistente.id);
+
+          if (resultadoUpdateError) throw resultadoUpdateError;
+        } else {
+          const { error: resultadoCreateError } = await supabase.rpc('criar_resultado_sorteio', {
+            canal_id: id,
+            data_sorteio_param: resultado_sorteio.data_sorteio,
+            premios_param: resultado_sorteio.premios,
+          });
+
+          if (resultadoCreateError) throw resultadoCreateError;
+        }
+      } else if (itemAtual.tipo_conteudo === 'resultado_sorteio') {
+        const { error: resultadoDeleteError } = await supabase
+          .from('resultados_sorteio')
+          .delete()
+          .eq('canal_informativo_id', id);
+
+        if (resultadoDeleteError) throw resultadoDeleteError;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['canal-informativo'] });
       toast({ title: 'Publicação atualizada com sucesso!' });
     },
-    onError: (error: any) => {
-      toast({ 
-        title: 'Erro ao atualizar publicação', 
+    onError: (error: Error) => {
+      toast({
+        title: 'Erro ao atualizar publicação',
         description: error.message,
-        variant: 'destructive' 
+        variant: 'destructive',
       });
     },
   });
@@ -201,7 +259,10 @@ export const useCanalInformativo = () => {
     mutationFn: async (id: string) => {
       const { error } = await supabase
         .from('canal_informativo')
-        .update({ ativo: false })
+        .update({
+          ativo: false,
+          atualizado_em: new Date().toISOString(),
+        })
         .eq('id', id);
 
       if (error) throw error;
@@ -210,11 +271,11 @@ export const useCanalInformativo = () => {
       queryClient.invalidateQueries({ queryKey: ['canal-informativo'] });
       toast({ title: 'Publicação removida com sucesso!' });
     },
-    onError: (error: any) => {
-      toast({ 
-        title: 'Erro ao remover publicação', 
+    onError: (error: Error) => {
+      toast({
+        title: 'Erro ao remover publicação',
         description: error.message,
-        variant: 'destructive' 
+        variant: 'destructive',
       });
     },
   });
@@ -223,8 +284,12 @@ export const useCanalInformativo = () => {
     items: canalQuery.data || [],
     loading: canalQuery.isLoading,
     createItem: createMutation.mutate,
+    createItemAsync: createMutation.mutateAsync,
     updateItem: updateMutation.mutate,
+    updateItemAsync: updateMutation.mutateAsync,
     deleteItem: deleteMutation.mutate,
+    isCreating: createMutation.isPending,
+    isUpdating: updateMutation.isPending,
     refetch: canalQuery.refetch,
   };
 };
