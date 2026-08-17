@@ -1,3 +1,5 @@
+
+
 import { supabase } from '@/integrations/supabase/client';
 
 export const TRACKED_TOOL_SLUGS = [
@@ -13,6 +15,7 @@ export const TRACKED_TOOL_SLUGS = [
   'ciclo-menstrual',
   'controle-financeiro',
   'acompanhamento-gestacional',
+  'medicamentos',
 ] as const;
 
 const trackedToolSlugs = new Set<string>(TRACKED_TOOL_SLUGS);
@@ -58,3 +61,4 @@ export const trackToolView = async (pathname: string) => {
     // Sem ação: a visualização já foi registrada no servidor.
   }
 };
+
