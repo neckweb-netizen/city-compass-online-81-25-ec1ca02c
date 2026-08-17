@@ -28,9 +28,12 @@ import {
   Download,
   Droplets,
   HeartPulse,
+  History,
   Info,
+  LayoutDashboard,
   LockKeyhole,
   Moon,
+  PlusCircle,
   RotateCcw,
   Save,
   ShieldAlert,
@@ -435,42 +438,61 @@ const CicloMenstrual = () => {
         </div>
       </div>
 
-      <main className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6">
+      <main className="mx-auto max-w-6xl space-y-5 px-3 py-4 sm:space-y-6 sm:px-6 sm:py-6">
         <ToolBanner secao="ferramentas" />
 
-        <section className="overflow-hidden rounded-3xl border border-rose-500/20 bg-gradient-to-br from-rose-500/15 via-background to-fuchsia-500/10 p-5 sm:p-8">
-          <div className="grid gap-6 lg:grid-cols-[1.35fr_0.65fr] lg:items-center">
+        <section className="relative overflow-hidden rounded-[28px] border border-rose-200 bg-gradient-to-br from-rose-50 via-white to-fuchsia-50 p-4 shadow-[0_12px_40px_rgba(190,24,93,0.08)] dark:border-rose-900/50 dark:from-rose-950/35 dark:via-card dark:to-fuchsia-950/25 sm:p-7 lg:p-8">
+          <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-rose-200/35 blur-3xl dark:bg-rose-700/10" />
+          <div className="pointer-events-none absolute -bottom-20 -left-16 h-48 w-48 rounded-full bg-fuchsia-200/30 blur-3xl dark:bg-fuchsia-700/10" />
+
+          <div className="relative grid gap-5 lg:grid-cols-[1.35fr_0.65fr] lg:items-center lg:gap-8">
             <div className="space-y-4">
-              <Badge className="w-fit bg-rose-500/15 text-rose-600 hover:bg-rose-500/15 dark:text-rose-300">
+              <Badge className="w-fit border border-rose-200 bg-rose-100 px-3 py-1.5 text-rose-700 shadow-none hover:bg-rose-100 dark:border-rose-800 dark:bg-rose-950/70 dark:text-rose-300">
                 <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Minha saúde, meu ritmo
               </Badge>
+
               <div>
-                <h2 className="text-3xl font-black tracking-tight sm:text-4xl">Entenda seu ciclo com mais clareza.</h2>
-                <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+                <h2 className="max-w-2xl text-[28px] font-black leading-[1.08] tracking-tight text-slate-950 dark:text-white sm:text-4xl lg:text-5xl">
+                  Entenda seu ciclo com <span className="text-rose-600 dark:text-rose-400">mais clareza.</span>
+                </h2>
+                <p className="mt-3 max-w-2xl text-[15px] leading-7 text-slate-600 dark:text-slate-300 sm:text-base">
                   Registre menstruações, acompanhe sintomas e visualize estimativas de próxima menstruação, ovulação e janela fértil em um calendário simples.
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2 text-xs">
-                <Badge variant="secondary">Sem cadastro adicional</Badge>
-                <Badge variant="secondary">Histórico local</Badge>
-                <Badge variant="secondary">Calendário de 6 meses</Badge>
-                <Badge variant="secondary">Diário de sintomas</Badge>
+
+              <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+                <div className="flex min-h-10 items-center gap-2 rounded-xl border border-slate-200/80 bg-white/85 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm dark:border-border dark:bg-card/80 dark:text-foreground">
+                  <LockKeyhole className="h-3.5 w-3.5 shrink-0 text-rose-500" />
+                  <span className="truncate">Sem cadastro</span>
+                </div>
+                <div className="flex min-h-10 items-center gap-2 rounded-xl border border-slate-200/80 bg-white/85 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm dark:border-border dark:bg-card/80 dark:text-foreground">
+                  <History className="h-3.5 w-3.5 shrink-0 text-rose-500" />
+                  <span className="truncate">Histórico local</span>
+                </div>
+                <div className="flex min-h-10 items-center gap-2 rounded-xl border border-slate-200/80 bg-white/85 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm dark:border-border dark:bg-card/80 dark:text-foreground">
+                  <CalendarDays className="h-3.5 w-3.5 shrink-0 text-rose-500" />
+                  <span className="truncate">6 meses</span>
+                </div>
+                <div className="flex min-h-10 items-center gap-2 rounded-xl border border-slate-200/80 bg-white/85 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm dark:border-border dark:bg-card/80 dark:text-foreground">
+                  <Activity className="h-3.5 w-3.5 shrink-0 text-rose-500" />
+                  <span className="truncate">Diário de sintomas</span>
+                </div>
               </div>
             </div>
 
-            <Card className="border-rose-500/20 bg-background/80 shadow-sm">
-              <CardContent className="p-5">
-                <div className="flex items-start gap-3">
-                  <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
-                  <div className="space-y-1">
-                    <p className="text-sm font-bold">Previsões são estimativas</p>
-                    <p className="text-xs leading-relaxed text-muted-foreground">
-                      O ciclo pode variar. Não use este calendário como método contraceptivo ou para confirmar gravidez. Em caso de sintomas importantes ou dúvidas, procure atendimento profissional.
-                    </p>
-                  </div>
+            <div className="rounded-2xl border border-amber-200 bg-white/90 p-4 shadow-sm dark:border-amber-900/50 dark:bg-card/90 sm:p-5">
+              <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400">
+                  <ShieldAlert className="h-5 w-5" />
                 </div>
-              </CardContent>
-            </Card>
+                <div className="space-y-1.5">
+                  <p className="text-sm font-extrabold text-slate-900 dark:text-white">Previsões são estimativas</p>
+                  <p className="text-xs leading-5 text-slate-600 dark:text-slate-300">
+                    O ciclo pode variar. Não use este calendário como método contraceptivo ou para confirmar gravidez. Em caso de sintomas importantes ou dúvidas, procure atendimento profissional.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -523,11 +545,46 @@ const CicloMenstrual = () => {
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
-          <TabsList className="grid h-auto w-full grid-cols-2 gap-1 rounded-2xl p-1 sm:grid-cols-4">
-            <TabsTrigger value="visao-geral" className="rounded-xl py-2.5 text-xs sm:text-sm">Visão geral</TabsTrigger>
-            <TabsTrigger value="calendario" className="rounded-xl py-2.5 text-xs sm:text-sm">Calendário</TabsTrigger>
-            <TabsTrigger value="registro" className="rounded-xl py-2.5 text-xs sm:text-sm">Registrar</TabsTrigger>
-            <TabsTrigger value="historico" className="rounded-xl py-2.5 text-xs sm:text-sm">Histórico</TabsTrigger>
+          <TabsList className="grid h-auto w-full grid-cols-2 gap-3 bg-transparent p-0 sm:grid-cols-4">
+            <TabsTrigger
+              value="visao-geral"
+              className="group h-auto min-h-[88px] flex-col items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-left text-slate-600 shadow-sm transition-all hover:-translate-y-0.5 hover:border-rose-200 hover:shadow-md data-[state=active]:border-rose-300 data-[state=active]:bg-gradient-to-br data-[state=active]:from-rose-50 data-[state=active]:to-white data-[state=active]:text-rose-700 data-[state=active]:shadow-[0_10px_30px_rgba(244,63,94,0.12)] dark:border-border dark:bg-card dark:text-muted-foreground dark:hover:border-rose-800 dark:data-[state=active]:border-rose-800 dark:data-[state=active]:from-rose-950/60 dark:data-[state=active]:to-card dark:data-[state=active]:text-rose-300"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50 text-rose-500 transition-colors group-data-[state=active]:bg-rose-500 group-data-[state=active]:text-white dark:bg-rose-950/50">
+                <LayoutDashboard className="h-[18px] w-[18px]" />
+              </div>
+              <span className="text-sm font-extrabold">Visão geral</span>
+            </TabsTrigger>
+
+            <TabsTrigger
+              value="calendario"
+              className="group h-auto min-h-[88px] flex-col items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-left text-slate-600 shadow-sm transition-all hover:-translate-y-0.5 hover:border-violet-200 hover:shadow-md data-[state=active]:border-violet-300 data-[state=active]:bg-gradient-to-br data-[state=active]:from-violet-50 data-[state=active]:to-white data-[state=active]:text-violet-700 data-[state=active]:shadow-[0_10px_30px_rgba(124,58,237,0.12)] dark:border-border dark:bg-card dark:text-muted-foreground dark:hover:border-violet-800 dark:data-[state=active]:border-violet-800 dark:data-[state=active]:from-violet-950/60 dark:data-[state=active]:to-card dark:data-[state=active]:text-violet-300"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-50 text-violet-500 transition-colors group-data-[state=active]:bg-violet-600 group-data-[state=active]:text-white dark:bg-violet-950/50">
+                <CalendarDays className="h-[18px] w-[18px]" />
+              </div>
+              <span className="text-sm font-extrabold">Calendário</span>
+            </TabsTrigger>
+
+            <TabsTrigger
+              value="registro"
+              className="group h-auto min-h-[88px] flex-col items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-left text-slate-600 shadow-sm transition-all hover:-translate-y-0.5 hover:border-fuchsia-200 hover:shadow-md data-[state=active]:border-fuchsia-300 data-[state=active]:bg-gradient-to-br data-[state=active]:from-fuchsia-50 data-[state=active]:to-white data-[state=active]:text-fuchsia-700 data-[state=active]:shadow-[0_10px_30px_rgba(217,70,239,0.12)] dark:border-border dark:bg-card dark:text-muted-foreground dark:hover:border-fuchsia-800 dark:data-[state=active]:border-fuchsia-800 dark:data-[state=active]:from-fuchsia-950/60 dark:data-[state=active]:to-card dark:data-[state=active]:text-fuchsia-300"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-fuchsia-50 text-fuchsia-500 transition-colors group-data-[state=active]:bg-fuchsia-600 group-data-[state=active]:text-white dark:bg-fuchsia-950/50">
+                <PlusCircle className="h-[18px] w-[18px]" />
+              </div>
+              <span className="text-sm font-extrabold">Registrar</span>
+            </TabsTrigger>
+
+            <TabsTrigger
+              value="historico"
+              className="group h-auto min-h-[88px] flex-col items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-left text-slate-600 shadow-sm transition-all hover:-translate-y-0.5 hover:border-sky-200 hover:shadow-md data-[state=active]:border-sky-300 data-[state=active]:bg-gradient-to-br data-[state=active]:from-sky-50 data-[state=active]:to-white data-[state=active]:text-sky-700 data-[state=active]:shadow-[0_10px_30px_rgba(14,165,233,0.12)] dark:border-border dark:bg-card dark:text-muted-foreground dark:hover:border-sky-800 dark:data-[state=active]:border-sky-800 dark:data-[state=active]:from-sky-950/60 dark:data-[state=active]:to-card dark:data-[state=active]:text-sky-300"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50 text-sky-500 transition-colors group-data-[state=active]:bg-sky-600 group-data-[state=active]:text-white dark:bg-sky-950/50">
+                <History className="h-[18px] w-[18px]" />
+              </div>
+              <span className="text-sm font-extrabold">Histórico</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="visao-geral" className="space-y-5">
