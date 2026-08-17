@@ -5,12 +5,12 @@ import { BrowserRouter, Routes, Route, useLocation, useNavigate } from "react-ro
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { PWAInstallPrompt } from "@/components/pwa/PWAInstallPrompt";
 import { SecurityHeaders } from "@/components/security/SecurityHeaders";
-import { lazy, Suspense, useState, useEffect, useLayoutEffect } from "react";
+import { lazy, Suspense, useState, useEffect, useLayoutEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Hammer, Clock, MapPin, Mail, MessageSquare, Instagram, Facebook, 
   ArrowRight, Sparkles, DollarSign, FileText, NotebookPen, Search, 
-  ShieldCheck, Globe, Calculator, Percent, FileSpreadsheet, Volume2, Grid, Ticket, CarFront, HeartPulse, WalletCards, Baby, Pill
+  ShieldCheck, Globe, Calculator, Percent, FileSpreadsheet, Volume2, Grid, Ticket, CarFront, HeartPulse, WalletCards, Baby, Pill, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { initGA, logPageView } from "@/utils/analytics";
 import { trackToolView } from "@/lib/toolAnalytics";
@@ -188,6 +188,7 @@ const FerramentasCatalogInternal = () => {
   const navigate = useNavigate();
   const [busca, setBusca] = useState('');
   const [categoriaAtiva, setCategoriaAtiva] = useState<string>('Todas');
+  const categoriasCarouselRef = useRef<HTMLDivElement>(null);
 
   const ferramentas = [
     {
@@ -324,6 +325,27 @@ const FerramentasCatalogInternal = () => {
 
   const categoriasUnicas = ['Todas', ...Array.from(new Set(ferramentas.map(f => f.categoria)))];
 
+  const categoriaVisual: Record<string, { icone: typeof Grid; cor: string; fundo: string }> = {
+    Todas: { icone: Grid, cor: 'text-violet-600 dark:text-violet-300', fundo: 'bg-violet-100 dark:bg-violet-950/50' },
+    Sorteios: { icone: Ticket, cor: 'text-orange-600 dark:text-orange-300', fundo: 'bg-orange-100 dark:bg-orange-950/50' },
+    Financeiro: { icone: WalletCards, cor: 'text-emerald-600 dark:text-emerald-300', fundo: 'bg-emerald-100 dark:bg-emerald-950/50' },
+    Carreira: { icone: FileText, cor: 'text-blue-600 dark:text-blue-300', fundo: 'bg-blue-100 dark:bg-blue-950/50' },
+    Gestão: { icone: NotebookPen, cor: 'text-amber-600 dark:text-amber-300', fundo: 'bg-amber-100 dark:bg-amber-950/50' },
+    Precificação: { icone: Calculator, cor: 'text-purple-600 dark:text-purple-300', fundo: 'bg-purple-100 dark:bg-purple-950/50' },
+    Comércio: { icone: Percent, cor: 'text-pink-600 dark:text-pink-300', fundo: 'bg-pink-100 dark:bg-pink-950/50' },
+    Trabalho: { icone: FileSpreadsheet, cor: 'text-cyan-600 dark:text-cyan-300', fundo: 'bg-cyan-100 dark:bg-cyan-950/50' },
+    Acessibilidade: { icone: Volume2, cor: 'text-indigo-600 dark:text-indigo-300', fundo: 'bg-indigo-100 dark:bg-indigo-950/50' },
+    Saúde: { icone: HeartPulse, cor: 'text-rose-600 dark:text-rose-300', fundo: 'bg-rose-100 dark:bg-rose-950/50' },
+    Veículos: { icone: CarFront, cor: 'text-sky-600 dark:text-sky-300', fundo: 'bg-sky-100 dark:bg-sky-950/50' },
+  };
+
+  const scrollCategorias = (direction: 'left' | 'right') => {
+    categoriasCarouselRef.current?.scrollBy({
+      left: direction === 'left' ? -320 : 320,
+      behavior: 'smooth',
+    });
+  };
+
   const ferramentasFiltradas = ferramentas.filter(f => {
     const bateTexto = 
       f.titulo.toLowerCase().includes(busca.toLowerCase()) || 
@@ -366,33 +388,80 @@ const FerramentasCatalogInternal = () => {
           </div>
         </div>
 
-        <div className="max-w-xl mx-auto space-y-2 pt-2">
-          <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block text-center">
-            Filtrar por Categoria
-          </span>
+        <section className="relative mx-auto w-full max-w-6xl pt-1" aria-label="Categorias de ferramentas">
+          <div className="mb-3 flex items-center justify-between px-1">
+            <div>
+              <p className="text-sm font-black text-foreground">Explore por categoria</p>
+              <p className="text-[11px] text-muted-foreground sm:text-xs">Arraste para o lado e escolha o que você precisa</p>
+            </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {categoriasUnicas.map((cat) => {
-              const isSelected = categoriaAtiva === cat;
-              return (
-                <Button
-                  key={cat}
-                  variant={isSelected ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setCategoriaAtiva(cat)}
-                  className={`w-full rounded-xl text-xs font-bold py-2 px-3 transition-all h-9 ${
-                    isSelected 
-                      ? "bg-primary text-primary-foreground shadow-md" 
-                      : "hover:border-primary/50 hover:bg-primary/5 text-muted-foreground"
-                  }`}
-                >
-                  {cat === 'Todas' && <Grid className="w-3.5 h-3.5 mr-1.5" />}
-                  <span className="truncate">{cat}</span>
-                </Button>
-              );
-            })}
+            <div className="hidden items-center gap-2 sm:flex">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => scrollCategorias('left')}
+                className="h-9 w-9 rounded-full bg-background shadow-sm"
+                aria-label="Categorias anteriores"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => scrollCategorias('right')}
+                className="h-9 w-9 rounded-full bg-background shadow-sm"
+                aria-label="Próximas categorias"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-        </div>
+
+          <div className="relative">
+            <div className="pointer-events-none absolute inset-y-0 left-0 z-10 hidden w-8 bg-gradient-to-r from-background to-transparent sm:block" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 z-10 hidden w-8 bg-gradient-to-l from-background to-transparent sm:block" />
+
+            <div
+              ref={categoriasCarouselRef}
+              className="flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-1 pb-3 pt-1 scroll-smooth overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-8"
+            >
+              {categoriasUnicas.map((cat) => {
+                const isSelected = categoriaAtiva === cat;
+                const visual = categoriaVisual[cat] || categoriaVisual.Todas;
+                const IconeCategoria = visual.icone;
+                const quantidade = cat === 'Todas'
+                  ? ferramentas.length
+                  : ferramentas.filter((f) => f.categoria === cat).length;
+
+                return (
+                  <button
+                    type="button"
+                    key={cat}
+                    onClick={() => setCategoriaAtiva(cat)}
+                    className={`group min-w-[92px] snap-start rounded-2xl border px-2.5 py-3 text-center transition-all duration-200 sm:min-w-[108px] sm:px-3 sm:py-3.5 ${
+                      isSelected
+                        ? 'border-primary bg-primary text-primary-foreground shadow-lg shadow-primary/15 -translate-y-0.5'
+                        : 'border-border/70 bg-card text-foreground shadow-sm hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md'
+                    }`}
+                    aria-pressed={isSelected}
+                  >
+                    <span className={`mx-auto mb-2 grid h-10 w-10 place-items-center rounded-xl transition-transform group-hover:scale-105 ${
+                      isSelected ? 'bg-primary-foreground/15 text-primary-foreground' : `${visual.fundo} ${visual.cor}`
+                    }`}>
+                      <IconeCategoria className="h-5 w-5" />
+                    </span>
+                    <span className="block truncate text-[11px] font-extrabold sm:text-xs">{cat}</span>
+                    <span className={`mt-0.5 block text-[9px] font-semibold ${isSelected ? 'text-primary-foreground/75' : 'text-muted-foreground'}`}>
+                      {quantidade} {quantidade === 1 ? 'ferramenta' : 'ferramentas'}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </section>
 
         {ferramentasFiltradas.length === 0 ? (
           <div className="text-center py-12 space-y-3">
