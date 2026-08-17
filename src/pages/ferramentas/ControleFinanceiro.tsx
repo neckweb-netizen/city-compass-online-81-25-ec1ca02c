@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowDownCircle,
@@ -21,6 +21,8 @@ import {
   ReceiptText,
   RotateCcw,
   Search,
+  Cloud,
+  CloudOff,
   ShieldCheck,
   Sparkles,
   Target,
@@ -32,6 +34,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ToolBanner } from '@/components/ferramentas/ToolBanner';
+import { useControleFinanceiroStorage, EMPTY_FINANCE_STATE, type FinanceState } from '@/hooks/useControleFinanceiroStorage';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -42,8 +45,6 @@ import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-
-const STORAGE_KEY = 'sajtem:controle-financeiro:v1';
 
 type TransactionType = 'receita' | 'despesa';
 type TransactionStatus = 'pago' | 'pendente';
@@ -60,26 +61,6 @@ type Transaction = {
   recurring: boolean;
   note?: string;
   createdAt: string;
-};
-
-type FinanceSettings = {
-  monthlyBudget: number;
-  savingsGoal: number;
-  emergencyFundGoal: number;
-};
-
-type FinanceState = {
-  transactions: Transaction[];
-  settings: FinanceSettings;
-};
-
-const defaultState: FinanceState = {
-  transactions: [],
-  settings: {
-    monthlyBudget: 0,
-    savingsGoal: 0,
-    emergencyFundGoal: 0,
-  },
 };
 
 const categories: Record<TransactionType, string[]> = {
@@ -129,23 +110,6 @@ const safeNumber = (value: string) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const loadState = (): FinanceState => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return defaultState;
-    const parsed = JSON.parse(raw) as Partial<FinanceState>;
-    return {
-      transactions: Array.isArray(parsed.transactions) ? parsed.transactions : [],
-      settings: {
-        ...defaultState.settings,
-        ...(parsed.settings || {}),
-      },
-    };
-  } catch {
-    return defaultState;
-  }
-};
-
 const getCalendarDays = (date: Date) => {
   const year = date.getFullYear();
   const month = date.getMonth();
@@ -174,7 +138,21 @@ const getCalendarDays = (date: Date) => {
 export const ControleFinanceiro = () => {
   const navigate = useNavigate();
   const importRef = useRef<HTMLInputElement>(null);
-  const [state, setState] = useState<FinanceState>(loadState);
+  const {
+    state,
+    user,
+    loading: financeLoading,
+    syncing,
+    syncError,
+    storageLabel,
+    hasLocalDataToImport,
+    saveTransaction,
+    removeTransaction,
+    saveSettings: persistSettings,
+    replaceAll,
+    importLocalToAccount,
+    clearAll,
+  } = useControleFinanceiroStorage();
   const [view, setView] = useState<ViewMode>('resumo');
   const [selectedMonth, setSelectedMonth] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState(todayKey());
@@ -202,9 +180,6 @@ export const ControleFinanceiro = () => {
     emergencyFundGoal: '',
   });
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [state]);
 
   const selectedMonthKey = monthKeyFromDate(selectedMonth);
   const monthTransactions = useMemo(
@@ -348,35 +323,36 @@ export const ControleFinanceiro = () => {
       createdAt: editing?.createdAt || new Date().toISOString(),
     };
 
-    setState((current) => ({
-      ...current,
-      transactions: editing
-        ? current.transactions.map((item) => (item.id === editing.id ? payload : item))
-        : [...current.transactions, payload],
-    }));
+    void saveTransaction(payload).then((result) => {
+      if (!result.synced && result.reason === 'remote_error') {
+        toast.warning('Salvo neste aparelho, mas a sincronização com sua conta ficou pendente.');
+      }
+    });
     setSelectedMonth(parseDate(form.date));
     setSelectedDay(form.date);
     setIsEntryOpen(false);
-    toast.success(editing ? 'Lançamento atualizado.' : 'Lançamento adicionado.');
+    toast.success(editing ? 'Lançamento atualizado.' : user ? 'Lançamento salvo na sua conta.' : 'Lançamento salvo neste aparelho.');
   };
 
   const removeEntry = (id: string) => {
-    setState((current) => ({
-      ...current,
-      transactions: current.transactions.filter((item) => item.id !== id),
-    }));
+    void removeTransaction(id).then((result) => {
+      if (!result.synced && result.reason === 'remote_error') {
+        toast.warning('Removido deste aparelho, mas a sincronização com sua conta ficou pendente.');
+      }
+    });
     toast.success('Lançamento removido.');
   };
 
   const togglePaid = (item: Transaction) => {
-    setState((current) => ({
-      ...current,
-      transactions: current.transactions.map((transaction) =>
-        transaction.id === item.id
-          ? { ...transaction, status: transaction.status === 'pago' ? 'pendente' : 'pago' }
-          : transaction,
-      ),
-    }));
+    const updated: Transaction = {
+      ...item,
+      status: item.status === 'pago' ? 'pendente' : 'pago',
+    };
+    void saveTransaction(updated).then((result) => {
+      if (!result.synced && result.reason === 'remote_error') {
+        toast.warning('Alteração salva localmente; sincronização pendente.');
+      }
+    });
   };
 
   const openSettings = () => {
@@ -389,16 +365,18 @@ export const ControleFinanceiro = () => {
   };
 
   const saveSettings = () => {
-    setState((current) => ({
-      ...current,
-      settings: {
-        monthlyBudget: Math.max(0, safeNumber(settingsForm.monthlyBudget)),
-        savingsGoal: Math.max(0, safeNumber(settingsForm.savingsGoal)),
-        emergencyFundGoal: Math.max(0, safeNumber(settingsForm.emergencyFundGoal)),
-      },
-    }));
+    const nextSettings = {
+      monthlyBudget: Math.max(0, safeNumber(settingsForm.monthlyBudget)),
+      savingsGoal: Math.max(0, safeNumber(settingsForm.savingsGoal)),
+      emergencyFundGoal: Math.max(0, safeNumber(settingsForm.emergencyFundGoal)),
+    };
+    void persistSettings(nextSettings).then((result) => {
+      if (!result.synced && result.reason === 'remote_error') {
+        toast.warning('Metas salvas neste aparelho; sincronização pendente.');
+      }
+    });
     setIsSettingsOpen(false);
-    toast.success('Planejamento atualizado.');
+    toast.success(user ? 'Planejamento salvo na sua conta.' : 'Planejamento salvo neste aparelho.');
   };
 
   const exportData = () => {
@@ -419,11 +397,15 @@ export const ControleFinanceiro = () => {
       try {
         const parsed = JSON.parse(String(reader.result)) as FinanceState;
         if (!Array.isArray(parsed.transactions) || !parsed.settings) throw new Error('Formato inválido');
-        setState({
+        const nextState: FinanceState = {
           transactions: parsed.transactions,
-          settings: { ...defaultState.settings, ...parsed.settings },
+          settings: { ...EMPTY_FINANCE_STATE.settings, ...parsed.settings },
+        };
+        void replaceAll(nextState).then((result) => {
+          if (result.synced) toast.success('Backup importado e sincronizado com sua conta.');
+          else if (result.reason === 'remote_error') toast.warning('Backup importado localmente; sincronização pendente.');
+          else toast.success('Backup importado neste aparelho.');
         });
-        toast.success('Backup importado com sucesso.');
       } catch {
         toast.error('Não foi possível importar esse arquivo.');
       }
@@ -432,10 +414,13 @@ export const ControleFinanceiro = () => {
   };
 
   const clearData = () => {
-    if (!window.confirm('Apagar todos os lançamentos e metas deste aparelho? Essa ação não pode ser desfeita.')) return;
-    setState(defaultState);
-    localStorage.removeItem(STORAGE_KEY);
-    toast.success('Dados financeiros apagados deste aparelho.');
+    const target = user ? 'da sua conta e deste aparelho' : 'deste aparelho';
+    if (!window.confirm(`Apagar todos os lançamentos e metas ${target}? Essa ação não pode ser desfeita.`)) return;
+    void clearAll().then((result) => {
+      if (result.synced) toast.success('Dados financeiros apagados da sua conta.');
+      else if (result.reason === 'remote_error') toast.error('Não foi possível apagar os dados do servidor. Nada foi removido definitivamente.');
+      else toast.success('Dados financeiros apagados deste aparelho.');
+    });
   };
 
   const calendarDays = useMemo(() => getCalendarDays(selectedMonth), [selectedMonth]);
@@ -463,12 +448,56 @@ export const ControleFinanceiro = () => {
             <span className="hidden sm:inline">Voltar para Ferramentas</span>
             <span className="sm:hidden">Voltar</span>
           </Button>
-          <Badge className="border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300">
-            <ShieldCheck className="mr-1 h-3.5 w-3.5" /> Privado no aparelho
+          <Badge className={`px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider ${user && !syncError ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300' : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300'}`}>
+            {user && !syncError ? <Cloud className="mr-1 h-3.5 w-3.5" /> : <CloudOff className="mr-1 h-3.5 w-3.5" />}
+            {storageLabel}
           </Badge>
         </div>
 
         <ToolBanner secao="controle_financeiro" />
+
+        {!user && !financeLoading && (
+          <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950 shadow-sm dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex gap-3">
+              <CloudOff className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-300" />
+              <div>
+                <p className="text-sm font-black">Entre na sua conta para não perder seus dados.</p>
+                <p className="mt-1 text-xs leading-relaxed text-amber-800 dark:text-amber-200">Sem login, os lançamentos ficam apenas neste aparelho. Com login, eles ficam protegidos no Supabase e aparecem em outros dispositivos.</p>
+              </div>
+            </div>
+            <Button onClick={() => navigate('/login')} className="shrink-0 rounded-xl bg-amber-600 font-extrabold text-white hover:bg-amber-700">Entrar para sincronizar</Button>
+          </div>
+        )}
+
+        {user && hasLocalDataToImport && (
+          <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-blue-950 shadow-sm dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-100 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex gap-3">
+              <Cloud className="mt-0.5 h-5 w-5 shrink-0 text-blue-600 dark:text-blue-300" />
+              <div>
+                <p className="text-sm font-black">Encontramos dados financeiros salvos neste aparelho.</p>
+                <p className="mt-1 text-xs leading-relaxed text-blue-800 dark:text-blue-200">Sua conta ainda não tem dados financeiros. Confirme para enviar esses lançamentos e metas ao Supabase.</p>
+              </div>
+            </div>
+            <Button
+              disabled={syncing}
+              onClick={() => {
+                void importLocalToAccount().then((result) => {
+                  if (result.synced) toast.success('Dados deste aparelho salvos na sua conta.');
+                  else toast.error('Não foi possível sincronizar agora. Seus dados continuam salvos neste aparelho.');
+                });
+              }}
+              className="shrink-0 rounded-xl bg-blue-600 font-extrabold text-white hover:bg-blue-700"
+            >
+              {syncing ? 'Sincronizando...' : 'Salvar na minha conta'}
+            </Button>
+          </div>
+        )}
+
+        {user && syncError && (
+          <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs font-semibold text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">
+            Seus dados continuam no cache deste aparelho, mas a última sincronização com o servidor falhou. Tente novamente quando a conexão estiver estável.
+          </div>
+        )}
 
         <section className="relative mt-4 overflow-hidden rounded-[28px] border border-emerald-200/80 bg-gradient-to-br from-emerald-600 via-emerald-600 to-teal-700 p-5 text-white shadow-xl shadow-emerald-900/10 sm:p-8 dark:border-emerald-800/60">
           <div className="pointer-events-none absolute -right-12 -top-16 h-48 w-48 rounded-full bg-white/10 blur-2xl" />
