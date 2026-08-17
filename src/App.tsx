@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   Hammer, Clock, MapPin, Mail, MessageSquare, Instagram, Facebook, 
   ArrowRight, Sparkles, DollarSign, FileText, NotebookPen, Search, 
-  ShieldCheck, Globe, Calculator, Percent, FileSpreadsheet, Volume2, Grid, Ticket, CarFront, HeartPulse, WalletCards
+  ShieldCheck, Globe, Calculator, Percent, FileSpreadsheet, Volume2, Grid, Ticket, CarFront, HeartPulse, WalletCards, Baby
 } from "lucide-react";
 import { initGA, logPageView } from "@/utils/analytics";
 import { trackToolView } from "@/lib/toolAnalytics";
@@ -66,6 +66,7 @@ const GeradorRifa = lazy(() => import("./pages/ferramentas/GeradorRifa").then(m 
 const ConsultaFipe = lazy(() => import("./pages/ferramentas/ConsultaFipe").then(m => ({ default: m.ConsultaFipe })));
 const CicloMenstrual = lazy(() => import("./pages/ferramentas/CicloMenstrual"));
 const ControleFinanceiro = lazy(() => import("./pages/ferramentas/ControleFinanceiro").then(m => ({ default: m.ControleFinanceiro })));
+const AcompanhamentoGestacional = lazy(() => import("./pages/ferramentas/AcompanhamentoGestacional"));
 
 // Admin pages com resolução resiliente do AdminBanners
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
@@ -287,6 +288,16 @@ const FerramentasCatalogInternal = () => {
       categoria: 'Financeiro',
       corGradiente: 'from-emerald-500/20 via-teal-500/5 to-transparent border-emerald-500/30',
       corTexto: 'text-emerald-600',
+    },
+    {
+      id: 'acompanhamento-gestacional',
+      titulo: 'Acompanhamento Gestacional',
+      descricao: 'Acompanhe semanas, DPP, agenda de consultas e exames, diário de sintomas e marcos da gestação com sincronização na sua conta.',
+      icone: Baby,
+      rota: '/ferramentas/acompanhamento-gestacional',
+      categoria: 'Saúde',
+      corGradiente: 'from-fuchsia-500/20 via-rose-500/5 to-transparent border-fuchsia-500/30',
+      corTexto: 'text-fuchsia-600',
     },
     {
       id: 'consulta-fipe',
@@ -673,6 +684,7 @@ const App = () => {
                 <Route path="ferramentas/gerador-rifa" element={<GeradorRifa />} />
                 <Route path="ferramentas/ciclo-menstrual" element={<CicloMenstrual />} />
                 <Route path="ferramentas/controle-financeiro" element={<ControleFinanceiro />} />
+                <Route path="ferramentas/acompanhamento-gestacional" element={<AcompanhamentoGestacional />} />
 
                 {/* FERRAMENTAS PROTEGIDAS */}
                 <Route path="ferramentas/gerador-cobranca" element={<ProtectedRoute><GeradorCobranca /></ProtectedRoute>} />
