@@ -5,7 +5,7 @@ import { BrowserRouter, Routes, Route, useLocation, useNavigate } from "react-ro
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { PWAInstallPrompt } from "@/components/pwa/PWAInstallPrompt";
 import { SecurityHeaders } from "@/components/security/SecurityHeaders";
-import { lazy, Suspense, useState, useEffect } from "react";
+import { lazy, Suspense, useState, useEffect, useLayoutEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Hammer, Clock, MapPin, Mail, MessageSquare, Instagram, Facebook, 
@@ -106,6 +106,33 @@ import { MainLayout } from "./components/layout/MainLayout";
 import { PublicLayout } from "./components/layout/PublicLayout";
 import { AdminLayout } from "./components/admin/AdminLayout";
 import { RoutePreloader } from "./components/layout/RoutePreloader";
+
+// GARANTE QUE TODA NOVA ROTA ABRA NO TOPO DA PÁGINA
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+
+  useLayoutEffect(() => {
+    // Cancela qualquer restauração automática de posição feita pelo navegador
+    if ("scrollRestoration" in window.history) {
+      window.history.scrollRestoration = "manual";
+    }
+
+    // Força o topo imediatamente ao trocar de rota
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+
+    // Alguns navegadores mobile restauram o scroll depois do primeiro paint.
+    // Reforçamos no próximo frame para evitar a página abrindo no meio.
+    const frame = window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [pathname]);
+
+  return null;
+};
 
 // COMPONENTE DE BANNER DINÂMICO PARA FERRAMENTAS
 const BannersFerramentas = () => {
@@ -601,6 +628,7 @@ const App = () => {
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <ScrollToTop />
           <PushNotificationsProvider>
             <PushPermissionPrompt />
             <AnalyticsTracker />
