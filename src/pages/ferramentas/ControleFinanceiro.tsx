@@ -2,6 +2,7 @@ import { FormEvent, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowDownCircle,
+  BellRing,
   ArrowLeft,
   ArrowUpCircle,
   CalendarDays,
@@ -45,6 +46,7 @@ import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { usePushNotifications } from '@/contexts/PushNotificationsContext';
 
 type TransactionType = 'receita' | 'despesa';
 type TransactionStatus = 'pago' | 'pendente';
@@ -60,6 +62,9 @@ type Transaction = {
   status: TransactionStatus;
   recurring: boolean;
   note?: string;
+  notify: boolean;
+  reminderDaysBefore: number;
+  reminderTime: string;
   createdAt: string;
 };
 
@@ -137,6 +142,7 @@ const getCalendarDays = (date: Date) => {
 
 export const ControleFinanceiro = () => {
   const navigate = useNavigate();
+  const push = usePushNotifications();
   const importRef = useRef<HTMLInputElement>(null);
   const {
     state,
@@ -172,6 +178,9 @@ export const ControleFinanceiro = () => {
     status: 'pago' as TransactionStatus,
     recurring: false,
     note: '',
+    notify: false,
+    reminderDaysBefore: 1,
+    reminderTime: '09:00',
   });
 
   const [settingsForm, setSettingsForm] = useState({
@@ -266,6 +275,9 @@ export const ControleFinanceiro = () => {
       status: 'pago',
       recurring: false,
       note: '',
+      notify: false,
+      reminderDaysBefore: 1,
+      reminderTime: '09:00',
       ...preset,
     });
     setIsEntryOpen(true);
@@ -282,6 +294,9 @@ export const ControleFinanceiro = () => {
       status: item.status,
       recurring: item.recurring,
       note: item.note || '',
+      notify: item.notify,
+      reminderDaysBefore: item.reminderDaysBefore,
+      reminderTime: item.reminderTime,
     });
     setIsEntryOpen(true);
   };
@@ -320,6 +335,9 @@ export const ControleFinanceiro = () => {
       status: form.status,
       recurring: form.recurring,
       note: form.note.trim(),
+      notify: Boolean(user && form.type === 'despesa' && form.status === 'pendente' && form.notify),
+      reminderDaysBefore: form.reminderDaysBefore,
+      reminderTime: form.reminderTime,
       createdAt: editing?.createdAt || new Date().toISOString(),
     };
 
@@ -1084,6 +1102,50 @@ export const ControleFinanceiro = () => {
               <Switch checked={form.recurring} onCheckedChange={(recurring) => setForm((current) => ({ ...current, recurring }))} />
             </div>
 
+            {form.type === 'despesa' && form.status === 'pendente' && (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-3 dark:border-emerald-900/60 dark:bg-emerald-950/20">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex gap-2">
+                    <BellRing className="mt-0.5 h-5 w-5 text-emerald-600" />
+                    <div>
+                      <p className="text-sm font-black text-slate-950 dark:text-foreground">Lembrar deste vencimento</p>
+                      <p className="text-[11px] leading-relaxed text-muted-foreground">O aviso fica agendado no Supabase e é enviado pelo Firebase mesmo com o Saj Tem fechado.</p>
+                    </div>
+                  </div>
+                  <Switch checked={form.notify} onCheckedChange={(notify) => setForm((current) => ({ ...current, notify }))} disabled={!user} />
+                </div>
+
+                {form.notify && user && (
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="finance-reminder-days">Avisar</Label>
+                      <Select value={String(form.reminderDaysBefore)} onValueChange={(value) => setForm((current) => ({ ...current, reminderDaysBefore: Number(value) }))}>
+                        <SelectTrigger id="finance-reminder-days" className="h-10 rounded-xl"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="0">No dia</SelectItem>
+                          <SelectItem value="1">1 dia antes</SelectItem>
+                          <SelectItem value="2">2 dias antes</SelectItem>
+                          <SelectItem value="3">3 dias antes</SelectItem>
+                          <SelectItem value="7">7 dias antes</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="finance-reminder-time">Horário</Label>
+                      <Input id="finance-reminder-time" type="time" value={form.reminderTime} onChange={(event) => setForm((current) => ({ ...current, reminderTime: event.target.value }))} className="h-10 rounded-xl" />
+                    </div>
+                  </div>
+                )}
+
+                {!user && <p className="mt-2 text-xs font-semibold text-amber-700 dark:text-amber-300">Faça login para receber lembretes automáticos.</p>}
+                {user && form.notify && !push.enabled && (
+                  <Button type="button" variant="outline" size="sm" className="mt-3 w-full rounded-xl" disabled={push.loading || !push.supported} onClick={() => void push.enable()}>
+                    <BellRing className="mr-2 h-4 w-4" /> Ativar notificações neste aparelho
+                  </Button>
+                )}
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <Label htmlFor="finance-note">Observação (opcional)</Label>
               <Textarea id="finance-note" value={form.note} onChange={(event) => setForm((current) => ({ ...current, note: event.target.value }))} placeholder="Ex: parcela 2/6, pagamento via PIX..." className="min-h-[80px] rounded-xl" />
@@ -1282,3 +1344,4 @@ const Insight = ({ icon: Icon, title, description, tone }: { icon: typeof Trendi
 };
 
 export default ControleFinanceiro;
+
