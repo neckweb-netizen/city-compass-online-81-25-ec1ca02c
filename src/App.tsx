@@ -68,6 +68,7 @@ const CicloMenstrual = lazy(() => import("./pages/ferramentas/CicloMenstrual"));
 const ControleFinanceiro = lazy(() => import("./pages/ferramentas/ControleFinanceiro").then(m => ({ default: m.ControleFinanceiro })));
 const AcompanhamentoGestacional = lazy(() => import("./pages/ferramentas/AcompanhamentoGestacional"));
 const MedicamentosLembretes = lazy(() => import("./pages/ferramentas/MedicamentosLembretes"));
+const MeuVeiculo = lazy(() => import("./pages/ferramentas/MeuVeiculo"));
 
 // Admin pages com resolução resiliente do AdminBanners
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
@@ -310,6 +311,16 @@ const FerramentasCatalogInternal = () => {
       categoria: 'Saúde',
       corGradiente: 'from-violet-500/20 via-indigo-500/5 to-transparent border-violet-500/30',
       corTexto: 'text-violet-600',
+    },
+    {
+      id: 'meu-veiculo',
+      titulo: 'Meu Veículo — Controle Automotivo',
+      descricao: 'Controle abastecimentos, consumo, gastos, manutenções, documentos e receba lembretes automáticos pelo Firebase.',
+      icone: CarFront,
+      rota: '/ferramentas/meu-veiculo',
+      categoria: 'Veículos',
+      corGradiente: 'from-blue-500/20 via-sky-500/5 to-transparent border-blue-500/30',
+      corTexto: 'text-blue-600',
     },
     {
       id: 'consulta-fipe',
@@ -766,6 +777,7 @@ const App = () => {
                 <Route path="ferramentas/controle-financeiro" element={<ControleFinanceiro />} />
                 <Route path="ferramentas/acompanhamento-gestacional" element={<AcompanhamentoGestacional />} />
                 <Route path="ferramentas/medicamentos" element={<MedicamentosLembretes />} />
+                <Route path="ferramentas/meu-veiculo" element={<MeuVeiculo />} />
 
                 {/* FERRAMENTAS PROTEGIDAS */}
                 <Route path="ferramentas/gerador-cobranca" element={<ProtectedRoute><GeradorCobranca /></ProtectedRoute>} />
