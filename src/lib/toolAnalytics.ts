@@ -12,6 +12,7 @@ export const TRACKED_TOOL_SLUGS = [
   'consulta-fipe',
   'ciclo-menstrual',
   'controle-financeiro',
+  'acompanhamento-gestacional',
 ] as const;
 
 const trackedToolSlugs = new Set<string>(TRACKED_TOOL_SLUGS);
