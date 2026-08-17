@@ -10,6 +10,8 @@ export const TRACKED_TOOL_SLUGS = [
   'simulador-rescisao',
   'leitor-voz',
   'consulta-fipe',
+  'ciclo-menstrual',
+  'controle-financeiro',
 ] as const;
 
 const trackedToolSlugs = new Set<string>(TRACKED_TOOL_SLUGS);
