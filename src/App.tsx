@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   Hammer, Clock, MapPin, Mail, MessageSquare, Instagram, Facebook, 
   ArrowRight, Sparkles, DollarSign, FileText, NotebookPen, Search, 
-  ShieldCheck, Globe, Calculator, Percent, FileSpreadsheet, Volume2, Grid, Ticket, CarFront, HeartPulse, WalletCards, Baby
+  ShieldCheck, Globe, Calculator, Percent, FileSpreadsheet, Volume2, Grid, Ticket, CarFront, HeartPulse, WalletCards, Baby, Pill
 } from "lucide-react";
 import { initGA, logPageView } from "@/utils/analytics";
 import { trackToolView } from "@/lib/toolAnalytics";
@@ -67,6 +67,7 @@ const ConsultaFipe = lazy(() => import("./pages/ferramentas/ConsultaFipe").then(
 const CicloMenstrual = lazy(() => import("./pages/ferramentas/CicloMenstrual"));
 const ControleFinanceiro = lazy(() => import("./pages/ferramentas/ControleFinanceiro").then(m => ({ default: m.ControleFinanceiro })));
 const AcompanhamentoGestacional = lazy(() => import("./pages/ferramentas/AcompanhamentoGestacional"));
+const MedicamentosLembretes = lazy(() => import("./pages/ferramentas/MedicamentosLembretes"));
 
 // Admin pages com resolução resiliente do AdminBanners
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
@@ -298,6 +299,16 @@ const FerramentasCatalogInternal = () => {
       categoria: 'Saúde',
       corGradiente: 'from-fuchsia-500/20 via-rose-500/5 to-transparent border-fuchsia-500/30',
       corTexto: 'text-fuchsia-600',
+    },
+    {
+      id: 'medicamentos',
+      titulo: 'Medicamentos e Lembretes',
+      descricao: 'Organize medicamentos e horários, registre doses e receba lembretes automáticos pelo Firebase com sincronização na sua conta.',
+      icone: Pill,
+      rota: '/ferramentas/medicamentos',
+      categoria: 'Saúde',
+      corGradiente: 'from-violet-500/20 via-indigo-500/5 to-transparent border-violet-500/30',
+      corTexto: 'text-violet-600',
     },
     {
       id: 'consulta-fipe',
@@ -685,6 +696,7 @@ const App = () => {
                 <Route path="ferramentas/ciclo-menstrual" element={<CicloMenstrual />} />
                 <Route path="ferramentas/controle-financeiro" element={<ControleFinanceiro />} />
                 <Route path="ferramentas/acompanhamento-gestacional" element={<AcompanhamentoGestacional />} />
+                <Route path="ferramentas/medicamentos" element={<MedicamentosLembretes />} />
 
                 {/* FERRAMENTAS PROTEGIDAS */}
                 <Route path="ferramentas/gerador-cobranca" element={<ProtectedRoute><GeradorCobranca /></ProtectedRoute>} />
@@ -749,3 +761,4 @@ const App = () => {
 };
 
 export default App;
+
