@@ -1,5 +1,3 @@
-
-
 import { supabase } from '@/integrations/supabase/client';
 
 export const TRACKED_TOOL_SLUGS = [
@@ -16,6 +14,7 @@ export const TRACKED_TOOL_SLUGS = [
   'controle-financeiro',
   'acompanhamento-gestacional',
   'medicamentos',
+  'meu-veiculo',
 ] as const;
 
 const trackedToolSlugs = new Set<string>(TRACKED_TOOL_SLUGS);
