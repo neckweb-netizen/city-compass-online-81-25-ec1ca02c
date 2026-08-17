@@ -17,6 +17,9 @@ export type GestacaoEvento = {
   tipo: 'consulta' | 'exame' | 'lembrete';
   concluido: boolean;
   observacao: string;
+  hora: string;
+  notificar: boolean;
+  lembreteMinutosAntes: number;
 };
 
 export type GestacaoDiario = {
@@ -45,7 +48,14 @@ const readLocal = (key: string): GestacaoState => {
     const parsed = JSON.parse(raw) as Partial<GestacaoState>;
     return {
       perfil: parsed.perfil || null,
-      eventos: Array.isArray(parsed.eventos) ? parsed.eventos : [],
+      eventos: Array.isArray(parsed.eventos)
+        ? parsed.eventos.map((item: any) => ({
+            ...item,
+            hora: item.hora || '',
+            notificar: Boolean(item.notificar),
+            lembreteMinutosAntes: Number(item.lembreteMinutosAntes ?? 1440),
+          }))
+        : [],
       diario: Array.isArray(parsed.diario) ? parsed.diario : [],
     };
   } catch {
@@ -123,6 +133,9 @@ export const useGestacaoStorage = () => {
           tipo: row.tipo,
           concluido: Boolean(row.concluido),
           observacao: row.observacao || '',
+          hora: row.hora_evento ? String(row.hora_evento).slice(0, 5) : '',
+          notificar: Boolean(row.notificar),
+          lembreteMinutosAntes: Number(row.lembrete_minutos_antes ?? 1440),
         })),
         diario: (diarioRes.data || []).map((row: any) => ({
           id: row.id,
@@ -192,6 +205,9 @@ export const useGestacaoStorage = () => {
       tipo: evento.tipo,
       concluido: evento.concluido,
       observacao: evento.observacao || null,
+      hora_evento: evento.hora || null,
+      notificar: evento.notificar,
+      lembrete_minutos_antes: evento.lembreteMinutosAntes,
       atualizado_em: new Date().toISOString(),
     }, { onConflict: 'id' });
     setSyncing(false);
