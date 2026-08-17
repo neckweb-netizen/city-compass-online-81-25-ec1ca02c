@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   Hammer, Clock, MapPin, Mail, MessageSquare, Instagram, Facebook, 
   ArrowRight, Sparkles, DollarSign, FileText, NotebookPen, Search, 
-  ShieldCheck, Globe, Calculator, Percent, FileSpreadsheet, Volume2, Grid, Ticket, CarFront
+  ShieldCheck, Globe, Calculator, Percent, FileSpreadsheet, Volume2, Grid, Ticket, CarFront, HeartPulse
 } from "lucide-react";
 import { initGA, logPageView } from "@/utils/analytics";
 import { trackToolView } from "@/lib/toolAnalytics";
@@ -64,6 +64,7 @@ const SimuladorRescisao = lazy(() => import("./pages/ferramentas/SimuladorRescis
 const LeitorVoz = lazy(() => import("./pages/ferramentas/LeitorVoz").then(m => ({ default: m.LeitorVoz })));
 const GeradorRifa = lazy(() => import("./pages/ferramentas/GeradorRifa").then(m => ({ default: m.GeradorRifa })));
 const ConsultaFipe = lazy(() => import("./pages/ferramentas/ConsultaFipe").then(m => ({ default: m.ConsultaFipe })));
+const CicloMenstrual = lazy(() => import("./pages/ferramentas/CicloMenstrual"));
 
 // Admin pages com resolução resiliente do AdminBanners
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
@@ -238,6 +239,16 @@ const FerramentasCatalogInternal = () => {
       categoria: 'Acessibilidade',
       corGradiente: 'from-indigo-500/20 via-indigo-500/5 to-transparent border-indigo-500/30',
       corTexto: 'text-indigo-500',
+    },
+    {
+      id: 'ciclo-menstrual',
+      titulo: 'Calendário de Ciclo Menstrual',
+      descricao: 'Acompanhe menstruação, sintomas, janela fértil e ovulação estimadas com calendário e histórico privado no aparelho.',
+      icone: HeartPulse,
+      rota: '/ferramentas/ciclo-menstrual',
+      categoria: 'Saúde',
+      corGradiente: 'from-rose-500/20 via-rose-500/5 to-transparent border-rose-500/30',
+      corTexto: 'text-rose-500',
     },
     {
       id: 'consulta-fipe',
@@ -621,6 +632,7 @@ const App = () => {
                 {/* CATÁLOGOS E FERRAMENTAS PÚBLICAS */}
                 <Route path="ferramentas" element={<FerramentasCatalogInternal />} />
                 <Route path="ferramentas/gerador-rifa" element={<GeradorRifa />} />
+                <Route path="ferramentas/ciclo-menstrual" element={<CicloMenstrual />} />
 
                 {/* FERRAMENTAS PROTEGIDAS */}
                 <Route path="ferramentas/gerador-cobranca" element={<ProtectedRoute><GeradorCobranca /></ProtectedRoute>} />
