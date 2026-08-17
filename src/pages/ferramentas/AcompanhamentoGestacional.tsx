@@ -3,6 +3,8 @@ import { addDays, differenceInCalendarDays, format, isBefore, parseISO, startOfD
 import { ptBR } from 'date-fns/locale';
 import {
   Baby,
+  BellRing,
+  Clock3,
   CalendarDays,
   ChevronRight,
   ClipboardCheck,
@@ -25,9 +27,11 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { GestacaoDiario, GestacaoEvento, GestacaoPerfil, useGestacaoStorage } from '@/hooks/useGestacaoStorage';
+import { usePushNotifications } from '@/contexts/PushNotificationsContext';
 
 const sintomasDisponiveis = [
   'Náusea', 'Azia', 'Cansaço', 'Dor nas costas', 'Dor de cabeça', 'Inchaço', 'Câimbras', 'Sono', 'Ansiedade', 'Bem-estar',
@@ -49,6 +53,7 @@ const formatDate = (date?: string) => {
 
 const AcompanhamentoGestacional = () => {
   const { toast } = useToast();
+  const push = usePushNotifications();
   const {
     user, perfil, eventos, diario, loading, syncStatus, syncError,
     savePerfil, saveEvento, removeEvento, saveDiario, removeDiario,
@@ -63,7 +68,15 @@ const AcompanhamentoGestacional = () => {
     if (perfil) setProfileForm(perfil);
   }, [perfil]);
 
-  const [eventoForm, setEventoForm] = useState({ titulo: '', data: '', tipo: 'consulta' as GestacaoEvento['tipo'], observacao: '' });
+  const [eventoForm, setEventoForm] = useState({
+    titulo: '',
+    data: '',
+    hora: '09:00',
+    tipo: 'consulta' as GestacaoEvento['tipo'],
+    observacao: '',
+    notificar: true,
+    lembreteMinutosAntes: 1440,
+  });
   const [diarioForm, setDiarioForm] = useState({ data: format(new Date(), 'yyyy-MM-dd'), humor: '', sintomas: [] as string[], peso: '', observacao: '' });
 
   const calc = useMemo(() => {
@@ -105,8 +118,14 @@ const AcompanhamentoGestacional = () => {
       tipo: eventoForm.tipo,
       concluido: false,
       observacao: eventoForm.observacao.trim(),
+      hora: eventoForm.hora,
+      notificar: Boolean(user && eventoForm.notificar),
+      lembreteMinutosAntes: eventoForm.lembreteMinutosAntes,
     });
-    setEventoForm({ titulo: '', data: '', tipo: 'consulta', observacao: '' });
+    setEventoForm({ titulo: '', data: '', hora: '09:00', tipo: 'consulta', observacao: '', notificar: true, lembreteMinutosAntes: 1440 });
+    if (eventoForm.notificar && !user) {
+      toast({ title: 'Compromisso salvo', description: 'Entre na sua conta para receber o lembrete automático no celular.' });
+    }
   };
 
   const addDiario = async () => {
@@ -214,9 +233,102 @@ const AcompanhamentoGestacional = () => {
             )}
           </TabsContent>
 
-          <TabsContent value="agenda" className="mt-4 grid gap-4 lg:grid-cols-[380px_1fr]">
-            <Card><CardHeader><CardTitle>Novo compromisso</CardTitle></CardHeader><CardContent className="space-y-3"><div><Label>Título</Label><Input value={eventoForm.titulo} onChange={(e) => setEventoForm({ ...eventoForm, titulo: e.target.value })} placeholder="Consulta de pré-natal" /></div><div><Label>Data</Label><Input type="date" value={eventoForm.data} onChange={(e) => setEventoForm({ ...eventoForm, data: e.target.value })} /></div><div><Label>Tipo</Label><div className="grid grid-cols-3 gap-2">{(['consulta','exame','lembrete'] as const).map((tipo) => <Button key={tipo} type="button" variant={eventoForm.tipo === tipo ? 'default' : 'outline'} className="capitalize" onClick={() => setEventoForm({ ...eventoForm, tipo })}>{tipo}</Button>)}</div></div><div><Label>Observação</Label><Textarea value={eventoForm.observacao} onChange={(e) => setEventoForm({ ...eventoForm, observacao: e.target.value })} /></div><Button className="w-full bg-rose-600 hover:bg-rose-700" onClick={addEvento}><Plus className="mr-2 h-4 w-4" />Adicionar</Button></CardContent></Card>
-            <Card><CardHeader><CardTitle>Minha agenda</CardTitle></CardHeader><CardContent className="space-y-2">{eventos.length === 0 ? <p className="text-sm text-muted-foreground">Nenhum compromisso cadastrado.</p> : eventos.map((evento) => <div key={evento.id} className="flex items-start gap-3 rounded-2xl border p-3"><Checkbox checked={evento.concluido} onCheckedChange={(checked) => saveEvento({ ...evento, concluido: Boolean(checked) })} className="mt-1" /><div className="min-w-0 flex-1"><p className={`font-bold ${evento.concluido ? 'line-through opacity-60' : ''}`}>{evento.titulo}</p><p className="text-xs text-muted-foreground">{formatDate(evento.data)} • {evento.tipo}</p>{evento.observacao && <p className="mt-1 text-sm text-muted-foreground">{evento.observacao}</p>}</div><Button size="icon" variant="ghost" onClick={() => removeEvento(evento.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></div>)}</CardContent></Card>
+          <TabsContent value="agenda" className="mt-4 grid gap-4 lg:grid-cols-[400px_1fr]">
+            <Card>
+              <CardHeader>
+                <CardTitle>Novo compromisso</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label>Título</Label>
+                  <Input value={eventoForm.titulo} onChange={(e) => setEventoForm({ ...eventoForm, titulo: e.target.value })} placeholder="Consulta de pré-natal" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Data</Label>
+                    <Input type="date" value={eventoForm.data} onChange={(e) => setEventoForm({ ...eventoForm, data: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Horário</Label>
+                    <Input type="time" value={eventoForm.hora} onChange={(e) => setEventoForm({ ...eventoForm, hora: e.target.value })} />
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Tipo</Label>
+                  <div className="mt-2 grid grid-cols-3 gap-2">
+                    {(['consulta','exame','lembrete'] as const).map((tipo) => (
+                      <Button key={tipo} type="button" variant={eventoForm.tipo === tipo ? 'default' : 'outline'} className="capitalize" onClick={() => setEventoForm({ ...eventoForm, tipo })}>{tipo}</Button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-3 dark:border-rose-900/60 dark:bg-rose-950/20">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex gap-2">
+                      <BellRing className="mt-0.5 h-5 w-5 text-rose-600" />
+                      <div>
+                        <p className="text-sm font-bold">Lembrete automático</p>
+                        <p className="text-xs text-muted-foreground">O Saj Tem agenda o aviso e o Firebase envia mesmo com o app fechado.</p>
+                      </div>
+                    </div>
+                    <Switch checked={eventoForm.notificar} onCheckedChange={(notificar) => setEventoForm({ ...eventoForm, notificar })} disabled={!user} />
+                  </div>
+
+                  {eventoForm.notificar && user && (
+                    <div className="mt-3">
+                      <Label htmlFor="gestacao-reminder">Avisar</Label>
+                      <select
+                        id="gestacao-reminder"
+                        value={eventoForm.lembreteMinutosAntes}
+                        onChange={(e) => setEventoForm({ ...eventoForm, lembreteMinutosAntes: Number(e.target.value) })}
+                        className="mt-1 h-10 w-full rounded-xl border border-input bg-background px-3 text-sm"
+                      >
+                        <option value={60}>1 hora antes</option>
+                        <option value={180}>3 horas antes</option>
+                        <option value={720}>12 horas antes</option>
+                        <option value={1440}>1 dia antes</option>
+                        <option value={2880}>2 dias antes</option>
+                        <option value={10080}>7 dias antes</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {!user && <p className="mt-2 text-xs font-medium text-amber-700 dark:text-amber-300">Faça login para sincronizar e receber lembretes.</p>}
+                  {user && eventoForm.notificar && !push.enabled && (
+                    <Button type="button" variant="outline" size="sm" className="mt-3 w-full rounded-xl" disabled={push.loading || !push.supported} onClick={() => void push.enable()}>
+                      <BellRing className="mr-2 h-4 w-4" /> Ativar notificações neste aparelho
+                    </Button>
+                  )}
+                </div>
+
+                <div>
+                  <Label>Observação</Label>
+                  <Textarea value={eventoForm.observacao} onChange={(e) => setEventoForm({ ...eventoForm, observacao: e.target.value })} />
+                </div>
+
+                <Button className="w-full bg-rose-600 hover:bg-rose-700" onClick={addEvento}><Plus className="mr-2 h-4 w-4" />Adicionar</Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader><CardTitle>Minha agenda</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                {eventos.length === 0 ? <p className="text-sm text-muted-foreground">Nenhum compromisso cadastrado.</p> : eventos.map((evento) => (
+                  <div key={evento.id} className="flex items-start gap-3 rounded-2xl border p-3">
+                    <Checkbox checked={evento.concluido} onCheckedChange={(checked) => saveEvento({ ...evento, concluido: Boolean(checked) })} className="mt-1" />
+                    <div className="min-w-0 flex-1">
+                      <p className={`font-bold ${evento.concluido ? 'line-through opacity-60' : ''}`}>{evento.titulo}</p>
+                      <p className="text-xs text-muted-foreground">{formatDate(evento.data)}{evento.hora ? ` às ${evento.hora}` : ''} • {evento.tipo}</p>
+                      {evento.notificar && !evento.concluido && <Badge variant="secondary" className="mt-2"><BellRing className="mr-1 h-3 w-3" /> Lembrete ativo</Badge>}
+                      {evento.observacao && <p className="mt-1 text-sm text-muted-foreground">{evento.observacao}</p>}
+                    </div>
+                    <Button size="icon" variant="ghost" onClick={() => removeEvento(evento.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="diario" className="mt-4 grid gap-4 lg:grid-cols-[420px_1fr]">
@@ -240,3 +352,4 @@ const AcompanhamentoGestacional = () => {
 };
 
 export default AcompanhamentoGestacional;
+
