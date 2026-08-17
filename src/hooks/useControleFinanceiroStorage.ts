@@ -15,6 +15,9 @@ export type FinanceTransaction = {
   status: FinanceTransactionStatus;
   recurring: boolean;
   note?: string;
+  notify: boolean;
+  reminderDaysBefore: number;
+  reminderTime: string;
   createdAt: string;
 };
 
@@ -54,7 +57,14 @@ const loadLocalState = (storageKey = FINANCE_STORAGE_KEY): FinanceState => {
 
     const parsed = JSON.parse(raw) as Partial<FinanceState>;
     return {
-      transactions: Array.isArray(parsed.transactions) ? parsed.transactions : [],
+      transactions: Array.isArray(parsed.transactions)
+        ? parsed.transactions.map((item: any) => ({
+            ...item,
+            notify: Boolean(item.notify),
+            reminderDaysBefore: Number(item.reminderDaysBefore ?? 1),
+            reminderTime: item.reminderTime || '09:00',
+          }))
+        : [],
       settings: {
         ...EMPTY_FINANCE_STATE.settings,
         ...(parsed.settings || {}),
@@ -76,6 +86,9 @@ const toTransactionRow = (userId: string, item: FinanceTransaction) => ({
   status: item.status,
   recorrente: item.recurring,
   observacao: item.note || null,
+  notificar: item.notify,
+  lembrete_dias_antes: item.reminderDaysBefore,
+  lembrete_hora: item.reminderTime || '09:00',
   criado_em: item.createdAt,
   atualizado_em: new Date().toISOString(),
 });
@@ -90,6 +103,9 @@ const fromTransactionRow = (row: any): FinanceTransaction => ({
   status: row.status,
   recurring: Boolean(row.recorrente),
   note: row.observacao || '',
+  notify: Boolean(row.notificar),
+  reminderDaysBefore: Number(row.lembrete_dias_antes ?? 1),
+  reminderTime: row.lembrete_hora ? String(row.lembrete_hora).slice(0, 5) : '09:00',
   createdAt: row.criado_em,
 });
 
@@ -401,3 +417,4 @@ export const useControleFinanceiroStorage = () => {
     clearAll,
   };
 };
+
