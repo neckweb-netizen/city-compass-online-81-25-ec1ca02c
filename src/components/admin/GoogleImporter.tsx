@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import React, { useEffect, useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
-import { Search, Download, MapPin, Loader2, Landmark, Tag, SlidersHorizontal } from 'lucide-react';
+import { Download, Landmark, Loader2, MapPin, Search, SlidersHorizontal, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 
-// Lista de categorias comerciais nativas suportadas pela API do Google Places
 const GOOGLE_MAPS_CATEGORIES = [
   { id: 'restaurant', nome: 'Restaurantes / Bares / Lanchonetes' },
   { id: 'dentist', nome: 'Dentistas / Clínicas Odontológicas' },
@@ -17,7 +16,7 @@ const GOOGLE_MAPS_CATEGORIES = [
   { id: 'car_repair', nome: 'Oficinas / Automotivo' },
   { id: 'hotel', nome: 'Hotéis / Pousadas' },
   { id: 'health', nome: 'Saúde / Clínicas Médicas' },
-  { id: 'store', nome: 'Comércio em Geral / Lojas' }
+  { id: 'store', nome: 'Comércio em Geral / Lojas' },
 ];
 
 interface GoogleItem {
@@ -31,6 +30,40 @@ interface CategoriaItem {
   nome: string;
 }
 
+interface SearchResponse {
+  status?: string;
+  results?: GoogleItem[];
+  error?: string;
+  error_message?: string;
+}
+
+interface ImportResponse {
+  status?: string;
+  nome?: string;
+  empresa?: { id?: string; nome?: string };
+  error?: string;
+}
+
+const getErrorMessage = async (error: any) => {
+  if (!error) return 'Erro desconhecido.';
+
+  if (error.context instanceof Response) {
+    try {
+      const body = await error.context.clone().json();
+      return body?.error || body?.message || error.message || 'Erro na Edge Function.';
+    } catch {
+      try {
+        const text = await error.context.clone().text();
+        if (text) return text;
+      } catch {
+        // sem ação
+      }
+    }
+  }
+
+  return error.message || String(error);
+};
+
 export default function GoogleImporter() {
   const [busca, setBusca] = useState('');
   const [googleCategoria, setGoogleCategoria] = useState(GOOGLE_MAPS_CATEGORIES[0].id);
@@ -40,7 +73,6 @@ export default function GoogleImporter() {
   const [carregandoBusca, setCarregandoBusca] = useState(false);
   const [importandoId, setImportingId] = useState<string | null>(null);
 
-  // Busca todas as categorias existentes do banco de dados na inicialização do painel
   useEffect(() => {
     const buscarCategoriasSistema = async () => {
       try {
@@ -48,107 +80,87 @@ export default function GoogleImporter() {
           .from('categorias')
           .select('id, nome')
           .order('nome', { ascending: true });
-        
+
         if (error) throw error;
-        if (data) setCategorias(data);
-      } catch (err: any) {
+        setCategorias((data || []) as CategoriaItem[]);
+      } catch (err) {
         console.error('Erro ao listar categorias do sistema:', err);
+        toast.error('Não foi possível carregar as categorias do sistema.');
       }
     };
-    buscarCategoriasSistema();
+
+    void buscarCategoriasSistema();
   }, []);
 
   const executarBusca = async () => {
+    if (carregandoBusca) return;
+
     setCarregandoBusca(true);
     setLocais([]);
-    
-    try {
-      const labelCategoria = GOOGLE_MAPS_CATEGORIES.find(c => c.id === googleCategoria)?.nome.split(' / ')[0] || '';
-      const termoFormatadoficial = `${busca} ${labelCategoria} Santo Antônio de Jesus BA`.trim();
-      console.log('🔍 Executando busca otimizada no Google Maps:', termoFormatadoficial);
 
-      const { data, error } = await supabase.functions.invoke('google-places-admin', {
-        body: { action: 'search', query: termoFormatadoficial }
+    try {
+      const labelCategoria = GOOGLE_MAPS_CATEGORIES.find((c) => c.id === googleCategoria)?.nome.split(' / ')[0] || '';
+      const termoFormatado = [busca.trim(), labelCategoria, 'Santo Antônio de Jesus BA']
+        .filter(Boolean)
+        .join(' ');
+
+      console.log('🔍 Busca no Google Maps:', termoFormatado);
+
+      const { data, error } = await supabase.functions.invoke<SearchResponse>('google-places-admin', {
+        body: {
+          action: 'search',
+          query: termoFormatado,
+          googleType: googleCategoria,
+        },
       });
 
-      if (error) throw error;
-      
-      // AJUSTE DE SEGURANÇA: Tratamento resiliente de JSON quebrado vindo da RPC do banco
-      let dadosBrutos: any = null;
-      if (typeof data === 'string') {
-        try {
-          // Só tenta fazer o parse se o conteúdo tiver cara de objeto estruturado
-          if (data.trim().startsWith('{') || data.trim().startsWith('[')) {
-            dadosBrutos = JSON.parse(data);
-          } else {
-            console.error('Retorno inválido recebido (Não é JSON):', data);
-            toast.error('O servidor do Google retornou um texto inválido. Tente novamente.');
-            return;
-          }
-        } catch (parseError) {
-          console.error('Erro ao fazer o parse de dados brutos:', parseError);
-          toast.error('Erro na estrutura de dados enviada pelo Supabase.');
-          return;
-        }
-      } else {
-        dadosBrutos = data;
-      }
-      
-      const googleStatus = dadosBrutos?.status || (dadosBrutos?.content ? JSON.parse(dadosBrutos.content)?.status : null);
-      const googleErrorMessage = dadosBrutos?.error_message || (dadosBrutos?.content ? JSON.parse(dadosBrutos.content)?.error_message : null);
+      if (error) throw new Error(await getErrorMessage(error));
+      if (!data) throw new Error('A Edge Function não retornou dados.');
 
-      if (googleStatus && googleStatus !== 'OK' && googleStatus !== 'ZERO_RESULTS') {
-        toast.error(`Erro do Google Maps (${googleStatus}): ${googleErrorMessage || 'Verifique o faturamento ou restrições da chave.'}`);
-        return;
+      if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
+        throw new Error(data.error_message || data.error || `Resposta inválida: ${data.status || 'sem status'}`);
       }
 
-      const listaResultados = dadosBrutos?.results || (dadosBrutos?.content ? JSON.parse(dadosBrutos.content)?.results : []);
+      const resultadosMapped = Array.isArray(data.results) ? data.results : [];
 
-      if (!listaResultados || listaResultados.length === 0) {
+      if (resultadosMapped.length === 0) {
         toast.info('Nenhum estabelecimento encontrado em SAJ para esses critérios.');
         return;
       }
 
-      const resultadosMapped: GoogleItem[] = listaResultados.map((item: any) => ({
-        place_id: item.place_id,
-        name: item.name,
-        formatted_address: item.formatted_address
-      }));
+      const placeIds = resultadosMapped.map((item) => item.place_id).filter(Boolean);
+      let idsExistentes = new Set<string>();
 
-      // -------------------------------------------------------------
-      // NOVO FILTRO: Verificar quais locais já estão cadastrados no banco de dados
-      // -------------------------------------------------------------
-      const listPlaceIds = resultadosMapped.map(item => item.place_id);
+      if (placeIds.length > 0) {
+        const { data: empresasExistentes, error: errorExistentes } = await supabase
+          .from('empresas')
+          .select('place_id')
+          .in('place_id', placeIds);
 
-      // Busca na tabela 'empresas' se algum dos 'place_id' recebidos do Google já existe
-      const { data: empresasExistentes, error: errorExistentes } = await supabase
-        .from('empresas')
-        .select('place_id')
-        .in('place_id', listPlaceIds);
+        if (errorExistentes) {
+          console.error('Erro ao verificar empresas existentes:', errorExistentes);
+          throw new Error('Não foi possível verificar empresas já importadas. Confirme se a migration do place_id foi executada.');
+        }
 
-      if (errorExistentes) {
-        console.error('Erro ao verificar empresas existentes:', errorExistentes);
+        idsExistentes = new Set(
+          (empresasExistentes || [])
+            .map((empresa: any) => empresa.place_id as string | null)
+            .filter((id): id is string => Boolean(id))
+        );
       }
 
-      // Cria um conjunto (Set) contendo apenas os place_ids das empresas que já existem no banco
-      const idsExistentes = new Set(
-        empresasExistentes ? empresasExistentes.map(emp => emp.place_id).filter(Boolean) : []
-      );
-
-      // Filtra os resultados originais do Google, descartando quem já está cadastrado
-      const resultadosFiltrados = resultadosMapped.filter(item => !idsExistentes.has(item.place_id));
+      const resultadosFiltrados = resultadosMapped.filter((item) => !idsExistentes.has(item.place_id));
 
       if (resultadosFiltrados.length === 0) {
         toast.info('Todas as empresas encontradas nesta busca já estão importadas no sistema!');
-        setLocais([]);
         return;
       }
 
       setLocais(resultadosFiltrados);
-      
+
       if (categorias.length > 0) {
         const defaultMapping: Record<string, string> = {};
-        resultadosFiltrados.forEach((item: GoogleItem) => {
+        resultadosFiltrados.forEach((item) => {
           defaultMapping[item.place_id] = categorias[0].id;
         });
         setCategoriasSelecionadas(defaultMapping);
@@ -156,105 +168,103 @@ export default function GoogleImporter() {
 
       const qtdOcultados = resultadosMapped.length - resultadosFiltrados.length;
       if (qtdOcultados > 0) {
-        toast.success(`${resultadosFiltrados.length} novos locais prontos para importação! (${qtdOcultados} já cadastrados foram ocultados)`);
+        toast.success(`${resultadosFiltrados.length} novos locais encontrados. ${qtdOcultados} já cadastrados foram ocultados.`);
       } else {
-        toast.success(`${resultadosFiltrados.length} locais mapeados em Santo Antônio de Jesus!`);
+        toast.success(`${resultadosFiltrados.length} locais encontrados em Santo Antônio de Jesus.`);
       }
-      // -------------------------------------------------------------
-
     } catch (err: any) {
-      console.error('Erro na requisição RPC:', err);
-      toast.error('Erro ao pesquisar no Guia: ' + err.message);
+      console.error('Erro ao pesquisar no Google Maps:', err);
+      toast.error(`Erro ao pesquisar no Guia: ${err?.message || 'Falha desconhecida'}`);
     } finally {
       setCarregandoBusca(false);
     }
   };
 
   const handleMudarCategoriaCard = (placeId: string, categoriaId: string) => {
-    setCategoriasSelecionadas(prev => ({
-      ...prev,
-      [placeId]: categoriaId
-    }));
+    setCategoriasSelecionadas((prev) => ({ ...prev, [placeId]: categoriaId }));
   };
 
   const executarImportacao = async (placeId: string) => {
     const categoriaDefinidaId = categoriasSelecionadas[placeId];
-    
+
     if (!categoriaDefinidaId) {
-      toast.warning('Por favor, selecione uma categoria válida antes de importar.');
+      toast.warning('Selecione uma categoria válida antes de importar.');
       return;
     }
 
     setImportingId(placeId);
+
     try {
-      const { data, error } = await supabase.functions.invoke('google-places-admin', {
-        body: { action: 'import', placeId, categoryId: categoriaDefinidaId }
+      const { data, error } = await supabase.functions.invoke<ImportResponse>('google-places-admin', {
+        body: { action: 'import', placeId, categoryId: categoriaDefinidaId },
       });
 
-      if (error) throw error;
+      if (error) throw new Error(await getErrorMessage(error));
+      if (!data || data.status !== 'OK') throw new Error(data?.error || 'A importação não foi concluída.');
 
-      const retornoLimpo = typeof data === 'string' ? JSON.parse(data) : data;
-
-      toast.success(`"${retornoLimpo?.nome || 'Estabelecimento'}" importado com horários corrigidos!`);
-      
-      setLocais(prev => prev.filter(item => item.place_id !== placeId));
+      const nome = data.empresa?.nome || data.nome || 'Estabelecimento';
+      toast.success(`"${nome}" importado para o Guia com sucesso!`);
+      setLocais((prev) => prev.filter((item) => item.place_id !== placeId));
     } catch (err: any) {
-      toast.error('Falha ao importar dados: ' + err.message);
+      console.error('Erro ao importar estabelecimento:', err);
+      toast.error(`Falha ao importar dados: ${err?.message || 'Erro desconhecido'}`);
     } finally {
       setImportingId(null);
     }
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6 max-w-4xl">
-      <div className="flex items-center gap-2 mb-2">
-        <Landmark className="w-7 h-7 text-purple-500" />
+    <div className="container mx-auto max-w-4xl space-y-6 p-6">
+      <div className="mb-2 flex items-center gap-2">
+        <Landmark className="h-7 w-7 text-purple-500" />
         <h1 className="text-3xl font-bold text-white">Painel de Importação Automática</h1>
       </div>
 
-      <Card className="bg-[#221A32] border-purple-950/40 text-white shadow-xl">
+      <Card className="border-purple-950/40 bg-[#221A32] text-white shadow-xl">
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Search className="w-5 h-5 text-purple-400" />
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Search className="h-5 w-5 text-purple-400" />
             Extrair do Google Maps (Restrito a SAJ)
           </CardTitle>
           <CardDescription className="text-gray-400">
-            Filtre por categoria do mapa e digite palavras-chave adicionais se necessário. O sistema travará a busca em Santo Antônio de Jesus automaticamente.
+            Filtre por categoria do mapa e digite palavras-chave adicionais se necessário. A busca é direcionada para Santo Antônio de Jesus.
           </CardDescription>
         </CardHeader>
+
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
-                <SlidersHorizontal className="w-3.5 h-3.5" /> Selecione a Categoria do Google Maps
+              <label className="flex items-center gap-1.5 text-xs font-bold text-purple-300">
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                Selecione a Categoria do Google Maps
               </label>
               <select
                 value={googleCategoria}
                 onChange={(e) => setGoogleCategoria(e.target.value)}
-                className="w-full px-3 py-2.5 bg-[#0F0B15] border border-purple-900/60 rounded-xl text-sm text-gray-200 outline-none focus:border-purple-500"
+                className="w-full rounded-xl border border-purple-900/60 bg-[#0F0B15] px-3 py-2.5 text-sm text-gray-200 outline-none focus:border-purple-500"
               >
                 {GOOGLE_MAPS_CATEGORIES.map((cat) => (
-                  <option key={cat.id} value={cat.id} className="bg-[#110D1A]">
-                    {cat.nome}
-                  </option>
+                  <option key={cat.id} value={cat.id} className="bg-[#110D1A]">{cat.nome}</option>
                 ))}
               </select>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-purple-300">
-                Palavra-chave Opcional (Nome, Bairro, etc.)
-              </label>
+              <label className="text-xs font-bold text-purple-300">Palavra-chave Opcional (Nome, Bairro, etc.)</label>
               <div className="flex gap-2">
                 <Input
-                  placeholder="Ex: Centro, Perto do transbordo, Conveniência..."
+                  placeholder="Ex: Centro, Eluz, Conveniência..."
                   value={busca}
                   onChange={(e) => setBusca(e.target.value)}
-                  className="bg-[#0F0B15] border-purple-900/60 text-white placeholder:text-gray-500 focus-visible:ring-purple-500"
-                  onKeyDown={(e) => e.key === 'Enter' && executarBusca()}
+                  className="border-purple-900/60 bg-[#0F0B15] text-white placeholder:text-gray-500 focus-visible:ring-purple-500"
+                  onKeyDown={(e) => { if (e.key === 'Enter') void executarBusca(); }}
                 />
-                <Button onClick={executarBusca} disabled={carregandoBusca} className="bg-purple-600 hover:bg-purple-700 text-white font-medium transition-colors px-6">
-                  {carregandoBusca ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Pesquisar'}
+                <Button
+                  onClick={() => void executarBusca()}
+                  disabled={carregandoBusca}
+                  className="bg-purple-600 px-6 font-medium text-white transition-colors hover:bg-purple-700"
+                >
+                  {carregandoBusca ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Pesquisar'}
                 </Button>
               </div>
             </div>
@@ -264,45 +274,46 @@ export default function GoogleImporter() {
 
       {locais.length > 0 && (
         <div className="space-y-3">
-          <p className="text-xs text-gray-400 px-1 font-medium">Resultados encontrados no mapa de SAJ:</p>
+          <p className="px-1 text-xs font-medium text-gray-400">Resultados encontrados no mapa de SAJ:</p>
+
           {locais.map((local) => (
-            <div key={local.place_id} className="p-4 bg-[#110D1A] border border-purple-950/40 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-purple-900/50 transition-all shadow-md">
-              <div className="space-y-1 flex-1">
-                <h4 className="font-semibold text-white text-sm leading-tight">{local.name}</h4>
-                <p className="text-gray-400 text-xs flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+            <div
+              key={local.place_id}
+              className="flex flex-col justify-between gap-4 rounded-xl border border-purple-950/40 bg-[#110D1A] p-4 shadow-md transition-all hover:border-purple-900/50 md:flex-row md:items-center"
+            >
+              <div className="flex-1 space-y-1">
+                <h4 className="text-sm font-semibold leading-tight text-white">{local.name}</h4>
+                <p className="flex items-center gap-1.5 text-xs text-gray-400">
+                  <MapPin className="h-3.5 w-3.5 shrink-0 text-purple-400" />
                   {local.formatted_address}
                 </p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3 shrink-0">
-                <div className="flex items-center gap-1.5 bg-[#0F0B15] px-2.5 py-1.5 rounded-lg border border-purple-900/40">
-                  <Tag className="w-3.5 h-3.5 text-purple-400" />
+              <div className="flex shrink-0 flex-wrap items-center gap-3">
+                <div className="flex items-center gap-1.5 rounded-lg border border-purple-900/40 bg-[#0F0B15] px-2.5 py-1.5">
+                  <Tag className="h-3.5 w-3.5 text-purple-400" />
                   <select
                     value={categoriasSelecionadas[local.place_id] || ''}
                     onChange={(e) => handleMudarCategoriaCard(local.place_id, e.target.value)}
-                    className="bg-transparent border-0 text-xs text-white focus:ring-0 cursor-pointer min-w-[140px] outline-none"
+                    className="min-w-[140px] cursor-pointer border-0 bg-transparent text-xs text-white outline-none focus:ring-0"
                   >
+                    <option value="" disabled className="bg-[#110D1A]">Selecionar categoria</option>
                     {categorias.map((cat) => (
-                      <option key={cat.id} value={cat.id} className="bg-[#110D1A] text-white text-xs">
-                        {cat.nome}
-                      </option>
+                      <option key={cat.id} value={cat.id} className="bg-[#110D1A] text-xs text-white">{cat.nome}</option>
                     ))}
                   </select>
                 </div>
 
                 <Button
                   size="sm"
-                  onClick={() => executarImportacao(local.place_id)}
+                  onClick={() => void executarImportacao(local.place_id)}
                   disabled={importandoId === local.place_id}
-                  className="bg-purple-600 hover:bg-purple-500 text-white font-medium shadow-sm transition-all text-xs h-8"
+                  className="h-8 bg-purple-600 text-xs font-medium text-white shadow-sm transition-all hover:bg-purple-500"
                 >
                   {importandoId === local.place_id ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    <>
-                      <Download className="w-3.5 h-3.5 mr-1.5" /> Importar para o Guia
-                    </>
+                    <><Download className="mr-1.5 h-3.5 w-3.5" />Importar para o Guia</>
                   )}
                 </Button>
               </div>
