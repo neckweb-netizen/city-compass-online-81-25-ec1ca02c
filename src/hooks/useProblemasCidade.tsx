@@ -208,7 +208,7 @@ export const useProblemaDetalhes = (problemaId: string) => {
       const comentariosComUsuarios = await Promise.all(
         (data || []).map(async (comentario) => {
           const { data: usuario } = await supabase
-            .from('usuarios')
+            .from('user_public_profiles' as any)
             .select('nome')
             .eq('id', comentario.usuario_id)
             .maybeSingle();

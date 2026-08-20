@@ -6,11 +6,14 @@ import { AdminSidebar } from './AdminSidebar';
 import { Button } from '@/components/ui/button';
 import { LogOut, User, Sun, Moon } from 'lucide-react';
 import { useTheme } from '@/components/ui/theme-provider';
+import { supabase } from '@/integrations/supabase/client';
+import { AdminMfaGate } from './AdminMfaGate';
 
 export const AdminLayout = () => {
   const { user, profile, loading, signOut } = useAuth();
   const location = useLocation();
   const [activeSection, setActiveSection] = useState('dashboard');
+  const [serverAccess, setServerAccess] = useState<'loading' | 'allowed' | 'denied'>('loading');
   const { theme, setTheme } = useTheme();
 
   // Removido o efeito antigo que forçava o light mode e limpava a classe dark
@@ -39,7 +42,39 @@ export const AdminLayout = () => {
     }
   };
 
-  if (loading) {
+  useEffect(() => {
+    if (!user?.id) {
+      setServerAccess('denied');
+      return;
+    }
+
+    let active = true;
+    const validateAdminAccess = async () => {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || authData.user?.id !== user.id) {
+        if (active) setServerAccess('denied');
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('usuarios')
+        .select('tipo_conta')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      const allowed = !error && data && ['admin_geral', 'admin_cidade'].includes(data.tipo_conta);
+      if (active) setServerAccess(allowed ? 'allowed' : 'denied');
+    };
+
+    void validateAdminAccess();
+    const interval = window.setInterval(() => void validateAdminAccess(), 5 * 60 * 1000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [user?.id]);
+
+  if (loading || serverAccess === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
         <div className="text-center space-y-4">
@@ -51,7 +86,7 @@ export const AdminLayout = () => {
   }
 
   // Redirect to home if not authenticated or not admin
-  if (!user || !profile || !['admin_geral', 'admin_cidade'].includes(profile.tipo_conta)) {
+  if (!user || !user.email_confirmed_at || !profile || !['admin_geral', 'admin_cidade'].includes(profile.tipo_conta) || serverAccess !== 'allowed') {
     console.log('🚫 Admin access denied:', {
       hasUser: !!user,
       hasProfile: !!profile,
@@ -67,7 +102,8 @@ export const AdminLayout = () => {
   });
 
   return (
-    <SidebarProvider>
+    <AdminMfaGate onSignOut={handleSignOut}>
+      <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background text-foreground transition-colors duration-200">
         <AdminSidebar activeSection={activeSection} onSectionChange={setActiveSection} />
         <main className="flex-1 bg-background text-foreground">
@@ -117,6 +153,7 @@ export const AdminLayout = () => {
           </div>
         </main>
       </div>
-    </SidebarProvider>
+      </SidebarProvider>
+    </AdminMfaGate>
   );
 };

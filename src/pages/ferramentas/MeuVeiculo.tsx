@@ -143,7 +143,7 @@ const MeuVeiculo = () => {
         </section>
 
         {!user && <Card className="mb-4 border-amber-300 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30"><CardContent className="p-4 text-sm">Sem login, os dados ficam apenas neste aparelho. Entre na conta para sincronizar e receber notificações.</CardContent></Card>}
-        {user && push.permission !== 'granted' && <Card className="mb-4 border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/30"><CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-bold">Ative notificações do veículo</p><p className="text-sm text-muted-foreground">Para receber IPVA, licenciamento, seguro e manutenção.</p></div><Button className="rounded-xl" onClick={() => void push.requestPermission()}><BellRing className="mr-2 h-4 w-4" />Ativar</Button></CardContent></Card>}
+        {user && push.permission !== 'granted' && <Card className="mb-4 border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/30"><CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-bold">Ative notificações do veículo</p><p className="text-sm text-muted-foreground">Para receber IPVA, licenciamento, seguro e manutenção.</p></div><Button className="rounded-xl" onClick={() => void push.enable()}><BellRing className="mr-2 h-4 w-4" />Ativar</Button></CardContent></Card>}
         {syncError && <Card className="mb-4 border-red-300"><CardContent className="p-4 text-sm text-red-700 dark:text-red-300">Sincronização pendente: {syncError}</CardContent></Card>}
 
         <div className="mb-4 flex gap-2 overflow-x-auto pb-1">

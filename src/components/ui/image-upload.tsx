@@ -43,9 +43,16 @@ export const ImageUpload = ({
       }
 
       // Gerar nome único para o arquivo
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('Faça login novamente antes de enviar arquivos.');
+      }
+
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
-      const filePath = folder ? `${folder}/${fileName}` : fileName;
+      const filePath = folder
+        ? `${user.id}/${folder}/${fileName}`
+        : `${user.id}/${fileName}`;
 
       // Upload para o Supabase Storage
       const { error: uploadError } = await supabase.storage

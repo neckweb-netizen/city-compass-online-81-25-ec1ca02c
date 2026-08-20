@@ -35,7 +35,7 @@ export const SolicitarPropriedadeAviso = ({ nomeEmpresa, empresaId, empresaUsuar
       if (!empresaUsuarioId) return false;
       
       const { data, error } = await supabase
-        .from('usuarios')
+        .from('user_public_profiles' as any)
         .select('tipo_conta')
         .eq('id', empresaUsuarioId)
         .single();

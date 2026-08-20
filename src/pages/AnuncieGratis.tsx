@@ -34,7 +34,7 @@ export const AnuncieGratis = () => {
     const carregarMetricasPublicas = async () => {
       try {
         const { count: countUsuarios } = await supabase
-          .from("usuarios")
+          .from("user_public_profiles" as any)
           .select("*", { count: "exact", head: true });
 
         const { count: countVisualizacoes } = await supabase

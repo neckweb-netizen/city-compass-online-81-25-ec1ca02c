@@ -63,6 +63,20 @@ export interface AuthContext {
   user: User;
   profile: { id: string; tipo_conta: string; nome: string | null; email: string | null; cidade_id: string | null } | null;
   admin: ReturnType<typeof createClient>;
+  aal: "aal1" | "aal2";
+}
+
+function readAalFromVerifiedToken(token: string): "aal1" | "aal2" {
+  try {
+    const payloadPart = token.split(".")[1];
+    if (!payloadPart) return "aal1";
+    const normalized = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+    const payload = JSON.parse(atob(padded));
+    return payload?.aal === "aal2" ? "aal2" : "aal1";
+  } catch {
+    return "aal1";
+  }
 }
 
 export async function requireUser(req: Request, allowedRoles?: string[]): Promise<AuthContext> {
@@ -84,6 +98,7 @@ export async function requireUser(req: Request, allowedRoles?: string[]): Promis
   if (authError || !user) {
     throw new HttpError(401, "Sessão inválida ou expirada");
   }
+  const aal = readAalFromVerifiedToken(token);
 
   const admin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -100,8 +115,16 @@ export async function requireUser(req: Request, allowedRoles?: string[]): Promis
   if (allowedRoles?.length && (!profile || !allowedRoles.includes(profile.tipo_conta))) {
     throw new HttpError(403, "Permissão insuficiente");
   }
+  const isAdminOperation = Boolean(
+    profile &&
+    ["admin_geral", "admin_cidade"].includes(profile.tipo_conta) &&
+    allowedRoles?.some((role) => ["admin_geral", "admin_cidade"].includes(role))
+  );
+  if (isAdminOperation && aal !== "aal2") {
+    throw new HttpError(403, "Confirme o código de autenticação em dois fatores para continuar");
+  }
 
-  return { user, profile, admin };
+  return { user, profile, admin, aal };
 }
 
 export function errorResponse(req: Request, error: unknown): Response {
