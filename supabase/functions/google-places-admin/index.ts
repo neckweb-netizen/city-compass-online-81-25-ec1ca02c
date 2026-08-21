@@ -37,9 +37,32 @@ type ImportBody = {
   action: "import";
   placeId: string;
   categoryId: string;
+  empresaId?: string;
 };
 
 type RequestBody = SearchBody | ImportBody;
+
+const resolveGooglePhotoUrl = async (photoReference: unknown, googleApiKey: string) => {
+  const reference = String(photoReference || "").trim();
+  if (!reference) return null;
+
+  const params = new URLSearchParams({
+    maxwidth: "1200",
+    photo_reference: reference,
+    key: googleApiKey,
+  });
+
+  try {
+    const response = await fetch(`https://maps.googleapis.com/maps/api/place/photo?${params.toString()}`, {
+      redirect: "manual",
+    });
+    const location = response.headers.get("location");
+    return location?.startsWith("https://lh3.googleusercontent.com/") ? location : null;
+  } catch (error) {
+    console.error("Erro resolvendo foto do Google Places:", error);
+    return null;
+  }
+};
 
 const normalizeOpeningHours = (details: any) => {
   const openingHours = details?.opening_hours;
@@ -174,6 +197,7 @@ Deno.serve(async (req: Request) => {
     if (body.action === "import") {
       const placeId = String(body.placeId || "").trim();
       const categoryId = String(body.categoryId || "").trim();
+      const empresaId = String(body.empresaId || "").trim();
 
       if (!placeId || !categoryId) {
         return json({ status: "ERROR", error: "placeId e categoryId são obrigatórios." }, 400);
@@ -201,14 +225,14 @@ Deno.serve(async (req: Request) => {
         return json({ status: "ERROR", error: "Falha ao verificar se o local já foi importado." }, 500);
       }
 
-      if (alreadyImported) {
+      if (alreadyImported && alreadyImported.id !== empresaId) {
         return json({ status: "ERROR", error: `"${alreadyImported.nome}" já está cadastrado no Guia.` }, 409);
       }
 
       const fields = [
         "place_id", "name", "formatted_address", "formatted_phone_number",
         "international_phone_number", "website", "url", "geometry",
-        "opening_hours", "types", "business_status",
+        "opening_hours", "photos", "types", "business_status",
       ].join(",");
 
       const detailsParams = new URLSearchParams({
@@ -262,6 +286,7 @@ Deno.serve(async (req: Request) => {
       const lat = details?.geometry?.location?.lat;
       const lng = details?.geometry?.location?.lng;
       const telefone = details.formatted_phone_number || details.international_phone_number || null;
+      const imagemCapaUrl = await resolveGooglePhotoUrl(details?.photos?.[0]?.photo_reference, googleApiKey);
 
       const payload = {
         cidade_id: SAJ_CITY_ID,
@@ -281,7 +306,42 @@ Deno.serve(async (req: Request) => {
         data_aprovacao: new Date().toISOString(),
         aprovado_por: user.id,
         place_id: placeId,
+        ...(imagemCapaUrl ? { imagem_capa_url: imagemCapaUrl } : {}),
       };
+
+      if (empresaId) {
+        const { data: existing, error: existingError } = await admin
+          .from("empresas")
+          .select("id, nome")
+          .eq("id", empresaId)
+          .maybeSingle();
+
+        if (existingError || !existing) {
+          return json({ status: "ERROR", error: "A empresa selecionada para atualização não existe." }, 404);
+        }
+
+        const { data: empresaAtualizada, error: updateError } = await admin
+          .from("empresas")
+          .update({
+            place_id: placeId,
+            endereco: details.formatted_address || null,
+            telefone,
+            site: details.website || null,
+            horario_funcionamento: normalizeOpeningHours(details),
+            localizacao: typeof lat === "number" && typeof lng === "number" ? `(${lng},${lat})` : null,
+            ...(imagemCapaUrl ? { imagem_capa_url: imagemCapaUrl } : {}),
+          })
+          .eq("id", empresaId)
+          .select("id, nome, slug, endereco, place_id, imagem_capa_url")
+          .single();
+
+        if (updateError) {
+          console.error("Erro atualizando empresa importada:", updateError);
+          return json({ status: "ERROR", error: `Falha ao atualizar "${existing.nome}": ${updateError.message}` }, 500);
+        }
+
+        return json({ status: "OK", nome: empresaAtualizada.nome, empresa: empresaAtualizada, updated: true });
+      }
 
       const { data: empresa, error: insertError } = await admin
         .from("empresas")

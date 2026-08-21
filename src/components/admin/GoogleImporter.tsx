@@ -23,6 +23,8 @@ interface GoogleItem {
   place_id: string;
   name: string;
   formatted_address: string;
+  empresaId?: string;
+  jaCadastrada?: boolean;
 }
 
 interface CategoriaItem {
@@ -129,7 +131,22 @@ export default function GoogleImporter() {
       }
 
       const placeIds = resultadosMapped.map((item) => item.place_id).filter(Boolean);
-      let idsExistentes = new Set<string>();
+      const empresasPorPlaceId = new Map<string, { id: string; nome: string }>();
+      const empresasPorNome = new Map<string, { id: string; nome: string }>();
+
+      const normalizarNome = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+      const { data: empresasLocais, error: errorEmpresas } = await supabase
+        .from('empresas')
+        .select('id, nome, place_id')
+        .eq('ativo', true);
+
+      if (errorEmpresas) throw errorEmpresas;
+
+      (empresasLocais || []).forEach((empresa: any) => {
+        if (empresa.place_id) empresasPorPlaceId.set(empresa.place_id, empresa);
+        empresasPorNome.set(normalizarNome(empresa.nome || ''), empresa);
+      });
 
       if (placeIds.length > 0) {
         const { data: empresasExistentes, error: errorExistentes } = await supabase
@@ -142,19 +159,15 @@ export default function GoogleImporter() {
           throw new Error('Não foi possível verificar empresas já importadas. Confirme se a migration do place_id foi executada.');
         }
 
-        idsExistentes = new Set(
-          (empresasExistentes || [])
-            .map((empresa: any) => empresa.place_id as string | null)
-            .filter((id): id is string => Boolean(id))
-        );
+        (empresasExistentes || []).forEach((empresa: any) => {
+          if (empresa.place_id && !empresasPorPlaceId.has(empresa.place_id)) empresasPorPlaceId.set(empresa.place_id, empresa);
+        });
       }
 
-      const resultadosFiltrados = resultadosMapped.filter((item) => !idsExistentes.has(item.place_id));
-
-      if (resultadosFiltrados.length === 0) {
-        toast.info('Todas as empresas encontradas nesta busca já estão importadas no sistema!');
-        return;
-      }
+      const resultadosFiltrados = resultadosMapped.map((item) => {
+        const existente = empresasPorPlaceId.get(item.place_id) || empresasPorNome.get(normalizarNome(item.name));
+        return { ...item, empresaId: existente?.id, jaCadastrada: Boolean(existente) };
+      });
 
       setLocais(resultadosFiltrados);
 
@@ -166,12 +179,7 @@ export default function GoogleImporter() {
         setCategoriasSelecionadas(defaultMapping);
       }
 
-      const qtdOcultados = resultadosMapped.length - resultadosFiltrados.length;
-      if (qtdOcultados > 0) {
-        toast.success(`${resultadosFiltrados.length} novos locais encontrados. ${qtdOcultados} já cadastrados foram ocultados.`);
-      } else {
-        toast.success(`${resultadosFiltrados.length} locais encontrados em Santo Antônio de Jesus.`);
-      }
+      toast.success(`${resultadosFiltrados.length} locais encontrados. Os já cadastrados podem ter imagem e horários atualizados.`);
     } catch (err: any) {
       console.error('Erro ao pesquisar no Google Maps:', err);
       toast.error(`Erro ao pesquisar no Guia: ${err?.message || 'Falha desconhecida'}`);
@@ -184,7 +192,7 @@ export default function GoogleImporter() {
     setCategoriasSelecionadas((prev) => ({ ...prev, [placeId]: categoriaId }));
   };
 
-  const executarImportacao = async (placeId: string) => {
+  const executarImportacao = async (placeId: string, empresaId?: string) => {
     const categoriaDefinidaId = categoriasSelecionadas[placeId];
 
     if (!categoriaDefinidaId) {
@@ -196,14 +204,14 @@ export default function GoogleImporter() {
 
     try {
       const { data, error } = await supabase.functions.invoke<ImportResponse>('google-places-admin', {
-        body: { action: 'import', placeId, categoryId: categoriaDefinidaId },
+        body: { action: 'import', placeId, categoryId: categoriaDefinidaId, empresaId },
       });
 
       if (error) throw new Error(await getErrorMessage(error));
       if (!data || data.status !== 'OK') throw new Error(data?.error || 'A importação não foi concluída.');
 
       const nome = data.empresa?.nome || data.nome || 'Estabelecimento';
-      toast.success(`"${nome}" importado para o Guia com sucesso!`);
+      toast.success(empresaId ? `"${nome}" teve imagem, horários e dados atualizados!` : `"${nome}" importado para o Guia com sucesso!`);
       setLocais((prev) => prev.filter((item) => item.place_id !== placeId));
     } catch (err: any) {
       console.error('Erro ao importar estabelecimento:', err);
@@ -283,6 +291,7 @@ export default function GoogleImporter() {
             >
               <div className="flex-1 space-y-1">
                 <h4 className="text-sm font-semibold leading-tight text-white">{local.name}</h4>
+                {local.jaCadastrada && <span className="inline-flex rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">Já cadastrada — pode atualizar</span>}
                 <p className="flex items-center gap-1.5 text-xs text-gray-400">
                   <MapPin className="h-3.5 w-3.5 shrink-0 text-purple-400" />
                   {local.formatted_address}
@@ -306,14 +315,14 @@ export default function GoogleImporter() {
 
                 <Button
                   size="sm"
-                  onClick={() => void executarImportacao(local.place_id)}
+                  onClick={() => void executarImportacao(local.place_id, local.empresaId)}
                   disabled={importandoId === local.place_id}
                   className="h-8 bg-purple-600 text-xs font-medium text-white shadow-sm transition-all hover:bg-purple-500"
                 >
                   {importandoId === local.place_id ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    <><Download className="mr-1.5 h-3.5 w-3.5" />Importar para o Guia</>
+                    <><Download className="mr-1.5 h-3.5 w-3.5" />{local.jaCadastrada ? 'Atualizar dados e foto' : 'Importar para o Guia'}</>
                   )}
                 </Button>
               </div>
