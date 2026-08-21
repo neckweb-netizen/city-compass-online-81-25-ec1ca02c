@@ -18,6 +18,7 @@ export const AdminMfaGate = ({ children, onSignOut }: AdminMfaGateProps) => {
   const [factorId, setFactorId] = useState('');
   const [qrCode, setQrCode] = useState('');
   const [secret, setSecret] = useState('');
+  const [enrollmentUri, setEnrollmentUri] = useState('');
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -25,6 +26,9 @@ export const AdminMfaGate = ({ children, onSignOut }: AdminMfaGateProps) => {
   const initializeMfa = useCallback(async () => {
     setMode('loading');
     setError('');
+    setQrCode('');
+    setSecret('');
+    setEnrollmentUri('');
 
     const assurance = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     if (assurance.error) throw assurance.error;
@@ -56,6 +60,7 @@ export const AdminMfaGate = ({ children, onSignOut }: AdminMfaGateProps) => {
     setFactorId(enrollment.data.id);
     setQrCode(enrollment.data.totp.qr_code);
     setSecret(enrollment.data.totp.secret);
+    setEnrollmentUri(enrollment.data.totp.uri);
     setMode('enroll');
   }, []);
 
@@ -147,10 +152,20 @@ export const AdminMfaGate = ({ children, onSignOut }: AdminMfaGateProps) => {
                 <p className="font-semibold flex items-center gap-2"><Smartphone className="h-4 w-4" /> Primeira configuração</p>
                 <p className="text-muted-foreground">Abra Google Authenticator, Microsoft Authenticator ou outro aplicativo TOTP e escaneie o QR Code.</p>
               </div>
+              {enrollmentUri && (
+                <Button asChild type="button" variant="secondary" className="w-full sm:hidden">
+                  <a href={enrollmentUri}>
+                    <Smartphone className="mr-2 h-4 w-4" />
+                    Abrir no aplicativo autenticador
+                  </a>
+                </Button>
+              )}
               {qrCode && <img src={qrCode} alt="QR Code para configurar autenticação em dois fatores" className="mx-auto h-52 w-52 rounded-xl bg-white p-3" />}
               {secret && (
                 <div className="rounded-lg border p-3">
-                  <p className="mb-2 text-xs text-muted-foreground">Se não conseguir escanear, informe esta chave manualmente:</p>
+                  <p className="mb-2 text-xs text-muted-foreground">
+                    Se não conseguir escanear, escolha uma chave baseada em tempo e cole esta chave sem espaços:
+                  </p>
                   <div className="flex items-center gap-2">
                     <code className="min-w-0 flex-1 break-all text-xs">{secret}</code>
                     <Button type="button" size="icon" variant="ghost" onClick={() => void navigator.clipboard.writeText(secret)} title="Copiar chave">
