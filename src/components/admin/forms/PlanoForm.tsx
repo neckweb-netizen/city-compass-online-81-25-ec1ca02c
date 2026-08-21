@@ -157,7 +157,7 @@ export const PlanoForm = ({ open, onOpenChange, plano, onSubmit, isLoading }: Pl
                         <Input 
                           type="number" 
                           step="0.01" 
-                          min="0" 
+                          min="0"
                           placeholder="0.00"
                           className="h-9 sm:h-10 text-sm sm:text-base"
                           {...field} 
@@ -204,13 +204,14 @@ export const PlanoForm = ({ open, onOpenChange, plano, onSubmit, isLoading }: Pl
                       <FormControl>
                         <Input 
                           type="number" 
-                          min="0" 
+                          min="-1"
                           placeholder="0"
                           className="h-9 sm:h-10 text-sm sm:text-base"
                           {...field} 
                         />
                       </FormControl>
                       <FormMessage />
+                      <p className="text-xs text-muted-foreground">Use -1 para ilimitado.</p>
                     </FormItem>
                   )}
                 />
@@ -224,13 +225,14 @@ export const PlanoForm = ({ open, onOpenChange, plano, onSubmit, isLoading }: Pl
                       <FormControl>
                         <Input 
                           type="number" 
-                          min="0" 
+                          min="-1"
                           placeholder="0"
                           className="h-9 sm:h-10 text-sm sm:text-base"
                           {...field} 
                         />
                       </FormControl>
                       <FormMessage />
+                      <p className="text-xs text-muted-foreground">Use -1 para ilimitado.</p>
                     </FormItem>
                   )}
                 />
@@ -244,13 +246,14 @@ export const PlanoForm = ({ open, onOpenChange, plano, onSubmit, isLoading }: Pl
                       <FormControl>
                         <Input 
                           type="number" 
-                          min="0" 
+                          min="-1"
                           placeholder="0"
                           className="h-9 sm:h-10 text-sm sm:text-base"
                           {...field} 
                         />
                       </FormControl>
                       <FormMessage />
+                      <p className="text-xs text-muted-foreground">Use -1 para ilimitado.</p>
                     </FormItem>
                   )}
                 />

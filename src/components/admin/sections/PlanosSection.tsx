@@ -27,6 +27,7 @@ import { PlanoForm } from '@/components/admin/forms/PlanoForm';
 import { AssignPlanoModal } from '@/components/admin/forms/AssignPlanoModal';
 import { AssignPlanoManualModal } from '@/components/admin/forms/AssignPlanoManualModal';
 import type { Tables } from '@/integrations/supabase/types';
+import { formatarLimitePlano, formatarPrecoPlano, planoEmpresarial } from '@/lib/planos';
 
 type Plano = Tables<'planos'>;
 
@@ -176,11 +177,11 @@ export const PlanosSection = () => {
                       </div>
                     </TableCell>
                     <TableCell className="font-medium">
-                      {formatarPreco(plano.preco_mensal)}
+                      {formatarPrecoPlano(plano)}
                     </TableCell>
-                    <TableCell>{plano.limite_cupons}</TableCell>
+                    <TableCell>{formatarLimitePlano(plano.limite_cupons)}</TableCell>
                     <TableCell>
-                      {plano.limite_produtos}/{plano.produtos_destaque_permitidos}
+                      {formatarLimitePlano(plano.limite_produtos)} / {formatarLimitePlano(plano.produtos_destaque_permitidos)}
                     </TableCell>
                     <TableCell>{plano.prioridade_destaque}</TableCell>
                     <TableCell>
@@ -199,7 +200,7 @@ export const PlanosSection = () => {
                     </TableCell>
                     <TableCell>
                       <Badge variant={plano.ativo ? 'default' : 'secondary'}>
-                        {plano.ativo ? 'Ativo' : 'Inativo'}
+                        {planoEmpresarial(plano) ? 'Empresarial' : plano.ativo ? 'Ativo' : 'Inativo'}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">

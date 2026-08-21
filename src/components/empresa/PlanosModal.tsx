@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { PixPaymentModal } from './PixPaymentModal';
 import type { Tables } from '@/integrations/supabase/types';
+import { formatarLimitePlano, formatarPrecoPlano, ordenarPlanos, planoEmpresarial, planoGratuito } from '@/lib/planos';
 
 type Plano = Tables<'planos'>;
 
@@ -33,15 +34,7 @@ export const PlanosModal = ({ isOpen, onClose }: PlanosModalProps) => {
   const [paymentModalOpen, setPaymentModalOpen] = React.useState(false);
   const [planoParaPagamento, setPlanoParaPagamento] = React.useState<Plano | null>(null);
 
-  // Filtrar apenas planos pagos (não gratuitos)
-  const planosPagos = planos?.filter(plano => plano.preco_mensal > 0) || [];
-
-  const formatarPreco = (preco: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(preco);
-  };
+  const planosPagos = ordenarPlanos((planos || []).filter(plano => plano.ativo && !planoGratuito(plano)));
 
   const handleSelecionarPlano = (plano: Plano) => {
     if (!user) {
@@ -166,9 +159,9 @@ export const PlanosModal = ({ isOpen, onClose }: PlanosModalProps) => {
                       )}
                       <div className="pt-2">
                         <div className="text-2xl font-bold">
-                          {formatarPreco(plano.preco_mensal)}
+                          {formatarPrecoPlano(plano)}
                         </div>
-                        <div className="text-sm text-muted-foreground">por mês</div>
+                        {!planoEmpresarial(plano) && <div className="text-sm text-muted-foreground">por mês</div>}
                       </div>
                     </CardHeader>
 
@@ -178,17 +171,17 @@ export const PlanosModal = ({ isOpen, onClose }: PlanosModalProps) => {
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-sm">
                           <span>Limite de Cupons:</span>
-                          <span className="font-medium">{plano.limite_cupons}</span>
+                          <span className="font-medium">{formatarLimitePlano(plano.limite_cupons)}</span>
                         </div>
                         
                         <div className="flex items-center justify-between text-sm">
                           <span>Limite de Produtos:</span>
-                          <span className="font-medium">{plano.limite_produtos}</span>
+                          <span className="font-medium">{formatarLimitePlano(plano.limite_produtos)}</span>
                         </div>
                         
                         <div className="flex items-center justify-between text-sm">
                           <span>Produtos Destaque:</span>
-                          <span className="font-medium">{plano.produtos_destaque_permitidos}</span>
+                          <span className="font-medium">{formatarLimitePlano(plano.produtos_destaque_permitidos)}</span>
                         </div>
                         
                         <div className="flex items-center justify-between text-sm">
@@ -217,7 +210,9 @@ export const PlanosModal = ({ isOpen, onClose }: PlanosModalProps) => {
                       <Separator />
 
                       <div className="pt-2 space-y-2">
-                        {isPlanoAtual(plano.id) ? (
+                        {planoEmpresarial(plano) ? (
+                          <Button className="w-full" variant="outline" disabled>Solicite ao administrador</Button>
+                        ) : isPlanoAtual(plano.id) ? (
                           <>
                             <Button className="w-full" disabled>
                               <Star className="w-4 h-4 mr-2" />

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Check, CreditCard, Star } from 'lucide-react';
+import { Check, CreditCard, Crown, Infinity, Sparkles, Star, X } from 'lucide-react';
 import { useAdminPlanos } from '@/hooks/useAdminPlanos';
 import { useMinhaEmpresa } from '@/hooks/useMinhaEmpresa';
 import { useToast } from '@/hooks/use-toast';
@@ -12,6 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { PixPaymentModal } from './PixPaymentModal';
 import { usePlanoLimites } from '@/hooks/usePlanoLimites';
 import type { Tables } from '@/integrations/supabase/types';
+import { formatarLimitePlano, formatarPrecoPlano, ordenarPlanos, planoEmpresarial, planoGratuito } from '@/lib/planos';
 
 type Plano = Tables<'planos'>;
 
@@ -29,12 +30,7 @@ export const PlanosDisponiveis = ({ empresaId }: PlanosDisponiveisProps) => {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [planoParaPagamento, setPlanoParaPagamento] = useState<Plano | null>(null);
 
-  const formatarPreco = (preco: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(preco);
-  };
+  const planosOrdenados = ordenarPlanos((planos || []).filter((plano) => plano.ativo));
 
   const handleSelecionarPlano = (plano: Plano) => {
     if (!user) {
@@ -54,8 +50,8 @@ export const PlanosDisponiveis = ({ empresaId }: PlanosDisponiveisProps) => {
     // Se o plano está expirado, consideramos que está no plano gratuito
     if (planoAtual?.expirado) {
       // Encontra o plano gratuito (preço = 0)
-      const planoGratuito = planos?.find(p => p.preco_mensal === 0);
-      return planoGratuito?.id === planoId;
+      const gratuito = planos?.find(planoGratuito);
+      return gratuito?.id === planoId;
     }
     return empresa?.plano_atual_id === planoId;
   };
@@ -133,16 +129,23 @@ export const PlanosDisponiveis = ({ empresaId }: PlanosDisponiveisProps) => {
         </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {planos.map((plano) => {
+      <div className="grid items-stretch gap-5 md:grid-cols-2 xl:grid-cols-4">
+        {planosOrdenados.map((plano) => {
           const status = getPlanoStatus(plano);
           const StatusIcon = status?.icon;
+          const empresarial = planoEmpresarial(plano);
+          const gratuito = planoGratuito(plano);
           
           return (
             <Card 
               key={plano.id} 
-              className={`relative ${isPlanoAtual(plano.id) ? 'border-primary bg-primary/5' : ''}`}
+              className={`relative flex h-full flex-col overflow-hidden transition-all hover:-translate-y-1 hover:shadow-xl ${empresarial ? 'border-violet-400/70 bg-gradient-to-b from-violet-500/15 to-card shadow-lg shadow-violet-500/10' : ''} ${isPlanoAtual(plano.id) ? 'ring-2 ring-primary border-primary' : ''}`}
             >
+              {empresarial && (
+                <div className="flex items-center justify-center gap-1.5 bg-gradient-to-r from-violet-600 to-fuchsia-600 py-2 text-xs font-bold uppercase tracking-wider text-white">
+                  <Crown className="h-4 w-4" /> Mais completo
+                </div>
+              )}
               {status && (
                 <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                   <Badge variant={status.variant} className="flex items-center gap-1">
@@ -158,30 +161,31 @@ export const PlanosDisponiveis = ({ empresaId }: PlanosDisponiveisProps) => {
                   <p className="text-sm text-muted-foreground">{plano.descricao}</p>
                 )}
                 <div className="pt-2">
-                  <div className="text-3xl font-bold">
-                    {formatarPreco(plano.preco_mensal)}
+                  <div className={`font-bold ${empresarial ? 'text-2xl text-violet-300' : 'text-3xl'}`}>
+                    {formatarPrecoPlano(plano)}
                   </div>
-                  <div className="text-sm text-muted-foreground">por mês</div>
+                  {!gratuito && !empresarial && <div className="text-sm text-muted-foreground">por mês</div>}
+                  {empresarial && <div className="text-xs text-muted-foreground">ativação personalizada para sua empresa</div>}
                 </div>
               </CardHeader>
 
-              <CardContent className="space-y-4">
+              <CardContent className="flex flex-1 flex-col space-y-4">
                 <Separator />
                 
                 <div className="space-y-3">
                   <div className="flex items-center justify-between text-sm">
                     <span>Limite de Cupons:</span>
-                    <span className="font-medium">{plano.limite_cupons}</span>
+                    <span className="font-semibold text-foreground">{formatarLimitePlano(plano.limite_cupons)}</span>
                   </div>
                   
                   <div className="flex items-center justify-between text-sm">
                     <span>Limite de Produtos:</span>
-                    <span className="font-medium">{plano.limite_produtos}</span>
+                    <span className="font-semibold text-foreground">{formatarLimitePlano(plano.limite_produtos)}</span>
                   </div>
                   
                   <div className="flex items-center justify-between text-sm">
                     <span>Produtos Destaque:</span>
-                    <span className="font-medium">{plano.produtos_destaque_permitidos}</span>
+                    <span className="font-semibold text-foreground">{formatarLimitePlano(plano.produtos_destaque_permitidos)}</span>
                   </div>
                   
                   <div className="flex items-center justify-between text-sm">
@@ -190,10 +194,14 @@ export const PlanosDisponiveis = ({ empresaId }: PlanosDisponiveisProps) => {
                       {plano.acesso_eventos ? (
                         <Check className="w-4 h-4 text-green-600" />
                       ) : (
-                        '❌'
+                        <X className="h-4 w-4 text-muted-foreground" />
                       )}
                     </span>
                   </div>
+                  <div className="flex items-center justify-between text-sm"><span>Fotos na galeria:</span><span className="font-semibold">{formatarLimitePlano(plano.limite_fotos_galeria)}</span></div>
+                  <div className="flex items-center justify-between text-sm"><span>Agendamentos/mês:</span><span className="font-semibold">{formatarLimitePlano(plano.limite_agendamentos_mes)}</span></div>
+                  <div className="flex items-center justify-between text-sm"><span>Vagas:</span><span className="font-semibold">{formatarLimitePlano(plano.limite_vagas)}</span></div>
+                  <div className="flex items-center justify-between text-sm"><span>WhatsApp/mês:</span><span className="font-semibold">{formatarLimitePlano(plano.limite_notificacoes_whatsapp_mes)}</span></div>
                   
                   <div className="flex items-center justify-between text-sm">
                     <span>Prioridade Destaque:</span>
@@ -206,7 +214,7 @@ export const PlanosDisponiveis = ({ empresaId }: PlanosDisponiveisProps) => {
                       {plano.suporte_prioritario ? (
                         <Check className="w-4 h-4 text-green-600" />
                       ) : (
-                        '❌'
+                        <X className="h-4 w-4 text-muted-foreground" />
                       )}
                     </span>
                   </div>
@@ -214,18 +222,22 @@ export const PlanosDisponiveis = ({ empresaId }: PlanosDisponiveisProps) => {
 
                 <Separator />
 
-                <div className="pt-2">
-                  {plano.preco_mensal === 0 ? (
+                <div className="mt-auto pt-2">
+                  {gratuito ? (
                     <div className="text-center py-2">
-                      <span className="text-sm text-muted-foreground">Plano Gratuito</span>
+                      <span className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground"><Check className="h-4 w-4" /> Disponível gratuitamente</span>
                     </div>
+                  ) : empresarial ? (
+                    <Button className="w-full border-violet-400/50" variant="outline" disabled>
+                      <Infinity className="mr-2 h-4 w-4" /> Solicite ao administrador
+                    </Button>
                   ) : (
                     <Button 
                       className="w-full" 
                       onClick={() => handleSelecionarPlano(plano)}
                       variant={selectedPlano === plano.id ? 'secondary' : (podeRenovarPlano(plano) ? 'outline' : 'default')}
                     >
-                      <CreditCard className="w-4 h-4 mr-2" />
+                    <Sparkles className="w-4 h-4 mr-2" />
                       {getBotaoTexto(plano)}
                     </Button>
                   )}

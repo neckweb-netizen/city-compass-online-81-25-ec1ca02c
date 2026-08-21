@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useMinhaEmpresa } from './useMinhaEmpresa';
 import { useToast } from '@/hooks/use-toast';
+import { limiteIlimitado } from '@/lib/planos';
 
 export const usePlanoLimites = () => {
   const { empresa } = useMinhaEmpresa();
@@ -15,15 +16,24 @@ export const usePlanoLimites = () => {
         new Date(empresa.plano_data_vencimento) < new Date();
 
       if (!empresa?.plano_atual_id || planoExpirado) {
-        // Retorna plano gratuito padrão se não tem plano ou está expirado
+        const { data: planoGratuito } = await supabase
+          .from('planos')
+          .select('*')
+          .eq('ativo', true)
+          .ilike('nome', '%gratuito%')
+          .maybeSingle();
+
+        // Mantém um fallback seguro somente se o plano gratuito não estiver cadastrado.
         return {
-          limite_cupons: 0,
-          limite_produtos: 2,
-          produtos_destaque_permitidos: 0,
-          acesso_eventos: false,
-          prioridade_destaque: 0,
-          suporte_prioritario: false,
-          nome: 'Gratuito',
+          ...(planoGratuito || {
+            limite_cupons: 0,
+            limite_produtos: 2,
+            produtos_destaque_permitidos: 0,
+            acesso_eventos: false,
+            prioridade_destaque: 0,
+            suporte_prioritario: false,
+            nome: 'Gratuito',
+          }),
           expirado: planoExpirado,
           data_vencimento: empresa?.plano_data_vencimento
         };
@@ -52,6 +62,7 @@ export const usePlanoLimites = () => {
 
   const verificarLimiteCupons = async (): Promise<boolean> => {
     if (!empresa || !planoAtual) return false;
+    if (limiteIlimitado(planoAtual.limite_cupons)) return true;
 
     const { count } = await supabase
       .from('cupons')
@@ -89,6 +100,7 @@ export const usePlanoLimites = () => {
 
   const verificarLimiteProdutos = async (): Promise<boolean> => {
     if (!empresa || !planoAtual) return false;
+    if (limiteIlimitado(planoAtual.limite_produtos)) return true;
 
     const { count } = await supabase
       .from('produtos')
@@ -111,6 +123,7 @@ export const usePlanoLimites = () => {
 
   const verificarLimiteProdutosDestaque = async (): Promise<boolean> => {
     if (!empresa || !planoAtual) return false;
+    if (limiteIlimitado(planoAtual.produtos_destaque_permitidos)) return true;
 
     const { count } = await supabase
       .from('produtos')
