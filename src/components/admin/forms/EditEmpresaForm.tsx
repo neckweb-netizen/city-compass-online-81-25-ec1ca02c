@@ -15,12 +15,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Switch } from '@/components/ui/switch';
-import { Edit, Building2 } from 'lucide-react';
+import { Edit, Building2, Loader2, Save } from 'lucide-react';
 import { ImageUpload } from '@/components/ui/image-upload';
 import { EnderecosList } from '@/components/empresa/EnderecosList';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { HorarioFuncionamentoFormField } from '@/components/admin/forms/HorarioFuncionamentoFormField';
-import { HorarioFuncionamento } from '@/types/horarios';
+import { HorarioFuncionamento, normalizarHorarioFuncionamento } from '@/types/horarios';
 
 const empresaSchema = z.object({
   nome: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
@@ -47,7 +47,10 @@ interface EditEmpresaFormProps {
 export const EditEmpresaForm = ({ empresa, onSuccess }: EditEmpresaFormProps) => {
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('dados');
-  const [horarios, setHorarios] = useState<HorarioFuncionamento>(empresa.horario_funcionamento || {});
+  const [horarios, setHorarios] = useState<HorarioFuncionamento>(() =>
+    normalizarHorarioFuncionamento(empresa.horario_funcionamento, true),
+  );
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
   const { data: cidadePadrao } = useCidadePadrao();
 
@@ -82,11 +85,17 @@ export const EditEmpresaForm = ({ empresa, onSuccess }: EditEmpresaFormProps) =>
     },
   });
 
+  useEffect(() => {
+    if (!open) return;
+    setHorarios(normalizarHorarioFuncionamento(empresa.horario_funcionamento, true));
+  }, [empresa.horario_funcionamento, empresa.id, open]);
+
   // Detectar mudança de categoria para mostrar/esconder campo da rádio
   const categoriaAtual = form.watch('categoria_id');
   const isRadioCategory = categorias?.find(cat => cat.id === categoriaAtual)?.nome === 'Rádios';
 
   const onSubmit = async (data: EmpresaFormData) => {
+    setIsSaving(true);
     try {
       if (!cidadePadrao) {
         toast({ 
@@ -97,7 +106,7 @@ export const EditEmpresaForm = ({ empresa, onSuccess }: EditEmpresaFormProps) =>
         return;
       }
 
-      const { error } = await supabase
+      const { data: empresaAtualizada, error } = await supabase
         .from('empresas')
         .update({
           nome: data.nome,
@@ -113,9 +122,12 @@ export const EditEmpresaForm = ({ empresa, onSuccess }: EditEmpresaFormProps) =>
           ativo: data.ativo,
           horario_funcionamento: horarios,
         })
-        .eq('id', empresa.id);
+        .eq('id', empresa.id)
+        .select('id, horario_funcionamento, atualizado_em')
+        .single();
 
       if (error) throw error;
+      if (!empresaAtualizada) throw new Error('A empresa não foi atualizada.');
 
       toast({ title: 'Empresa atualizada com sucesso!' });
       setOpen(false);
@@ -124,9 +136,11 @@ export const EditEmpresaForm = ({ empresa, onSuccess }: EditEmpresaFormProps) =>
       console.error('Erro ao atualizar empresa:', error);
       toast({ 
         title: 'Erro ao atualizar empresa', 
-        description: 'Tente novamente.',
+        description: error instanceof Error ? error.message : 'Tente novamente.',
         variant: 'destructive' 
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -342,7 +356,8 @@ export const EditEmpresaForm = ({ empresa, onSuccess }: EditEmpresaFormProps) =>
                   <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                     Cancelar
                   </Button>
-                  <Button type="submit">
+                  <Button type="submit" disabled={isSaving}>
+                    {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Salvar Alterações
                   </Button>
                 </div>
@@ -358,6 +373,15 @@ export const EditEmpresaForm = ({ empresa, onSuccess }: EditEmpresaFormProps) =>
               value={horarios}
               onChange={setHorarios}
             />
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isSaving}>
+                Cancelar
+              </Button>
+              <Button type="button" onClick={() => void form.handleSubmit(onSubmit)()} disabled={isSaving}>
+                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Salvar horários
+              </Button>
+            </div>
           </TabsContent>
           
           <TabsContent value="enderecos" className="space-y-4">

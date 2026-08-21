@@ -42,15 +42,36 @@ type ImportBody = {
 type RequestBody = SearchBody | ImportBody;
 
 const normalizeOpeningHours = (details: any) => {
-  const weekdayText = details?.opening_hours?.weekday_text;
-  if (!Array.isArray(weekdayText) || weekdayText.length === 0) return null;
+  const openingHours = details?.opening_hours;
+  const periods = Array.isArray(openingHours?.periods) ? openingHours.periods : [];
+  if (periods.length === 0) return null;
 
-  return {
-    weekday_text: weekdayText,
-    open_now: details?.opening_hours?.open_now ?? null,
-    periods: details?.opening_hours?.periods ?? [],
-    source: "google_places",
+  const dayKeys = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"];
+  const normalized = Object.fromEntries(
+    dayKeys.map((key) => [key, { aberto: false, abertura: "08:00", fechamento: "18:00" }]),
+  ) as Record<string, { aberto: boolean; abertura: string; fechamento: string }>;
+
+  const formatTime = (value: unknown, fallback: string) => {
+    const digits = String(value ?? "").replace(/\D/g, "");
+    return digits.length === 4 ? `${digits.slice(0, 2)}:${digits.slice(2)}` : fallback;
   };
+
+  for (const period of periods) {
+    const dayKey = dayKeys[Number(period?.open?.day)];
+    if (!dayKey) continue;
+
+    const opening = formatTime(period?.open?.time, "00:00");
+    const closing = formatTime(period?.close?.time, "23:59");
+    const current = normalized[dayKey];
+
+    normalized[dayKey] = {
+      aberto: true,
+      abertura: current.aberto && current.abertura < opening ? current.abertura : opening,
+      fechamento: current.aberto && current.fechamento > closing ? current.fechamento : closing,
+    };
+  }
+
+  return normalized;
 };
 
 Deno.serve(async (req: Request) => {

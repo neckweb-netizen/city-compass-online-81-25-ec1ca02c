@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMinhaEmpresa } from '@/hooks/useMinhaEmpresa';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,50 +8,18 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Clock, Save } from 'lucide-react';
-
-interface HorarioFuncionamento {
-  [key: string]: {
-    aberto: boolean;
-    abertura: string;
-    fechamento: string;
-  };
-}
-
-const diasSemana = [
-  { key: 'segunda', nome: 'Segunda-feira' },
-  { key: 'terca', nome: 'Terça-feira' },
-  { key: 'quarta', nome: 'Quarta-feira' },
-  { key: 'quinta', nome: 'Quinta-feira' },
-  { key: 'sexta', nome: 'Sexta-feira' },
-  { key: 'sabado', nome: 'Sábado' },
-  { key: 'domingo', nome: 'Domingo' },
-];
+import { HorarioFuncionamento, diasSemana, normalizarHorarioFuncionamento } from '@/types/horarios';
 
 export const HorarioFuncionamentoForm = () => {
   const { empresa, updateEmpresa, isUpdating } = useMinhaEmpresa();
   
-  const [horarios, setHorarios] = useState<HorarioFuncionamento>(() => {
-    const horariosIniciais: HorarioFuncionamento = {};
-    
-    diasSemana.forEach(dia => {
-      horariosIniciais[dia.key] = {
-        aberto: true,
-        abertura: '08:00',
-        fechamento: '18:00'
-      };
-    });
+  const [horarios, setHorarios] = useState<HorarioFuncionamento>(() =>
+    normalizarHorarioFuncionamento(empresa?.horario_funcionamento, true),
+  );
 
-    // Se já existem horários salvos, usar eles
-    if (empresa?.horario_funcionamento) {
-      Object.keys(empresa.horario_funcionamento).forEach(dia => {
-        if (horariosIniciais[dia]) {
-          horariosIniciais[dia] = empresa.horario_funcionamento[dia];
-        }
-      });
-    }
-
-    return horariosIniciais;
-  });
+  useEffect(() => {
+    if (empresa) setHorarios(normalizarHorarioFuncionamento(empresa.horario_funcionamento, true));
+  }, [empresa]);
 
   const handleToggleDay = (dia: string) => {
     setHorarios(prev => ({

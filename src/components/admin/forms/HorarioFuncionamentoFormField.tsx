@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Clock } from 'lucide-react';
-import { HorarioFuncionamento, diasSemana } from '@/types/horarios';
+import { HorarioFuncionamento, diasSemana, normalizarHorarioFuncionamento } from '@/types/horarios';
 
 interface HorarioFuncionamentoFormFieldProps {
   value?: HorarioFuncionamento;
@@ -13,28 +13,13 @@ interface HorarioFuncionamentoFormFieldProps {
 }
 
 export const HorarioFuncionamentoFormField = ({ value, onChange }: HorarioFuncionamentoFormFieldProps) => {
-  const [horarios, setHorarios] = useState<HorarioFuncionamento>(() => {
-    const horariosIniciais: HorarioFuncionamento = {};
-    
-    diasSemana.forEach(dia => {
-      horariosIniciais[dia.key] = {
-        aberto: true,
-        abertura: '08:00',
-        fechamento: '18:00'
-      };
-    });
+  const [horarios, setHorarios] = useState<HorarioFuncionamento>(() =>
+    normalizarHorarioFuncionamento(value, true),
+  );
 
-    // Se já existem horários, usar eles
-    if (value) {
-      Object.keys(value).forEach(dia => {
-        if (horariosIniciais[dia]) {
-          horariosIniciais[dia] = value[dia];
-        }
-      });
-    }
-
-    return horariosIniciais;
-  });
+  useEffect(() => {
+    setHorarios(normalizarHorarioFuncionamento(value, true));
+  }, [value]);
 
   const handleToggleDay = (dia: string) => {
     const novosHorarios = {

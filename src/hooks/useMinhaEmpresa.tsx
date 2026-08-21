@@ -59,21 +59,14 @@ export const useMinhaEmpresa = () => {
     mutationFn: async (dados: any) => {
       if (!user || !empresa) throw new Error('Usuário ou empresa não encontrados');
 
-      // Se está atualizando horário de funcionamento, usar RPC
-      if (dados.horario_funcionamento) {
-        const { error } = await supabase.rpc('atualizar_horario_funcionamento', {
-          empresa_id_param: empresa.id,
-          horarios_param: dados.horario_funcionamento
-        });
-        if (error) throw error;
-      } else {
-        // Para outros campos, usar update normal
-        const { error } = await supabase
-          .from('empresas')
-          .update(dados)
-          .eq('id', empresa.id);
-        if (error) throw error;
-      }
+      const { data: empresaAtualizada, error } = await supabase
+        .from('empresas')
+        .update(dados)
+        .eq('id', empresa.id)
+        .select('id, horario_funcionamento, atualizado_em')
+        .single();
+      if (error) throw error;
+      return empresaAtualizada;
     },
     onSuccess: () => {
       // Invalida todas as queries relacionadas

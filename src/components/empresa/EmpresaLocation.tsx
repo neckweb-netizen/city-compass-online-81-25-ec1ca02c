@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useEnderecosEmpresa } from '@/hooks/useEnderecosEmpresa';
+import { normalizarHorarioFuncionamento } from '@/types/horarios';
 import { 
   MapPin, 
   Navigation, 
@@ -27,6 +28,7 @@ interface EmpresaLocationProps {
 export const EmpresaLocation = ({ empresa }: EmpresaLocationProps) => {
   const { toast } = useToast();
   const { enderecos } = useEnderecosEmpresa(empresa.id);
+  const horarios = normalizarHorarioFuncionamento(empresa.horario_funcionamento);
 
   const handleGetDirections = (endereco?: string) => {
     const addressToUse = endereco || empresa.endereco;
@@ -77,7 +79,7 @@ export const EmpresaLocation = ({ empresa }: EmpresaLocationProps) => {
     const dayNames = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado'];
     const todayName = dayNames[currentDay];
     
-    const todaySchedule = empresa.horario_funcionamento[todayName];
+    const todaySchedule = horarios[todayName];
     
     if (!todaySchedule || !todaySchedule.aberto) return false;
     
@@ -136,7 +138,7 @@ export const EmpresaLocation = ({ empresa }: EmpresaLocationProps) => {
     const dayOrder = ['segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado', 'domingo'];
     
     return dayOrder.map((day) => {
-      const schedule = empresa.horario_funcionamento[day];
+      const schedule = horarios[day];
       
       if (!schedule) {
         return (
