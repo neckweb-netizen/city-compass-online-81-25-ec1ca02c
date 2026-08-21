@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
-import { Download, Landmark, Loader2, MapPin, Search, SlidersHorizontal, Tag } from 'lucide-react';
+import { Download, Landmark, Loader2, MapPin, RefreshCw, Search, SlidersHorizontal, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 
 const GOOGLE_MAPS_CATEGORIES = [
@@ -74,6 +74,8 @@ export default function GoogleImporter() {
   const [categoriasSelecionadas, setCategoriasSelecionadas] = useState<Record<string, string>>({});
   const [carregandoBusca, setCarregandoBusca] = useState(false);
   const [importandoId, setImportingId] = useState<string | null>(null);
+  const [atualizandoTodas, setAtualizandoTodas] = useState(false);
+  const [progressoAtualizacao, setProgressoAtualizacao] = useState('');
 
   useEffect(() => {
     const buscarCategoriasSistema = async () => {
@@ -221,12 +223,62 @@ export default function GoogleImporter() {
     }
   };
 
+  const atualizarTodasEmpresas = async () => {
+    if (atualizandoTodas) return;
+    if (!window.confirm('Consultar todas as empresas no Google pode consumir sua cota da API. Deseja continuar?')) return;
+
+    setAtualizandoTodas(true);
+    let cursor: string | undefined;
+    let atualizadas = 0;
+    let comFoto = 0;
+    let ignoradas = 0;
+
+    try {
+      do {
+        const { data, error } = await supabase.functions.invoke<any>('google-places-admin', {
+          body: { action: 'bulk-refresh', cursor },
+        });
+        if (error) throw new Error(await getErrorMessage(error));
+        if (!data || data.status !== 'OK') throw new Error(data?.error || 'Falha na atualização em lote.');
+
+        atualizadas += data.updated?.length || 0;
+        comFoto += data.updated?.filter((item: any) => item.photo).length || 0;
+        ignoradas += data.skipped?.length || 0;
+        cursor = data.nextCursor || undefined;
+        setProgressoAtualizacao(`${atualizadas + ignoradas} empresas verificadas • ${comFoto} fotos encontradas`);
+
+        if (!data.hasMore) break;
+      } while (cursor);
+
+      toast.success(`Atualização concluída: ${atualizadas} empresas atualizadas, ${comFoto} com foto e ${ignoradas} sem correspondência segura.`);
+    } catch (err: any) {
+      console.error('Erro na atualização geral:', err);
+      toast.error(`Atualização interrompida: ${err?.message || 'Falha desconhecida'}`);
+    } finally {
+      setAtualizandoTodas(false);
+    }
+  };
+
   return (
     <div className="container mx-auto max-w-4xl space-y-6 p-6">
       <div className="mb-2 flex items-center gap-2">
         <Landmark className="h-7 w-7 text-purple-500" />
         <h1 className="text-3xl font-bold text-white">Painel de Importação Automática</h1>
       </div>
+
+      <Card className="border-emerald-900/40 bg-[#18251f] text-white">
+        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="font-semibold">Atualizar empresas cadastradas</p>
+            <p className="text-xs text-gray-400">Busca fotos diretas, horários, endereço, telefone e site no Google Maps.</p>
+            {progressoAtualizacao && <p className="mt-1 text-xs font-medium text-emerald-300">{progressoAtualizacao}</p>}
+          </div>
+          <Button onClick={() => void atualizarTodasEmpresas()} disabled={atualizandoTodas} className="bg-emerald-600 hover:bg-emerald-500">
+            {atualizandoTodas ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+            {atualizandoTodas ? 'Atualizando...' : 'Buscar e atualizar todas'}
+          </Button>
+        </CardContent>
+      </Card>
 
       <Card className="border-purple-950/40 bg-[#221A32] text-white shadow-xl">
         <CardHeader>

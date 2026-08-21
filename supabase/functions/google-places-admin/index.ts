@@ -40,7 +40,12 @@ type ImportBody = {
   empresaId?: string;
 };
 
-type RequestBody = SearchBody | ImportBody;
+type BulkRefreshBody = {
+  action: "bulk-refresh";
+  cursor?: string;
+};
+
+type RequestBody = SearchBody | ImportBody | BulkRefreshBody;
 
 const resolveGooglePhotoUrl = async (photoReference: unknown, googleApiKey: string) => {
   const reference = String(photoReference || "").trim();
@@ -192,6 +197,99 @@ Deno.serve(async (req: Request) => {
         .filter((item: any) => item.place_id && item.name);
 
       return json({ status: googleData.status, results });
+    }
+
+    if (body.action === "bulk-refresh") {
+      const batchSize = 5;
+      let companyQuery = admin
+        .from("empresas")
+        .select("id, nome, endereco, place_id")
+        .eq("ativo", true)
+        .order("id", { ascending: true })
+        .limit(batchSize);
+
+      if (body.cursor) companyQuery = companyQuery.gt("id", body.cursor);
+
+      const { data: companies, error: companiesError } = await companyQuery;
+      if (companiesError) return json({ status: "ERROR", error: companiesError.message }, 500);
+
+      const updated: Array<{ id: string; nome: string; photo: boolean }> = [];
+      const skipped: Array<{ id: string; nome: string; reason: string }> = [];
+      const detailsFields = [
+        "place_id", "name", "formatted_address", "formatted_phone_number",
+        "international_phone_number", "website", "geometry", "opening_hours", "photos",
+      ].join(",");
+
+      for (const company of companies || []) {
+        try {
+          let placeId = String(company.place_id || "");
+
+          if (!placeId) {
+            const searchParams = new URLSearchParams({
+              query: `${company.nome} ${company.endereco || ""} Santo Antônio de Jesus BA`,
+              location: GOOGLE_CITY_CENTER,
+              radius: String(GOOGLE_RADIUS_METERS),
+              key: googleApiKey,
+              language: "pt-BR",
+              region: "br",
+            });
+            const searchResponse = await fetch(`https://maps.googleapis.com/maps/api/place/textsearch/json?${searchParams.toString()}`);
+            const searchData = await searchResponse.json();
+            const candidate = searchData?.results?.[0];
+            const normalize = (value: string) => slugify(value).replace(/-/g, "");
+            const expected = normalize(company.nome);
+            const found = normalize(String(candidate?.name || ""));
+            if (!candidate?.place_id || (!found.includes(expected) && !expected.includes(found))) {
+              skipped.push({ id: company.id, nome: company.nome, reason: "Correspondência segura não encontrada" });
+              continue;
+            }
+            placeId = candidate.place_id;
+          }
+
+          const detailsParams = new URLSearchParams({
+            place_id: placeId,
+            fields: detailsFields,
+            key: googleApiKey,
+            language: "pt-BR",
+          });
+          const detailsResponse = await fetch(`https://maps.googleapis.com/maps/api/place/details/json?${detailsParams.toString()}`);
+          const detailsData = await detailsResponse.json();
+          const details = detailsData?.result;
+          if (detailsData?.status !== "OK" || !details) {
+            skipped.push({ id: company.id, nome: company.nome, reason: "Detalhes indisponíveis no Google" });
+            continue;
+          }
+
+          const lat = details?.geometry?.location?.lat;
+          const lng = details?.geometry?.location?.lng;
+          const telefone = details.formatted_phone_number || details.international_phone_number || null;
+          const imagemCapaUrl = await resolveGooglePhotoUrl(details?.photos?.[0]?.photo_reference, googleApiKey);
+          const { error: updateError } = await admin.from("empresas").update({
+            place_id: placeId,
+            endereco: details.formatted_address || company.endereco || null,
+            telefone,
+            site: details.website || null,
+            horario_funcionamento: normalizeOpeningHours(details),
+            localizacao: typeof lat === "number" && typeof lng === "number" ? `(${lng},${lat})` : null,
+            ...(imagemCapaUrl ? { imagem_capa_url: imagemCapaUrl } : {}),
+          }).eq("id", company.id);
+
+          if (updateError) throw updateError;
+          updated.push({ id: company.id, nome: company.nome, photo: Boolean(imagemCapaUrl) });
+        } catch (error) {
+          skipped.push({ id: company.id, nome: company.nome, reason: error instanceof Error ? error.message : "Falha inesperada" });
+        }
+      }
+
+      const lastCompany = companies?.[companies.length - 1];
+      return json({
+        status: "OK",
+        updated,
+        skipped,
+        processed: companies?.length || 0,
+        nextCursor: lastCompany?.id || null,
+        hasMore: (companies?.length || 0) === batchSize,
+      });
     }
 
     if (body.action === "import") {
