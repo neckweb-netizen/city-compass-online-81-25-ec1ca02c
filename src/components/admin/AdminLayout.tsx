@@ -43,12 +43,19 @@ export const AdminLayout = () => {
   };
 
   useEffect(() => {
+    if (loading) {
+      setServerAccess('loading');
+      return;
+    }
+
     if (!user?.id) {
       setServerAccess('denied');
       return;
     }
 
     let active = true;
+    setServerAccess('loading');
+
     const validateAdminAccess = async () => {
       const { data: authData, error: authError } = await supabase.auth.getUser();
       if (authError || authData.user?.id !== user.id) {
@@ -72,7 +79,7 @@ export const AdminLayout = () => {
       active = false;
       window.clearInterval(interval);
     };
-  }, [user?.id]);
+  }, [loading, user?.id]);
 
   if (loading || serverAccess === 'loading') {
     return (
