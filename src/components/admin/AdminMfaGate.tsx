@@ -35,7 +35,9 @@ export const AdminMfaGate = ({ children, onSignOut }: AdminMfaGateProps) => {
       const factors = await supabase.auth.mfa.listFactors();
       if (factors.error) throw factors.error;
 
-      for (const pendingFactor of factors.data.totp.filter((factor) => factor.status === 'unverified')) {
+      for (const pendingFactor of factors.data.all.filter(
+        (factor) => factor.factor_type === 'totp' && factor.status === 'unverified',
+      )) {
         const removal = await supabase.auth.mfa.unenroll({ factorId: pendingFactor.id });
         if (removal.error) throw removal.error;
       }
@@ -78,7 +80,9 @@ export const AdminMfaGate = ({ children, onSignOut }: AdminMfaGateProps) => {
       return;
     }
 
-    const pendingFactor = factors.data.totp.find((factor) => factor.status === 'unverified');
+    const pendingFactor = factors.data.all.find(
+      (factor) => factor.factor_type === 'totp' && factor.status === 'unverified',
+    );
     if (pendingFactor) {
       setFactorId(pendingFactor.id);
       setMode('pending');
