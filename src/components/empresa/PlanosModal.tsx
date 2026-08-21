@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Check, CreditCard, Star, X } from 'lucide-react';
+import { Check, CreditCard, Phone, Star, X } from 'lucide-react';
 import { useAdminPlanos } from '@/hooks/useAdminPlanos';
 import { useMinhaEmpresa } from '@/hooks/useMinhaEmpresa';
 import { useToast } from '@/hooks/use-toast';
@@ -211,7 +211,16 @@ export const PlanosModal = ({ isOpen, onClose }: PlanosModalProps) => {
 
                       <div className="pt-2 space-y-2">
                         {planoEmpresarial(plano) ? (
-                          <Button className="w-full" variant="outline" disabled>Solicite ao administrador</Button>
+                          <div className="space-y-2">
+                            <Button asChild className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white">
+                              <a href="tel:+5575981804008" aria-label="Ligar para contratar o Plano Empresarial">
+                                <Phone className="mr-2 h-4 w-4" /> Ligar e contratar
+                              </a>
+                            </Button>
+                            <a href="tel:+5575981804008" className="block text-center text-sm font-semibold text-violet-500 hover:underline">
+                              (75) 98180-4008
+                            </a>
+                          </div>
                         ) : isPlanoAtual(plano.id) ? (
                           <>
                             <Button className="w-full" disabled>

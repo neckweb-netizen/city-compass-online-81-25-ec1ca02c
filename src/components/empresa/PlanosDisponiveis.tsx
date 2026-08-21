@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Check, CreditCard, Crown, Infinity, Sparkles, Star, X } from 'lucide-react';
+import { Check, CreditCard, Crown, Phone, Sparkles, Star, X } from 'lucide-react';
 import { useAdminPlanos } from '@/hooks/useAdminPlanos';
 import { useMinhaEmpresa } from '@/hooks/useMinhaEmpresa';
 import { useToast } from '@/hooks/use-toast';
@@ -139,11 +139,11 @@ export const PlanosDisponiveis = ({ empresaId }: PlanosDisponiveisProps) => {
           return (
             <Card 
               key={plano.id} 
-              className={`relative flex h-full flex-col overflow-hidden transition-all hover:-translate-y-1 hover:shadow-xl ${empresarial ? 'border-violet-400/70 bg-gradient-to-b from-violet-500/15 to-card shadow-lg shadow-violet-500/10' : ''} ${isPlanoAtual(plano.id) ? 'ring-2 ring-primary border-primary' : ''}`}
+              className={`relative flex h-full flex-col overflow-visible transition-all hover:-translate-y-1 hover:shadow-xl ${empresarial ? 'border-violet-400/70 bg-gradient-to-b from-violet-500/15 to-card shadow-lg shadow-violet-500/10' : ''} ${isPlanoAtual(plano.id) ? 'ring-2 ring-primary border-primary' : ''}`}
             >
               {empresarial && (
-                <div className="flex items-center justify-center gap-1.5 bg-gradient-to-r from-violet-600 to-fuchsia-600 py-2 text-xs font-bold uppercase tracking-wider text-white">
-                  <Crown className="h-4 w-4" /> Mais completo
+                <div className="flex min-h-9 items-center justify-center gap-1.5 rounded-t-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-3 py-2 text-center text-xs font-bold uppercase leading-tight tracking-wider text-white">
+                  <Crown className="h-4 w-4 shrink-0" /> Melhor escolha
                 </div>
               )}
               {status && (
@@ -228,9 +228,16 @@ export const PlanosDisponiveis = ({ empresaId }: PlanosDisponiveisProps) => {
                       <span className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground"><Check className="h-4 w-4" /> Disponível gratuitamente</span>
                     </div>
                   ) : empresarial ? (
-                    <Button className="w-full border-violet-400/50" variant="outline" disabled>
-                      <Infinity className="mr-2 h-4 w-4" /> Solicite ao administrador
-                    </Button>
+                    <div className="space-y-2">
+                      <Button asChild className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white hover:from-violet-500 hover:to-fuchsia-500">
+                        <a href="tel:+5575981804008" aria-label="Ligar para contratar o Plano Empresarial">
+                          <Phone className="mr-2 h-4 w-4" /> Ligar e contratar
+                        </a>
+                      </Button>
+                      <a href="tel:+5575981804008" className="block text-center text-sm font-semibold text-violet-300 hover:underline">
+                        (75) 98180-4008
+                      </a>
+                    </div>
                   ) : (
                     <Button 
                       className="w-full" 
