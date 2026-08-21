@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-type GateMode = 'loading' | 'enroll' | 'challenge' | 'verified' | 'error';
+type GateMode = 'loading' | 'enroll' | 'pending' | 'challenge' | 'verified' | 'error';
 
 interface AdminMfaGateProps {
   children: ReactNode;
@@ -22,6 +22,37 @@ export const AdminMfaGate = ({ children, onSignOut }: AdminMfaGateProps) => {
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  const startEnrollment = useCallback(async (replacePendingFactor = false) => {
+    setMode('loading');
+    setError('');
+    setCode('');
+    setQrCode('');
+    setSecret('');
+    setEnrollmentUri('');
+
+    if (replacePendingFactor) {
+      const factors = await supabase.auth.mfa.listFactors();
+      if (factors.error) throw factors.error;
+
+      for (const pendingFactor of factors.data.totp.filter((factor) => factor.status === 'unverified')) {
+        const removal = await supabase.auth.mfa.unenroll({ factorId: pendingFactor.id });
+        if (removal.error) throw removal.error;
+      }
+    }
+
+    const enrollment = await supabase.auth.mfa.enroll({
+      factorType: 'totp',
+      friendlyName: 'Painel administrativo Saj Tem',
+    });
+    if (enrollment.error) throw enrollment.error;
+
+    setFactorId(enrollment.data.id);
+    setQrCode(enrollment.data.totp.qr_code);
+    setSecret(enrollment.data.totp.secret);
+    setEnrollmentUri(enrollment.data.totp.uri);
+    setMode('enroll');
+  }, []);
 
   const initializeMfa = useCallback(async () => {
     setMode('loading');
@@ -47,22 +78,15 @@ export const AdminMfaGate = ({ children, onSignOut }: AdminMfaGateProps) => {
       return;
     }
 
-    for (const staleFactor of factors.data.totp) {
-      await supabase.auth.mfa.unenroll({ factorId: staleFactor.id }).catch(() => undefined);
+    const pendingFactor = factors.data.totp.find((factor) => factor.status === 'unverified');
+    if (pendingFactor) {
+      setFactorId(pendingFactor.id);
+      setMode('pending');
+      return;
     }
 
-    const enrollment = await supabase.auth.mfa.enroll({
-      factorType: 'totp',
-      friendlyName: 'Painel administrativo Saj Tem',
-    });
-    if (enrollment.error) throw enrollment.error;
-
-    setFactorId(enrollment.data.id);
-    setQrCode(enrollment.data.totp.qr_code);
-    setSecret(enrollment.data.totp.secret);
-    setEnrollmentUri(enrollment.data.totp.uri);
-    setMode('enroll');
-  }, []);
+    await startEnrollment();
+  }, [startEnrollment]);
 
   useEffect(() => {
     void initializeMfa().catch((initializationError) => {
@@ -184,7 +208,34 @@ export const AdminMfaGate = ({ children, onSignOut }: AdminMfaGateProps) => {
             </div>
           )}
 
-          {(mode === 'enroll' || mode === 'challenge') && (
+          {mode === 'pending' && (
+            <div className="space-y-4">
+              <div className="rounded-xl border bg-muted/30 p-4 text-sm">
+                <p className="font-semibold flex items-center gap-2"><KeyRound className="h-4 w-4" /> Finalize a primeira configuração</p>
+                <p className="mt-1 text-muted-foreground">
+                  O Saj Tem já está conectado ao seu aplicativo autenticador. Digite abaixo o código de 6 números que aparece nele.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                disabled={submitting}
+                onClick={() => void startEnrollment(true).catch((enrollmentError) => {
+                  console.error('Falha ao gerar nova configuração MFA:', enrollmentError);
+                  setError('Não foi possível gerar uma nova chave. Tente novamente.');
+                  setMode('error');
+                })}
+              >
+                Gerar uma nova chave neste dispositivo
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Use essa opção somente se você não encontrar mais o código do Saj Tem no aplicativo autenticador.
+              </p>
+            </div>
+          )}
+
+          {(mode === 'enroll' || mode === 'pending' || mode === 'challenge') && (
             <form onSubmit={verifyCode} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="admin-mfa-code">Código de 6 números</Label>
