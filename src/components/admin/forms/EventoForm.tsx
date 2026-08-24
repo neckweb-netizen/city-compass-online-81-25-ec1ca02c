@@ -7,7 +7,7 @@ import { ptBR } from 'date-fns/locale';
 import { CalendarIcon, Plus, Calendar, Clock, Upload, X, Loader2, Users, UserPlus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useCategorias } from '@/hooks/useCategorias';
+import { useCategoriasEventos } from '@/hooks/useCategorias';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useMinhaEmpresa } from '@/hooks/useMinhaEmpresa';
@@ -66,7 +66,7 @@ export const EventoForm = ({ onSuccess, empresaId }: EventoFormProps) => {
   const { toast } = useToast();
   const { user, profile } = useAuth();
   const queryClient = useQueryClient();
-  const { data: categorias } = useCategorias();
+  const { data: categorias } = useCategoriasEventos();
   const { empresa } = useMinhaEmpresa();
   const { verificarLimiteEventos } = usePlanoLimites();
 
@@ -361,7 +361,7 @@ export const EventoForm = ({ onSuccess, empresaId }: EventoFormProps) => {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {categorias?.filter(c => c.ativo && c.tipo === 'evento').map((categoria) => (
+                  {categorias?.map((categoria) => (
                     <SelectItem key={categoria.id} value={categoria.id}>
                       {categoria.nome}
                     </SelectItem>
