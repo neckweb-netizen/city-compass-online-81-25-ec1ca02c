@@ -74,6 +74,24 @@ const resolveGooglePhotoUrl = async (photoReference: unknown, googleApiKey: stri
   }
 };
 
+const hasWorkingImage = async (imageUrl: unknown) => {
+  const url = String(imageUrl || "").trim();
+  if (!url || !url.startsWith("https://")) return false;
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { Range: "bytes=0-1023" },
+      redirect: "follow",
+    });
+    const contentType = response.headers.get("content-type") || "";
+    await response.body?.cancel();
+    return response.ok && contentType.toLowerCase().startsWith("image/");
+  } catch {
+    return false;
+  }
+};
+
 const normalizeOpeningHours = (details: any) => {
   const openingHours = details?.opening_hours;
   const periods = Array.isArray(openingHours?.periods) ? openingHours.periods : [];
@@ -222,8 +240,8 @@ Deno.serve(async (req: Request) => {
       const skipped: Array<{ id: string; nome: string; reason: string }> = [];
 
       for (const place of places || []) {
-        if (String(place.imagem_url || "").trim()) {
-          skipped.push({ id: place.id, nome: place.nome, reason: "Já possui imagem" });
+        if (await hasWorkingImage(place.imagem_url)) {
+          skipped.push({ id: place.id, nome: place.nome, reason: "Imagem atual válida" });
           continue;
         }
 

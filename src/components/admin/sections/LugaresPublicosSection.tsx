@@ -80,9 +80,9 @@ export const LugaresPublicosSection = () => {
     setEditingLugar(undefined);
   };
 
-  const buscarImagensAusentes = async () => {
+  const buscarEAtualizarImagens = async () => {
     if (buscandoImagens) return;
-    if (!window.confirm('Buscar imagens no Google Maps pode consumir a cota da API. Deseja continuar?')) return;
+    if (!window.confirm('Validar e corrigir imagens quebradas pelo Google Maps pode consumir a cota da API. Deseja continuar?')) return;
 
     setBuscandoImagens(true);
     setProgressoImagens('Preparando busca...');
@@ -129,9 +129,9 @@ export const LugaresPublicosSection = () => {
         </div>
         
         <div className="flex flex-col gap-2 sm:flex-row">
-          <Button variant="outline" onClick={() => void buscarImagensAusentes()} disabled={buscandoImagens}>
+          <Button variant="outline" onClick={() => void buscarEAtualizarImagens()} disabled={buscandoImagens}>
             {buscandoImagens ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Images className="mr-2 h-4 w-4" />}
-            {buscandoImagens ? 'Buscando imagens...' : 'Buscar imagens ausentes'}
+            {buscandoImagens ? 'Validando imagens...' : 'Validar e corrigir imagens'}
           </Button>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
