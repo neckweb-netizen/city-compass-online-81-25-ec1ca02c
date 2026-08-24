@@ -22,7 +22,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { usePlanoLimites } from '@/hooks/usePlanoLimites';
 import { cn } from '@/lib/utils';
-import { uploadParaR2 } from '@/lib/r2';
+import { uploadMedia } from '@/lib/media-upload';
 
 const eventoSchema = z.object({
   titulo: z.string().min(3, 'Título deve ter pelo menos 3 caracteres'),
@@ -105,13 +105,13 @@ export const EventoForm = ({ onSuccess, empresaId }: EventoFormProps) => {
 
     try {
       setUploading(true);
-      const url = await uploadParaR2(file, 'eventos');
+      const url = await uploadMedia(file, 'eventos');
       onChange(url);
       toast({ title: 'Imagem enviada com sucesso!' });
     } catch (error: any) {
       toast({
         title: 'Erro no envio da imagem',
-        description: error.message || 'Falha ao enviar imagem para o Cloudflare R2.',
+        description: error.message || 'Falha ao enviar a imagem.',
         variant: 'destructive',
       });
     } finally {
@@ -426,7 +426,7 @@ export const EventoForm = ({ onSuccess, empresaId }: EventoFormProps) => {
           name="imagem_banner"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Imagem do Evento (Cloudflare R2)</FormLabel>
+              <FormLabel>Imagem do evento</FormLabel>
               <FormControl>
                 <div className="space-y-4">
                   {field.value ? (
@@ -451,7 +451,7 @@ export const EventoForm = ({ onSuccess, empresaId }: EventoFormProps) => {
                           <>
                             <Upload className="w-8 h-8 mb-2 text-muted-foreground" />
                             <p className="text-sm text-muted-foreground">Clique para enviar a imagem do evento</p>
-                            <p className="text-xs text-muted-foreground">Compressão automática para WebP via R2</p>
+                            <p className="text-xs text-muted-foreground">Imagem otimizada automaticamente para carregamento rápido</p>
                           </>
                         )}
                       </div>

@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Banner } from '@/hooks/useAdminBanners';
-import { uploadParaR2 } from '@/lib/r2';
+import { uploadMedia } from '@/lib/media-upload';
 import { Upload, X, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { BANNER_SECTION_OPTIONS, BANNER_SECTION_VALUES } from '@/lib/bannerSections';
@@ -87,14 +87,14 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
 
     try {
       setUploading(true);
-      const url = await uploadParaR2(file, 'banners');
+      const url = await uploadMedia(file, 'banners');
       setValue('imagem_url', url);
       trigger('imagem_url');
-      toast({ title: 'Mídia enviada para o R2 com sucesso!' });
+      toast({ title: 'Mídia enviada com sucesso!' });
     } catch (error: any) {
       toast({
         title: 'Erro no envio da mídia',
-        description: error.message || 'Falha ao enviar arquivo para o Cloudflare R2.',
+        description: error.message || 'Falha ao enviar o arquivo.',
         variant: 'destructive',
       });
     } finally {
@@ -180,7 +180,7 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
 
           {tipoMidia === 'imagem' && (
             <div>
-              <Label>Imagem do Banner * (Cloudflare R2)</Label>
+              <Label>Imagem do banner *</Label>
               <div className="mt-2">
                 {imagemUrl ? (
                   <div className="relative w-full h-48 rounded-lg overflow-hidden border">
@@ -238,7 +238,7 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
                 />
                 
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">ou faça upload direto no R2:</span>
+                  <span className="text-xs text-muted-foreground">ou envie uma imagem do dispositivo:</span>
                   <label className="cursor-pointer inline-flex items-center gap-1 text-xs bg-secondary hover:bg-secondary/80 px-3 py-1.5 rounded-md font-medium">
                     {uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
                     Upload Vídeo

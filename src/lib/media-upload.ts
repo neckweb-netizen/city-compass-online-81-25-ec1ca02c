@@ -19,16 +19,16 @@ async function otimizarImagem(file: File): Promise<File> {
       type: 'image/webp',
     });
   } catch (error) {
-    console.warn('[FRONTEND R2] Erro na compressão, enviando arquivo original:', error);
+    console.warn('[UPLOAD] Erro na otimização, enviando arquivo original:', error);
     return file;
   }
 }
 
-export async function uploadParaR2(file: File, subpasta: string = 'imagens/geral'): Promise<string> {
-  console.log('[FRONTEND R2] Iniciando processo de upload...');
+export async function uploadMedia(file: File, subpasta: string = 'imagens/geral'): Promise<string> {
+  console.log('[UPLOAD] Iniciando envio...');
   try {
     const arquivoPronto = await otimizarImagem(file);
-    console.log('[FRONTEND R2] Arquivo preparado:', {
+    console.log('[UPLOAD] Arquivo preparado:', {
       nome: arquivoPronto.name,
       tamanhoKB: (arquivoPronto.size / 1024).toFixed(2),
       tipo: arquivoPronto.type,
@@ -47,7 +47,7 @@ export async function uploadParaR2(file: File, subpasta: string = 'imagens/geral
     const token = session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY;
 
     const endpoint = `${supabaseUrl.replace(/\/$/, '')}/functions/v1/upload-r2`;
-    console.log('[FRONTEND R2] Disparando POST para:', endpoint);
+    console.log('[UPLOAD] Enviando arquivo...');
 
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -57,14 +57,14 @@ export async function uploadParaR2(file: File, subpasta: string = 'imagens/geral
       body: formData,
     });
 
-    console.log('[FRONTEND R2] Resposta recebida:', {
+    console.log('[UPLOAD] Resposta recebida:', {
       status: response.status,
       statusText: response.statusText,
       ok: response.ok,
     });
 
     const responseText = await response.text();
-    console.log('[FRONTEND R2] Corpo da resposta:', responseText);
+    console.log('[UPLOAD] Resposta processada.');
 
     let data;
     try {
@@ -77,10 +77,10 @@ export async function uploadParaR2(file: File, subpasta: string = 'imagens/geral
       throw new Error(data.error || data.message || `Erro no servidor (Status ${response.status})`);
     }
 
-    console.log('[FRONTEND R2] Sucesso! URL devolvida:', data.url);
+    console.log('[UPLOAD] Arquivo enviado com sucesso.');
     return data.url;
   } catch (error: any) {
-    console.error('[FRONTEND R2] Falha no uploadParaR2:', error);
+    console.error('[UPLOAD] Falha no envio:', error);
     throw new Error(error.message || 'Falha de comunicação ao enviar o arquivo.');
   }
 }

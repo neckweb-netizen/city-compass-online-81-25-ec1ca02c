@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { uploadParaR2 } from '@/lib/r2';
+import { uploadMedia } from '@/lib/media-upload';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -111,7 +111,7 @@ export const AdminAvisos = () => {
     if (file.size > 8 * 1024 * 1024) return toast.error('A imagem deve ter no máximo 8 MB.');
     setUploading(kind);
     try {
-      const url = await uploadParaR2(file, `notifications/${kind === 'image' ? 'images' : 'icons'}`);
+      const url = await uploadMedia(file, `notifications/${kind === 'image' ? 'images' : 'icons'}`);
       change(kind === 'image' ? 'imageUrl' : 'iconUrl', url);
       toast.success(kind === 'image' ? 'Imagem adicionada.' : 'Ícone adicionado.');
     } catch (error) {
