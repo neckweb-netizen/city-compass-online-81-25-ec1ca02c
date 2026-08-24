@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Edit, Trash2, MapPin, Eye, EyeOff } from 'lucide-react';
+import { Plus, Edit, Trash2, MapPin, Eye, EyeOff, Images, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -32,6 +32,8 @@ import { LugarPublicoForm } from '@/components/admin/forms/LugarPublicoForm';
 import { useLugaresPublicosAdmin, useDeleteLugarPublico, type LugarPublico } from '@/hooks/useLugaresPublicos';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const tipoLabels: Record<string, string> = {
   'praca': 'Praça',
@@ -52,8 +54,10 @@ export const LugaresPublicosSection = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingLugar, setEditingLugar] = useState<LugarPublico | undefined>();
+  const [buscandoImagens, setBuscandoImagens] = useState(false);
+  const [progressoImagens, setProgressoImagens] = useState('');
 
-  const { data: lugares, isLoading } = useLugaresPublicosAdmin();
+  const { data: lugares, isLoading, refetch } = useLugaresPublicosAdmin();
   const deleteMutation = useDeleteLugarPublico();
 
   const filteredLugares = lugares?.filter(lugar =>
@@ -76,9 +80,47 @@ export const LugaresPublicosSection = () => {
     setEditingLugar(undefined);
   };
 
+  const buscarImagensAusentes = async () => {
+    if (buscandoImagens) return;
+    if (!window.confirm('Buscar imagens no Google Maps pode consumir a cota da API. Deseja continuar?')) return;
+
+    setBuscandoImagens(true);
+    setProgressoImagens('Preparando busca...');
+    let cursor: string | undefined;
+    let verificadas = 0;
+    let atualizadas = 0;
+    let ignoradas = 0;
+
+    try {
+      do {
+        const { data, error } = await supabase.functions.invoke<any>('google-places-admin', {
+          body: { action: 'bulk-refresh-public-places', cursor },
+        });
+        if (error) throw error;
+        if (!data || data.status !== 'OK') throw new Error(data?.error || 'A busca não foi concluída.');
+
+        verificadas += data.processed || 0;
+        atualizadas += data.updated?.length || 0;
+        ignoradas += data.skipped?.length || 0;
+        cursor = data.nextCursor || undefined;
+        setProgressoImagens(`${verificadas} lugares verificados • ${atualizadas} imagens encontradas`);
+
+        if (!data.hasMore) break;
+      } while (cursor);
+
+      await refetch();
+      toast.success(`Busca concluída: ${atualizadas} imagens adicionadas e ${ignoradas} lugares preservados ou sem foto.`);
+    } catch (error: any) {
+      console.error('Erro buscando imagens dos lugares:', error);
+      toast.error(error?.message || 'Não foi possível buscar as imagens.');
+    } finally {
+      setBuscandoImagens(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold text-foreground">Lugares Públicos</h2>
           <p className="text-muted-foreground">
@@ -86,6 +128,11 @@ export const LugaresPublicosSection = () => {
           </p>
         </div>
         
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button variant="outline" onClick={() => void buscarImagensAusentes()} disabled={buscandoImagens}>
+            {buscandoImagens ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Images className="mr-2 h-4 w-4" />}
+            {buscandoImagens ? 'Buscando imagens...' : 'Buscar imagens ausentes'}
+          </Button>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => setEditingLugar(undefined)}>
@@ -105,7 +152,10 @@ export const LugaresPublicosSection = () => {
             />
           </DialogContent>
         </Dialog>
+        </div>
       </div>
+
+      {progressoImagens && <p className="text-sm font-medium text-primary">{progressoImagens}</p>}
 
       <div className="flex items-center space-x-2">
         <Input

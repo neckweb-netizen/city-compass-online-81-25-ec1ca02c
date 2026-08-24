@@ -45,7 +45,12 @@ type BulkRefreshBody = {
   cursor?: string;
 };
 
-type RequestBody = SearchBody | ImportBody | BulkRefreshBody;
+type BulkRefreshPublicPlacesBody = {
+  action: "bulk-refresh-public-places";
+  cursor?: string;
+};
+
+type RequestBody = SearchBody | ImportBody | BulkRefreshBody | BulkRefreshPublicPlacesBody;
 
 const resolveGooglePhotoUrl = async (photoReference: unknown, googleApiKey: string) => {
   const reference = String(photoReference || "").trim();
@@ -197,6 +202,89 @@ Deno.serve(async (req: Request) => {
         .filter((item: any) => item.place_id && item.name);
 
       return json({ status: googleData.status, results });
+    }
+
+    if (body.action === "bulk-refresh-public-places") {
+      const batchSize = 5;
+      let placesQuery = admin
+        .from("lugares_publicos")
+        .select("id, nome, endereco, imagem_url")
+        .eq("ativo", true)
+        .order("id", { ascending: true })
+        .limit(batchSize);
+
+      if (body.cursor) placesQuery = placesQuery.gt("id", body.cursor);
+
+      const { data: places, error: placesError } = await placesQuery;
+      if (placesError) return json({ status: "ERROR", error: placesError.message }, 500);
+
+      const updated: Array<{ id: string; nome: string; photo: boolean }> = [];
+      const skipped: Array<{ id: string; nome: string; reason: string }> = [];
+
+      for (const place of places || []) {
+        if (String(place.imagem_url || "").trim()) {
+          skipped.push({ id: place.id, nome: place.nome, reason: "Já possui imagem" });
+          continue;
+        }
+
+        try {
+          const searchParams = new URLSearchParams({
+            query: `${place.nome} ${place.endereco || ""} Santo Antônio de Jesus BA`,
+            location: GOOGLE_CITY_CENTER,
+            radius: String(GOOGLE_RADIUS_METERS),
+            key: googleApiKey,
+            language: "pt-BR",
+            region: "br",
+          });
+          const searchResponse = await fetch(`https://maps.googleapis.com/maps/api/place/textsearch/json?${searchParams.toString()}`);
+          const searchData = await searchResponse.json();
+          const candidate = searchData?.results?.[0];
+          const normalize = (value: string) => slugify(value).replace(/-/g, "");
+          const expected = normalize(place.nome);
+          const found = normalize(String(candidate?.name || ""));
+
+          if (!candidate?.place_id || (!found.includes(expected) && !expected.includes(found))) {
+            skipped.push({ id: place.id, nome: place.nome, reason: "Correspondência segura não encontrada" });
+            continue;
+          }
+
+          const detailsParams = new URLSearchParams({
+            place_id: candidate.place_id,
+            fields: "place_id,name,formatted_address,photos",
+            key: googleApiKey,
+            language: "pt-BR",
+          });
+          const detailsResponse = await fetch(`https://maps.googleapis.com/maps/api/place/details/json?${detailsParams.toString()}`);
+          const detailsData = await detailsResponse.json();
+          const details = detailsData?.result;
+          const imageUrl = await resolveGooglePhotoUrl(details?.photos?.[0]?.photo_reference, googleApiKey);
+
+          if (detailsData?.status !== "OK" || !imageUrl) {
+            skipped.push({ id: place.id, nome: place.nome, reason: "Foto não disponível no Google Maps" });
+            continue;
+          }
+
+          const { error: updateError } = await admin
+            .from("lugares_publicos")
+            .update({ imagem_url: imageUrl })
+            .eq("id", place.id);
+          if (updateError) throw updateError;
+
+          updated.push({ id: place.id, nome: place.nome, photo: true });
+        } catch (error) {
+          skipped.push({ id: place.id, nome: place.nome, reason: error instanceof Error ? error.message : "Falha inesperada" });
+        }
+      }
+
+      const lastPlace = places?.[places.length - 1];
+      return json({
+        status: "OK",
+        updated,
+        skipped,
+        processed: places?.length || 0,
+        nextCursor: lastPlace?.id || null,
+        hasMore: (places?.length || 0) === batchSize,
+      });
     }
 
     if (body.action === "bulk-refresh") {
