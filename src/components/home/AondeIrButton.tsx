@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MapPin, Clock, Phone, Navigation } from 'lucide-react';
+import { MapPin, Clock, Phone, Navigation, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -11,6 +11,7 @@ import {
 import { useLugaresPublicos } from '@/hooks/useLugaresPublicos';
 import { useCidadePadrao } from '@/hooks/useCidadePadrao';
 import { Skeleton } from '@/components/ui/skeleton';
+import { getOptimizedImageUrl } from '@/lib/imageOptimization';
 
 const tipoLabels: Record<string, string> = {
   'praca': 'Praça',
@@ -25,6 +26,38 @@ const tipoLabels: Record<string, string> = {
   'hospital': 'Hospital',
   'escola': 'Escola',
   'museu': 'Museu'
+};
+
+const LugarImage = ({ src, nome }: { src?: string | null; nome: string }) => {
+  const [imageFailed, setImageFailed] = useState(false);
+  const optimizedImageUrl = getOptimizedImageUrl(src, 480);
+
+  if (!optimizedImageUrl || imageFailed) {
+    return (
+      <div className="flex h-28 w-full shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-muted/50 to-muted sm:h-24 sm:w-28">
+        <div className="text-center">
+          <Camera className="mx-auto mb-1 h-7 w-7 text-muted-foreground" />
+          <span className="text-[11px] text-muted-foreground">Sem imagem</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-28 w-full shrink-0 overflow-hidden rounded-xl bg-muted sm:h-24 sm:w-28">
+      <img
+        src={optimizedImageUrl}
+        alt={nome}
+        className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+        loading="lazy"
+        decoding="async"
+        width={480}
+        height={320}
+        sizes="(max-width: 640px) calc(100vw - 80px), 112px"
+        onError={() => setImageFailed(true)}
+      />
+    </div>
+  );
 };
 
 export const AondeIrButton = () => {
@@ -88,7 +121,7 @@ export const AondeIrButton = () => {
                     lugar.destaque ? 'border-primary/30 bg-primary/5' : 'border-border'
                   }`}
                 >
-                  <div className="flex items-start justify-between">
+                  <div className="flex flex-col-reverse items-stretch gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <h3 className="font-semibold text-foreground">{lugar.nome}</h3>
@@ -148,15 +181,7 @@ export const AondeIrButton = () => {
                        )}
                     </div>
                     
-                    {lugar.imagem_url && (
-                      <div className="ml-4">
-                        <img 
-                          src={lugar.imagem_url} 
-                          alt={lugar.nome}
-                          className="w-20 h-20 object-cover rounded-lg"
-                        />
-                      </div>
-                    )}
+                    <LugarImage src={lugar.imagem_url} nome={lugar.nome} />
                   </div>
                 </div>
               ))}
