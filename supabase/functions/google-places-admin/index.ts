@@ -77,6 +77,8 @@ const resolveGooglePhotoUrl = async (photoReference: unknown, googleApiKey: stri
 const hasWorkingImage = async (imageUrl: unknown) => {
   const url = String(imageUrl || "").trim();
   if (!url || !url.startsWith("https://")) return false;
+  // Links antigos deste endpoint podem responder no servidor, mas falhar no navegador.
+  if (url.includes("lh3.googleusercontent.com/gps-cs-s/")) return false;
 
   try {
     const response = await fetch(url, {
