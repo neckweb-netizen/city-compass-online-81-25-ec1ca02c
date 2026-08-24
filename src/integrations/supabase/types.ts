@@ -1363,6 +1363,47 @@ export type Database = {
         }
         Relationships: []
       }
+      evento_inscricoes: {
+        Row: {
+          acompanhantes: number
+          atualizado_em: string
+          criado_em: string
+          evento_id: string
+          id: string
+          nome: string
+          status: string
+          usuario_id: string
+        }
+        Insert: {
+          acompanhantes?: number
+          atualizado_em?: string
+          criado_em?: string
+          evento_id: string
+          id?: string
+          nome: string
+          status?: string
+          usuario_id: string
+        }
+        Update: {
+          acompanhantes?: number
+          atualizado_em?: string
+          criado_em?: string
+          evento_id?: string
+          id?: string
+          nome?: string
+          status?: string
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evento_inscricoes_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "eventos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       eventos: {
         Row: {
           aprovado_por: string | null
@@ -1383,8 +1424,14 @@ export type Database = {
           id: string
           imagem_banner: string | null
           imagem_url: string | null
+          inscricoes_encerram_em: string | null
+          fila_espera_ativa: boolean
+          lista_exibir_nomes: boolean
+          lista_participantes_ativa: boolean
+          limite_acompanhantes: number
           limite_participantes: number | null
           local: string | null
+          permitir_acompanhantes: boolean
           participantes_confirmados: number | null
           preco: number | null
           status_aprovacao:
@@ -1411,8 +1458,14 @@ export type Database = {
           id?: string
           imagem_banner?: string | null
           imagem_url?: string | null
+          inscricoes_encerram_em?: string | null
+          fila_espera_ativa?: boolean
+          lista_exibir_nomes?: boolean
+          lista_participantes_ativa?: boolean
+          limite_acompanhantes?: number
           limite_participantes?: number | null
           local?: string | null
+          permitir_acompanhantes?: boolean
           participantes_confirmados?: number | null
           preco?: number | null
           status_aprovacao?:
@@ -1439,8 +1492,14 @@ export type Database = {
           id?: string
           imagem_banner?: string | null
           imagem_url?: string | null
+          inscricoes_encerram_em?: string | null
+          fila_espera_ativa?: boolean
+          lista_exibir_nomes?: boolean
+          lista_participantes_ativa?: boolean
+          limite_acompanhantes?: number
           limite_participantes?: number | null
           local?: string | null
+          permitir_acompanhantes?: boolean
           participantes_confirmados?: number | null
           preco?: number | null
           status_aprovacao?:

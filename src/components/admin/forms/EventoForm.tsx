@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, Plus, Calendar, Clock, Upload, X, Loader2 } from 'lucide-react';
+import { CalendarIcon, Plus, Calendar, Clock, Upload, X, Loader2, Users, UserPlus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useCategorias } from '@/hooks/useCategorias';
@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Switch } from '@/components/ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { usePlanoLimites } from '@/hooks/usePlanoLimites';
@@ -36,6 +37,20 @@ const eventoSchema = z.object({
   categoria_id: z.string().uuid('Selecione uma categoria').optional(),
   empresa_id: z.string().uuid('Selecione uma empresa').optional(),
   imagem_banner: z.string().optional(),
+  lista_participantes_ativa: z.boolean(),
+  lista_exibir_nomes: z.boolean(),
+  limite_participantes: z.coerce.number().int().min(1).max(10000),
+  fila_espera_ativa: z.boolean(),
+  permitir_acompanhantes: z.boolean(),
+  limite_acompanhantes: z.coerce.number().int().min(0).max(20),
+  inscricoes_encerram_em: z.string().optional(),
+}).superRefine((data, ctx) => {
+  if (data.lista_participantes_ativa && data.limite_participantes < 1) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['limite_participantes'], message: 'Informe pelo menos uma vaga.' });
+  }
+  if (data.lista_participantes_ativa && data.permitir_acompanhantes && data.limite_acompanhantes < 1) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['limite_acompanhantes'], message: 'Informe pelo menos um acompanhante.' });
+  }
 });
 
 type EventoFormData = z.infer<typeof eventoSchema>;
@@ -67,6 +82,13 @@ export const EventoForm = ({ onSuccess, empresaId }: EventoFormProps) => {
       categoria_id: '',
       empresa_id: '',
       imagem_banner: '',
+      lista_participantes_ativa: false,
+      lista_exibir_nomes: false,
+      limite_participantes: 100,
+      fila_espera_ativa: true,
+      permitir_acompanhantes: false,
+      limite_acompanhantes: 1,
+      inscricoes_encerram_em: '',
     },
   });
 
@@ -136,6 +158,15 @@ export const EventoForm = ({ onSuccess, empresaId }: EventoFormProps) => {
         imagem_banner: data.imagem_banner || null,
         cidade_id: cidadeId,
         hora_fim: data.horario_fim || null,
+        lista_participantes_ativa: data.lista_participantes_ativa,
+        lista_exibir_nomes: data.lista_participantes_ativa && data.lista_exibir_nomes,
+        limite_participantes: data.lista_participantes_ativa ? data.limite_participantes : null,
+        fila_espera_ativa: data.lista_participantes_ativa && data.fila_espera_ativa,
+        permitir_acompanhantes: data.lista_participantes_ativa && data.permitir_acompanhantes,
+        limite_acompanhantes: data.lista_participantes_ativa && data.permitir_acompanhantes ? data.limite_acompanhantes : 0,
+        inscricoes_encerram_em: data.lista_participantes_ativa && data.inscricoes_encerram_em
+          ? new Date(data.inscricoes_encerram_em).toISOString()
+          : null,
       };
 
       const { error } = await supabase
@@ -341,6 +372,54 @@ export const EventoForm = ({ onSuccess, empresaId }: EventoFormProps) => {
             </FormItem>
           )}
         />
+
+        <div className="space-y-4 rounded-2xl border border-primary/20 bg-primary/5 p-4 sm:p-5">
+          <div className="flex items-start gap-3">
+            <div className="rounded-xl bg-primary/10 p-2"><Users className="h-5 w-5 text-primary" /></div>
+            <div>
+              <h3 className="font-semibold">Lista de participantes</h3>
+              <p className="text-sm text-muted-foreground">Controle inscrições, vagas e fila de espera diretamente pelo evento.</p>
+            </div>
+          </div>
+
+          <FormField control={form.control} name="lista_participantes_ativa" render={({ field }) => (
+            <FormItem className="flex items-center justify-between gap-4 rounded-xl border bg-background p-4">
+              <div><FormLabel>Ativar lista de nomes</FormLabel><p className="text-xs text-muted-foreground">Os usuários poderão confirmar presença informando o nome.</p></div>
+              <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+            </FormItem>
+          )} />
+
+          {form.watch('lista_participantes_ativa') && (
+            <div className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField control={form.control} name="limite_participantes" render={({ field }) => (
+                  <FormItem><FormLabel>Limite total de pessoas</FormLabel><FormControl><Input type="number" min="1" max="10000" {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={form.control} name="inscricoes_encerram_em" render={({ field }) => (
+                  <FormItem><FormLabel>Encerrar inscrições em</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><p className="text-xs text-muted-foreground">Opcional. Sem data, encerra quando o evento começar.</p><FormMessage /></FormItem>
+                )} />
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <FormField control={form.control} name="lista_exibir_nomes" render={({ field }) => (
+                  <FormItem className="flex items-center justify-between gap-3 rounded-xl border bg-background p-3"><div><FormLabel>Lista pública</FormLabel><p className="text-xs text-muted-foreground">Exibe os nomes confirmados na página.</p></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
+                )} />
+                <FormField control={form.control} name="fila_espera_ativa" render={({ field }) => (
+                  <FormItem className="flex items-center justify-between gap-3 rounded-xl border bg-background p-3"><div><FormLabel>Fila de espera</FormLabel><p className="text-xs text-muted-foreground">Aceita interessados após lotar.</p></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
+                )} />
+              </div>
+
+              <FormField control={form.control} name="permitir_acompanhantes" render={({ field }) => (
+                <FormItem className="flex items-center justify-between gap-3 rounded-xl border bg-background p-3"><div className="flex items-start gap-2"><UserPlus className="mt-0.5 h-4 w-4 text-primary" /><div><FormLabel>Permitir acompanhantes</FormLabel><p className="text-xs text-muted-foreground">O limite considera titular e acompanhantes.</p></div></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
+              )} />
+              {form.watch('permitir_acompanhantes') && (
+                <FormField control={form.control} name="limite_acompanhantes" render={({ field }) => (
+                  <FormItem><FormLabel>Máximo de acompanhantes por inscrição</FormLabel><FormControl><Input type="number" min="1" max="20" {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+              )}
+            </div>
+          )}
+        </div>
 
         <FormField
           control={form.control}

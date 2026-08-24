@@ -15,6 +15,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { EventoGuestList } from './EventoGuestList';
 
 interface EventoDetailContentProps {
   eventoId?: string;
@@ -270,6 +271,7 @@ export const EventoDetailContent = ({ eventoId }: EventoDetailContentProps) => {
 
           {/* Sidebar Redesenhada */}
           <div className="space-y-8">
+            <EventoGuestList evento={evento} />
             {/* Date Card */}
             <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl p-6 border-0 sticky top-6">
               <div className="flex items-center gap-3 mb-6">
