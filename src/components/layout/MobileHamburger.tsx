@@ -95,6 +95,13 @@ export const MobileHamburger = () => {
       categoria: 'principal'
     },
     {
+      id: 'entre-nos',
+      nome_item: 'Entre Nós',
+      icone: 'HeartHandshake',
+      rota: '/entre-nos',
+      categoria: 'principal'
+    },
+    {
       id: 'ferramentas',
       nome_item: 'Ferramentas',
       icone: 'Wrench',

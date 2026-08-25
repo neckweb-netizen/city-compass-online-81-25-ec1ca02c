@@ -55,6 +55,7 @@ export const AdminSidebar = ({ activeSection, onSectionChange }: AdminSidebarPro
   const [pendentesLocais, setPendentesLocais] = useState(0);
   const [pendentesVozDoPovo, setPendentesVozDoPovo] = useState(0);
   const [pendentesAchadosPerdidos, setPendentesAchadosPerdidos] = useState(0);
+  const [pendentesEntreNos, setPendentesEntreNos] = useState(0);
 
   // Busca as contagens de itens pendentes direto no Supabase
   const buscarContagensPendentes = async () => {
@@ -80,6 +81,12 @@ export const AdminSidebar = ({ activeSection, onSectionChange }: AdminSidebarPro
         .eq('status', 'pendente');
       if (!errorAchados && countAchados !== null) setPendentesAchadosPerdidos(countAchados);
 
+      const [{ count: countEntreNos }, { count: countDenuncias }] = await Promise.all([
+        supabase.from('entre_nos_postagens' as any).select('*', { count: 'exact', head: true }).eq('status', 'pendente'),
+        supabase.from('entre_nos_denuncias' as any).select('*', { count: 'exact', head: true }).eq('status', 'aberta')
+      ]);
+      setPendentesEntreNos((countEntreNos || 0) + (countDenuncias || 0));
+
     } catch (error) {
       console.error('Erro ao buscar contadores de notificações do admin:', error);
     }
@@ -103,11 +110,16 @@ export const AdminSidebar = ({ activeSection, onSectionChange }: AdminSidebarPro
       .channel('rt-admin-achados')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'achados_perdidos' }, () => buscarContagensPendentes())
       .subscribe();
+    const canalEntreNos = supabase.channel('rt-admin-entre-nos')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'entre_nos_postagens' }, () => buscarContagensPendentes())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'entre_nos_denuncias' }, () => buscarContagensPendentes())
+      .subscribe();
 
     return () => {
       supabase.removeChannel(canalLocais);
       supabase.removeChannel(canalVoz);
       supabase.removeChannel(canalAchados);
+      supabase.removeChannel(canalEntreNos);
     };
   }, []);
 
@@ -145,6 +157,7 @@ export const AdminSidebar = ({ activeSection, onSectionChange }: AdminSidebarPro
         { icon: MessageCircle, label: 'Canal Informativo', path: '/admin/canal-informativo', section: 'canal-informativo', badge: 0 },
         { icon: Megaphone, label: 'Voz do Povo', path: '/admin/reclamacoes', section: 'reclamacoes', badge: !!pendentesVozDoPovo ? pendentesVozDoPovo : 0 },
         { icon: MessagesSquare, label: 'Comentários', path: '/admin/comentarios-problema', section: 'comentarios-problema', badge: 0 },
+        { icon: MessagesSquare, label: 'Entre Nós', path: '/admin/entre-nos', section: 'entre-nos', badge: pendentesEntreNos },
         { icon: Search, label: 'Achados e Perdidos', path: '/admin/achados-e-perdidos', section: 'achados-e-perdidos', badge: !!pendentesAchadosPerdidos ? pendentesAchadosPerdidos : 0 },
         { icon: Image, label: 'Banners', path: '/admin/banners', section: 'banners', badge: 0 },
         { icon: BookOpen, label: 'Stories', path: '/admin/stories', section: 'stories', badge: 0 },

@@ -105,6 +105,13 @@ export const DesktopSidebar = ({
       categoria: 'principal'
     },
     {
+      id: 'entre-nos',
+      nome_item: 'Entre Nós',
+      icone: 'HeartHandshake',
+      rota: '/entre-nos',
+      categoria: 'principal'
+    },
+    {
       id: 'buscar',
       nome_item: 'Buscar',
       icone: 'Search',
