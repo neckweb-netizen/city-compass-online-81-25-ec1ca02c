@@ -132,7 +132,7 @@ export const PWAInstallPrompt: React.FC = () => {
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-md overflow-hidden flex-shrink-0 p-1">
               <img 
-                src="/Logo.png" 
+                src="/icon-192.png"
                 alt="Saj Tem Logo" 
                 className="w-full h-full object-contain"
                 onError={(e) => {
@@ -191,7 +191,7 @@ export const PWAInstallPrompt: React.FC = () => {
                 <div className="mb-4">
                   <div className="w-16 h-16 mx-auto bg-white rounded-2xl flex items-center justify-center shadow-xl overflow-hidden p-2">
                     <img 
-                      src="/Logo.png" 
+                      src="/icon-192.png"
                       alt="Saj Tem Logo" 
                       className="w-full h-full object-contain"
                       onError={(e) => {

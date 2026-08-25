@@ -199,7 +199,7 @@ export const MobileHamburger = () => {
           <div className="p-4 border-b">
             <div className="flex items-center justify-center">
               <img 
-                src="/Logo.png" 
+                src="/icon-192.png"
                 alt="Saj Tem Logo" 
                 className="h-12 w-auto object-contain" 
                 width="48" 

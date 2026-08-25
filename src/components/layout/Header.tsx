@@ -95,7 +95,7 @@ export const Header = () => {
                 <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-lg overflow-hidden flex-shrink-0">
                   {/* Caminho atualizado apontando para o arquivo renomeado da pasta public */}
                   <img 
-                    src="/Logo.png" 
+                    src="/icon-192.png"
                     alt="Saj Tem Logo" 
                     className="w-full h-full object-contain"
                     loading="eager"

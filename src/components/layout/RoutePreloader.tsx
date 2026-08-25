@@ -6,6 +6,9 @@ export const RoutePreloader = () => {
   const location = useLocation();
 
   useEffect(() => {
+    const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+    if (connection?.saveData || ['slow-2g', '2g'].includes(connection?.effectiveType || '')) return;
+
     // Preload routes based on current location
     const preloadRoutes = () => {
       const currentPath = location.pathname;
@@ -31,16 +34,20 @@ export const RoutePreloader = () => {
 
       // Preload each route
       routesToPreload.forEach(route => {
+        if (document.head.querySelector(`link[data-route-prefetch="${route}"]`)) return;
         const link = document.createElement('link');
         link.rel = 'prefetch';
         link.href = route;
+        link.dataset.routePrefetch = route;
         document.head.appendChild(link);
       });
     };
 
-    // Delay to not interfere with current page load
-    const timer = setTimeout(preloadRoutes, 500);
-    return () => clearTimeout(timer);
+    const timer = window.setTimeout(() => {
+      if ('requestIdleCallback' in window) window.requestIdleCallback(preloadRoutes, { timeout: 2500 });
+      else preloadRoutes();
+    }, 1500);
+    return () => window.clearTimeout(timer);
   }, [location.pathname]);
 
   return null; // This component doesn't render anything

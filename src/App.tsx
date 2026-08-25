@@ -628,7 +628,7 @@ const App = () => {
         <header className="w-full max-w-7xl mx-auto px-6 py-6 flex items-center justify-between relative z-10">
           <div className="flex items-center gap-2.5">
             <img 
-              src="/Logo.png" 
+              src="/icon-192.png"
               alt="Saj Tem Logo" 
               className="h-9 w-auto object-contain max-w-[180px]" 
               onError={(e) => {

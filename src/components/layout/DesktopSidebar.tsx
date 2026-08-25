@@ -195,7 +195,7 @@ export const DesktopSidebar = ({
         <div className="p-4 border-b">
           <div className="flex items-center justify-center">
             <img 
-              src="/Logo.png" 
+              src="/icon-192.png"
               alt="Saj Tem Logo" 
               className={cn("transition-all duration-300 object-contain", isOpen ? "h-12 w-auto" : "h-8 w-8")} 
               width={isOpen ? 48 : 32} 
