@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,10 +12,16 @@ import {
   Building2, 
   Clock, 
   ArrowLeft,
-  ExternalLink
+  ExternalLink,
+  CalendarPlus,
+  Ticket,
+  Repeat2,
+  Accessibility,
+  Target
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { EventoGuestList } from './EventoGuestList';
+import { EventoRating } from './EventoRating';
 
 interface EventoDetailContentProps {
   eventoId?: string;
@@ -49,6 +55,31 @@ export const EventoDetailContent = ({ eventoId }: EventoDetailContentProps) => {
     enabled: !!eventoId,
   });
 
+  const { data: relacionados = [] } = useQuery({
+    queryKey: ['eventos-relacionados', evento?.id, evento?.categoria_id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('eventos').select('id, titulo, data_inicio, imagem_banner, gratuito, preco').eq('ativo', true).eq('status_aprovacao', 'aprovado').eq('categoria_id', evento!.categoria_id!).neq('id', evento!.id).gte('data_inicio', new Date().toISOString()).order('data_inicio').limit(3);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!evento?.categoria_id,
+  });
+
+  useEffect(() => {
+    if (!evento) return;
+    document.title = `${evento.titulo} | Saj Tem`;
+    const atualizarMeta = (property: string, content: string) => {
+      let tag = document.querySelector(`meta[property="${property}"]`) as HTMLMetaElement | null;
+      if (!tag) { tag = document.createElement('meta'); tag.setAttribute('property', property); document.head.appendChild(tag); }
+      tag.content = content;
+    };
+    atualizarMeta('og:title', evento.titulo);
+    atualizarMeta('og:description', evento.descricao || `Confira este evento no Saj Tem`);
+    atualizarMeta('og:url', window.location.href);
+    if (evento.imagem_banner) atualizarMeta('og:image', evento.imagem_banner);
+    return () => { document.title = 'Saj Tem'; };
+  }, [evento]);
+
 
   const formatDateTime = (dateTime: string) => {
     return new Date(dateTime).toLocaleDateString('pt-BR', {
@@ -66,6 +97,13 @@ export const EventoDetailContent = ({ eventoId }: EventoDetailContentProps) => {
       month: 'long',
       year: 'numeric'
     });
+  };
+
+  const adicionarAgenda = () => {
+    if (!evento) return;
+    const limpar = (valor: string) => new Date(valor).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+    const params = new URLSearchParams({ action: 'TEMPLATE', text: evento.titulo, dates: `${limpar(evento.data_inicio)}/${limpar(evento.data_fim || evento.data_inicio)}`, details: evento.descricao || '', location: [evento.local, evento.endereco].filter(Boolean).join(' - ') });
+    window.open(`https://calendar.google.com/calendar/render?${params.toString()}`, '_blank', 'noopener,noreferrer');
   };
 
   if (isLoading) {
@@ -267,11 +305,19 @@ export const EventoDetailContent = ({ eventoId }: EventoDetailContentProps) => {
                 </div>
               </div>
             )}
+
+            <EventoRating eventoId={evento.id} dataInicio={evento.data_inicio} ativo={evento.avaliacoes_ativas} />
+
+            {relacionados.length > 0 && <div className="rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-800"><h2 className="mb-5 text-2xl font-bold">Eventos que você também pode gostar</h2><div className="grid gap-4 sm:grid-cols-3">{relacionados.map((item) => <button key={item.id} onClick={() => navigate(`/evento/${item.id}`)} className="overflow-hidden rounded-2xl border text-left transition hover:-translate-y-1 hover:shadow-lg">{item.imagem_banner && <img src={item.imagem_banner} alt="" className="aspect-video w-full object-cover" />}<div className="p-3"><p className="line-clamp-2 font-semibold">{item.titulo}</p><p className="mt-1 text-xs text-muted-foreground">{formatDateTime(item.data_inicio)}</p></div></button>)}</div></div>}
           </div>
 
           {/* Sidebar Redesenhada */}
           <div className="space-y-8">
             <EventoGuestList evento={evento} />
+            <div className="rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-800">
+              <div className="mb-4 flex items-center gap-3"><div className="rounded-xl bg-amber-500/10 p-2"><Ticket className="h-5 w-5 text-amber-600" /></div><div><p className="font-bold">{evento.gratuito ? 'Entrada gratuita' : `A partir de ${Number(evento.preco || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`}</p>{evento.preco_descricao && <p className="text-xs text-muted-foreground">{evento.preco_descricao}</p>}</div></div>
+              <div className="grid gap-2"><Button onClick={adicionarAgenda} variant="outline"><CalendarPlus className="mr-2 h-4 w-4" />Adicionar ao Google Agenda</Button>{evento.link_ingressos && <Button asChild><a href={evento.link_ingressos} target="_blank" rel="noopener noreferrer"><Ticket className="mr-2 h-4 w-4" />Garantir ingresso</a></Button>}</div>
+            </div>
             {/* Date Card */}
             <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl p-6 border-0 sticky top-6">
               <div className="flex items-center gap-3 mb-6">
@@ -332,6 +378,8 @@ export const EventoDetailContent = ({ eventoId }: EventoDetailContentProps) => {
                 </div>
               </div>
             )}
+
+            {(evento.recorrencia !== 'nenhuma' || evento.publico_alvo || evento.acessibilidade) && <div className="rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-800"><h3 className="mb-4 text-xl font-bold">Para você se preparar</h3><div className="space-y-3 text-sm">{evento.recorrencia !== 'nenhuma' && <div className="flex gap-3 rounded-xl bg-muted/40 p-3"><Repeat2 className="h-5 w-5 text-primary" /><span>Evento {evento.recorrencia}</span></div>}{evento.publico_alvo && <div className="flex gap-3 rounded-xl bg-muted/40 p-3"><Target className="h-5 w-5 text-primary" /><span>{evento.publico_alvo}</span></div>}{evento.acessibilidade && <div className="flex gap-3 rounded-xl bg-muted/40 p-3"><Accessibility className="h-5 w-5 text-primary" /><span>{evento.acessibilidade}</span></div>}</div></div>}
 
             {/* Info Card */}
             <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl p-6 border-0">

@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Calendar, MapPin, Building2, User, Image, Plus } from 'lucide-react';
 import { EventoForm } from '@/components/admin/forms/EventoForm';
 import { useAuth } from '@/hooks/useAuth';
+import { EventCheckinManager } from '@/components/admin/events/EventCheckinManager';
 
 export const EventosSection = () => {
   const { profile } = useAuth();
@@ -195,6 +196,7 @@ export const EventosSection = () => {
                       </Button>
                     </div>
                   )}
+                  {evento.checkin_ativo && <EventCheckinManager eventoId={evento.id} />}
                 </div>
                 
                 <div className="pt-4 border-t text-xs text-muted-foreground">

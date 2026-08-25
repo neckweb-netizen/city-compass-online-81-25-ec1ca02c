@@ -1363,6 +1363,21 @@ export type Database = {
         }
         Relationships: []
       }
+      evento_avaliacoes: {
+        Row: { atualizado_em: string; comentario: string | null; criado_em: string; evento_id: string; id: string; nota: number; usuario_id: string }
+        Insert: { atualizado_em?: string; comentario?: string | null; criado_em?: string; evento_id: string; id?: string; nota: number; usuario_id: string }
+        Update: { atualizado_em?: string; comentario?: string | null; criado_em?: string; evento_id?: string; id?: string; nota?: number; usuario_id?: string }
+        Relationships: [{ foreignKeyName: "evento_avaliacoes_evento_id_fkey"; columns: ["evento_id"]; isOneToOne: false; referencedRelation: "eventos"; referencedColumns: ["id"] }]
+      }
+      evento_checkins: {
+        Row: { evento_id: string; id: string; inscricao_id: string; realizado_em: string; realizado_por: string }
+        Insert: { evento_id: string; id?: string; inscricao_id: string; realizado_em?: string; realizado_por: string }
+        Update: { evento_id?: string; id?: string; inscricao_id?: string; realizado_em?: string; realizado_por?: string }
+        Relationships: [
+          { foreignKeyName: "evento_checkins_evento_id_fkey"; columns: ["evento_id"]; isOneToOne: false; referencedRelation: "eventos"; referencedColumns: ["id"] },
+          { foreignKeyName: "evento_checkins_inscricao_id_fkey"; columns: ["inscricao_id"]; isOneToOne: true; referencedRelation: "evento_inscricoes"; referencedColumns: ["id"] },
+        ]
+      }
       evento_inscricoes: {
         Row: {
           acompanhantes: number
@@ -1407,6 +1422,8 @@ export type Database = {
       eventos: {
         Row: {
           aprovado_por: string | null
+          acessibilidade: string | null
+          avaliacoes_ativas: boolean
           ativo: boolean
           atualizado_em: string
           categoria_id: string | null
@@ -1422,6 +1439,7 @@ export type Database = {
           gratuito: boolean | null
           hora_fim: string | null
           id: string
+          checkin_ativo: boolean
           imagem_banner: string | null
           imagem_url: string | null
           inscricoes_encerram_em: string | null
@@ -1430,17 +1448,25 @@ export type Database = {
           lista_participantes_ativa: boolean
           limite_acompanhantes: number
           limite_participantes: number | null
+          link_ingressos: string | null
           local: string | null
           permitir_acompanhantes: boolean
           participantes_confirmados: number | null
           preco: number | null
+          preco_descricao: string | null
+          publico_alvo: string | null
+          recorrencia: string
+          compartilhamentos: number
           status_aprovacao:
             | Database["public"]["Enums"]["status_aprovacao"]
             | null
           titulo: string
+          visualizacoes: number
         }
         Insert: {
           aprovado_por?: string | null
+          acessibilidade?: string | null
+          avaliacoes_ativas?: boolean
           ativo?: boolean
           atualizado_em?: string
           categoria_id?: string | null
@@ -1456,6 +1482,7 @@ export type Database = {
           gratuito?: boolean | null
           hora_fim?: string | null
           id?: string
+          checkin_ativo?: boolean
           imagem_banner?: string | null
           imagem_url?: string | null
           inscricoes_encerram_em?: string | null
@@ -1464,17 +1491,25 @@ export type Database = {
           lista_participantes_ativa?: boolean
           limite_acompanhantes?: number
           limite_participantes?: number | null
+          link_ingressos?: string | null
           local?: string | null
           permitir_acompanhantes?: boolean
           participantes_confirmados?: number | null
           preco?: number | null
+          preco_descricao?: string | null
+          publico_alvo?: string | null
+          recorrencia?: string
+          compartilhamentos?: number
           status_aprovacao?:
             | Database["public"]["Enums"]["status_aprovacao"]
             | null
           titulo: string
+          visualizacoes?: number
         }
         Update: {
           aprovado_por?: string | null
+          acessibilidade?: string | null
+          avaliacoes_ativas?: boolean
           ativo?: boolean
           atualizado_em?: string
           categoria_id?: string | null
@@ -1490,6 +1525,7 @@ export type Database = {
           gratuito?: boolean | null
           hora_fim?: string | null
           id?: string
+          checkin_ativo?: boolean
           imagem_banner?: string | null
           imagem_url?: string | null
           inscricoes_encerram_em?: string | null
@@ -1498,14 +1534,20 @@ export type Database = {
           lista_participantes_ativa?: boolean
           limite_acompanhantes?: number
           limite_participantes?: number | null
+          link_ingressos?: string | null
           local?: string | null
           permitir_acompanhantes?: boolean
           participantes_confirmados?: number | null
           preco?: number | null
+          preco_descricao?: string | null
+          publico_alvo?: string | null
+          recorrencia?: string
+          compartilhamentos?: number
           status_aprovacao?:
             | Database["public"]["Enums"]["status_aprovacao"]
             | null
           titulo?: string
+          visualizacoes?: number
         }
         Relationships: [
           {

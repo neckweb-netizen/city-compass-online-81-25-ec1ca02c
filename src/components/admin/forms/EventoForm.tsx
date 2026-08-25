@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, Plus, Calendar, Clock, Upload, X, Loader2, Users, UserPlus } from 'lucide-react';
+import { CalendarIcon, Plus, Calendar, Clock, Upload, X, Loader2, Users, UserPlus, Ticket, Repeat2, ShieldCheck } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useCategoriasEventos } from '@/hooks/useCategorias';
@@ -37,6 +37,15 @@ const eventoSchema = z.object({
   categoria_id: z.string().uuid('Selecione uma categoria').optional(),
   empresa_id: z.string().uuid('Selecione uma empresa').optional(),
   imagem_banner: z.string().optional(),
+  gratuito: z.boolean(),
+  preco: z.coerce.number().min(0).max(1000000),
+  preco_descricao: z.string().max(160).optional(),
+  link_ingressos: z.union([z.string().url('Informe um link válido'), z.literal('')]).optional(),
+  recorrencia: z.enum(['nenhuma', 'semanal', 'quinzenal', 'mensal']),
+  publico_alvo: z.string().max(200).optional(),
+  acessibilidade: z.string().max(500).optional(),
+  checkin_ativo: z.boolean(),
+  avaliacoes_ativas: z.boolean(),
   lista_participantes_ativa: z.boolean(),
   lista_exibir_nomes: z.boolean(),
   limite_participantes: z.coerce.number().int().min(1).max(10000),
@@ -50,6 +59,9 @@ const eventoSchema = z.object({
   }
   if (data.lista_participantes_ativa && data.permitir_acompanhantes && data.limite_acompanhantes < 1) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['limite_acompanhantes'], message: 'Informe pelo menos um acompanhante.' });
+  }
+  if (!data.gratuito && data.preco <= 0) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['preco'], message: 'Informe o valor do ingresso.' });
   }
 });
 
@@ -82,6 +94,15 @@ export const EventoForm = ({ onSuccess, empresaId }: EventoFormProps) => {
       categoria_id: '',
       empresa_id: '',
       imagem_banner: '',
+      gratuito: true,
+      preco: 0,
+      preco_descricao: '',
+      link_ingressos: '',
+      recorrencia: 'nenhuma',
+      publico_alvo: '',
+      acessibilidade: '',
+      checkin_ativo: false,
+      avaliacoes_ativas: true,
       lista_participantes_ativa: false,
       lista_exibir_nomes: false,
       limite_participantes: 100,
@@ -156,6 +177,15 @@ export const EventoForm = ({ onSuccess, empresaId }: EventoFormProps) => {
         categoria_id: data.categoria_id || null,
         empresa_id: data.empresa_id || empresaId || empresa?.id || null,
         imagem_banner: data.imagem_banner || null,
+        gratuito: data.gratuito,
+        preco: data.gratuito ? null : data.preco,
+        preco_descricao: data.gratuito ? null : data.preco_descricao || null,
+        link_ingressos: data.link_ingressos || null,
+        recorrencia: data.recorrencia,
+        publico_alvo: data.publico_alvo || null,
+        acessibilidade: data.acessibilidade || null,
+        checkin_ativo: data.lista_participantes_ativa && data.checkin_ativo,
+        avaliacoes_ativas: data.avaliacoes_ativas,
         cidade_id: cidadeId,
         hora_fim: data.horario_fim || null,
         lista_participantes_ativa: data.lista_participantes_ativa,
@@ -372,6 +402,37 @@ export const EventoForm = ({ onSuccess, empresaId }: EventoFormProps) => {
             </FormItem>
           )}
         />
+
+        <div className="space-y-4 rounded-2xl border p-4 sm:p-5">
+          <div className="flex items-start gap-3">
+            <div className="rounded-xl bg-amber-500/10 p-2"><Ticket className="h-5 w-5 text-amber-600" /></div>
+            <div><h3 className="font-semibold">Ingressos e informações profissionais</h3><p className="text-sm text-muted-foreground">Defina preço, recorrência, público e recursos do evento.</p></div>
+          </div>
+
+          <FormField control={form.control} name="gratuito" render={({ field }) => (
+            <FormItem className="flex items-center justify-between gap-4 rounded-xl border bg-background p-4"><div><FormLabel>Evento gratuito</FormLabel><p className="text-xs text-muted-foreground">Desative para informar o valor do ingresso.</p></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
+          )} />
+
+          {!form.watch('gratuito') && <div className="grid gap-4 sm:grid-cols-2">
+            <FormField control={form.control} name="preco" render={({ field }) => (<FormItem><FormLabel>Preço a partir de (R$)</FormLabel><FormControl><Input type="number" min="0" step="0.01" {...field} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="preco_descricao" render={({ field }) => (<FormItem><FormLabel>Detalhes do preço</FormLabel><FormControl><Input placeholder="Ex.: meia R$ 20, inteira R$ 40" {...field} /></FormControl><FormMessage /></FormItem>)} />
+          </div>}
+
+          <FormField control={form.control} name="link_ingressos" render={({ field }) => (<FormItem><FormLabel>Link para ingressos ou inscrições</FormLabel><FormControl><Input type="url" placeholder="https://..." {...field} /></FormControl><FormMessage /></FormItem>)} />
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField control={form.control} name="recorrencia" render={({ field }) => (<FormItem><FormLabel className="flex items-center gap-2"><Repeat2 className="h-4 w-4" />Recorrência</FormLabel><Select value={field.value} onValueChange={field.onChange}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="nenhuma">Evento único</SelectItem><SelectItem value="semanal">Toda semana</SelectItem><SelectItem value="quinzenal">A cada 15 dias</SelectItem><SelectItem value="mensal">Todo mês</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="publico_alvo" render={({ field }) => (<FormItem><FormLabel>Público recomendado</FormLabel><FormControl><Input placeholder="Ex.: livre, famílias, maiores de 18" {...field} /></FormControl><FormMessage /></FormItem>)} />
+          </div>
+
+          <FormField control={form.control} name="acessibilidade" render={({ field }) => (<FormItem><FormLabel>Acessibilidade</FormLabel><FormControl><Textarea className="min-h-20" placeholder="Ex.: acesso para cadeirantes, Libras, assentos preferenciais" {...field} /></FormControl><FormMessage /></FormItem>)} />
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <FormField control={form.control} name="checkin_ativo" render={({ field }) => (<FormItem className="flex items-center justify-between gap-3 rounded-xl border bg-background p-3"><div><FormLabel>Check-in</FormLabel><p className="text-xs text-muted-foreground">Controle a chegada dos inscritos.</p></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)} />
+            <FormField control={form.control} name="avaliacoes_ativas" render={({ field }) => (<FormItem className="flex items-center justify-between gap-3 rounded-xl border bg-background p-3"><div><FormLabel>Avaliações</FormLabel><p className="text-xs text-muted-foreground">Receba notas após o evento.</p></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)} />
+          </div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground"><ShieldCheck className="h-4 w-4 text-emerald-600" />Inscrições, avaliações e check-ins possuem controle de acesso.</div>
+        </div>
 
         <div className="space-y-4 rounded-2xl border border-primary/20 bg-primary/5 p-4 sm:p-5">
           <div className="flex items-start gap-3">

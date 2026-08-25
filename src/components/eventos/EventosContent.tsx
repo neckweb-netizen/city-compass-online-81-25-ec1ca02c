@@ -1,25 +1,38 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Calendar, MapPin, Building2, Plus, Users, Filter } from 'lucide-react';
+import { Calendar, MapPin, Building2, Users, Search, SlidersHorizontal, Ticket } from 'lucide-react';
 import { EventoForm } from '@/components/admin/forms/EventoForm';
 import { useAuth } from '@/hooks/useAuth';
 import { useCidadePadrao } from '@/hooks/useCidadePadrao';
+import { useCategoriasEventos } from '@/hooks/useCategorias';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export const EventosContent = () => {
   const { user } = useAuth();
   const { data: cidadePadrao } = useCidadePadrao();
   const navigate = useNavigate();
+  const { data: categorias = [] } = useCategoriasEventos();
+  const [busca, setBusca] = useState('');
+  const [categoria, setCategoria] = useState('todas');
+  const [periodo, setPeriodo] = useState('proximos');
+  const [preco, setPreco] = useState('todos');
 
   const { data: eventos, isLoading, refetch } = useQuery({
-    queryKey: ['eventos-publicos', cidadePadrao?.id],
+    queryKey: ['eventos-publicos', cidadePadrao?.id, busca, categoria, periodo, preco],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const agora = new Date();
+      let fim: Date | null = null;
+      if (periodo === 'hoje') fim = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate(), 23, 59, 59);
+      if (periodo === 'semana') fim = new Date(agora.getTime() + 7 * 86400000);
+      if (periodo === 'mes') fim = new Date(agora.getTime() + 30 * 86400000);
+      let query = supabase
         .from('eventos')
         .select(`
           *,
@@ -32,6 +45,14 @@ export const EventosContent = () => {
         .eq('cidade_id', cidadePadrao?.id)
         .gte('data_inicio', new Date().toISOString())
         .order('data_inicio', { ascending: true });
+
+      if (fim) query = query.lte('data_inicio', fim.toISOString());
+      if (categoria !== 'todas') query = query.eq('categoria_id', categoria);
+      if (preco === 'gratuitos') query = query.eq('gratuito', true);
+      if (preco === 'pagos') query = query.eq('gratuito', false);
+      if (busca.trim()) query = query.ilike('titulo', `%${busca.trim()}%`);
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return data;
@@ -46,6 +67,7 @@ export const EventosContent = () => {
           <p className="text-muted-foreground">Carregando eventos...</p>
         </div>
       </div>
+
     );
   }
 
@@ -79,6 +101,16 @@ export const EventosContent = () => {
         </div>
       </div>
 
+      <div className="mb-8 rounded-2xl border bg-card p-4 shadow-sm">
+        <div className="mb-3 flex items-center gap-2 font-semibold"><SlidersHorizontal className="h-4 w-4 text-primary" />Encontre o evento ideal</div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={busca} onChange={(e) => setBusca(e.target.value)} className="pl-9" placeholder="Buscar evento..." /></div>
+          <Select value={categoria} onValueChange={setCategoria}><SelectTrigger><SelectValue placeholder="Categoria" /></SelectTrigger><SelectContent><SelectItem value="todas">Todas as categorias</SelectItem>{categorias.map((item) => <SelectItem key={item.id} value={item.id}>{item.nome}</SelectItem>)}</SelectContent></Select>
+          <Select value={periodo} onValueChange={setPeriodo}><SelectTrigger><SelectValue placeholder="Quando" /></SelectTrigger><SelectContent><SelectItem value="proximos">Próximos eventos</SelectItem><SelectItem value="hoje">Hoje</SelectItem><SelectItem value="semana">Próximos 7 dias</SelectItem><SelectItem value="mes">Próximos 30 dias</SelectItem></SelectContent></Select>
+          <Select value={preco} onValueChange={setPreco}><SelectTrigger><SelectValue placeholder="Preço" /></SelectTrigger><SelectContent><SelectItem value="todos">Gratuitos e pagos</SelectItem><SelectItem value="gratuitos">Somente gratuitos</SelectItem><SelectItem value="pagos">Somente pagos</SelectItem></SelectContent></Select>
+        </div>
+      </div>
+
       {/* Grid de Eventos */}
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         {eventos?.map((evento) => (
@@ -100,6 +132,9 @@ export const EventosContent = () => {
             <CardHeader className="pb-3">
               <div className="space-y-3">
                 <div className="flex gap-2 flex-wrap">
+                  <Badge className={evento.gratuito ? 'bg-emerald-600' : 'bg-amber-600'}><Ticket className="mr-1 h-3 w-3" />{evento.gratuito ? 'Gratuito' : `A partir de ${Number(evento.preco || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`}</Badge>
+                  {new Date(evento.data_inicio).toDateString() === new Date().toDateString() && <Badge variant="destructive">Hoje</Badge>}
+                  {evento.limite_participantes && (evento.participantes_confirmados || 0) / evento.limite_participantes >= 0.8 && <Badge variant="secondary">Quase lotado</Badge>}
                   {evento.categorias && (
                     <Badge variant="secondary" className="text-xs">
                       {evento.categorias.nome}
