@@ -1,9 +1,11 @@
-const VERSION = 'sajtem-v7';
+const VERSION = 'sajtem-v8';
 const STATIC_CACHE = `${VERSION}-static`;
 const PAGE_CACHE = `${VERSION}-pages`;
 const IMAGE_CACHE = `${VERSION}-images`;
 const OFFLINE_URL = '/offline.html';
-const PRECACHE = ['/', OFFLINE_URL, '/manifest.json', '/Logo.png', '/icon-192.png', '/icon-512.png', '/favicon.png'];
+// O HTML principal nunca entra no precache: ele contém nomes de assets com hash
+// que mudam a cada publicação.
+const PRECACHE = [OFFLINE_URL, '/manifest.json', '/Logo.png', '/icon-192.png', '/icon-512.png', '/favicon.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(STATIC_CACHE).then((cache) => cache.addAll(PRECACHE)).then(() => self.skipWaiting()));
@@ -26,22 +28,25 @@ const cacheResponse = async (cacheName, request, response) => {
 };
 
 const navigationResponse = async (request) => {
-  const cached = await caches.match(request);
-  if (cached) {
-    fetch(request).then((response) => cacheResponse(PAGE_CACHE, request, response)).catch(() => undefined);
-    return cached;
-  }
+  // Network-first impede que um index.html antigo solicite bundles apagados.
   try {
     return await cacheResponse(PAGE_CACHE, request, await fetch(request));
   } catch {
-    return (await caches.match(OFFLINE_URL)) || Response.error();
+    return (await caches.match(request)) || (await caches.match(OFFLINE_URL)) || Response.error();
   }
 };
 
 const cacheFirst = async (request, cacheName) => {
   const cached = await caches.match(request);
   if (cached) return cached;
-  return cacheResponse(cacheName, request, await fetch(request));
+  const response = await fetch(request);
+  const contentType = response.headers.get('content-type') || '';
+  // Uma rota inexistente da SPA pode devolver index.html. Nunca grave HTML como
+  // JavaScript ou CSS, pois isso causa o erro de MIME estrito do navegador.
+  if (contentType.includes('text/html')) {
+    return new Response('', { status: 404, statusText: 'Asset not found' });
+  }
+  return cacheResponse(cacheName, request, response);
 };
 
 const staleWhileRevalidate = async (request, cacheName) => {

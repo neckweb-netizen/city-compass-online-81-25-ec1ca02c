@@ -24,9 +24,19 @@ const queryClient = new QueryClient({
 
 // Registrar Service Worker para PWA
 if ('serviceWorker' in navigator) {
+  let refreshingForNewWorker = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshingForNewWorker) return;
+    refreshingForNewWorker = true;
+    // Assim que a nova versão assumir o controle, recarrega uma única vez para
+    // buscar o index.html que aponta para os bundles atuais da publicação.
+    window.location.reload();
+  });
+
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js', { scope: '/' })
       .then((registration) => {
+        registration.update().catch(() => undefined);
         registration.addEventListener('updatefound', () => {
           const newWorker = registration.installing;
           if (newWorker) {
