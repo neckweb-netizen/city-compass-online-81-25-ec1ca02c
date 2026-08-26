@@ -26,6 +26,7 @@ export type Database = {
           status: string | null
           tipo: string
           titulo: string
+          usuario_id: string | null
         }
         Insert: {
           categoria: string
@@ -38,6 +39,7 @@ export type Database = {
           status?: string | null
           tipo: string
           titulo: string
+          usuario_id?: string | null
         }
         Update: {
           categoria?: string
@@ -50,6 +52,7 @@ export type Database = {
           status?: string | null
           tipo?: string
           titulo?: string
+          usuario_id?: string | null
         }
         Relationships: []
       }
