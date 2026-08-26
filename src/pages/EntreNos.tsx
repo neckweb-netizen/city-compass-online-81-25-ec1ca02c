@@ -57,8 +57,28 @@ export default function EntreNos() {
   };
   const react = async (postId:string,type:string) => {
     if(!requireUser()) return;
-    const {error}=await supabase.from('entre_nos_reacoes' as any).upsert({postagem_id:postId,usuario_id:user!.id,tipo:type},{onConflict:'postagem_id,usuario_id'});
-    if(error) toast.error('Não foi possível registrar sua reação.'); else load();
+    const { error: insertError } = await supabase
+      .from('entre_nos_reacoes' as any)
+      .insert({ postagem_id: postId, usuario_id: user!.id, tipo: type });
+
+    // Uma pessoa pode ter somente uma reação por publicação. Caso já exista,
+    // troca apenas o tipo; a RLS garante que somente a própria reação muda.
+    if (insertError?.code === '23505') {
+      const { error: updateError } = await supabase
+        .from('entre_nos_reacoes' as any)
+        .update({ tipo: type })
+        .eq('postagem_id', postId);
+      if (updateError) {
+        toast.error('Não foi possível trocar sua reação.');
+        return;
+      }
+    } else if (insertError) {
+      toast.error('Não foi possível registrar sua reação.');
+      return;
+    }
+
+    await load();
+    toast.success('Reação registrada.');
   };
   const comment = async (postId:string) => {
     if(!requireUser() || commentText.trim().length<2) return;
