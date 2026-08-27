@@ -9,6 +9,7 @@ export interface Agendamento {
   telefone_cliente: string;
   servico: string;
   data_agendamento: string;
+  duracao_minutos: number;
   observacoes?: string;
   status: 'pendente' | 'confirmado' | 'cancelado' | 'concluido';
   criado_em: string;
@@ -45,14 +46,17 @@ export const useAgendamentos = (empresaId?: string) => {
       data_agendamento: string;
       observacoes?: string;
     }) => {
-      const { data, error } = await supabase
-        .from('agendamentos')
-        .insert(dados)
-        .select()
-        .single();
+      const { data, error } = await supabase.rpc('criar_agendamento_publico', {
+        p_empresa_id: dados.empresa_id,
+        p_nome_cliente: dados.nome_cliente,
+        p_telefone_cliente: dados.telefone_cliente,
+        p_servico: dados.servico,
+        p_data_agendamento: dados.data_agendamento,
+        p_observacoes: dados.observacoes || undefined,
+      });
 
       if (error) throw error;
-      return data;
+      return data as string;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agendamentos'] });
@@ -61,11 +65,11 @@ export const useAgendamentos = (empresaId?: string) => {
         description: 'Seu agendamento foi solicitado com sucesso.',
       });
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       console.error('Erro ao criar agendamento:', error);
       toast({
         title: 'Erro ao agendar',
-        description: 'Não foi possível criar o agendamento. Tente novamente.',
+        description: error.message || 'Não foi possível criar o agendamento. Tente novamente.',
         variant: 'destructive',
       });
     },
@@ -100,7 +104,7 @@ export const useAgendamentos = (empresaId?: string) => {
   return {
     agendamentos: agendamentos || [],
     isLoading,
-    criarAgendamento: criarAgendamento.mutate,
+    criarAgendamento: criarAgendamento.mutateAsync,
     atualizarStatus: atualizarStatus.mutate,
     isCreating: criarAgendamento.isPending,
     isUpdating: atualizarStatus.isPending,

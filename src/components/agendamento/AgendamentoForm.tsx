@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, Clock, User, Phone } from 'lucide-react';
+import { Calendar, CheckCircle2, Clock, Loader2, Phone, User } from 'lucide-react';
 import { useAgendamentos } from '@/hooks/useAgendamentos';
 import { useServicosAgendamento } from '@/hooks/useServicosAgendamento';
 
@@ -25,54 +27,72 @@ export const AgendamentoForm: React.FC<AgendamentoFormProps> = ({
     nome_cliente: '',
     telefone_cliente: '',
     servico: '',
-    data_agendamento: '',
+    data: '',
+    horario: '',
     observacoes: ''
   });
 
   const { criarAgendamento, isCreating } = useAgendamentos();
   const { servicos } = useServicosAgendamento(empresaId);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const servicoSelecionado = servicos.find((servico) => servico.nome_servico === formData.servico);
+  const dataMinima = useMemo(() => new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Bahia', year: 'numeric', month: '2-digit', day: '2-digit'
+  }).format(new Date()), []);
+
+  const { data: horarios = [], isFetching: carregandoHorarios } = useQuery({
+    queryKey: ['horarios-agendamento', empresaId, formData.servico, formData.data],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('listar_horarios_agendamento', {
+        p_empresa_id: empresaId,
+        p_servico: formData.servico,
+        p_data: formData.data,
+      });
+      if (error) throw error;
+      return (data || []) as Array<{ horario: string }>;
+    },
+    enabled: Boolean(formData.servico && formData.data),
+    staleTime: 15_000,
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.nome_cliente || !formData.telefone_cliente || !formData.servico || !formData.data_agendamento) {
+    if (!formData.nome_cliente || !formData.telefone_cliente || !formData.servico || !formData.horario) {
       return;
     }
 
-    criarAgendamento({
-      empresa_id: empresaId,
-      ...formData
-    });
-
-    if (onSuccess) {
-      onSuccess();
+    try {
+      await criarAgendamento({
+        empresa_id: empresaId,
+        nome_cliente: formData.nome_cliente,
+        telefone_cliente: formData.telefone_cliente,
+        servico: formData.servico,
+        data_agendamento: formData.horario,
+        observacoes: formData.observacoes,
+      });
+      setFormData({ nome_cliente: '', telefone_cliente: '', servico: '', data: '', horario: '', observacoes: '' });
+      onSuccess?.();
+    } catch {
+      // O hook mantém o formulário aberto e mostra a mensagem retornada pelo servidor.
     }
-
-    // Reset form
-    setFormData({
-      nome_cliente: '',
-      telefone_cliente: '',
-      servico: '',
-      data_agendamento: '',
-      observacoes: ''
-    });
   };
 
-  const generateTimeSlots = (intervalMinutes = 30) => {
-    const slots = [];
-    for (let hour = 8; hour <= 18; hour++) {
-      for (let minute = 0; minute < 60; minute += intervalMinutes) {
-        const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-        slots.push(time);
-      }
-    }
-    return slots;
+  const formatarTelefone = (valor: string) => {
+    const numeros = valor.replace(/\D/g, '').slice(0, 11);
+    if (numeros.length <= 2) return numeros;
+    if (numeros.length <= 6) return `(${numeros.slice(0, 2)}) ${numeros.slice(2)}`;
+    if (numeros.length <= 10) return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 6)}-${numeros.slice(6)}`;
+    return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 7)}-${numeros.slice(7)}`;
   };
 
-  const getMinDate = () => {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
-  };
+  const horaLocal = (iso: string) => new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Bahia', hour: '2-digit', minute: '2-digit', hour12: false
+  }).format(new Date(iso));
+
+  const preco = servicoSelecionado?.preco
+    ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(servicoSelecionado.preco)
+    : null;
 
   return (
     <Card className="w-full max-w-lg mx-auto">
@@ -112,7 +132,7 @@ export const AgendamentoForm: React.FC<AgendamentoFormProps> = ({
               id="telefone"
               type="tel"
               value={formData.telefone_cliente}
-              onChange={(e) => setFormData(prev => ({ ...prev, telefone_cliente: e.target.value }))}
+              onChange={(e) => setFormData(prev => ({ ...prev, telefone_cliente: formatarTelefone(e.target.value) }))}
               placeholder="(00) 00000-0000"
               required
             />
@@ -122,7 +142,7 @@ export const AgendamentoForm: React.FC<AgendamentoFormProps> = ({
             <Label htmlFor="servico">Serviço</Label>
             <Select 
               value={formData.servico} 
-              onValueChange={(value) => setFormData(prev => ({ ...prev, servico: value }))}
+              onValueChange={(value) => setFormData(prev => ({ ...prev, servico: value, horario: '' }))}
               required
             >
               <SelectTrigger>
@@ -140,7 +160,7 @@ export const AgendamentoForm: React.FC<AgendamentoFormProps> = ({
                         <span>{servico.nome_servico}</span>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <span>{servico.duracao_minutos} min</span>
-                          {servico.preco && <span>R$ {servico.preco.toFixed(2)}</span>}
+                        {servico.preco != null && <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(servico.preco)}</span>}
                         </div>
                       </div>
                     </SelectItem>
@@ -150,52 +170,28 @@ export const AgendamentoForm: React.FC<AgendamentoFormProps> = ({
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          {servicoSelecionado && <div className="flex items-center gap-3 rounded-xl border bg-muted/40 p-3 text-sm"><CheckCircle2 className="h-5 w-5 text-primary"/><div><b>{servicoSelecionado.nome_servico}</b><p className="text-muted-foreground">{servicoSelecionado.duracao_minutos} minutos{preco ? ` · ${preco}` : ''}</p></div></div>}
+
+          <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="data">Data</Label>
               <Input
                 id="data"
                 type="date"
-                value={formData.data_agendamento.split('T')[0]}
-                onChange={(e) => {
-                  const currentTime = formData.data_agendamento.split('T')[1] || '09:00';
-                  setFormData(prev => ({ 
-                    ...prev, 
-                    data_agendamento: `${e.target.value}T${currentTime}` 
-                  }));
-                }}
-                min={getMinDate()}
+                value={formData.data}
+                onChange={(e) => setFormData(prev => ({ ...prev, data: e.target.value, horario: '' }))}
+                min={dataMinima}
+                disabled={!formData.servico}
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="hora" className="flex items-center gap-2">
+              <Label className="flex items-center gap-2">
                 <Clock className="w-4 h-4" />
-                Horário
+                Horários disponíveis
               </Label>
-              <Select 
-                value={formData.data_agendamento.split('T')[1]?.substring(0, 5) || ''} 
-                onValueChange={(time) => {
-                  const currentDate = formData.data_agendamento.split('T')[0] || getMinDate();
-                  setFormData(prev => ({ 
-                    ...prev, 
-                    data_agendamento: `${currentDate}T${time}:00.000Z` 
-                  }));
-                }}
-                required
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Horário" />
-                </SelectTrigger>
-                <SelectContent>
-                  {generateTimeSlots().map((time) => (
-                    <SelectItem key={time} value={time}>
-                      {time}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {!formData.data ? <p className="rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground">Escolha o serviço e a data.</p> : carregandoHorarios ? <div className="flex items-center justify-center gap-2 rounded-xl border p-4 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin"/>Consultando agenda...</div> : horarios.length === 0 ? <p className="rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground">Não há horários livres nesta data. Escolha outro dia.</p> : <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">{horarios.map(({ horario }) => <Button key={horario} type="button" size="sm" variant={formData.horario === horario ? 'default' : 'outline'} className="h-10 rounded-xl" onClick={() => setFormData(prev => ({ ...prev, horario }))}>{horaLocal(horario)}</Button>)}</div>}
             </div>
           </div>
 
@@ -213,10 +209,11 @@ export const AgendamentoForm: React.FC<AgendamentoFormProps> = ({
           <Button 
             type="submit" 
             className="w-full" 
-            disabled={isCreating}
+            disabled={isCreating || !formData.horario}
           >
-            {isCreating ? 'Agendando...' : 'Confirmar Agendamento'}
+            {isCreating ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Reservando...</> : 'Solicitar agendamento'}
           </Button>
+          <p className="text-center text-xs text-muted-foreground">A empresa receberá sua solicitação e poderá confirmá-la. Horários ocupados são bloqueados automaticamente.</p>
         </form>
       </CardContent>
     </Card>

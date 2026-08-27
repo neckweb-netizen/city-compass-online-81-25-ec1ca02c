@@ -10,8 +10,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Building2, MapPin, Phone, Globe, Mail, Settings, Star, Calendar, Package, ChevronDown, CreditCard, Briefcase, CalendarCheck } from 'lucide-react';
 import { useMinhaEmpresa } from '@/hooks/useMinhaEmpresa';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { EmpresaEditForm } from './EmpresaEditForm';
 import { EmpresaProdutos } from './EmpresaProdutos';
 import { EmpresaEventos } from './EmpresaEventos';
@@ -49,25 +47,8 @@ export const EmpresaDashboard = () => {
     ? empresas.find(emp => emp.id === selectedEmpresaId) || empresa
     : empresa;
 
-  // Buscar categoria da empresa
-  const { data: categoria } = useQuery({
-    queryKey: ['categoria', empresaAtual?.categoria_id],
-    queryFn: async () => {
-      if (!empresaAtual?.categoria_id) return null;
-      const { data, error } = await supabase
-        .from('categorias')
-        .select('nome')
-        .eq('id', empresaAtual.categoria_id)
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!empresaAtual?.categoria_id,
-  });
-
-  // Verifica se é uma empresa de serviços que permite agendamento
-  const categoriasComAgendamento = ['Serviços', 'Manicure e Pedicure', 'Beleza', 'Saúde', 'Estética'];
-  const permiteAgendamento = categoria?.nome && categoriasComAgendamento.includes(categoria.nome);
+  // Qualquer empresa pode ativar a agenda quando oferece atendimento com horário marcado.
+  const permiteAgendamento = true;
 
   if (isLoading) {
     return (

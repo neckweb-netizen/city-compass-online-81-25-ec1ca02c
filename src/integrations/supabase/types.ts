@@ -60,36 +60,45 @@ export type Database = {
         Row: {
           atualizado_em: string
           criado_em: string
+          cliente_usuario_id: string | null
           data_agendamento: string
+          duracao_minutos: number
           empresa_id: string
           id: string
           nome_cliente: string
           observacoes: string | null
           servico: string
+          servico_id: string | null
           status: string
           telefone_cliente: string
         }
         Insert: {
           atualizado_em?: string
           criado_em?: string
+          cliente_usuario_id?: string | null
           data_agendamento: string
+          duracao_minutos?: number
           empresa_id: string
           id?: string
           nome_cliente: string
           observacoes?: string | null
           servico: string
+          servico_id?: string | null
           status?: string
           telefone_cliente: string
         }
         Update: {
           atualizado_em?: string
           criado_em?: string
+          cliente_usuario_id?: string | null
           data_agendamento?: string
+          duracao_minutos?: number
           empresa_id?: string
           id?: string
           nome_cliente?: string
           observacoes?: string | null
           servico?: string
+          servico_id?: string | null
           status?: string
           telefone_cliente?: string
         }
@@ -1065,6 +1074,12 @@ export type Database = {
       empresas: {
         Row: {
           agendamentos_ativo: boolean | null
+          agendamento_antecedencia_minutos: number
+          agendamento_dias_semana: number[]
+          agendamento_hora_fim: string
+          agendamento_hora_inicio: string
+          agendamento_intervalo_minutos: number
+          agendamento_max_dias: number
           aprovado_por: string | null
           ativo: boolean
           atualizado_em: string
@@ -1098,6 +1113,12 @@ export type Database = {
         }
         Insert: {
           agendamentos_ativo?: boolean | null
+          agendamento_antecedencia_minutos?: number
+          agendamento_dias_semana?: number[]
+          agendamento_hora_fim?: string
+          agendamento_hora_inicio?: string
+          agendamento_intervalo_minutos?: number
+          agendamento_max_dias?: number
           aprovado_por?: string | null
           ativo?: boolean
           atualizado_em?: string
@@ -1131,6 +1152,12 @@ export type Database = {
         }
         Update: {
           agendamentos_ativo?: boolean | null
+          agendamento_antecedencia_minutos?: number
+          agendamento_dias_semana?: number[]
+          agendamento_hora_fim?: string
+          agendamento_hora_inicio?: string
+          agendamento_intervalo_minutos?: number
+          agendamento_max_dias?: number
           aprovado_por?: string | null
           ativo?: boolean
           atualizado_em?: string
@@ -4120,6 +4147,10 @@ export type Database = {
           p_telefone_cliente: string
         }
         Returns: string
+      }
+      listar_horarios_agendamento: {
+        Args: { p_data: string; p_empresa_id: string; p_servico: string }
+        Returns: { horario: string }[]
       }
       criar_resultado_sorteio: {
         Args: {

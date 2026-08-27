@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,12 +53,25 @@ export const ConfiguracaoAgendamentos: React.FC<ConfiguracaoAgendamentosProps> =
   });
 
   const [configuracaoHorarios, setConfiguracaoHorarios] = useState({
-    tipo_intervalo: 'predefinido', // 'predefinido' ou 'personalizado'
     intervalo_minutos: 30,
-    horarios_personalizados: [] as string[]
+    hora_inicio: '08:00',
+    hora_fim: '18:00',
+    dias_semana: [1, 2, 3, 4, 5, 6] as number[],
+    antecedencia_minutos: 60,
+    max_dias: 60,
   });
 
-  const [novoHorario, setNovoHorario] = useState('');
+  useEffect(() => {
+    if (!empresa) return;
+    setConfiguracaoHorarios({
+      intervalo_minutos: empresa.agendamento_intervalo_minutos ?? 30,
+      hora_inicio: String(empresa.agendamento_hora_inicio ?? '08:00').slice(0, 5),
+      hora_fim: String(empresa.agendamento_hora_fim ?? '18:00').slice(0, 5),
+      dias_semana: empresa.agendamento_dias_semana ?? [1, 2, 3, 4, 5, 6],
+      antecedencia_minutos: empresa.agendamento_antecedencia_minutos ?? 60,
+      max_dias: empresa.agendamento_max_dias ?? 60,
+    });
+  }, [empresa]);
 
   const handleToggleAgendamentos = (ativo: boolean) => {
     updateEmpresa({
@@ -110,22 +123,16 @@ export const ConfiguracaoAgendamentos: React.FC<ConfiguracaoAgendamentosProps> =
     setModalAberto(true);
   };
 
-  const adicionarHorarioPersonalizado = () => {
-    if (novoHorario && !configuracaoHorarios.horarios_personalizados.includes(novoHorario)) {
-      setConfiguracaoHorarios(prev => ({
-        ...prev,
-        horarios_personalizados: [...prev.horarios_personalizados, novoHorario].sort()
-      }));
-      setNovoHorario('');
-    }
-  };
+  const salvarHorarios = () => updateEmpresa({
+    agendamento_intervalo_minutos: configuracaoHorarios.intervalo_minutos,
+    agendamento_hora_inicio: configuracaoHorarios.hora_inicio,
+    agendamento_hora_fim: configuracaoHorarios.hora_fim,
+    agendamento_dias_semana: configuracaoHorarios.dias_semana,
+    agendamento_antecedencia_minutos: configuracaoHorarios.antecedencia_minutos,
+    agendamento_max_dias: configuracaoHorarios.max_dias,
+  });
 
-  const removerHorarioPersonalizado = (horario: string) => {
-    setConfiguracaoHorarios(prev => ({
-      ...prev,
-      horarios_personalizados: prev.horarios_personalizados.filter(h => h !== horario)
-    }));
-  };
+  const dias = [{valor:1,label:'Seg'}, {valor:2,label:'Ter'}, {valor:3,label:'Qua'}, {valor:4,label:'Qui'}, {valor:5,label:'Sex'}, {valor:6,label:'Sáb'}, {valor:7,label:'Dom'}];
 
   return (
     <div className="space-y-6">
@@ -357,28 +364,12 @@ export const ConfiguracaoAgendamentos: React.FC<ConfiguracaoAgendamentosProps> =
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Tipo de Horários</Label>
-                <Select 
-                  value={configuracaoHorarios.tipo_intervalo} 
-                  onValueChange={(value) => setConfiguracaoHorarios(prev => ({
-                    ...prev,
-                    tipo_intervalo: value
-                  }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="predefinido">Intervalos Pré-definidos</SelectItem>
-                    <SelectItem value="personalizado">Horários Específicos</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-5">
+              <div className="space-y-2"><Label>Dias de atendimento</Label><div className="grid grid-cols-4 gap-2 sm:grid-cols-7">{dias.map(dia => { const ativo=configuracaoHorarios.dias_semana.includes(dia.valor); return <Button key={dia.valor} type="button" size="sm" variant={ativo?'default':'outline'} onClick={()=>setConfiguracaoHorarios(prev=>({...prev,dias_semana:ativo?prev.dias_semana.filter(d=>d!==dia.valor):[...prev.dias_semana,dia.valor].sort()}))}>{dia.label}</Button>})}</div></div>
 
-              {configuracaoHorarios.tipo_intervalo === 'predefinido' && (
-                <div className="space-y-2">
+              <div className="grid gap-4 sm:grid-cols-2"><div><Label>Primeiro horário</Label><Input type="time" value={configuracaoHorarios.hora_inicio} onChange={e=>setConfiguracaoHorarios(prev=>({...prev,hora_inicio:e.target.value}))}/></div><div><Label>Último horário</Label><Input type="time" value={configuracaoHorarios.hora_fim} onChange={e=>setConfiguracaoHorarios(prev=>({...prev,hora_fim:e.target.value}))}/></div></div>
+
+              <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2">
                   <Label>Intervalo entre Horários (minutos)</Label>
                   <Select 
                     value={configuracaoHorarios.intervalo_minutos.toString()} 
@@ -396,66 +387,15 @@ export const ConfiguracaoAgendamentos: React.FC<ConfiguracaoAgendamentosProps> =
                       <SelectItem value="30">30 minutos</SelectItem>
                       <SelectItem value="45">45 minutos</SelectItem>
                       <SelectItem value="60">1 hora</SelectItem>
+                      <SelectItem value="90">1 hora e 30</SelectItem>
+                      <SelectItem value="120">2 horas</SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-muted-foreground">
-                    Horários serão gerados automaticamente das 8h às 18h com este intervalo
-                  </p>
-                </div>
-              )}
+                </div><div><Label>Antecedência mínima (minutos)</Label><Input type="number" min={0} max={10080} value={configuracaoHorarios.antecedencia_minutos} onChange={e=>setConfiguracaoHorarios(prev=>({...prev,antecedencia_minutos:Number(e.target.value)}))}/></div></div>
 
-              {configuracaoHorarios.tipo_intervalo === 'personalizado' && (
-                <div className="space-y-4">
-                  <Label>Horários Específicos</Label>
-                  <div className="text-sm text-muted-foreground">
-                    Defina horários específicos que estarão disponíveis para agendamento
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <Input
-                      type="time"
-                      value={novoHorario}
-                      onChange={(e) => setNovoHorario(e.target.value)}
-                      placeholder="Selecione um horário"
-                      className="flex-1"
-                    />
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={adicionarHorarioPersonalizado}
-                      disabled={!novoHorario}
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Adicionar
-                    </Button>
-                  </div>
+              <div><Label>Agenda aberta por quantos dias</Label><Input type="number" min={1} max={365} value={configuracaoHorarios.max_dias} onChange={e=>setConfiguracaoHorarios(prev=>({...prev,max_dias:Number(e.target.value)}))}/><p className="mt-1 text-xs text-muted-foreground">O cliente só poderá escolher horários realmente livres dentro desse período.</p></div>
 
-                  {configuracaoHorarios.horarios_personalizados.length > 0 && (
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Horários Configurados:</Label>
-                      <div className="flex flex-wrap gap-2">
-                        {configuracaoHorarios.horarios_personalizados.map((horario) => (
-                          <div 
-                            key={horario}
-                            className="flex items-center gap-2 bg-muted px-3 py-1 rounded-full text-sm"
-                          >
-                            <Clock className="w-3 h-3" />
-                            <span>{horario}</span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-auto p-0 hover:bg-transparent"
-                              onClick={() => removerHorarioPersonalizado(horario)}
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
+              <Button onClick={salvarHorarios} disabled={isUpdating || configuracaoHorarios.dias_semana.length===0 || configuracaoHorarios.hora_fim<=configuracaoHorarios.hora_inicio} className="w-full sm:w-auto">{isUpdating?'Salvando...':'Salvar configuração da agenda'}</Button>
             </div>
           </CardContent>
         </Card>

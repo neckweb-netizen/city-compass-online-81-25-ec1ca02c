@@ -186,8 +186,7 @@ const EmpresaProfile = () => {
 
   const isRadio = empresa.categorias?.nome === 'Rádios' && empresa.link_radio;
   const isInfluencer = empresa.categorias?.nome === 'Influencers';
-  const categoriasComAgendamento = ['Serviços', 'Manicure e Pedicure', 'Beleza', 'Saúde', 'Estética'];
-  const permiteAgendamento = empresa.categorias?.nome && categoriasComAgendamento.includes(empresa.categorias.nome);
+  const permiteAgendamento = Boolean(empresa.agendamentos_ativo);
 
   const tabTriggerClass =
     'bg-white/10 backdrop-blur-sm text-white hover:bg-white/20 ' +
