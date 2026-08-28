@@ -28,11 +28,15 @@ export const PWAInstallPrompt: React.FC = () => {
       else if (/Macintosh/.test(navigator.userAgent)) plataforma = 'MacOS';
       else if (/Windows/.test(navigator.userAgent)) plataforma = 'Windows';
 
-      await supabase
+      const { error } = await supabase
         .from('estatisticas_pwa' as any)
         .insert([{ evento, plataforma }]);
+
+      if (error && import.meta.env.DEV) {
+        console.warn('Não foi possível registrar a métrica do PWA:', error.message);
+      }
     } catch (err) {
-      console.error('Erro silencioso ao computar métrica do PWA:', err);
+      if (import.meta.env.DEV) console.warn('Não foi possível registrar a métrica do PWA:', err);
     }
   };
 

@@ -150,7 +150,7 @@ export const AgendamentoForm: React.FC<AgendamentoFormProps> = ({
               </SelectTrigger>
               <SelectContent>
                 {servicos.filter(s => s.ativo).length === 0 ? (
-                  <SelectItem value="" disabled>
+                  <SelectItem value="sem-servicos" disabled>
                     Nenhum serviço disponível para agendamento
                   </SelectItem>
                 ) : (

@@ -47,7 +47,7 @@ export const AssignPlanoModal = ({ open, onOpenChange, empresa, onSuccess }: Ass
   const form = useForm<AssignPlanoFormData>({
     resolver: zodResolver(assignPlanoSchema),
     defaultValues: {
-      plano_id: empresa?.plano_atual_id || '',
+      plano_id: empresa?.plano_atual_id || 'sem-plano',
     },
   });
 
@@ -57,9 +57,10 @@ export const AssignPlanoModal = ({ open, onOpenChange, empresa, onSuccess }: Ass
     setIsLoading(true);
     try {
       // Se está atribuindo um plano (não removendo), calcular data de vencimento
-      const updateData: any = { plano_atual_id: data.plano_id };
+      const planoId = data.plano_id === 'sem-plano' ? null : data.plano_id;
+      const updateData: any = { plano_atual_id: planoId };
       
-      if (data.plano_id) {
+      if (planoId) {
         const agora = new Date();
         const dataVencimentoAtual = empresa.plano_data_vencimento ? new Date(empresa.plano_data_vencimento) : null;
         
@@ -124,7 +125,7 @@ export const AssignPlanoModal = ({ open, onOpenChange, empresa, onSuccess }: Ass
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">Nenhum plano (Gratuito)</SelectItem>
+                      <SelectItem value="sem-plano">Nenhum plano (Gratuito)</SelectItem>
                       {planos?.map((plano) => (
                         <SelectItem key={plano.id} value={plano.id}>
                           {plano.nome} - R$ {plano.preco_mensal.toFixed(2)}

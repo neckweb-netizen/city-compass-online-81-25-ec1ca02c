@@ -85,7 +85,7 @@ export const useUsuarioJaAvaliou = (empresaId: string, usuarioId?: string) => {
         .select('id')
         .eq('empresa_id', empresaId)
         .eq('usuario_id', usuarioId)
-        .single();
+        .maybeSingle();
 
       if (error && error.code !== 'PGRST116') throw error;
       return !!data;

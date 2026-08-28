@@ -18,7 +18,7 @@ import { AvaliacaoModal } from '@/components/empresa/AvaliacaoModal';
 import { BannerSection } from '@/components/home/BannerSection';
 import { RadioPlayer } from '@/components/ui/radio-player';
 import { ArrowLeft, Calendar, CalendarCheck, Camera, Heart, Info, MessageCircle, Package, Radio, Share2, Star, Ticket, Verified } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -26,16 +26,11 @@ import { EmpresaEventos } from '@/components/empresa/EmpresaEventos';
 import { EmpresaCupons } from '@/components/empresa/EmpresaCupons';
 import { AuthDialog } from '@/components/auth/AuthDialog';
 import { AgendamentoForm } from '@/components/agendamento/AgendamentoForm';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 const EmpresaProfile = () => {
   const params = useParams<{ id?: string; slug?: string }>();
   const empresaParam = params.id || params.slug;
-
-  console.log('🏢 EmpresaProfile - URL atual:', window.location.href);
-  console.log('🏢 EmpresaProfile - Params completo:', params);
-  console.log('🏢 EmpresaProfile - Parâmetro capturado (empresaParam):', empresaParam);
-  console.log('🏢 EmpresaProfile - Tipo do parâmetro:', typeof empresaParam);
 
   const { data: empresa, isLoading, error } = useEmpresaById(empresaParam || '');
   const { data: avaliacoes } = useEmpresaAvaliacoes(empresa?.id || '');
@@ -66,21 +61,6 @@ const EmpresaProfile = () => {
   const { user, profile } = useAuth();
   const { data: jaAvaliou } = useUsuarioJaAvaliou(empresa?.id || '', user?.id);
 
-  useEffect(() => {
-    console.log('🏢 EmpresaProfile - useEffect executado');
-    console.log('🏢 EmpresaProfile - Parâmetro empresaParam:', empresaParam);
-    console.log('🏢 EmpresaProfile - Estado Loading:', isLoading);
-    console.log('🏢 EmpresaProfile - Erro:', error);
-    console.log('🏢 EmpresaProfile - Dados da empresa:', empresa);
-    if (empresa) {
-      console.log('🏢 EmpresaProfile - Nome da empresa:', empresa.nome);
-      console.log('🏢 EmpresaProfile - Slug da empresa:', empresa.slug);
-      console.log('🏢 EmpresaProfile - ID da empresa:', empresa.id);
-      console.log('🏢 EmpresaProfile - Categoria da empresa:', empresa.categorias?.nome);
-      console.log('🏢 EmpresaProfile - Link rádio:', empresa.link_radio);
-    }
-  }, [empresaParam, isLoading, error, empresa]);
-
   const isFavorito = empresa ? verificarFavorito(empresa.id) : false;
 
   const handleAvaliar = () => {
@@ -104,7 +84,6 @@ const EmpresaProfile = () => {
   };
 
   if (isLoading) {
-    console.log('🏢 EmpresaProfile - Exibindo estado de carregamento');
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
@@ -119,16 +98,6 @@ const EmpresaProfile = () => {
         <div className="text-center space-y-4">
           <h2 className="text-2xl font-bold text-foreground mb-2">Empresa não encontrada</h2>
           <p className="text-muted-foreground">A empresa que você procura não existe ou foi removida.</p>
-          <p className="text-sm text-muted-foreground">ID/Slug pesquisado: {empresaParam || 'NENHUM PARÂMETRO CAPTURADO'}</p>
-          <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-lg p-4 mt-4">
-            <p className="text-sm text-red-600 dark:text-red-300">
-              <strong>Debug Info:</strong><br />
-              URL: {window.location.href}<br />
-              Params: {JSON.stringify(params)}<br />
-              ID/Slug: {empresaParam || 'undefined'}<br />
-              Error: {error?.message || 'Nenhum erro específico'}
-            </p>
-          </div>
           <Button onClick={() => navigate(-1)} variant="outline">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Voltar
@@ -137,8 +106,6 @@ const EmpresaProfile = () => {
       </div>
     );
   }
-
-  console.log('✅ EmpresaProfile - Renderizando perfil da empresa:', empresa.nome);
 
   const images = [empresa.imagem_capa_url].filter(Boolean);
 
@@ -175,14 +142,6 @@ const EmpresaProfile = () => {
 
   const precisaResponsavel = user && profile && profile.tipo_conta === 'usuario' && empresa.usuario_id !== user.id;
   const empresaSemProprietario = (!empresa.usuario_id || empresa.usuario_id === null) && !adminAtribuido;
-
-  console.log('🏢 EmpresaProfile - Debug empresa sem proprietário:', {
-    empresaUsuarioId: empresa.usuario_id,
-    empresaUsuarioIdTipo: typeof empresa.usuario_id,
-    userLoggedIn: !!user,
-    empresaSemProprietario,
-    empresaNome: empresa.nome,
-  });
 
   const isRadio = empresa.categorias?.nome === 'Rádios' && empresa.link_radio;
   const isInfluencer = empresa.categorias?.nome === 'Influencers';
@@ -374,6 +333,7 @@ const EmpresaProfile = () => {
                                     <DialogContent className="max-w-lg">
                                       <DialogHeader>
                                         <DialogTitle>Agendar Serviço</DialogTitle>
+                                        <DialogDescription>Escolha o serviço, a data e um dos horários disponíveis.</DialogDescription>
                                       </DialogHeader>
                                       <AgendamentoForm
                                         empresaId={empresa.id}

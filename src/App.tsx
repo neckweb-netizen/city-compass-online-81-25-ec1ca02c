@@ -21,6 +21,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PushNotificationsProvider } from "@/contexts/PushNotificationsContext";
 import { PushPermissionPrompt } from "@/components/notifications/PushPermissionPrompt";
+import { AuthProvider } from "@/hooks/useAuth";
 
 // Import critical pages immediately
 import Index from "./pages/Index";
@@ -732,8 +733,9 @@ const App = () => {
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <ScrollToTop />
-          <PushNotificationsProvider>
+          <AuthProvider>
+            <ScrollToTop />
+            <PushNotificationsProvider>
             <PushPermissionPrompt />
             <AnalyticsTracker />
             <RoutePreloader />
@@ -838,7 +840,8 @@ const App = () => {
               <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
-          </PushNotificationsProvider>
+            </PushNotificationsProvider>
+          </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
     </ThemeProvider>
