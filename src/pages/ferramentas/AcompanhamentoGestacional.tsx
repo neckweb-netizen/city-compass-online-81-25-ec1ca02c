@@ -270,7 +270,7 @@ const AcompanhamentoGestacional = () => {
                       <BellRing className="mt-0.5 h-5 w-5 text-rose-600" />
                       <div>
                         <p className="text-sm font-bold">Lembrete automático</p>
-                        <p className="text-xs text-muted-foreground">O Saj Tem agenda o aviso e o Firebase envia mesmo com o app fechado.</p>
+                        <p className="text-xs text-muted-foreground">O Saj Tem agenda e envia o aviso mesmo com o aplicativo fechado.</p>
                       </div>
                     </div>
                     <Switch checked={eventoForm.notificar} onCheckedChange={(notificar) => setEventoForm({ ...eventoForm, notificar })} disabled={!user} />

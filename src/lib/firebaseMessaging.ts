@@ -26,9 +26,9 @@ async function loadFirebaseConfig(): Promise<PublicFirebaseConfig> {
       const { data, error } = await supabase.functions.invoke('firebase-public-config', {
         method: 'POST',
       });
-      if (error) throw new Error(error.message || 'Não foi possível carregar a configuração do Firebase.');
+      if (error) throw new Error(error.message || 'Não foi possível carregar a configuração das notificações.');
       if (!data?.apiKey || !data?.projectId || !data?.messagingSenderId || !data?.appId || !data?.vapidKey) {
-        throw new Error('Configuração pública do Firebase incompleta.');
+        throw new Error('Configuração pública das notificações incompleta.');
       }
       return data as PublicFirebaseConfig;
     })();
@@ -111,7 +111,7 @@ async function registerFirebasePush(): Promise<string> {
   const fidPromise = new Promise<string>((resolve, reject) => {
     timeout = window.setTimeout(() => {
       cleanup();
-      reject(new Error('O Firebase demorou para registrar este dispositivo. Tente novamente.'));
+      reject(new Error('O serviço de notificações demorou para registrar este dispositivo. Tente novamente.'));
     }, 20_000);
     unsubscribe = onRegistered(messaging, async (fid) => {
       cleanup();

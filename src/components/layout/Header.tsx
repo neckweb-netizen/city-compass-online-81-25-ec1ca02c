@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { MobileHamburger } from '@/components/layout/MobileHamburger';
 import { useNotifications } from '@/hooks/useNotifications';
+import { cn } from '@/lib/utils';
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -120,7 +121,20 @@ export const Header = () => {
 
             {/* Search Bar - only visible on non-homepage */}
             {!isHomePage && (
-              <div className="min-w-0 flex-1 max-w-md mx-1 sm:mx-2 lg:mx-4">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Abrir busca"
+                onClick={() => navigate('/busca')}
+                className="ml-auto h-10 w-10 shrink-0 rounded-full lg:hidden"
+              >
+                <Search className="h-5 w-5" />
+              </Button>
+            )}
+
+            {!isHomePage && (
+              <div className="mx-4 hidden min-w-0 max-w-md flex-1 lg:block">
                 <form onSubmit={handleSearch} className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -135,7 +149,7 @@ export const Header = () => {
             )}
 
             {/* Actions */}
-            <div className="flex items-center gap-0.5 sm:gap-1 lg:gap-2 flex-shrink-0">
+            <div className={cn("flex items-center gap-0.5 sm:gap-1 lg:gap-2 flex-shrink-0", isHomePage && "ml-auto")}>
               {/* Theme Toggle */}
               <Button
                 variant="ghost"

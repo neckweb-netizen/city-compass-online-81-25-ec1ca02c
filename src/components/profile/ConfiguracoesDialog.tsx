@@ -208,7 +208,7 @@ export const ConfiguracoesDialog = ({ open, onOpenChange }: ConfiguracoesDialogP
                         <div>
                           <Label htmlFor="notificacoes-push">Push neste dispositivo</Label>
                           <p className="text-xs text-muted-foreground">
-                            {permission === 'denied' ? 'Bloqueado nas configurações do navegador' : pushEnabled ? 'Dispositivo conectado ao Firebase' : 'Receba alertas mesmo com o app fechado'}
+                            {permission === 'denied' ? 'Bloqueado nas configurações do navegador' : pushEnabled ? 'Notificações ativas neste dispositivo' : 'Receba alertas mesmo com o app fechado'}
                           </p>
                         </div>
                       </div>

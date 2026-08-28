@@ -137,7 +137,7 @@ const MeuVeiculo = () => {
             <div>
               <Badge className="mb-2 border-white/20 bg-white/10 text-white">Veículos • controle completo</Badge>
               <h1 className="text-2xl font-black tracking-tight sm:text-4xl">Meu Veículo</h1>
-              <p className="mt-2 max-w-2xl text-sm text-blue-50 sm:text-base">Abastecimentos, consumo, gastos, manutenções, documentos e lembretes automáticos pelo Firebase.</p>
+              <p className="mt-2 max-w-2xl text-sm text-blue-50 sm:text-base">Abastecimentos, consumo, gastos, manutenções, documentos e lembretes automáticos.</p>
             </div>
           </div>
         </section>
@@ -208,7 +208,7 @@ const MeuVeiculo = () => {
               <div><Label>Tipo</Label><Select value={reminderForm.tipo} onValueChange={(v)=>setReminderForm({...reminderForm,tipo:v as LembreteVeiculo['tipo']})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="documento">Documento/IPVA/licenciamento</SelectItem><SelectItem value="manutencao">Manutenção</SelectItem><SelectItem value="seguro">Seguro</SelectItem><SelectItem value="outro">Outro</SelectItem></SelectContent></Select></div>
               <div className="grid grid-cols-2 gap-3"><div><Label>Data limite</Label><Input type="date" value={reminderForm.data} onChange={(e)=>setReminderForm({...reminderForm,data:e.target.value})} /></div><div><Label>Km alvo</Label><Input inputMode="numeric" value={reminderForm.km} onChange={(e)=>setReminderForm({...reminderForm,km:e.target.value})} placeholder="Ex.: 60000" /></div></div>
               <div className="grid grid-cols-2 gap-3"><div><Label>Avisar antes</Label><Select value={reminderForm.diasAntes} onValueChange={(v)=>setReminderForm({...reminderForm,diasAntes:v})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="0">No dia</SelectItem><SelectItem value="1">1 dia antes</SelectItem><SelectItem value="3">3 dias antes</SelectItem><SelectItem value="7">7 dias antes</SelectItem><SelectItem value="15">15 dias antes</SelectItem><SelectItem value="30">30 dias antes</SelectItem></SelectContent></Select></div><div><Label>Horário</Label><Input type="time" value={reminderForm.hora} onChange={(e)=>setReminderForm({...reminderForm,hora:e.target.value})} /></div></div>
-              <div className="flex items-center justify-between rounded-2xl border p-3"><div><p className="font-bold">Notificação Firebase</p><p className="text-xs text-muted-foreground">Disponível quando estiver logado.</p></div><Switch checked={reminderForm.notificar && Boolean(user)} disabled={!user} onCheckedChange={(v)=>setReminderForm({...reminderForm,notificar:v})} /></div>
+              <div className="flex items-center justify-between rounded-2xl border p-3"><div><p className="font-bold">Notificação push</p><p className="text-xs text-muted-foreground">Disponível quando estiver logado.</p></div><Switch checked={reminderForm.notificar && Boolean(user)} disabled={!user} onCheckedChange={(v)=>setReminderForm({...reminderForm,notificar:v})} /></div>
               <Button className="w-full rounded-xl"><BellRing className="mr-2 h-4 w-4" />Salvar lembrete</Button>
             </form></CardContent></Card>
 

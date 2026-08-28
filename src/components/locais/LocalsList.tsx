@@ -76,8 +76,8 @@ export const LocalsList = ({ categoriaId, searchTerm, title }: LocaisListProps) 
   return (
     <div className="space-y-6">
       {/* Header com controles */}
-      <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-        <div>
+      <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
           {title && (
             <h2 className="text-2xl font-bold text-gray-900 mb-1">{title}</h2>
           )}
@@ -86,28 +86,29 @@ export const LocalsList = ({ categoriaId, searchTerm, title }: LocaisListProps) 
           </p>
         </div>
         
-        <div className="flex items-center space-x-4">
+        <div className="grid min-w-0 w-full gap-3 sm:grid-cols-[minmax(0,1fr)_auto] lg:max-w-2xl">
           {/* Busca local (se não há searchTerm props) */}
           {!searchTerm && (
-            <div className="relative">
+            <div className="relative min-w-0">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 placeholder="Buscar locais..."
                 value={localSearch}
                 onChange={(e) => setLocalSearch(e.target.value)}
-                className="pl-10 w-64"
+                className="w-full min-w-0 pl-10"
               />
             </div>
           )}
           
           {/* Controles de visualização */}
-          <div className="flex items-center space-x-2">
+          <div className="flex min-w-0 items-center justify-end gap-2">
             <Button
               variant={viewMode === 'grid' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setViewMode('grid')}
             >
               <Grid className="h-4 w-4" />
+              <span className="sr-only">Visualização em grade</span>
             </Button>
             <Button
               variant={viewMode === 'list' ? 'default' : 'outline'}
@@ -115,13 +116,13 @@ export const LocalsList = ({ categoriaId, searchTerm, title }: LocaisListProps) 
               onClick={() => setViewMode('list')}
             >
               <List className="h-4 w-4" />
+              <span className="sr-only">Visualização em lista</span>
+            </Button>
+            <Button variant="outline" size="sm" className="min-w-0">
+              <Filter className="mr-2 h-4 w-4" />
+              <span>Filtros</span>
             </Button>
           </div>
-          
-          <Button variant="outline" size="sm">
-            <Filter className="h-4 w-4 mr-2" />
-            Filtros
-          </Button>
         </div>
       </div>
 

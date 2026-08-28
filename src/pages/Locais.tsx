@@ -7,10 +7,10 @@ import { Building2, Search } from 'lucide-react';
 
 export const Locais = () => {
   return (
-    <div className="container mx-auto px-4 py-8">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-foreground mb-4">Explorar Locais</h1>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
+    <div className="mx-auto w-full max-w-7xl px-3 py-5 sm:px-5 sm:py-8 lg:px-8">
+        <div className="mb-6 text-center sm:mb-8">
+          <h1 className="mb-3 text-3xl font-bold leading-tight text-foreground sm:mb-4 sm:text-4xl">Explorar Locais</h1>
+          <p className="mx-auto max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
             Explore todos os locais cadastrados na plataforma e encontre exatamente o que você procura
           </p>
         </div>
@@ -19,14 +19,14 @@ export const Locais = () => {
         <BannerSection secao="locais" />
 
         <Tabs defaultValue="todas" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-8">
-            <TabsTrigger value="todas" className="flex items-center gap-2">
-              <Building2 className="h-4 w-4" />
-              Todos os Locais
+          <TabsList className="mb-6 grid h-auto w-full grid-cols-2 p-1 sm:mb-8">
+            <TabsTrigger value="todas" className="min-w-0 gap-1.5 px-2 py-2.5 text-xs sm:gap-2 sm:text-sm">
+              <Building2 className="h-4 w-4 shrink-0" />
+              <span className="truncate">Todos os Locais</span>
             </TabsTrigger>
-            <TabsTrigger value="buscar" className="flex items-center gap-2">
-              <Search className="h-4 w-4" />
-              Busca Avançada
+            <TabsTrigger value="buscar" className="min-w-0 gap-1.5 px-2 py-2.5 text-xs sm:gap-2 sm:text-sm">
+              <Search className="h-4 w-4 shrink-0" />
+              <span className="truncate">Busca Avançada</span>
             </TabsTrigger>
           </TabsList>
           

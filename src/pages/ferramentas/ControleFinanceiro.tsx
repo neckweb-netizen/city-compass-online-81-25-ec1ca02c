@@ -1109,7 +1109,7 @@ export const ControleFinanceiro = () => {
                     <BellRing className="mt-0.5 h-5 w-5 text-emerald-600" />
                     <div>
                       <p className="text-sm font-black text-slate-950 dark:text-foreground">Lembrar deste vencimento</p>
-                      <p className="text-[11px] leading-relaxed text-muted-foreground">O aviso fica agendado no Supabase e é enviado pelo Firebase mesmo com o Saj Tem fechado.</p>
+                      <p className="text-[11px] leading-relaxed text-muted-foreground">O aviso fica agendado com segurança e é enviado mesmo com o Saj Tem fechado.</p>
                     </div>
                   </div>
                   <Switch checked={form.notify} onCheckedChange={(notify) => setForm((current) => ({ ...current, notify }))} disabled={!user} />

@@ -148,9 +148,8 @@ export const BannerSection = ({ secao = 'home' }: BannerSectionProps) => {
                     src={banner.imagem_url}
                     alt="Banner publicitário"
                     className="w-full h-full object-cover transition-opacity duration-500"
-                    {...(index === 0 ? { 
-                      fetchPriority: "high" as const,
-                      loading: "eager" as const 
+                    {...(index === 0 ? {
+                      loading: "eager" as const
                     } : { 
                       loading: "lazy" as const 
                     })}

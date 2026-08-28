@@ -308,7 +308,7 @@ const FerramentasCatalogInternal = () => {
     {
       id: 'medicamentos',
       titulo: 'Medicamentos e Lembretes',
-      descricao: 'Organize medicamentos e horários, registre doses e receba lembretes automáticos pelo Firebase com sincronização na sua conta.',
+      descricao: 'Organize medicamentos e horários, registre doses e receba lembretes automáticos com sincronização na sua conta.',
       icone: Pill,
       rota: '/ferramentas/medicamentos',
       categoria: 'Saúde',
@@ -318,7 +318,7 @@ const FerramentasCatalogInternal = () => {
     {
       id: 'meu-veiculo',
       titulo: 'Meu Veículo — Controle Automotivo',
-      descricao: 'Controle abastecimentos, consumo, gastos, manutenções, documentos e receba lembretes automáticos pelo Firebase.',
+      descricao: 'Controle abastecimentos, consumo, gastos, manutenções, documentos e receba lembretes automáticos.',
       icone: CarFront,
       rota: '/ferramentas/meu-veiculo',
       categoria: 'Veículos',
