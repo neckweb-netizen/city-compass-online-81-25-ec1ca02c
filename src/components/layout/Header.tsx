@@ -86,13 +86,13 @@ export const Header = () => {
   return (
     <div className="sticky top-0 z-40 w-full">
       <header className="bg-background/95 backdrop-blur-sm border-b border-border shadow-sm w-full">
-        <div className="w-full px-2 sm:px-4 py-2 sm:py-3 lg:px-6">
-          <div className="flex items-center justify-between w-full min-w-0 gap-4">
+        <div className="w-full max-w-full px-2 py-2 lg:px-6 lg:py-3">
+          <div className="flex items-center justify-between w-full min-w-0 gap-1.5 sm:gap-2 lg:gap-4">
             {/* Logo and Mobile Menu */}
-            <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-shrink-0">
+            <div className="flex items-center gap-1 sm:gap-2 lg:gap-3 min-w-0 flex-shrink-0">
               <MobileHamburger />
-              <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-lg overflow-hidden flex-shrink-0">
+              <div className="flex items-center gap-2 lg:gap-3 min-w-0">
+                <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-xl flex items-center justify-center shadow-lg overflow-hidden flex-shrink-0">
                   {/* Caminho atualizado apontando para o arquivo renomeado da pasta public */}
                   <img 
                     src="/icon-192.png"
@@ -110,17 +110,17 @@ export const Header = () => {
                   />
                 </div>
                 <div className="min-w-0">
-                  <h1 className="text-sm sm:text-lg font-bold text-primary truncate">
+                  <h1 className="text-sm lg:text-lg font-bold text-primary truncate">
                     Saj Tem
                   </h1>
-                  <p className="text-xs text-muted-foreground hidden sm:block truncate">Santo Antônio de Jesus</p>
+                  <p className="text-xs text-muted-foreground hidden lg:block truncate">Santo Antônio de Jesus</p>
                 </div>
               </div>
             </div>
 
             {/* Search Bar - only visible on non-homepage */}
             {!isHomePage && (
-              <div className="flex-1 max-w-xs sm:max-w-md mx-2 sm:mx-4">
+              <div className="min-w-0 flex-1 max-w-md mx-1 sm:mx-2 lg:mx-4">
                 <form onSubmit={handleSearch} className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -128,25 +128,25 @@ export const Header = () => {
                     placeholder="Buscar..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 pr-4 py-2 text-sm border-0 focus:border-0 focus:ring-2 focus:ring-primary/20 rounded-full shadow-sm bg-muted/50"
+                    className="w-full min-w-0 pl-9 pr-2 sm:pl-10 sm:pr-4 py-2 text-sm border-0 focus:border-0 focus:ring-2 focus:ring-primary/20 rounded-full shadow-sm bg-muted/50"
                   />
                 </form>
               </div>
             )}
 
             {/* Actions */}
-            <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
+            <div className="flex items-center gap-0.5 sm:gap-1 lg:gap-2 flex-shrink-0">
               {/* Theme Toggle */}
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-                className="h-10 w-10 sm:h-12 sm:w-12 lg:h-14 lg:w-14 rounded-full p-0 hover:bg-accent flex-shrink-0"
+                className="h-10 w-10 lg:h-12 lg:w-12 rounded-full p-0 hover:bg-accent flex-shrink-0"
               >
                 {theme === 'light' ? (
-                  <Moon className="h-5 w-5 sm:h-6 sm:w-6 lg:h-7 lg:w-7 text-foreground" />
+                  <Moon className="h-5 w-5 lg:h-6 lg:w-6 text-foreground" />
                 ) : (
-                  <Sun className="h-5 w-5 sm:h-6 sm:w-6 lg:h-7 lg:w-7 text-foreground" />
+                  <Sun className="h-5 w-5 lg:h-6 lg:w-6 text-foreground" />
                 )}
               </Button>
               
@@ -154,10 +154,10 @@ export const Header = () => {
               {user && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                     <Button variant="ghost" size="sm" className="h-10 w-10 sm:h-12 sm:w-12 lg:h-14 lg:w-14 rounded-full p-0 relative hover:bg-accent flex-shrink-0">
+                     <Button variant="ghost" size="sm" className="h-10 w-10 lg:h-12 lg:w-12 rounded-full p-0 relative hover:bg-accent flex-shrink-0">
                        {totalUnread > 0 ? (
                          <>
-                           <BellRing className="h-5 w-5 sm:h-6 sm:w-6 lg:h-7 lg:w-7 text-primary" />
+                           <BellRing className="h-5 w-5 lg:h-6 lg:w-6 text-primary" />
                            <Badge 
                              variant="destructive" 
                              className="absolute -top-1 -right-1 h-5 w-5 sm:h-6 sm:w-6 flex items-center justify-center p-0 text-xs animate-pulse"
@@ -166,7 +166,7 @@ export const Header = () => {
                            </Badge>
                          </>
                        ) : (
-                         <Bell className="h-5 w-5 sm:h-6 sm:w-6 lg:h-7 lg:w-7 text-primary" />
+                         <Bell className="h-5 w-5 lg:h-6 lg:w-6 text-primary" />
                        )}
                     </Button>
                   </DropdownMenuTrigger>
@@ -246,13 +246,13 @@ export const Header = () => {
               {user && profile ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-10 px-2 sm:h-12 sm:px-3 lg:h-14 lg:px-4 rounded-full hover:bg-accent flex-shrink-0">
-                      <Avatar className="h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12">
-                        <AvatarFallback className="bg-primary text-primary-foreground text-sm sm:text-base lg:text-lg font-semibold">
+                    <Button variant="ghost" className="h-10 px-1.5 lg:h-12 lg:px-3 rounded-full hover:bg-accent flex-shrink-0">
+                      <Avatar className="h-8 w-8 lg:h-10 lg:w-10">
+                        <AvatarFallback className="bg-primary text-primary-foreground text-sm lg:text-base font-semibold">
                           {profile.nome?.charAt(0)?.toUpperCase() || 'U'}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="ml-1 sm:ml-2 text-xs sm:text-sm lg:text-base font-medium hidden md:block truncate max-w-20 lg:max-w-none">
+                      <span className="ml-2 text-sm font-medium hidden xl:block truncate max-w-32">
                         {profile.nome || 'Usuário'}
                       </span>
                     </Button>
@@ -288,7 +288,7 @@ export const Header = () => {
                     setAuthDialogOpen(true);
                   }}
                   size="sm"
-                  className="h-10 sm:h-12 lg:h-14 rounded-full px-3 sm:px-4 lg:px-6 bg-primary hover:bg-primary/90 shadow-md text-xs sm:text-sm lg:text-base flex-shrink-0"
+                  className="h-10 lg:h-12 rounded-full px-3 lg:px-5 bg-primary hover:bg-primary/90 shadow-md text-xs lg:text-sm flex-shrink-0"
                   data-tutorial="auth-button"
                   data-auth-trigger="true"
                 >
