@@ -142,7 +142,7 @@ export const LocalCard = ({
         </div>
 
         {showActions && (
-          <div className="absolute right-3 top-3 flex gap-2">
+          <div className="absolute right-3 top-3 z-10 flex items-center gap-2">
             <div onClick={(e) => e.stopPropagation()}>
               <ShareButton
                 url={`${window.location.origin}/local/${empresa.id}`}
@@ -153,18 +153,20 @@ export const LocalCard = ({
                 }
                 variant="secondary"
                 size="sm"
-                className="rounded-full border border-border bg-card/90 p-2 opacity-0 transition-opacity hover:bg-card group-hover:opacity-100"
+                className="min-h-10 touch-manipulation rounded-full border border-border bg-card/95 px-3 shadow-md backdrop-blur-sm hover:bg-card"
               />
             </div>
 
             <Button
+              type="button"
+              aria-label={isFavorited ? `Remover ${empresa.nome} dos favoritos` : `Adicionar ${empresa.nome} aos favoritos`}
               variant="secondary"
               size="sm"
               onClick={handleFavoriteClick}
-              className={`rounded-full p-2 opacity-0 transition-opacity group-hover:opacity-100 ${
+              className={`h-10 w-10 touch-manipulation rounded-full p-0 shadow-md backdrop-blur-sm ${
                 isFavorited
                   ? 'bg-red-500 text-white hover:bg-red-600'
-                  : 'border border-border bg-card/90 hover:bg-card'
+                  : 'border border-border bg-card/95 hover:bg-card'
               }`}
               disabled={
                 adicionarFavorito.isPending ||
