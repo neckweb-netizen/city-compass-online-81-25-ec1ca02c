@@ -4,8 +4,10 @@ import { supabase } from '@/integrations/supabase/client';
 export interface RankingJogador {
   usuario_id: string;
   vitorias: number;
+  empates: number;
   derrotas: number;
   partidas_jogadas: number;
+  pontuacao: number;
   usuario?: {
     nome: string;
     avatar_url?: string;
@@ -18,21 +20,23 @@ export const useDominoRanking = (limite: number = 10) => {
 
   const carregarRanking = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from('domino_estatisticas')
-        .select(`
-          usuario_id,
-          vitorias,
-          derrotas,
-          partidas_jogadas,
-          usuario:usuario_id ( nome, avatar_url )
-        `)
-        .order('vitorias', { ascending: false })
-        .limit(limite);
+      const { data, error } = await (supabase as any)
+        .rpc('obter_ranking_domino', { p_limite: limite });
 
       if (error) throw error;
       if (data) {
-        setRanking(data as any);
+        setRanking(data.map((item: any) => ({
+          usuario_id: item.usuario_id,
+          vitorias: item.vitorias,
+          empates: item.empates,
+          derrotas: item.derrotas,
+          partidas_jogadas: item.partidas_jogadas,
+          pontuacao: item.pontuacao,
+          usuario: {
+            nome: item.nome,
+            avatar_url: item.avatar_url,
+          },
+        })));
       }
     } catch (err) {
       console.error('Erro ao buscar ranking de dominó:', err);

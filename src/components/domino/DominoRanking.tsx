@@ -38,6 +38,20 @@ export const DominoRanking = () => {
           <Trophy className="w-5 h-5 text-amber-400" />
           Mestres do Dominó (SAJ)
         </CardTitle>
+        <div className="mt-3 grid grid-cols-3 gap-1.5 text-center text-[10px] font-bold">
+          <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-2 py-1.5 text-emerald-300">
+            Vitória +3
+          </div>
+          <div className="rounded-lg border border-amber-500/25 bg-amber-500/10 px-2 py-1.5 text-amber-300">
+            Empate +1
+          </div>
+          <div className="rounded-lg border border-red-500/25 bg-red-500/10 px-2 py-1.5 text-red-300">
+            Derrota −2
+          </div>
+        </div>
+        <p className="mt-2 text-[10px] leading-relaxed text-gray-400">
+          A pontuação nunca fica negativa. Se o jogador tiver menos de 2 pontos, uma derrota reduz o saldo até zero.
+        </p>
       </CardHeader>
 
       <CardContent className="p-0 divide-y divide-purple-950/30">
@@ -77,7 +91,7 @@ export const DominoRanking = () => {
                       {nomeUsuario}
                     </p>
                     <p className="text-[10px] text-gray-400">
-                      {item.partidas_jogadas} partida(s) • {taxaVitoria}% vitórias
+                      {item.vitorias}V • {item.empates}E • {item.derrotas}D • {taxaVitoria}% vitórias
                     </p>
                   </div>
                 </div>
@@ -85,7 +99,7 @@ export const DominoRanking = () => {
                 {/* Lado Direito: Total de Vitórias */}
                 <div className="flex items-center gap-2">
                   <Badge variant="secondary" className="bg-purple-950 text-purple-300 border border-purple-800/50 font-mono text-xs px-2.5 py-1">
-                    <strong className="text-amber-400 mr-1">{item.vitorias}</strong> {item.vitorias === 1 ? 'Vitória' : 'Vitórias'}
+                    <strong className="text-amber-400 mr-1">{item.pontuacao}</strong> pts
                   </Badge>
                 </div>
               </div>
@@ -96,4 +110,3 @@ export const DominoRanking = () => {
     </Card>
   );
 };
-

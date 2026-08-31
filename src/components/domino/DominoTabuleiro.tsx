@@ -242,6 +242,8 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const processandoJogadaLocal = useRef(false);
   const pedrasInicializadas = useRef(false);
   const ultimoPasseExibidoRef = useRef<string | null>(null);
+  const resultadoEnviadoRef = useRef(false);
+  const derrotaExibidaRef = useRef(false);
 
   const [modalNotificacao, setModalNotificacao] = useState<{ visivel: boolean; titulo: string; message: string; tipo: 'info' | 'erro' | 'fim' }>({
     visivel: false, titulo: '', message: '', tipo: 'info'
@@ -711,6 +713,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           id, jogador_1_id, jogador_2_id, vez_usuario_id, passadas_count,
           mesa_ponta_esquerda, mesa_ponta_direita, historico_jogadas,
           ultimo_passe_usuario_id, ultimo_passe_em, ultimo_passe_motivo,
+          resultado_registrado, resultado_tipo, vencedor_id,
           jogador_1:jogador_1_id ( nome ), jogador_2:jogador_2_id ( nome )
         `)
         .eq('id', salaId)
@@ -803,6 +806,22 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             setPassadasCount(passadas);
             setPontaEsquerda(newData.mesa_ponta_esquerda);
             setPontaDireita(newData.mesa_ponta_direita);
+
+            if (
+              newData.resultado_registrado
+              && newData.resultado_tipo === 'vitoria'
+              && newData.vencedor_id
+              && newData.vencedor_id !== usuarioId
+              && !derrotaExibidaRef.current
+            ) {
+              derrotaExibidaRef.current = true;
+              setModalNotificacao({
+                visivel: true,
+                titulo: 'Fim da partida',
+                message: 'O adversário bateu o jogo. Foram descontados 2 pontos, sem deixar sua pontuação negativa.',
+                tipo: 'fim',
+              });
+            }
 
             const passeEm = newData.ultimo_passe_em as string | null;
             const quemPassouId = newData.ultimo_passe_usuario_id as string | null;
@@ -932,16 +951,34 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   // VITÓRIA
   useEffect(() => {
-    if (minhasPedras.length === 0 && mesaPedras.length > 0) {
+    if (
+      minhasPedras.length !== 0
+      || mesaPedras.length === 0
+      || !pedrasInicializadas.current
+      || resultadoEnviadoRef.current
+    ) return;
+
+    resultadoEnviadoRef.current = true;
+    void (async () => {
+      const { error } = await (supabase as any).rpc('finalizar_partida_domino', {
+        p_sala_id: salaId,
+        p_resultado: 'vitoria',
+      });
+      if (error) {
+        resultadoEnviadoRef.current = false;
+        console.error('Erro ao registrar resultado do dominó:', error);
+        return;
+      }
+
       tocarEfeitoSonoro('vitoria');
       setModalNotificacao({
         visivel: true,
-        titulo: 'Parabéns, Você Venceu!',
-        message: 'Você bateu o jogo!',
-        tipo: 'fim'
+        titulo: 'Vitória! +3 pontos',
+        message: 'Você bateu o jogo e ganhou 3 pontos no ranking.',
+        tipo: 'fim',
       });
-    }
-  }, [minhasPedras]);
+    })();
+  }, [minhasPedras, mesaPedras.length, salaId]);
 
   const fecharModalNotificacao = () => {
     setModalNotificacao(prev => ({ ...prev, visivel: false }));
@@ -1055,11 +1092,11 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       {emojiFlutuante && (
         <div
           key={emojiFlutuante.id}
-          className={`pointer-events-none absolute left-1/2 z-[70] -translate-x-1/2 animate-in zoom-in-50 slide-in-from-bottom-5 duration-300 ${
-            emojiFlutuante.meu ? 'bottom-[22%]' : 'top-[13%]'
+          className={`pointer-events-none absolute bottom-[6%] z-[70] -translate-x-1/2 animate-in zoom-in-50 slide-in-from-bottom-5 duration-300 ${
+            emojiFlutuante.meu ? 'left-[76%]' : 'left-[24%]'
           }`}
         >
-          <div className="animate-bounce rounded-full border border-purple-300/40 bg-[#140d20]/85 px-4 py-2 text-5xl shadow-[0_8px_30px_rgba(0,0,0,0.65)] backdrop-blur-md sm:text-6xl">
+          <div className="animate-bounce rounded-full border border-purple-300/40 bg-[#140d20]/85 px-3 py-1.5 text-4xl shadow-[0_8px_30px_rgba(0,0,0,0.65)] backdrop-blur-md sm:text-5xl">
             {emojiFlutuante.emoji}
           </div>
         </div>
