@@ -258,6 +258,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const [emojiFlutuante, setEmojiFlutuante] = useState<{
     emoji: string;
     meu: boolean;
+    nomeRemetente: string;
     id: number;
   } | null>(null);
 
@@ -409,13 +410,15 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   const enviarEmoji = (emoji: string) => {
     if (canalRef.current) {
+      const meuNome = usuarioId === jogador1Id ? nomeJ1 : nomeJ2;
+
       canalRef.current.send({
         type: 'broadcast',
         event: 'emoji',
-        payload: { remetenteId: usuarioId, emoji }
+        payload: { remetenteId: usuarioId, remetenteNome: meuNome, emoji }
       });
       
-      setEmojiFlutuante({ emoji, meu: true, id: Date.now() });
+      setEmojiFlutuante({ emoji, meu: true, nomeRemetente: meuNome, id: Date.now() });
     }
   };
 
@@ -869,9 +872,15 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         setTempoRestante(30);
       })
       .on('broadcast', { event: 'emoji' }, (payload) => {
-        const { remetenteId, emoji } = payload.payload;
+        const { remetenteId, remetenteNome, emoji } = payload.payload;
         if (remetenteId !== usuarioId) {
-          setEmojiFlutuante({ emoji, meu: false, id: Date.now() });
+          const nomeIdentificado = remetenteId === jogador1Id ? nomeJ1 : remetenteId === jogador2Id ? nomeJ2 : remetenteNome;
+          setEmojiFlutuante({
+            emoji,
+            meu: false,
+            nomeRemetente: nomeIdentificado || 'Seu adversário',
+            id: Date.now()
+          });
         }
       })
       .subscribe();
@@ -934,7 +943,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   useEffect(() => {
     if (!emojiFlutuante) return;
-    const timer = setTimeout(() => setEmojiFlutuante(null), 2200);
+    const timer = setTimeout(() => setEmojiFlutuante(null), 2800);
     return () => clearTimeout(timer);
   }, [emojiFlutuante]);
 
@@ -1089,19 +1098,6 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </div>
       )}
 
-      {emojiFlutuante && (
-        <div
-          key={emojiFlutuante.id}
-          className={`pointer-events-none absolute bottom-[6%] z-[70] -translate-x-1/2 animate-in zoom-in-50 slide-in-from-bottom-5 duration-300 ${
-            emojiFlutuante.meu ? 'left-[76%]' : 'left-[24%]'
-          }`}
-        >
-          <div className="animate-bounce rounded-full border border-purple-300/40 bg-[#140d20]/85 px-3 py-1.5 text-4xl shadow-[0_8px_30px_rgba(0,0,0,0.65)] backdrop-blur-md sm:text-5xl">
-            {emojiFlutuante.emoji}
-          </div>
-        </div>
-      )}
-
       {/* AVISO FLUTUANTE AJUSTADO */}
       {alertaTemporario && alertaTemporario.visivel && (
         <div className="absolute top-12 left-1/2 -translate-x-1/2 z-[60] bg-purple-950/95 border-2 border-purple-500 text-white px-3 py-1 rounded-2xl shadow-[0_4px_15px_rgba(147,51,234,0.4)] flex items-center gap-1.5 text-[10px] sm:text-xs font-bold animate-in fade-in slide-in-from-top-4 duration-200 whitespace-nowrap">
@@ -1143,17 +1139,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             <span className="text-[8px]">{vezUsuarioId === jogador1Id ? '🟢' : '⚫'}</span>
           </div>
           
-          <div className="flex items-center gap-0.5 bg-[#170f2c] border border-purple-500/30 px-1 py-0.5 rounded-lg shadow-inner shrink-0">
-            {['😀', '🔥', '😡', '😂'].map((emoji) => (
-              <button 
-                key={emoji} 
-                onClick={() => enviarEmoji(emoji)} 
-                className="flex h-7 w-7 items-center justify-center rounded-md p-0.5 text-base transition-all hover:scale-125 hover:bg-purple-500/15 active:scale-90 sm:h-8 sm:w-8 sm:text-xl cursor-pointer touch-manipulation select-none"
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
+          <span className="shrink-0 rounded-full border border-purple-500/25 bg-[#170f2c] px-1.5 py-0.5 text-[7px] font-black tracking-wider text-purple-300 sm:text-[8px]">VS</span>
           
           <div className="flex items-center gap-0.5 shrink">
             <span className="text-[8px]">{vezUsuarioId === jogador2Id ? '🟢' : '⚫'}</span>
@@ -1252,6 +1238,31 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
                 </p>
                 <p className="mt-0.5 text-[11px] leading-relaxed text-white/85">
                   {avisoPasse.mensagem}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {emojiFlutuante && (
+          <div
+            key={emojiFlutuante.id}
+            className="pointer-events-none absolute left-1/2 top-[58%] z-40 -translate-x-1/2 -translate-y-1/2 animate-in zoom-in-75 slide-in-from-bottom-4 duration-300"
+          >
+            <div className={`flex min-w-[190px] max-w-[82vw] items-center gap-3 rounded-2xl border px-4 py-2.5 shadow-2xl backdrop-blur-xl ${
+              emojiFlutuante.meu
+                ? 'border-purple-300/60 bg-[#1b1030]/95 shadow-purple-950/60'
+                : 'border-fuchsia-300/70 bg-[#25102a]/95 shadow-fuchsia-950/60'
+            }`}>
+              <span className="shrink-0 animate-bounce text-4xl drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)] sm:text-5xl">
+                {emojiFlutuante.emoji}
+              </span>
+              <div className="min-w-0 text-left">
+                <p className="text-[9px] font-black uppercase tracking-widest text-purple-300">Provocação</p>
+                <p className="mt-0.5 text-xs font-extrabold leading-tight text-white sm:text-sm">
+                  {emojiFlutuante.meu
+                    ? `Você provocou ${adversarioNome}!`
+                    : `${emojiFlutuante.nomeRemetente} provocou você!`}
                 </p>
               </div>
             </div>
@@ -1362,13 +1373,30 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
       {/* ÁREA DAS SUAS PEDRAS (MÃO ARRASTÁVEL COM PEDRAS BRANCAS NÍTIDAS) */}
       <div className="bg-[#110D1A]/95 border border-purple-950/40 p-1 sm:p-2 rounded-2xl h-[24%] flex flex-col justify-between w-full">
-        <div className="flex items-center justify-between px-1 h-[20%]">
+        <div className="flex items-center justify-between px-1 h-[16%] min-h-4">
           <span className="text-[8px] sm:text-[10px] text-purple-300 font-bold uppercase tracking-wider">Suas Pedras ({minhasPedras.length})</span>
           {pedraArrastando && (
             <span className="text-[8px] sm:text-[10px] text-amber-400 font-bold animate-pulse">Arrastando: [{pedraArrastando}]</span>
           )}
         </div>
-        <div className="flex justify-center items-center gap-1 overflow-x-auto h-[80%] py-0.5">
+        <div className="flex h-[27%] min-h-8 items-center justify-center">
+          <div className="flex items-center gap-0.5 rounded-xl border border-purple-500/35 bg-[#170f2c] px-1.5 py-0.5 shadow-inner sm:gap-1 sm:px-2">
+            <span className="mr-0.5 hidden text-[8px] font-black uppercase tracking-wider text-purple-300 min-[390px]:inline">Provocar</span>
+            {['😀', '🔥', '😡', '😂'].map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                onClick={() => enviarEmoji(emoji)}
+                aria-label={`Provocar com ${emoji}`}
+                title={`Provocar com ${emoji}`}
+                className="flex h-7 w-7 cursor-pointer touch-manipulation select-none items-center justify-center rounded-lg text-lg transition-all hover:scale-110 hover:bg-purple-500/20 active:scale-90 sm:h-8 sm:w-8 sm:text-xl"
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex justify-center items-center gap-1 overflow-x-auto h-[57%] py-0.5">
           {minhasPedras.map((pedra, idx) => (
             <div key={idx} className="shrink-0 scale-85 sm:scale-100 touch-none">
               <PedraClassica 
