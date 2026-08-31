@@ -39,63 +39,79 @@ const BannerCodeContainer: React.FC<{ codigoHtml: string }> = ({ codigoHtml }) =
   );
 };
 
-// SINTETIZADOR WEB AUDIO API PARA EFEITOS SONOROS
+let contextoAudioDomino: AudioContext | null = null;
+
+const criarBatidaDePedra = (ctx: AudioContext, inicio: number, intensidade = 0.45, grave = false) => {
+  const duracao = grave ? 0.075 : 0.045;
+  const buffer = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * duracao), ctx.sampleRate);
+  const canal = buffer.getChannelData(0);
+  for (let i = 0; i < canal.length; i += 1) {
+    const queda = 1 - i / canal.length;
+    canal[i] = (Math.random() * 2 - 1) * queda * queda;
+  }
+
+  const ruido = ctx.createBufferSource();
+  const filtro = ctx.createBiquadFilter();
+  const ganhoRuido = ctx.createGain();
+  ruido.buffer = buffer;
+  filtro.type = 'bandpass';
+  filtro.frequency.value = grave ? 520 : 1550;
+  filtro.Q.value = grave ? 0.8 : 1.25;
+  ganhoRuido.gain.setValueAtTime(intensidade, inicio);
+  ganhoRuido.gain.exponentialRampToValueAtTime(0.001, inicio + duracao);
+  ruido.connect(filtro);
+  filtro.connect(ganhoRuido);
+  ganhoRuido.connect(ctx.destination);
+  ruido.start(inicio);
+
+  const corpo = ctx.createOscillator();
+  const ganhoCorpo = ctx.createGain();
+  corpo.type = 'sine';
+  corpo.frequency.setValueAtTime(grave ? 230 : 820, inicio);
+  corpo.frequency.exponentialRampToValueAtTime(grave ? 105 : 310, inicio + duracao);
+  ganhoCorpo.gain.setValueAtTime(intensidade * 0.38, inicio);
+  ganhoCorpo.gain.exponentialRampToValueAtTime(0.001, inicio + duracao);
+  corpo.connect(ganhoCorpo);
+  ganhoCorpo.connect(ctx.destination);
+  corpo.start(inicio);
+  corpo.stop(inicio + duracao);
+};
+
+// Impactos curtos que simulam pedras de dominó batendo sobre uma mesa.
 const tocarEfeitoSonoro = (tipo: 'jogar' | 'passar' | 'vitoria' | 'empate') => {
   try {
     const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioContextClass) return;
-    const ctx = new AudioContextClass();
+    contextoAudioDomino ||= new AudioContextClass();
+    const ctx = contextoAudioDomino;
+    if (ctx.state === 'suspended') void ctx.resume();
+    const agora = ctx.currentTime + 0.01;
 
     if (tipo === 'jogar') {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(180, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.08);
-      gain.gain.setValueAtTime(0.8, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.08);
+      criarBatidaDePedra(ctx, agora, 0.52);
+      criarBatidaDePedra(ctx, agora + 0.052, 0.34, true);
     } else if (tipo === 'passar') {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(300, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(150, ctx.currentTime + 0.2);
-      gain.gain.setValueAtTime(0.4, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.2);
+      criarBatidaDePedra(ctx, agora, 0.25, true);
+      criarBatidaDePedra(ctx, agora + 0.11, 0.2, true);
     } else if (tipo === 'vitoria') {
+      criarBatidaDePedra(ctx, agora, 0.5);
       const notas = [261.63, 329.63, 392.00, 523.25];
       notas.forEach((freq, idx) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-        osc.type = 'triangle';
+        osc.type = 'sine';
         osc.frequency.value = freq;
-        gain.gain.setValueAtTime(0.3, ctx.currentTime + idx * 0.12);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + idx * 0.12 + 0.3);
+        gain.gain.setValueAtTime(0.16, agora + 0.08 + idx * 0.11);
+        gain.gain.exponentialRampToValueAtTime(0.001, agora + 0.08 + idx * 0.11 + 0.24);
         osc.connect(gain);
         gain.connect(ctx.destination);
-        osc.start(ctx.currentTime + idx * 0.12);
-        osc.stop(ctx.currentTime + idx * 0.12 + 0.3);
+        osc.start(agora + 0.08 + idx * 0.11);
+        osc.stop(agora + 0.08 + idx * 0.11 + 0.24);
       });
     } else if (tipo === 'empate') {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(200, ctx.currentTime);
-      osc.frequency.linearRampToValueAtTime(100, ctx.currentTime + 0.4);
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.4);
+      criarBatidaDePedra(ctx, agora, 0.34, true);
+      criarBatidaDePedra(ctx, agora + 0.16, 0.3, true);
+      criarBatidaDePedra(ctx, agora + 0.32, 0.24, true);
     }
   } catch (err) {
     console.warn('Erro ao tocar efeito sonoro:', err);
@@ -236,6 +252,11 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     titulo: string;
     mensagem: string;
     minhaVez: boolean;
+  } | null>(null);
+  const [emojiFlutuante, setEmojiFlutuante] = useState<{
+    emoji: string;
+    meu: boolean;
+    id: number;
   } | null>(null);
 
   useEffect(() => {
@@ -392,10 +413,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         payload: { remetenteId: usuarioId, emoji }
       });
       
-      setAlertaTemporario({
-        visivel: true,
-        mensagem: `Você provocou com: ${emoji}`
-      });
+      setEmojiFlutuante({ emoji, meu: true, id: Date.now() });
     }
   };
 
@@ -834,11 +852,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       .on('broadcast', { event: 'emoji' }, (payload) => {
         const { remetenteId, emoji } = payload.payload;
         if (remetenteId !== usuarioId) {
-          const nomeRemetente = remetenteId === jogador1Id ? nomeJ1 : nomeJ2;
-          setAlertaTemporario({
-            visivel: true,
-            mensagem: `💥 ${nomeRemetente} provocou você com: ${emoji}`
-          });
+          setEmojiFlutuante({ emoji, meu: false, id: Date.now() });
         }
       })
       .subscribe();
@@ -899,6 +913,12 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     return () => clearTimeout(timer);
   }, [avisoPasse]);
 
+  useEffect(() => {
+    if (!emojiFlutuante) return;
+    const timer = setTimeout(() => setEmojiFlutuante(null), 2200);
+    return () => clearTimeout(timer);
+  }, [emojiFlutuante]);
+
   // AUTO-PASSE INSTANTÂNEO
   useEffect(() => {
     if (meuTurno && minhasPedras.length > 0 && mesaPedras.length > 0 && !processandoJogadaLocal.current && isFullscreen) {
@@ -950,14 +970,15 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       const precisaCurva = comprimentoLinha >= comprimentoMaximo;
 
       if (precisaCurva) {
-        const larguraVisual = ehBucha ? larguraPedra : alturaPedra;
-        const alturaVisual = ehBucha ? alturaPedra : larguraPedra;
+        // Na curva, inclusive a bucha é a peça que desce e conecta as duas linhas.
+        const larguraVisual = alturaPedra;
+        const alturaVisual = larguraPedra;
         const item = {
           pedra,
           indice,
           x: pontaX - larguraVisual / 2,
           y: pontaY,
-          vertical: !ehBucha,
+          vertical: true,
           valorVisual: `${pedra.ladoEsquerdo}-${pedra.ladoDireito}`,
         };
         pontaY += alturaVisual;
@@ -1031,6 +1052,19 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         </div>
       )}
 
+      {emojiFlutuante && (
+        <div
+          key={emojiFlutuante.id}
+          className={`pointer-events-none absolute left-1/2 z-[70] -translate-x-1/2 animate-in zoom-in-50 slide-in-from-bottom-5 duration-300 ${
+            emojiFlutuante.meu ? 'bottom-[22%]' : 'top-[13%]'
+          }`}
+        >
+          <div className="animate-bounce rounded-full border border-purple-300/40 bg-[#140d20]/85 px-4 py-2 text-5xl shadow-[0_8px_30px_rgba(0,0,0,0.65)] backdrop-blur-md sm:text-6xl">
+            {emojiFlutuante.emoji}
+          </div>
+        </div>
+      )}
+
       {/* AVISO FLUTUANTE AJUSTADO */}
       {alertaTemporario && alertaTemporario.visivel && (
         <div className="absolute top-12 left-1/2 -translate-x-1/2 z-[60] bg-purple-950/95 border-2 border-purple-500 text-white px-3 py-1 rounded-2xl shadow-[0_4px_15px_rgba(147,51,234,0.4)] flex items-center gap-1.5 text-[10px] sm:text-xs font-bold animate-in fade-in slide-in-from-top-4 duration-200 whitespace-nowrap">
@@ -1077,7 +1111,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
               <button 
                 key={emoji} 
                 onClick={() => enviarEmoji(emoji)} 
-                className="hover:scale-125 active:scale-95 transition-all text-[10px] sm:text-xs p-0.5 cursor-pointer touch-manipulation select-none"
+                className="flex h-7 w-7 items-center justify-center rounded-md p-0.5 text-base transition-all hover:scale-125 hover:bg-purple-500/15 active:scale-90 sm:h-8 sm:w-8 sm:text-xl cursor-pointer touch-manipulation select-none"
               >
                 {emoji}
               </button>
@@ -1107,8 +1141,8 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
       {/* ÁREA DO BANNER PUBLICITÁRIO - RENDERIZAÇÃO DUPLA (CÓDIGO OU IMAGEM) */}
       {bannerAtivo && (
-        <div className="w-full flex justify-center items-center my-0.5 px-0.5 shrink-0 z-20">
-          <div className="w-full max-w-xs sm:max-w-md h-8 sm:h-10 md:h-12 rounded-lg overflow-hidden border border-purple-500/30 shadow-md relative bg-[#110D1A]">
+        <div className="z-20 my-1 flex w-full shrink-0 items-center justify-center px-2 sm:px-4">
+          <div className="relative h-12 w-full max-w-2xl overflow-hidden rounded-lg border border-purple-500/30 bg-[#110D1A] shadow-md sm:h-14">
             {isBannerCodigo ? (
               <BannerCodeContainer codigoHtml={bannerAtivo.codigo_html || ''} />
             ) : bannerAtivo.link_url ? (
@@ -1116,12 +1150,12 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
                 href={bannerAtivo.link_url} 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="w-full h-full relative group block"
+                className="group relative flex h-full w-full items-center justify-center"
               >
                 <img 
                   src={bannerAtivo.imagem_url || '/placeholder.svg'} 
                   alt={bannerAtivo.titulo} 
-                  className="w-full h-full object-cover object-center group-hover:scale-[1.02] transition-all duration-300"
+                  className="block h-full w-full object-contain object-center transition-all duration-300 group-hover:scale-[1.01]"
                 />
                 <div className="absolute top-0.5 right-0.5 z-20 bg-black/60 backdrop-blur-md p-0.5 rounded-full text-white/80">
                   <ExternalLink className="w-2 h-2" />
@@ -1131,7 +1165,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
               <img 
                 src={bannerAtivo.imagem_url || '/placeholder.svg'} 
                 alt={bannerAtivo.titulo} 
-                className="w-full h-full object-cover object-center"
+                className="block h-full w-full object-contain object-center"
               />
             )}
           </div>
