@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, RefreshCw, Trophy, User, Maximize2, Minimize2, ShieldAlert, Award, MessageSquare, Timer, Move, ExternalLink } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { SafeHtml } from '@/components/security/SafeHtml';
 
 interface DominoTabuleiroProps {
   usuarioId: string;
@@ -30,7 +29,14 @@ interface BannerPublicitario {
 
 // COMPONENTE AUXILIAR PARA RENDERIZAR BANNER DE CÓDIGO/ADSENSE
 const BannerCodeContainer: React.FC<{ codigoHtml: string }> = ({ codigoHtml }) => {
-  return <SafeHtml html={codigoHtml} className="w-full h-full flex items-center justify-center overflow-hidden" />;
+  return (
+    <iframe
+      title="Publicidade"
+      srcDoc={codigoHtml}
+      sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
+      className="h-full w-full border-0 bg-transparent"
+    />
+  );
 };
 
 // SINTETIZADOR WEB AUDIO API PARA EFEITOS SONOROS
@@ -185,6 +191,7 @@ const PedraClassica = ({
 
 export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby }: DominoTabuleiroProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const areaMesaRef = useRef<HTMLDivElement>(null);
   const canalRef = useRef<any>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -208,6 +215,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const [bannerAtivo, setBannerAtivo] = useState<BannerPublicitario | null>(null);
 
   const [tempoRestante, setTempoRestante] = useState<number>(30);
+  const [larguraMesa, setLarguraMesa] = useState<number>(360);
   
   const processandoJogadaLocal = useRef(false);
   const pedrasInicializadas = useRef(false);
@@ -217,6 +225,17 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   });
 
   const [alertaTemporario, setAlertaTemporario] = useState<{ visivel: boolean; mensagem: string } | null>(null);
+
+  useEffect(() => {
+    const elemento = areaMesaRef.current;
+    if (!elemento) return;
+
+    const atualizarLargura = () => setLarguraMesa(elemento.clientWidth);
+    atualizarLargura();
+    const observer = new ResizeObserver(atualizarLargura);
+    observer.observe(elemento);
+    return () => observer.disconnect();
+  }, []);
 
   const keyStoragePedras = `domino_pedras_sala_${salaId}_usr_${usuarioId}`;
 
@@ -379,13 +398,22 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
     setVezUsuarioId(null);
 
-    const proximoTurnoId = usuarioId === jogador1Id ? jogador2Id : jogador1Id;
-    const novaContagemPassadas = passadasCount + 1;
-
     tocarEfeitoSonoro('passar');
 
     try {
-      if (novaContagemPassadas >= 2) {
+      const { data, error } = await (supabase as any).rpc('passar_vez_domino', {
+        p_sala_id: salaId,
+      });
+      if (error) throw error;
+
+      const resultado = data?.[0];
+      const novaContagemPassadas = resultado?.nova_contagem_passadas ?? passadasCount + 1;
+      const jogoTrancado = resultado?.jogo_trancado === true;
+
+      setPassadasCount(novaContagemPassadas);
+      setVezUsuarioId(resultado?.proxima_vez_usuario_id ?? null);
+
+      if (jogoTrancado) {
         tocarEfeitoSonoro('empate');
         setModalNotificacao({
           visivel: true,
@@ -393,25 +421,10 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           message: 'Ambos os jogadores passaram a vez. A partida empatou/fechou!',
           tipo: 'info'
         });
-        
-        await supabase.from('domino_salas').update({
-          passadas_count: novaContagemPassadas,
-          atualizado_em: new Date().toISOString()
-        }).eq('id', salaId);
-
-        return;
       }
-
-      await supabase
-        .from('domino_salas')
-        .update({
-          vez_usuario_id: proximoTurnoId,
-          passadas_count: novaContagemPassadas,
-          atualizado_em: new Date().toISOString()
-        })
-        .eq('id', salaId);
     } catch (err) {
       console.error(err);
+      await carregarDadosPartida();
     } finally {
       processandoJogadaLocal.current = false;
     }
@@ -863,14 +876,19 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     sairDaPartidaLocal();
   };
 
-  // CÁLCULO DE ESCALONAMENTO PRECISO PARA MODO VERTICAL E PAISAGEM
-  const getEscalaMesa = () => {
-    const qtd = mesaPedras.length;
-    if (qtd <= 3) return 'scale-90 sm:scale-100';
-    if (qtd <= 5) return 'scale-75 sm:scale-90';
-    if (qtd <= 8) return 'scale-60 sm:scale-75';
-    if (qtd <= 11) return 'scale-45 sm:scale-65';
-    return 'scale-35 sm:scale-50';
+  const colunasMesa = larguraMesa < 340 ? 4 : larguraMesa < 480 ? 5 : larguraMesa < 720 ? 7 : 9;
+  const totalItensMesa = mesaPedras.length + 2;
+
+  const posicaoSerpentina = (indice: number) => {
+    const linha = Math.floor(indice / colunasMesa);
+    const posicaoNaLinha = indice % colunasMesa;
+    const coluna = linha % 2 === 0 ? posicaoNaLinha : colunasMesa - 1 - posicaoNaLinha;
+    return { gridRow: linha + 1, gridColumn: coluna + 1 };
+  };
+
+  const pedraFazCurva = (indiceItem: number) => {
+    const proximoIndice = indiceItem + 1;
+    return proximoIndice < totalItensMesa && proximoIndice % colunasMesa === 0;
   };
 
   const isBannerCodigo = bannerAtivo?.tipo_midia === 'codigo' || (!bannerAtivo?.imagem_url && !!bannerAtivo?.codigo_html);
@@ -1039,7 +1057,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           </div>
         )}
 
-        <div className="flex items-center justify-center max-w-full w-full h-full px-1 py-1 relative overflow-hidden">
+        <div ref={areaMesaRef} className="flex items-center justify-center max-w-full w-full h-full px-2 py-7 relative overflow-hidden">
           {mesaPedras.length === 0 ? (
             <div 
               data-dropzone="esquerda"
@@ -1055,54 +1073,63 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
               <span>Arraste e solte a primeira pedra aqui</span>
             </div>
           ) : (
-            <div className={`flex items-center justify-center transition-all duration-300 transform max-w-full origin-center ${getEscalaMesa()}`}>
-              {/* DROP ZONE PONTA ESQUERDA */}
+            <div
+              className="grid w-fit max-w-full content-center justify-items-center gap-x-0.5 gap-y-1 transition-all duration-300"
+              style={{
+                gridTemplateColumns: `repeat(${colunasMesa}, 3.15rem)`,
+                gridAutoRows: '3.5rem',
+              }}
+            >
               <div
                 data-dropzone="esquerda"
                 onDragOver={(e) => handleDragOver(e, 'esquerda')}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, 'esquerda')}
-                className={`shrink-0 h-10 w-8 sm:h-16 sm:w-12 border-2 border-dashed rounded-lg flex items-center justify-center text-[7px] sm:text-[9px] font-black transition-all mr-1 ${
+                style={posicaoSerpentina(0)}
+                className={`h-12 w-full max-w-14 border-2 border-dashed rounded-lg flex items-center justify-center text-[7px] font-black text-center leading-tight transition-all ${
                   sobreDropZone === 'esquerda'
-                    ? 'border-green-400 bg-green-500/40 text-white scale-110 shadow-[0_0_15px_rgba(34,197,94,0.9)]'
-                    : 'border-emerald-500/50 bg-emerald-900/30 text-emerald-300 hover:border-green-400'
+                    ? 'border-green-300 bg-green-500/50 text-white scale-105 shadow-[0_0_15px_rgba(34,197,94,0.9)]'
+                    : 'border-emerald-400/60 bg-emerald-900/40 text-emerald-200'
                 }`}
               >
-                SOLTAR ESQ
+                PONTA<br />ESQ
               </div>
 
-              {/* RENDERIZAÇÃO DAS PEDRAS COM ALTO CONTRASTE BLINDADO */}
-              <div className="flex items-center justify-center gap-0.5 shrink-0">
-                {mesaPedras.map((pedra, idx) => {
-                  const [lA, lB] = pedra.valorOriginal.split('-').map(Number);
-                  const ehBucha = lA === lB;
+              {mesaPedras.map((pedra, idx) => {
+                const indiceItem = idx + 1;
+                const [lA, lB] = pedra.valorOriginal.split('-').map(Number);
+                const ehBucha = lA === lB;
+                const ehCurva = pedraFazCurva(indiceItem);
 
-                  return (
-                    <div key={idx} className="shrink-0 flex items-center justify-center">
-                      <PedraClassica 
-                        valor={pedra.valorOriginal} 
-                        disabled={true} 
-                        menor={true} 
-                        deitada={!ehBucha} 
-                      />
-                    </div>
-                  );
-                })}
-              </div>
+                return (
+                  <div
+                    key={`${idx}-${pedra.valorOriginal}`}
+                    style={posicaoSerpentina(indiceItem)}
+                    className="flex h-14 w-full items-center justify-center"
+                  >
+                    <PedraClassica
+                      valor={pedra.valorOriginal}
+                      disabled={true}
+                      menor={true}
+                      deitada={!ehBucha && !ehCurva}
+                    />
+                  </div>
+                );
+              })}
 
-              {/* DROP ZONE PONTA DIREITA */}
               <div
                 data-dropzone="direita"
                 onDragOver={(e) => handleDragOver(e, 'direita')}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, 'direita')}
-                className={`shrink-0 h-10 w-8 sm:h-16 sm:w-12 border-2 border-dashed rounded-lg flex items-center justify-center text-[7px] sm:text-[9px] font-black transition-all ml-1 ${
+                style={posicaoSerpentina(totalItensMesa - 1)}
+                className={`h-12 w-full max-w-14 border-2 border-dashed rounded-lg flex items-center justify-center text-[7px] font-black text-center leading-tight transition-all ${
                   sobreDropZone === 'direita'
-                    ? 'border-green-400 bg-green-500/40 text-white scale-110 shadow-[0_0_15px_rgba(34,197,94,0.9)]'
-                    : 'border-emerald-500/50 bg-emerald-900/30 text-emerald-300 hover:border-green-400'
+                    ? 'border-green-300 bg-green-500/50 text-white scale-105 shadow-[0_0_15px_rgba(34,197,94,0.9)]'
+                    : 'border-emerald-400/60 bg-emerald-900/40 text-emerald-200'
                 }`}
               >
-                SOLTAR DIR
+                PONTA<br />DIR
               </div>
             </div>
           )}
