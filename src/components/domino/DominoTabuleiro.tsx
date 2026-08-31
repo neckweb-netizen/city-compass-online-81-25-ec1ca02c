@@ -232,6 +232,11 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   });
 
   const [alertaTemporario, setAlertaTemporario] = useState<{ visivel: boolean; mensagem: string } | null>(null);
+  const [avisoPasse, setAvisoPasse] = useState<{
+    titulo: string;
+    mensagem: string;
+    minhaVez: boolean;
+  } | null>(null);
 
   useEffect(() => {
     const elemento = areaMesaRef.current;
@@ -424,11 +429,12 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
       if (passeEm && ultimoPasseExibidoRef.current !== passeEm) {
         ultimoPasseExibidoRef.current = passeEm;
-        setAlertaTemporario({
-          visivel: true,
+        setAvisoPasse({
+          titulo: 'Você passou a vez',
           mensagem: motivo === 'tempo'
-            ? '⏱️ Seu tempo acabou. A vez foi passada.'
-            : '⏭️ Você não tem uma peça que encaixe. Sua vez foi passada.',
+            ? 'Seu tempo terminou. Aguarde a jogada do adversário.'
+            : 'Você não tem uma peça que encaixe nas pontas. Aguarde a jogada do adversário.',
+          minhaVez: false,
         });
       }
 
@@ -788,15 +794,16 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
               const fuiEu = quemPassouId === usuarioId;
               const nomeQuemPassou = quemPassouId === newData.jogador_1_id ? nomeJ1 : nomeJ2;
 
-              setAlertaTemporario({
-                visivel: true,
+              setAvisoPasse({
+                titulo: fuiEu ? 'Você passou a vez' : 'Agora é a sua vez!',
                 mensagem: fuiEu
                   ? (foiPorTempo
-                    ? '⏱️ Seu tempo acabou. A vez foi passada.'
-                    : '⏭️ Você não tem uma peça que encaixe. Sua vez foi passada.')
+                    ? 'Seu tempo terminou. Aguarde a jogada do adversário.'
+                    : 'Você não tem uma peça que encaixe nas pontas. Aguarde a jogada do adversário.')
                   : (foiPorTempo
-                    ? `⏱️ O tempo de ${nomeQuemPassou} acabou. Agora é a sua vez!`
-                    : `⏭️ ${nomeQuemPassou} não tem uma peça que encaixe e passou. Agora é a sua vez!`),
+                    ? `O tempo de ${nomeQuemPassou} terminou. Escolha uma peça para jogar.`
+                    : `${nomeQuemPassou} não tem uma peça que encaixe e passou. Escolha sua jogada.`),
+                minhaVez: !fuiEu,
               });
             }
 
@@ -886,6 +893,12 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
   }, [alertaTemporario]);
 
+  useEffect(() => {
+    if (!avisoPasse) return;
+    const timer = setTimeout(() => setAvisoPasse(null), 4500);
+    return () => clearTimeout(timer);
+  }, [avisoPasse]);
+
   // AUTO-PASSE INSTANTÂNEO
   useEffect(() => {
     if (meuTurno && minhasPedras.length > 0 && mesaPedras.length > 0 && !processandoJogadaLocal.current && isFullscreen) {
@@ -925,51 +938,59 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     let pontaX = inicioX;
     let pontaY = 28;
     let direcao: 1 | -1 = 1;
-    let pedrasRetas = 0;
-    let ultimaVertical = false;
+    let comprimentoLinha = 0;
+    let ultimoTrechoVertical = false;
     let maxX = inicioX;
     let maxY = 52;
 
     const pedras = mesaPedras.map((pedra, indice) => {
-      const precisaCurva = pedrasRetas >= pedrasRetasPorLinha;
+      const [valorA, valorB] = pedra.valorOriginal.split('-').map(Number);
+      const ehBucha = valorA === valorB;
+      const comprimentoMaximo = pedrasRetasPorLinha * larguraPedra;
+      const precisaCurva = comprimentoLinha >= comprimentoMaximo;
 
       if (precisaCurva) {
+        const larguraVisual = ehBucha ? larguraPedra : alturaPedra;
+        const alturaVisual = ehBucha ? alturaPedra : larguraPedra;
         const item = {
           pedra,
           indice,
-          x: pontaX - alturaPedra / 2,
+          x: pontaX - larguraVisual / 2,
           y: pontaY,
-          vertical: true,
+          vertical: !ehBucha,
           valorVisual: `${pedra.ladoEsquerdo}-${pedra.ladoDireito}`,
         };
-        pontaY += larguraPedra;
+        pontaY += alturaVisual;
         direcao = direcao === 1 ? -1 : 1;
-        pedrasRetas = 0;
-        ultimaVertical = true;
-        maxY = Math.max(maxY, item.y + larguraPedra);
+        comprimentoLinha = 0;
+        ultimoTrechoVertical = true;
+        maxX = Math.max(maxX, item.x + larguraVisual);
+        maxY = Math.max(maxY, item.y + alturaVisual);
         return item;
       }
 
-      const x = direcao === 1 ? pontaX : pontaX - larguraPedra;
+      const larguraVisual = ehBucha ? alturaPedra : larguraPedra;
+      const alturaVisual = ehBucha ? larguraPedra : alturaPedra;
+      const x = direcao === 1 ? pontaX : pontaX - larguraVisual;
       const item = {
         pedra,
         indice,
         x,
-        y: pontaY - alturaPedra / 2,
-        vertical: false,
+        y: pontaY - alturaVisual / 2,
+        vertical: ehBucha,
         valorVisual: direcao === 1
           ? `${pedra.ladoEsquerdo}-${pedra.ladoDireito}`
           : `${pedra.ladoDireito}-${pedra.ladoEsquerdo}`,
       };
-      pontaX += direcao * larguraPedra;
-      pedrasRetas += 1;
-      ultimaVertical = false;
-      maxX = Math.max(maxX, item.x + larguraPedra);
-      maxY = Math.max(maxY, item.y + alturaPedra);
+      pontaX += direcao * larguraVisual;
+      comprimentoLinha += larguraVisual;
+      ultimoTrechoVertical = false;
+      maxX = Math.max(maxX, item.x + larguraVisual);
+      maxY = Math.max(maxY, item.y + alturaVisual);
       return item;
     });
 
-    const pontaDireita = ultimaVertical
+    const pontaDireita = ultimoTrechoVertical
       ? { x: pontaX - tamanhoPonta / 2, y: pontaY + 4 }
       : {
           x: direcao === 1 ? pontaX + 4 : pontaX - tamanhoPonta - 4,
@@ -1139,6 +1160,30 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
               <Maximize2 className="w-3.5 h-3.5" />
               <span>Ativar Tela Cheia Para Jogar</span>
             </Button>
+          </div>
+        )}
+
+        {avisoPasse && (
+          <div className="pointer-events-none absolute inset-x-3 bottom-9 z-40 flex justify-center animate-in fade-in slide-in-from-bottom-5 duration-300">
+            <div className={`flex w-full max-w-sm items-center gap-3 rounded-2xl border px-4 py-3 shadow-2xl backdrop-blur-xl ${
+              avisoPasse.minhaVez
+                ? 'border-emerald-300/70 bg-emerald-950/95 shadow-emerald-950/50'
+                : 'border-amber-300/60 bg-[#211608]/95 shadow-black/60'
+            }`}>
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+                avisoPasse.minhaVez ? 'bg-emerald-400/20 text-emerald-300' : 'bg-amber-400/20 text-amber-300'
+              }`}>
+                <RefreshCw className="h-5 w-5 animate-[spin_1.4s_ease-in-out_1]" />
+              </div>
+              <div className="min-w-0 text-left">
+                <p className={`text-sm font-extrabold ${avisoPasse.minhaVez ? 'text-emerald-200' : 'text-amber-200'}`}>
+                  {avisoPasse.titulo}
+                </p>
+                <p className="mt-0.5 text-[11px] leading-relaxed text-white/85">
+                  {avisoPasse.mensagem}
+                </p>
+              </div>
+            </div>
           </div>
         )}
 
