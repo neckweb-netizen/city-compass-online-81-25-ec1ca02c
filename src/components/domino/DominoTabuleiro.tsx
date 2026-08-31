@@ -666,8 +666,10 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         setJogador2Id(data.jogador_2_id);
         setVezUsuarioId(data.vez_usuario_id);
         setPassadasCount(data.passadas_count || 0);
-        setNomeJ1(data.jogador_1 ? (data.jogador_1 as any).nome : 'Jogador 1');
-        setNomeJ2(data.jogador_2 ? (data.jogador_2 as any).nome : 'Jogador 2');
+        const { data: lobbySalas } = await (supabase as any).rpc('obter_lobby_domino');
+        const salaLobby = lobbySalas?.find((s: any) => s.id === salaId);
+        setNomeJ1(salaLobby?.jogador_1_nome?.trim() || 'Jogador 1');
+        setNomeJ2(salaLobby?.jogador_2_nome?.trim() || 'Jogador 2');
         setPontaEsquerda(data.mesa_ponta_esquerda);
         setPontaDireita(data.mesa_ponta_direita);
 

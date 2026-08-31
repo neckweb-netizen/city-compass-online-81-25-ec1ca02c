@@ -101,7 +101,7 @@ export default function DominoPage() {
   // Caso contrário, renderiza o lobby passando as props prontas para evitar duplicação do WebSocket
   return (
     <div className="min-h-screen bg-[#090610] text-white py-10">
-      <DominoLobby usuarioId={user.id} />
+      <DominoLobby usuarioId={user.id} lobbyData={lobbyData} />
     </div>
   );
 }

@@ -17,9 +17,10 @@ import { DominoRanking } from '@/components/domino/DominoRanking';
 
 interface DominoLobbyProps {
   usuarioId: string;
+  lobbyData: ReturnType<typeof useDominoLobby>;
 }
 
-export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
+export const DominoLobby = ({ usuarioId, lobbyData }: DominoLobbyProps) => {
   const {
     salas,
     fila,
@@ -28,7 +29,7 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
     carregando,
     entrarNoJogo,
     sairDoJogo,
-  } = useDominoLobby(usuarioId);
+  } = lobbyData;
 
   if (carregando) {
     return (
@@ -171,11 +172,11 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
                   <div className="flex flex-col items-center space-y-1.5">
                     <Avatar className={`w-10 h-10 border-2 ${temJ1 ? 'border-purple-500' : 'border-gray-700'}`}>
                       <AvatarFallback className="text-xs bg-purple-900 text-white font-bold">
-                        {sala.jogador_1 ? sala.jogador_1.nome.charAt(0).toUpperCase() : '?'}
+                        {temJ1 ? (sala.jogador_1?.nome.charAt(0).toUpperCase() || 'J') : '?'}
                       </AvatarFallback>
                     </Avatar>
                     <span className="text-xs font-medium max-w-[90px] truncate text-center text-gray-300">
-                      {sala.jogador_1 ? sala.jogador_1.nome : 'Vago'}
+                      {temJ1 ? (sala.jogador_1?.nome || 'Jogador') : 'Vago'}
                     </span>
                   </div>
 
@@ -185,11 +186,11 @@ export const DominoLobby = ({ usuarioId }: DominoLobbyProps) => {
                   <div className="flex flex-col items-center space-y-1.5">
                     <Avatar className={`w-10 h-10 border-2 ${temJ2 ? 'border-purple-500' : 'border-gray-700'}`}>
                       <AvatarFallback className="text-xs bg-purple-900 text-white font-bold">
-                        {sala.jogador_2 ? sala.jogador_2.nome.charAt(0).toUpperCase() : '?'}
+                        {temJ2 ? (sala.jogador_2?.nome.charAt(0).toUpperCase() || 'J') : '?'}
                       </AvatarFallback>
                     </Avatar>
                     <span className="text-xs font-medium max-w-[90px] truncate text-center text-gray-300">
-                      {sala.jogador_2 ? sala.jogador_2.nome : 'Vago'}
+                      {temJ2 ? (sala.jogador_2?.nome || 'Jogador') : 'Vago'}
                     </span>
                   </div>
                 </div>

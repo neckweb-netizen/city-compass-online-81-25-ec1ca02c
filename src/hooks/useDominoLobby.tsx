@@ -25,27 +25,17 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
   const [carregando, setCarregando] = useState(true);
 
   const canalRef = useRef<any>(null);
+  const ultimaCargaRef = useRef(0);
 
   // Busca de dados do banco com JOIN de usuários
   const carregarDados = useCallback(async () => {
     if (!usuarioId) return;
+    const cargaAtual = ++ultimaCargaRef.current;
     console.log('🔍 [LOBBY-BROADCAST] Buscando dados atualizados das salas...');
 
     try {
-      const { data: dataSalas, error: errorSalas } = await supabase
-        .from('domino_salas')
-        .select(`
-          id,
-          numero_sala,
-          status,
-          jogador_1_id,
-          jogador_2_id,
-          criado_em,
-          atualizado_em,
-          jogador_1:jogador_1_id ( nome ),
-          jogador_2:jogador_2_id ( nome )
-        `)
-        .order('numero_sala', { ascending: true });
+      const { data: dataSalas, error: errorSalas } = await (supabase as any)
+        .rpc('obter_lobby_domino');
 
       if (errorSalas) {
         console.error('❌ [LOBBY-BROADCAST] Erro SQL em domino_salas:', errorSalas);
@@ -53,7 +43,20 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
       }
 
       if (dataSalas) {
-        const novasSalas = dataSalas.map((s: any) => ({ ...s }));
+        if (cargaAtual !== ultimaCargaRef.current) return;
+        const novasSalas: Sala[] = dataSalas.map((s: any) => ({
+          id: s.id,
+          numero_sala: s.numero_sala,
+          status: s.status,
+          jogador_1_id: s.jogador_1_id,
+          jogador_2_id: s.jogador_2_id,
+          jogador_1: s.jogador_1_id
+            ? { nome: s.jogador_1_nome?.trim() || 'Jogador' }
+            : null,
+          jogador_2: s.jogador_2_id
+            ? { nome: s.jogador_2_nome?.trim() || 'Jogador' }
+            : null,
+        }));
         setSalas(novasSalas);
 
         const salaAtiva = novasSalas.find(
@@ -70,6 +73,7 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
       if (errorFila) throw errorFila;
 
       if (dataFila) {
+        if (cargaAtual !== ultimaCargaRef.current) return;
         setFila([...dataFila]);
         const index = dataFila.findIndex((f) => f.usuario_id === usuarioId);
         setMinhaPosicaoFila(index !== -1 ? index + 1 : null);
@@ -77,7 +81,7 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
     } catch (err: any) {
       console.error('❌ [LOBBY-BROADCAST] Exceção em carregarDados:', err.message || err);
     } finally {
-      setCarregando(false);
+      if (cargaAtual === ultimaCargaRef.current) setCarregando(false);
     }
   }, [usuarioId]);
 
@@ -118,12 +122,23 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
     });
 
     canal
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'domino_salas' },
+        () => carregarDadosRef.current(),
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'domino_fila' },
+        () => carregarDadosRef.current(),
+      )
       .on('broadcast', { event: 'MUDANCA_LOBBY' }, async (payload) => {
         console.log('⚡ [LOBBY-BROADCAST] AVISO RECEBIDO DE OUTRO JOGADOR!', payload);
         await carregarDadosRef.current();
       })
       .subscribe((status) => {
         console.log('📡 [LOBBY-BROADCAST] Status do WebSocket Broadcast:', status);
+        if (status === 'SUBSCRIBED') carregarDadosRef.current();
       });
 
     canalRef.current = canal;
