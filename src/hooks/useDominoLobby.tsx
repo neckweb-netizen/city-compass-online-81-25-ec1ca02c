@@ -200,7 +200,7 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
         const salaAlvo = salasLivres[0];
 
         if (!salaAlvo.jogador_1_id) {
-          await supabase
+          const { error: erroEntrada } = await supabase
             .from('domino_salas')
             .update({
               jogador_1_id: usuarioId,
@@ -210,8 +210,9 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
               atualizado_em: new Date().toISOString(),
             })
             .eq('id', salaAlvo.id);
+          if (erroEntrada) throw erroEntrada;
         } else {
-          await supabase
+          const { error: erroEntrada } = await supabase
             .from('domino_salas')
             .update({
               jogador_2_id: usuarioId,
@@ -221,9 +222,13 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
               atualizado_em: new Date().toISOString(),
             })
             .eq('id', salaAlvo.id);
+          if (erroEntrada) throw erroEntrada;
         }
       } else {
-        await supabase.from('domino_fila').insert([{ usuario_id: usuarioId }]);
+        const { error: erroFila } = await supabase
+          .from('domino_fila')
+          .insert([{ usuario_id: usuarioId }]);
+        if (erroFila) throw erroFila;
       }
 
       await carregarDados();

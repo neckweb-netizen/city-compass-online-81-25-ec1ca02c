@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Users, Hourglass, Gamepad2, ArrowRight, DoorOpen, Loader2, Trophy } from 'lucide-react';
+import { Users, Hourglass, Gamepad2, DoorOpen, Loader2, Trophy } from 'lucide-react';
 
 import {
   Dialog,
@@ -93,7 +93,7 @@ export const DominoLobby = ({ usuarioId, lobbyData }: DominoLobbyProps) => {
                     <h3 className="font-bold text-lg">Você está na Sala {minhaSala.numero_sala}!</h3>
                     <p className="text-xs text-purple-300">
                       {minhaSala.jogador_1_id && minhaSala.jogador_2_id 
-                        ? 'A partida começou! Prepare suas pedras.' 
+                        ? 'Adversário encontrado! Abrindo a partida automaticamente…'
                         : 'Aguardando outro jogador entrar na sua sala...'}
                     </p>
                   </>
@@ -109,14 +109,6 @@ export const DominoLobby = ({ usuarioId, lobbyData }: DominoLobbyProps) => {
             </div>
             
             <div className="flex gap-3 w-full md:w-auto">
-              {minhaSala && minhaSala.jogador_1_id && minhaSala.jogador_2_id && (
-                <Button 
-                  className="flex-1 md:flex-none bg-green-600 hover:bg-green-700 text-white font-bold transition-all duration-150"
-                  onClick={() => window.location.reload()}
-                >
-                  Ir para o Jogo <ArrowRight className="w-4 h-4 ml-1.5" />
-                </Button>
-              )}
               <Button 
                 variant="destructive" 
                 className="flex-1 md:flex-none font-semibold transition-all duration-150"
