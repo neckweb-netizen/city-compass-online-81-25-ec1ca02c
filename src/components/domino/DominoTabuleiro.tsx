@@ -109,6 +109,7 @@ const PedraClassica = ({
   menor = false, 
   deitada = false,
   destacada = false,
+  tamanhoFixo = false,
   onDragStart,
   onTouchStart
 }: { 
@@ -117,6 +118,7 @@ const PedraClassica = ({
   menor?: boolean; 
   deitada?: boolean;
   destacada?: boolean;
+  tamanhoFixo?: boolean;
   onDragStart?: (e: React.DragEvent) => void;
   onTouchStart?: (e: React.TouchEvent) => void;
 }) => {
@@ -150,8 +152,12 @@ const PedraClassica = ({
   };
 
   const classesTamanho = deitada
-    ? (menor ? "w-12 h-6 sm:w-14 sm:h-7 border-2 flex-row" : "w-16 h-8 sm:w-18 sm:h-9 border-2 flex-row")
-    : (menor ? "w-6 h-12 sm:w-7 sm:h-14 border-2 flex-col" : "w-8 h-16 sm:w-9 sm:h-18 border-2 flex-col");
+    ? (menor
+      ? `w-12 h-6 ${tamanhoFixo ? '' : 'sm:w-14 sm:h-7'} border-2 flex-row`
+      : "w-16 h-8 sm:w-18 sm:h-9 border-2 flex-row")
+    : (menor
+      ? `w-6 h-12 ${tamanhoFixo ? '' : 'sm:w-7 sm:h-14'} border-2 flex-col`
+      : "w-8 h-16 sm:w-9 sm:h-18 border-2 flex-col");
 
   return (
     <div
@@ -876,20 +882,80 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     sairDaPartidaLocal();
   };
 
-  const colunasMesa = larguraMesa < 340 ? 4 : larguraMesa < 480 ? 5 : larguraMesa < 720 ? 7 : 9;
-  const totalItensMesa = mesaPedras.length + 2;
+  const calcularTrilhaMesa = () => {
+    const larguraPedra = 48;
+    const alturaPedra = 24;
+    const tamanhoPonta = 40;
+    const larguraDisponivel = Math.max(230, Math.min(larguraMesa - 20, 560));
+    const pedrasRetasPorLinha = Math.max(3, Math.floor((larguraDisponivel - 88) / larguraPedra));
+    const inicioX = tamanhoPonta + 4;
+    let pontaX = inicioX;
+    let pontaY = 28;
+    let direcao: 1 | -1 = 1;
+    let pedrasRetas = 0;
+    let ultimaVertical = false;
+    let maxX = inicioX;
+    let maxY = 52;
 
-  const posicaoSerpentina = (indice: number) => {
-    const linha = Math.floor(indice / colunasMesa);
-    const posicaoNaLinha = indice % colunasMesa;
-    const coluna = linha % 2 === 0 ? posicaoNaLinha : colunasMesa - 1 - posicaoNaLinha;
-    return { gridRow: linha + 1, gridColumn: coluna + 1 };
+    const pedras = mesaPedras.map((pedra, indice) => {
+      const precisaCurva = pedrasRetas >= pedrasRetasPorLinha;
+
+      if (precisaCurva) {
+        const item = {
+          pedra,
+          indice,
+          x: pontaX - alturaPedra / 2,
+          y: pontaY,
+          vertical: true,
+          valorVisual: `${pedra.ladoEsquerdo}-${pedra.ladoDireito}`,
+        };
+        pontaY += larguraPedra;
+        direcao = direcao === 1 ? -1 : 1;
+        pedrasRetas = 0;
+        ultimaVertical = true;
+        maxY = Math.max(maxY, item.y + larguraPedra);
+        return item;
+      }
+
+      const x = direcao === 1 ? pontaX : pontaX - larguraPedra;
+      const item = {
+        pedra,
+        indice,
+        x,
+        y: pontaY - alturaPedra / 2,
+        vertical: false,
+        valorVisual: direcao === 1
+          ? `${pedra.ladoEsquerdo}-${pedra.ladoDireito}`
+          : `${pedra.ladoDireito}-${pedra.ladoEsquerdo}`,
+      };
+      pontaX += direcao * larguraPedra;
+      pedrasRetas += 1;
+      ultimaVertical = false;
+      maxX = Math.max(maxX, item.x + larguraPedra);
+      maxY = Math.max(maxY, item.y + alturaPedra);
+      return item;
+    });
+
+    const pontaDireita = ultimaVertical
+      ? { x: pontaX - tamanhoPonta / 2, y: pontaY + 4 }
+      : {
+          x: direcao === 1 ? pontaX + 4 : pontaX - tamanhoPonta - 4,
+          y: pontaY - tamanhoPonta / 2,
+        };
+
+    maxX = Math.max(maxX, pontaDireita.x + tamanhoPonta);
+    maxY = Math.max(maxY, pontaDireita.y + tamanhoPonta);
+
+    return {
+      pedras,
+      largura: Math.max(maxX, inicioX + 120),
+      altura: Math.max(maxY, 92),
+      pontaEsquerda: { x: 0, y: 8 },
+      pontaDireita,
+    };
   };
 
-  const pedraFazCurva = (indiceItem: number) => {
-    const proximoIndice = indiceItem + 1;
-    return proximoIndice < totalItensMesa && proximoIndice % colunasMesa === 0;
-  };
+  const trilhaMesa = calcularTrilhaMesa();
 
   const isBannerCodigo = bannerAtivo?.tipo_midia === 'codigo' || (!bannerAtivo?.imagem_url && !!bannerAtivo?.codigo_html);
 
@@ -1074,19 +1140,19 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             </div>
           ) : (
             <div
-              className="grid w-fit max-w-full content-center justify-items-center gap-x-0.5 gap-y-1 transition-all duration-300"
-              style={{
-                gridTemplateColumns: `repeat(${colunasMesa}, 3.15rem)`,
-                gridAutoRows: '3.5rem',
-              }}
+              className="relative max-w-full transition-[width,height] duration-300"
+              style={{ width: trilhaMesa.largura, height: trilhaMesa.altura }}
             >
               <div
                 data-dropzone="esquerda"
                 onDragOver={(e) => handleDragOver(e, 'esquerda')}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, 'esquerda')}
-                style={posicaoSerpentina(0)}
-                className={`h-12 w-full max-w-14 border-2 border-dashed rounded-lg flex items-center justify-center text-[7px] font-black text-center leading-tight transition-all ${
+                style={{
+                  left: trilhaMesa.pontaEsquerda.x,
+                  top: trilhaMesa.pontaEsquerda.y,
+                }}
+                className={`absolute h-10 w-10 border-2 border-dashed rounded-lg flex items-center justify-center text-[7px] font-black text-center leading-tight transition-all ${
                   sobreDropZone === 'esquerda'
                     ? 'border-green-300 bg-green-500/50 text-white scale-105 shadow-[0_0_15px_rgba(34,197,94,0.9)]'
                     : 'border-emerald-400/60 bg-emerald-900/40 text-emerald-200'
@@ -1095,23 +1161,19 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
                 PONTA<br />ESQ
               </div>
 
-              {mesaPedras.map((pedra, idx) => {
-                const indiceItem = idx + 1;
-                const [lA, lB] = pedra.valorOriginal.split('-').map(Number);
-                const ehBucha = lA === lB;
-                const ehCurva = pedraFazCurva(indiceItem);
-
+              {trilhaMesa.pedras.map((item) => {
                 return (
                   <div
-                    key={`${idx}-${pedra.valorOriginal}`}
-                    style={posicaoSerpentina(indiceItem)}
-                    className="flex h-14 w-full items-center justify-center"
+                    key={`${item.indice}-${item.pedra.valorOriginal}`}
+                    style={{ left: item.x, top: item.y }}
+                    className="absolute flex items-center justify-center"
                   >
                     <PedraClassica
-                      valor={pedra.valorOriginal}
+                      valor={item.valorVisual}
                       disabled={true}
                       menor={true}
-                      deitada={!ehBucha && !ehCurva}
+                      deitada={!item.vertical}
+                      tamanhoFixo={true}
                     />
                   </div>
                 );
@@ -1122,8 +1184,11 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
                 onDragOver={(e) => handleDragOver(e, 'direita')}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, 'direita')}
-                style={posicaoSerpentina(totalItensMesa - 1)}
-                className={`h-12 w-full max-w-14 border-2 border-dashed rounded-lg flex items-center justify-center text-[7px] font-black text-center leading-tight transition-all ${
+                style={{
+                  left: trilhaMesa.pontaDireita.x,
+                  top: trilhaMesa.pontaDireita.y,
+                }}
+                className={`absolute h-10 w-10 border-2 border-dashed rounded-lg flex items-center justify-center text-[7px] font-black text-center leading-tight transition-all ${
                   sobreDropZone === 'direita'
                     ? 'border-green-300 bg-green-500/50 text-white scale-105 shadow-[0_0_15px_rgba(34,197,94,0.9)]'
                     : 'border-emerald-400/60 bg-emerald-900/40 text-emerald-200'
