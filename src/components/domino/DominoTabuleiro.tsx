@@ -225,6 +225,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   
   const processandoJogadaLocal = useRef(false);
   const pedrasInicializadas = useRef(false);
+  const ultimoPasseExibidoRef = useRef<string | null>(null);
 
   const [modalNotificacao, setModalNotificacao] = useState<{ visivel: boolean; titulo: string; message: string; tipo: 'info' | 'erro' | 'fim' }>({
     visivel: false, titulo: '', message: '', tipo: 'info'
@@ -394,7 +395,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   };
 
   // PASSE INSTANTÂNEO
-  const passarVez = async () => {
+  const passarVez = async (motivo: 'sem_peca' | 'tempo' = 'sem_peca') => {
     if (processandoJogadaLocal.current) return;
     processandoJogadaLocal.current = true;
 
@@ -409,15 +410,27 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     try {
       const { data, error } = await (supabase as any).rpc('passar_vez_domino', {
         p_sala_id: salaId,
+        p_motivo: motivo,
       });
       if (error) throw error;
 
       const resultado = data?.[0];
       const novaContagemPassadas = resultado?.nova_contagem_passadas ?? passadasCount + 1;
       const jogoTrancado = resultado?.jogo_trancado === true;
+      const passeEm = resultado?.passe_em as string | undefined;
 
       setPassadasCount(novaContagemPassadas);
       setVezUsuarioId(resultado?.proxima_vez_usuario_id ?? null);
+
+      if (passeEm && ultimoPasseExibidoRef.current !== passeEm) {
+        ultimoPasseExibidoRef.current = passeEm;
+        setAlertaTemporario({
+          visivel: true,
+          mensagem: motivo === 'tempo'
+            ? '⏱️ Seu tempo acabou. A vez foi passada.'
+            : '⏭️ Você não tem uma peça que encaixe. Sua vez foi passada.',
+        });
+      }
 
       if (jogoTrancado) {
         tocarEfeitoSonoro('empate');
@@ -673,6 +686,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         .select(`
           id, jogador_1_id, jogador_2_id, vez_usuario_id, passadas_count,
           mesa_ponta_esquerda, mesa_ponta_direita, historico_jogadas,
+          ultimo_passe_usuario_id, ultimo_passe_em, ultimo_passe_motivo,
           jogador_1:jogador_1_id ( nome ), jogador_2:jogador_2_id ( nome )
         `)
         .eq('id', salaId)
@@ -685,6 +699,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         setJogador2Id(data.jogador_2_id);
         setVezUsuarioId(data.vez_usuario_id);
         setPassadasCount(data.passadas_count || 0);
+        ultimoPasseExibidoRef.current = data.ultimo_passe_em || null;
         const { data: lobbySalas } = await (supabase as any).rpc('obter_lobby_domino');
         const salaLobby = lobbySalas?.find((s: any) => s.id === salaId);
         setNomeJ1(salaLobby?.jogador_1_nome?.trim() || 'Jogador 1');
@@ -765,6 +780,26 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
             setPontaEsquerda(newData.mesa_ponta_esquerda);
             setPontaDireita(newData.mesa_ponta_direita);
 
+            const passeEm = newData.ultimo_passe_em as string | null;
+            const quemPassouId = newData.ultimo_passe_usuario_id as string | null;
+            if (passeEm && quemPassouId && passeEm !== ultimoPasseExibidoRef.current) {
+              ultimoPasseExibidoRef.current = passeEm;
+              const foiPorTempo = newData.ultimo_passe_motivo === 'tempo';
+              const fuiEu = quemPassouId === usuarioId;
+              const nomeQuemPassou = quemPassouId === newData.jogador_1_id ? nomeJ1 : nomeJ2;
+
+              setAlertaTemporario({
+                visivel: true,
+                mensagem: fuiEu
+                  ? (foiPorTempo
+                    ? '⏱️ Seu tempo acabou. A vez foi passada.'
+                    : '⏭️ Você não tem uma peça que encaixe. Sua vez foi passada.')
+                  : (foiPorTempo
+                    ? `⏱️ O tempo de ${nomeQuemPassou} acabou. Agora é a sua vez!`
+                    : `⏭️ ${nomeQuemPassou} não tem uma peça que encaixe e passou. Agora é a sua vez!`),
+              });
+            }
+
             if (passadas >= 2) {
               tocarEfeitoSonoro('empate');
               setModalNotificacao({
@@ -827,10 +862,9 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       setTempoRestante((tempo) => {
         if (tempo <= 1) {
           if (timerRef.current) clearInterval(timerRef.current);
-          setAlertaTemporario({ visivel: true, mensagem: '⏱️ Seu tempo esgotou! A vez foi passada.' });
           setPedraArrastando(null);
           setTouchPosicao(null);
-          passarVez();
+          passarVez('tempo');
           return 30;
         }
         return tempo - 1;
@@ -858,8 +892,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       const temQualquerPecaJogavel = minhasPedras.some(pedra => isPedraJogavel(pedra));
 
       if (!temQualquerPecaJogavel) {
-        setAlertaTemporario({ visivel: true, mensagem: '⚠️ Sem peças! Passando a vez instantaneamente...' });
-        passarVez();
+        passarVez('sem_peca');
       }
     }
   }, [meuTurno, minhasPedras, mesaPedras, pontaEsquerda, pontaDireita, isFullscreen]);
