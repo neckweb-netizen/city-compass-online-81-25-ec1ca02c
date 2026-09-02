@@ -16,6 +16,7 @@ import { DominoSpotlight } from './DominoSpotlight';
 
 import { useCidadePadrao } from '@/hooks/useCidadePadrao';
 import { useHomeSectionsOrder } from '@/hooks/useHomeSectionsOrder';
+import type { HomeSectionName } from '@/lib/homeSections';
 
 const EnqueteSection = lazy(() =>
   import('./EnqueteSection').then((module) => ({
@@ -122,10 +123,10 @@ const sectionComponents = {
   voz_do_povo: () => (
     <VozDoPovoSection />
   ),
-};
+} satisfies Record<Exclude<HomeSectionName, 'ferramentas' | 'achados_perdidos'>, (cidadeId?: string) => ReactNode>;
 
 interface HomeContentProps {
-  extraSections?: Record<string, ReactNode>;
+  extraSections: Record<'ferramentas' | 'achados_perdidos', ReactNode>;
 }
 
 interface DeferredSectionProps {
@@ -195,7 +196,7 @@ const SectionFallback = () => (
 );
 
 export const HomeContent = ({
-  extraSections = {},
+  extraSections,
 }: HomeContentProps) => {
   const { data: cidadePadrao } =
     useCidadePadrao();
@@ -203,7 +204,18 @@ export const HomeContent = ({
   const {
     sections,
     isLoading,
+    isError,
+    refetch,
   } = useHomeSectionsOrder();
+
+  if (isError && !sections) {
+    return (
+      <div role="alert" className="mx-auto max-w-lg space-y-3 p-6 text-center">
+        <p className="text-muted-foreground">Não foi possível carregar a página inicial. Verifique sua conexão e tente novamente.</p>
+        <button type="button" onClick={() => void refetch()} className="min-h-11 rounded-lg bg-primary px-4 font-semibold text-primary-foreground">Tentar novamente</button>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -248,19 +260,6 @@ export const HomeContent = ({
     sections?.filter(
       (section) => section.ativo,
     ) || [];
-
-  // Show the new section without requiring an initial database migration.
-  // If an explicit configuration exists, preserve its order and visibility.
-  if (!sections?.some((section) => section.section_name === 'jogos')) {
-    const categoriesIndex = activeSections.findIndex((section) => section.section_name === 'categories');
-    activeSections.splice(categoriesIndex >= 0 ? categoriesIndex + 1 : Math.min(4, activeSections.length), 0, {
-      id: 'jogos-home-default',
-      section_name: 'jogos',
-      display_name: 'Hora de jogar',
-      ordem: 0,
-      ativo: true,
-    });
-  }
 
   return (
     <div className="min-h-screen bg-background">

@@ -1,134 +1,49 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { getAdminHomeSections, getPublicHomeSections, serializeHomeSections, type HomeSection } from '@/lib/homeSections';
 import { toast } from 'sonner';
 
-export interface HomeSection {
-  id: string;
-  section_name: string;
-  display_name: string;
-  ordem: number;
-  ativo: boolean;
-  criado_em?: string;
-  atualizado_em?: string;
-}
+export type { HomeSection } from '@/lib/homeSections';
 
-export const useHomeSectionsOrder = () => {
+export const useHomeSectionsOrder = (mode: 'public' | 'admin' = 'public') => {
   const queryClient = useQueryClient();
-
-  const { data: sections, isLoading } = useQuery({
-    queryKey: ['home-sections-order'],
+  const { user } = useAuth();
+  const queryKey = ['home-sections-order', mode, user?.id ?? 'anonymous'];
+  const query = useQuery({
+    queryKey,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    refetchInterval: mode === 'public' ? 60_000 : false,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('home_sections_order')
-        .select('*')
-        .order('ordem', { ascending: true });
-      
+      let request = supabase.from('home_sections_order').select('*');
+      if (mode === 'public') request = request.eq('ativo', true);
+      const { data, error } = await request.order('ordem', { ascending: true }).order('section_name', { ascending: true });
       if (error) throw error;
-
-      let list = (data as HomeSection[]) || [];
-
-      // Verifica se a seção de ferramentas já existe no banco
-      const temFerramentas = list.some(s => s.section_name === 'ferramentas');
-
-      if (!temFerramentas) {
-        // Inclui automaticamente a seção no estado local com ID virtual/temporário
-        const secaoFerramentas: HomeSection = {
-          id: 'ferramentas-virtual-id',
-          section_name: 'ferramentas',
-          display_name: 'Central de Ferramentas',
-          ordem: list.length + 1,
-          ativo: true,
-          criado_em: new Date().toISOString(),
-          atualizado_em: new Date().toISOString(),
-        };
-        list = [...list, secaoFerramentas];
-      }
-
-      return list;
-    }
-  });
-
-  const updateSectionOrder = useMutation({
-    mutationFn: async ({ sectionId, newOrder }: { sectionId: string; newOrder: number }) => {
-      const { error } = await supabase
-        .from('home_sections_order')
-        .update({ ordem: newOrder })
-        .eq('id', sectionId);
-      
-      if (error) throw error;
+      return mode === 'admin' ? getAdminHomeSections(data) : getPublicHomeSections(data);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['home-sections-order'] });
-      toast.success('Ordem atualizada com sucesso!');
-    },
-    onError: (error) => {
-      toast.error('Erro ao atualizar ordem: ' + error.message);
-    }
-  });
-
-  const toggleSectionVisibility = useMutation({
-    mutationFn: async ({ sectionId, ativo }: { sectionId: string; ativo: boolean }) => {
-      if (sectionId === 'ferramentas-virtual-id') {
-        const { error } = await supabase
-          .from('home_sections_order')
-          .upsert({
-            section_name: 'ferramentas',
-            display_name: 'Central de Ferramentas',
-            ordem: (sections?.length || 1),
-            ativo
-          }, { onConflict: 'section_name' });
-
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('home_sections_order')
-          .update({ ativo })
-          .eq('id', sectionId);
-        
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['home-sections-order'] });
-      toast.success('Visibilidade atualizada com sucesso!');
-    },
-    onError: (error) => {
-      toast.error('Erro ao atualizar visibilidade: ' + error.message);
-    }
   });
 
   const reorderSections = useMutation({
-    mutationFn: async (newSections: HomeSection[]) => {
-      const updates = newSections.map((section, index) => ({
-        section_name: section.section_name,
-        display_name: section.display_name,
-        ordem: index + 1,
-        ativo: section.ativo,
-        ...(section.id !== 'ferramentas-virtual-id' ? { id: section.id } : {})
-      }));
-
-      for (const update of updates) {
-        const { error } = await supabase
-          .from('home_sections_order')
-          .upsert(update, { onConflict: 'section_name' });
-        
-        if (error) throw error;
-      }
+    mutationFn: async (sections: HomeSection[]) => {
+      if (mode !== 'admin') throw new Error('Abra o painel administrativo para salvar as seções.');
+      // One bulk statement commits every position/visibility together or none.
+      // Existing RLS and MFA policies continue to authorize the operation.
+      const updates = serializeHomeSections(sections);
+      const { data, error } = await supabase.from('home_sections_order')
+        .upsert(updates, { onConflict: 'section_name' }).select('*');
+      if (error) throw error;
+      if (data.length !== updates.length) throw new Error('Não foi possível confirmar todas as seções salvas. Recarregue o painel.');
+      return getAdminHomeSections(data);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['home-sections-order'] });
-      toast.success('Ordem das seções atualizada com sucesso!');
+    onSuccess: async (saved) => {
+      queryClient.setQueryData(queryKey, saved);
+      await queryClient.invalidateQueries({ queryKey: ['home-sections-order'] });
+      toast.success('Ordem e visibilidade salvas com sucesso!');
     },
-    onError: (error) => {
-      toast.error('Erro ao reordenar seções: ' + error.message);
-    }
+    onError: (error) => toast.error('Não foi possível salvar as seções: ' + error.message),
   });
 
-  return {
-    sections,
-    isLoading,
-    updateSectionOrder,
-    toggleSectionVisibility,
-    reorderSections
-  };
+  return { sections: query.data, isLoading: query.isLoading, isError: query.isError, refetch: query.refetch, reorderSections };
 };

@@ -38,7 +38,7 @@ export const useEnquetes = () => {
     queryFn: async () => {
       const { data, error } = await supabase.rpc('buscar_enquete_ativa');
       if (error) throw error;
-      return data?.[0] as EnqueteAtiva | null;
+      return (data?.[0] ?? null) as EnqueteAtiva | null;
     }
   });
 
