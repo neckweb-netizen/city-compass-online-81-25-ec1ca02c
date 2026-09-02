@@ -105,6 +105,13 @@ export const DesktopSidebar = ({
       categoria: 'principal'
     },
     {
+      id: 'jogos',
+      nome_item: 'Jogos',
+      icone: 'Gamepad2',
+      rota: '/jogos',
+      categoria: 'principal'
+    },
+    {
       id: 'entre-nos',
       nome_item: 'Entre Nós',
       icone: 'HeartHandshake',
@@ -176,6 +183,7 @@ export const DesktopSidebar = ({
   }
 
   const isActive = (rota: string) => {
+    if (rota === '/jogos' && location.pathname === '/domino') return true;
     if (rota === '/') {
       return location.pathname === '/' && !location.search;
     }
@@ -225,7 +233,10 @@ export const DesktopSidebar = ({
               return (
                 <Link 
                   key={item.id} 
-                  to={item.rota} 
+                  to={item.rota}
+                  aria-label={item.nome_item}
+                  aria-current={isActive(item.rota) ? 'page' : undefined}
+                  title={!isOpen ? item.nome_item : undefined}
                   className={cn(
                     "flex items-center gap-3 px-4 py-3 transition-all duration-100 text-left font-normal hover:scale-105 active:scale-95",
                     isActive(item.rota) 

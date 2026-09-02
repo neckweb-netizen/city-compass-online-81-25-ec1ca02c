@@ -12,6 +12,7 @@ import { SearchBar } from './SearchBar';
 import { BannerSection } from './BannerSection';
 import { CategoriesGrid } from './CategoriesGrid';
 import { AondeIrButton } from './AondeIrButton';
+import { DominoSpotlight } from './DominoSpotlight';
 
 import { useCidadePadrao } from '@/hooks/useCidadePadrao';
 import { useHomeSectionsOrder } from '@/hooks/useHomeSectionsOrder';
@@ -77,6 +78,7 @@ const VozDoPovoSection = lazy(() =>
 );
 
 const sectionComponents = {
+  jogos: () => <DominoSpotlight />,
   banner: () => <BannerSection secao="home" />,
 
   search: () => <SearchBar />,
@@ -246,6 +248,19 @@ export const HomeContent = ({
     sections?.filter(
       (section) => section.ativo,
     ) || [];
+
+  // Show the new section without requiring an initial database migration.
+  // If an explicit configuration exists, preserve its order and visibility.
+  if (!sections?.some((section) => section.section_name === 'jogos')) {
+    const categoriesIndex = activeSections.findIndex((section) => section.section_name === 'categories');
+    activeSections.splice(categoriesIndex >= 0 ? categoriesIndex + 1 : Math.min(4, activeSections.length), 0, {
+      id: 'jogos-home-default',
+      section_name: 'jogos',
+      display_name: 'Hora de jogar',
+      ordem: 0,
+      ativo: true,
+    });
+  }
 
   return (
     <div className="min-h-screen bg-background">

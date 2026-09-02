@@ -109,6 +109,13 @@ export const MobileHamburger = () => {
       categoria: 'principal'
     },
     {
+      id: 'jogos',
+      nome_item: 'Jogos',
+      icone: 'Gamepad2',
+      rota: '/jogos',
+      categoria: 'principal'
+    },
+    {
       id: 'buscar',
       nome_item: 'Buscar',
       icone: 'Search',
@@ -187,6 +194,7 @@ export const MobileHamburger = () => {
   };
 
   const isActive = (rota: string) => {
+    if (rota === '/jogos' && location.pathname === '/domino') return true;
     if (rota === '/') {
       return location.pathname === '/' && !location.search;
     }
@@ -196,7 +204,7 @@ export const MobileHamburger = () => {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="sm" className="lg:hidden text-foreground hover:text-foreground">
+        <Button aria-label="Abrir menu de navegação" variant="ghost" size="sm" className="lg:hidden text-foreground hover:text-foreground">
           <Menu className="h-5 w-5 text-foreground" />
         </Button>
       </SheetTrigger>
@@ -227,7 +235,8 @@ export const MobileHamburger = () => {
                 }>;
                 return (
                   <Button 
-                    key={item.id} 
+                    key={item.id}
+                    aria-current={isActive(item.rota) ? 'page' : undefined}
                     variant="ghost" 
                     className={cn(
                       "w-full justify-start gap-3 h-12 px-4 rounded-none text-left font-normal transition-all duration-100 transform",

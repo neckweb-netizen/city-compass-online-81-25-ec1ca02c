@@ -57,6 +57,7 @@ const EntreNos = lazy(() => import("./pages/EntreNos"));
 
 // Ferramentas públicas e jogos
 const Domino = lazy(() => import("./pages/Domino"));
+const Jogos = lazy(() => import("./pages/Jogos"));
 const GeradorCobranca = lazy(() => import("./pages/ferramentas/GeradorCobranca").then(m => ({ default: m.GeradorCobranca })));
 const CriadorCurriculo = lazy(() => import("./pages/ferramentas/CriadorCurriculo").then(m => ({ default: m.CriadorCurriculo })));
 const GestaoCobrancas = lazy(() => import("./pages/ferramentas/GestaoCobrancas").then(m => ({ default: m.GestaoCobrancas })));
@@ -774,6 +775,7 @@ const App = () => {
                 <Route path="unauthorized" element={<UnauthorizedPage />} />
                 
                 <Route path="domino" element={<Domino />} />
+                <Route path="jogos" element={<Jogos />} />
 
                 {/* CATÁLOGOS E FERRAMENTAS PÚBLICAS */}
                 <Route path="ferramentas" element={<FerramentasCatalogInternal />} />
