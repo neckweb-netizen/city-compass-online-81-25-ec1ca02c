@@ -6,6 +6,29 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 
 type ScannerControls = { stop: () => void };
 
+const getUserMediaWithTimeout = (constraints: MediaStreamConstraints, timeoutMs = 10000) => new Promise<MediaStream>((resolve, reject) => {
+  let settled = false;
+  const timeout = window.setTimeout(() => {
+    settled = true;
+    reject(new Error('O navegador não respondeu ao pedido da câmera. Verifique a permissão do site e tente novamente.'));
+  }, timeoutMs);
+
+  navigator.mediaDevices.getUserMedia(constraints).then((stream) => {
+    window.clearTimeout(timeout);
+    if (settled) {
+      stream.getTracks().forEach((track) => track.stop());
+      return;
+    }
+    settled = true;
+    resolve(stream);
+  }).catch((error) => {
+    window.clearTimeout(timeout);
+    if (settled) return;
+    settled = true;
+    reject(error);
+  });
+});
+
 const getCameraErrorMessage = (error: unknown) => {
   const cameraError = error as { name?: string; message?: string };
 
@@ -34,6 +57,7 @@ export const LoyaltyScanner = ({ onRead }: { onRead: (token: string) => void }) 
   const streamRef = useRef<MediaStream | null>(null);
   const controlsRef = useRef<ScannerControls | null>(null);
   const onReadRef = useRef(onRead);
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
     onReadRef.current = onRead;
@@ -48,8 +72,10 @@ export const LoyaltyScanner = ({ onRead }: { onRead: (token: string) => void }) 
   };
 
   const requestCamera = async () => {
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     setCameraError('');
+    setOpen(true);
     stopCamera();
 
     try {
@@ -58,22 +84,26 @@ export const LoyaltyScanner = ({ onRead }: { onRead: (token: string) => void }) 
 
       let stream: MediaStream;
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
+        stream = await getUserMediaWithTimeout({
           audio: false,
           video: { facingMode: { ideal: 'environment' } },
         });
       } catch (error) {
         const cameraError = error as { name?: string };
         if (cameraError?.name !== 'OverconstrainedError' && cameraError?.name !== 'ConstraintNotSatisfiedError') throw error;
-        stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
+        stream = await getUserMediaWithTimeout({ audio: false, video: true });
       }
 
+      if (requestId !== requestIdRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
       streamRef.current = stream;
-      setOpen(true);
       setStreamVersion((version) => version + 1);
     } catch (error) {
+      if (requestId !== requestIdRef.current) return;
+      console.warn('[loyalty-scanner] Não foi possível obter a câmera.', error);
       setCameraError(getCameraErrorMessage(error));
-      setOpen(true);
       setLoading(false);
     }
   };
@@ -126,6 +156,7 @@ export const LoyaltyScanner = ({ onRead }: { onRead: (token: string) => void }) 
         controlsRef.current = controls;
       } catch (error) {
         if (!active) return;
+        console.warn('[loyalty-scanner] Não foi possível iniciar o vídeo ou o leitor QR.', error);
         stopCamera();
         setCameraError(getCameraErrorMessage(error));
         setLoading(false);
@@ -140,6 +171,7 @@ export const LoyaltyScanner = ({ onRead }: { onRead: (token: string) => void }) 
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
+      requestIdRef.current += 1;
       stopCamera();
       setLoading(false);
       setCameraError('');
