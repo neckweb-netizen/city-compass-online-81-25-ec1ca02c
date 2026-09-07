@@ -83,18 +83,35 @@ export const LoyaltyScanner = ({ onRead }: { onRead: (token: string) => void }) 
 
     let active = true;
     const stream = streamRef.current;
+    const video = videoRef.current;
 
     void (async () => {
       try {
-        const { BrowserQRCodeReader } = await import('@zxing/browser');
-        if (!active) return;
+        video.srcObject = stream;
+        const readerModulePromise = import('@zxing/browser');
+        let startTimeout: number | undefined;
+        const cameraStarted = Promise.race([
+          video.play(),
+          new Promise<void>((_, reject) => {
+            startTimeout = window.setTimeout(() => reject(new Error('A câmera demorou para responder. Feche outros aplicativos que usam a câmera e tente novamente.')), 8000);
+          }),
+        ]);
 
+        try {
+          await cameraStarted;
+        } finally {
+          if (startTimeout) window.clearTimeout(startTimeout);
+        }
+        if (!active) return;
+        setLoading(false);
+
+        const { BrowserQRCodeReader } = await readerModulePromise;
+        if (!active) return;
         const reader = new BrowserQRCodeReader(undefined, {
           delayBetweenScanAttempts: 150,
           delayBetweenScanSuccess: 500,
-          tryPlayVideoTimeout: 10000,
         });
-        const controls = await reader.decodeFromStream(stream, videoRef.current!, (result) => {
+        const controls = reader.scan(video, (result) => {
           if (!result || !active) return;
           const token = result.getText().replace(/^sajtem-loyalty:/, '').trim();
           onReadRef.current(token);
@@ -107,7 +124,6 @@ export const LoyaltyScanner = ({ onRead }: { onRead: (token: string) => void }) 
           return;
         }
         controlsRef.current = controls;
-        setLoading(false);
       } catch (error) {
         if (!active) return;
         stopCamera();
