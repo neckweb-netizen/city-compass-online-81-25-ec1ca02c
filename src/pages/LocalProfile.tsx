@@ -27,6 +27,7 @@ import { EmpresaCupons } from '@/components/empresa/EmpresaCupons';
 import { AuthDialog } from '@/components/auth/AuthDialog';
 import { AgendamentoForm } from '@/components/agendamento/AgendamentoForm';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { LoyaltyJoinCard } from '@/components/loyalty/LoyaltyJoinCard';
 
 const EmpresaProfile = () => {
   const params = useParams<{ id?: string; slug?: string }>();
@@ -479,6 +480,7 @@ const EmpresaProfile = () => {
             </Card>
           )}
         </div>
+        {empresa && <LoyaltyJoinCard empresaId={empresa.id} onLoginRequired={() => setAuthDialogOpen(true)} />}
       </main>
 
       {empresa && (

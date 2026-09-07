@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Building2, MapPin, Phone, Globe, Mail, Settings, Star, Calendar, Package, ChevronDown, CreditCard, Briefcase, CalendarCheck } from 'lucide-react';
+import { Building2, MapPin, Phone, Globe, Mail, Settings, Star, Calendar, Package, ChevronDown, CreditCard, Briefcase, CalendarCheck, Gift } from 'lucide-react';
 import { useMinhaEmpresa } from '@/hooks/useMinhaEmpresa';
 import { EmpresaEditForm } from './EmpresaEditForm';
 import { EmpresaProdutos } from './EmpresaProdutos';
@@ -24,6 +24,8 @@ import { EnderecosList } from './EnderecosList';
 import { AvisoPlanoExpirado } from './AvisoPlanoExpirado';
 import { AgendamentosEmpresa } from './AgendamentosEmpresa';
 import { ConfiguracaoAgendamentos } from './ConfiguracaoAgendamentos';
+import { LoyaltyActivationTip } from '@/components/loyalty/LoyaltyActivationTip';
+import { LoyaltyManager } from '@/components/loyalty/LoyaltyManager';
 
 export const EmpresaDashboard = () => {
   const { user, profile } = useAuth();
@@ -192,7 +194,7 @@ export const EmpresaDashboard = () => {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className={`grid ${permiteAgendamento ? 'grid-cols-4 grid-rows-3' : 'grid-cols-4 grid-rows-2'} w-full gap-2 p-3 bg-[#221A32] border border-purple-950/20 h-auto rounded-xl`}>
+        <TabsList className="grid grid-cols-3 sm:grid-cols-5 w-full gap-2 p-3 bg-[#221A32] border border-purple-950/20 h-auto rounded-xl">
           <TabsTrigger 
             value="overview" 
             className="flex flex-col items-center gap-1 text-xs py-2 px-2 text-white border-0 bg-transparent data-[state=active]:bg-purple-600 data-[state=active]:text-white hover:bg-purple-950/40 rounded-md h-auto transition-all"
@@ -242,6 +244,13 @@ export const EmpresaDashboard = () => {
             <CreditCard className="w-4 h-4" />
             <span className="text-center leading-tight">Planos</span>
           </TabsTrigger>
+          <TabsTrigger
+            value="fidelidade"
+            className="flex flex-col items-center gap-1 text-xs py-2 px-2 text-white border-0 bg-transparent data-[state=active]:bg-purple-600 data-[state=active]:text-white hover:bg-purple-950/40 rounded-md h-auto transition-all"
+          >
+            <Gift className="w-4 h-4" />
+            <span className="text-center leading-tight">Fidelidade</span>
+          </TabsTrigger>
           <TabsTrigger 
             value="configuracoes" 
             className="flex flex-col items-center gap-1 text-xs py-2 px-2 text-white border-0 bg-transparent data-[state=active]:bg-purple-600 data-[state=active]:text-white hover:bg-purple-950/40 rounded-md h-auto transition-all"
@@ -262,6 +271,7 @@ export const EmpresaDashboard = () => {
 
         <TabsContent value="overview" className="mt-6">
           <div className="grid gap-6 md:grid-cols-2">
+            <LoyaltyActivationTip empresaId={empresaAtual.id} onActivate={() => setActiveTab('fidelidade')} />
             <NeonCard>
               <CardHeader>
                 <CardTitle>Informações da Empresa</CardTitle>
@@ -371,6 +381,10 @@ export const EmpresaDashboard = () => {
 
         <TabsContent value="planos" className="mt-6">
           <PlanosDisponiveis empresaId={empresaAtual.id} />
+        </TabsContent>
+
+        <TabsContent value="fidelidade" className="mt-6">
+          <LoyaltyManager empresaId={empresaAtual.id} />
         </TabsContent>
 
         <TabsContent value="configuracoes" className="mt-6">

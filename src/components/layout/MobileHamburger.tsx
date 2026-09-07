@@ -115,6 +115,13 @@ export const MobileHamburger = () => {
       rota: '/jogos',
       categoria: 'principal'
     },
+    ...(user ? [{
+      id: 'fidelidade',
+      nome_item: 'Meus Cartões',
+      icone: 'Gift',
+      rota: '/fidelidade',
+      categoria: 'principal'
+    }] : []),
     {
       id: 'buscar',
       nome_item: 'Buscar',

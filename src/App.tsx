@@ -54,6 +54,7 @@ const Notifications = lazy(() => import("./pages/Notifications"));
 const ContactPage = lazy(() => import("./pages/ContactPage").then(m => ({ default: m.ContactPage })));
 const AnuncieGratis = lazy(() => import("./pages/AnuncieGratis").then(m => ({ default: m.AnuncieGratis })));
 const EntreNos = lazy(() => import("./pages/EntreNos"));
+const Fidelidade = lazy(() => import("./pages/Fidelidade"));
 
 // Ferramentas públicas e jogos
 const Domino = lazy(() => import("./pages/Domino"));
@@ -772,6 +773,16 @@ const App = () => {
                 <Route path="reclamacoes" element={<Reclamacoes />} />
                 <Route path="reclamacoes/:id" element={<ReclamacaoDetalhes />} />
                 <Route path="entre-nos" element={<EntreNos />} />
+                <Route path="fidelidade" element={
+                  <ProtectedRoute
+                    title="Seus benefícios em um só lugar"
+                    description="Entre na sua conta para acompanhar cartões fidelidade, carimbos e recompensas das empresas participantes."
+                    backTo="/locais"
+                    backLabel="Explorar empresas"
+                  >
+                    <Fidelidade />
+                  </ProtectedRoute>
+                } />
                 <Route path="unauthorized" element={<UnauthorizedPage />} />
                 
                 <Route path="domino" element={<Domino />} />

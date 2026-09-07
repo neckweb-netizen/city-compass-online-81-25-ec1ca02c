@@ -7,9 +7,19 @@ import { Lock, LogIn, UserPlus, ArrowLeft } from 'lucide-react';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
+  title?: string;
+  description?: string;
+  backTo?: string;
+  backLabel?: string;
 }
 
-export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
+export const ProtectedRoute = ({
+  children,
+  title = 'Área Exclusiva para Membros',
+  description = 'Esta ferramenta é gratuita, porém restrita a usuários cadastrados na plataforma Saj Tem. Entre na sua conta para liberar o acesso.',
+  backTo = '/ferramentas',
+  backLabel = 'Voltar ao Catálogo de Ferramentas',
+}: ProtectedRouteProps) => {
   const navigate = useNavigate();
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -53,10 +63,10 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
             <div className="space-y-2">
               <h2 className="text-2xl font-black text-foreground tracking-tight">
-                Área Exclusiva para Membros
+                {title}
               </h2>
               <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                Esta ferramenta é gratuita, porém restrita a usuários cadastrados na plataforma Saj Tem. Entre na sua conta para liberar o acesso.
+                {description}
               </p>
             </div>
 
@@ -79,10 +89,10 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
             <Button 
               variant="ghost" 
-              onClick={() => navigate('/ferramentas')} 
+              onClick={() => navigate(backTo)}
               className="text-xs text-muted-foreground hover:text-foreground gap-1.5"
             >
-              <ArrowLeft className="w-3.5 h-3.5" /> Voltar ao Catálogo de Ferramentas
+              <ArrowLeft className="w-3.5 h-3.5" /> {backLabel}
             </Button>
           </CardContent>
         </Card>

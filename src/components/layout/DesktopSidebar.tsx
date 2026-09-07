@@ -111,6 +111,13 @@ export const DesktopSidebar = ({
       rota: '/jogos',
       categoria: 'principal'
     },
+    ...(user ? [{
+      id: 'fidelidade',
+      nome_item: 'Meus Cartões',
+      icone: 'Gift',
+      rota: '/fidelidade',
+      categoria: 'principal'
+    }] : []),
     {
       id: 'entre-nos',
       nome_item: 'Entre Nós',
