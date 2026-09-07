@@ -128,7 +128,7 @@ const CanalInformativoItemComponent = ({ item }: { item: CanalInformativoItem })
     try {
       const response = await createShortUrl({ original_url: originalUrl });
       if (response) {
-        const newShortUrl = `${window.location.origin}/${response.short_code}`;
+        const newShortUrl = response.short_url;
         setShortUrl(newShortUrl);
         return newShortUrl;
       }
@@ -136,7 +136,7 @@ const CanalInformativoItemComponent = ({ item }: { item: CanalInformativoItem })
       console.error('Erro ao criar URL curta:', error);
     }
     
-    return originalUrl;
+    return null;
   }, [shortUrl, item.id, createShortUrl]);
 
   const handleLinkClick = () => {
@@ -183,6 +183,7 @@ const CanalInformativoItemComponent = ({ item }: { item: CanalInformativoItem })
 
   const handleShare = async () => {
     const shareUrl = await getShareUrl();
+    if (!shareUrl) return;
     const shareText = `${item.titulo} - Canal Informativo`;
     
     // Para resultados de sorteio, tentar compartilhar com imagem
@@ -229,6 +230,7 @@ const CanalInformativoItemComponent = ({ item }: { item: CanalInformativoItem })
 
   const handleShareToWhatsApp = async () => {
     const shareUrl = await getShareUrl();
+    if (!shareUrl) return;
     let shareText = `*${item.titulo}*\n\n`;
     
     if (item.tipo_conteudo === 'resultado_sorteio' && item.resultado_sorteio) {
@@ -254,6 +256,7 @@ const CanalInformativoItemComponent = ({ item }: { item: CanalInformativoItem })
 
   const handleShareToFacebook = async () => {
     const shareUrl = await getShareUrl();
+    if (!shareUrl) return;
     const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
     window.open(facebookUrl, '_blank');
   };
@@ -291,6 +294,7 @@ const CanalInformativoItemComponent = ({ item }: { item: CanalInformativoItem })
 
   const handleCopyLink = async () => {
     const shareUrl = await getShareUrl();
+    if (!shareUrl) return;
     
     try {
       await navigator.clipboard.writeText(shareUrl);

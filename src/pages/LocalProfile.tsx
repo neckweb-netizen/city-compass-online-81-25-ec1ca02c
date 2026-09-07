@@ -28,6 +28,7 @@ import { AuthDialog } from '@/components/auth/AuthDialog';
 import { AgendamentoForm } from '@/components/agendamento/AgendamentoForm';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { LoyaltyJoinCard } from '@/components/loyalty/LoyaltyJoinCard';
+import { useShortUrls } from '@/hooks/useShortUrls';
 
 const EmpresaProfile = () => {
   const params = useParams<{ id?: string; slug?: string }>();
@@ -59,6 +60,7 @@ const EmpresaProfile = () => {
   const [agendamentoModalOpen, setAgendamentoModalOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { createShortUrl, copyToClipboard } = useShortUrls();
   const { user, profile } = useAuth();
   const { data: jaAvaliou } = useUsuarioJaAvaliou(empresa?.id || '', user?.id);
 
@@ -120,24 +122,25 @@ const EmpresaProfile = () => {
   };
 
   const handleShare = async () => {
+    const originalUrl = `${window.location.origin}/local/${empresa.id}`;
+
     try {
+      const result = await createShortUrl({ original_url: originalUrl });
+      if (!result) return;
+      const shareUrl = result.short_url;
+
       if (navigator.share) {
         await navigator.share({
           title: empresa.nome,
           text: `Confira o perfil de ${empresa.nome}`,
-          url: window.location.href,
+          url: shareUrl,
         });
       } else {
-        await navigator.clipboard.writeText(window.location.href);
-        toast({ title: 'Link copiado!', description: 'O link do perfil foi copiado para a área de transferência.' });
+        await copyToClipboard(shareUrl);
       }
-    } catch {
-      try {
-        await navigator.clipboard.writeText(window.location.href);
-        toast({ title: 'Link copiado!', description: 'O link do perfil foi copiado para a área de transferência.' });
-      } catch {
-        toast({ title: 'Erro', description: 'Não foi possível compartilhar ou copiar o link.', variant: 'destructive' });
-      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      toast({ title: 'Erro', description: 'Não foi possível gerar o link curto.', variant: 'destructive' });
     }
   };
 

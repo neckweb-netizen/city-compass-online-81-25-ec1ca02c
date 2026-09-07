@@ -4,16 +4,23 @@ import { useToast } from '@/hooks/use-toast';
 
 interface CreateShortUrlParams {
   original_url: string;
-  expires_at?: string;
 }
 
 interface ShortUrlResponse {
   short_url: string;
   short_code: string;
   original_url: string;
-  expires_at?: string;
-  created_at: string;
 }
+
+const getInternalPath = (url: string): string => {
+  const parsedUrl = new URL(url, window.location.origin);
+
+  if (parsedUrl.origin !== window.location.origin) {
+    throw new Error('Apenas páginas do Saj Tem podem ser encurtadas');
+  }
+
+  return `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
+};
 
 export const useShortUrls = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -23,13 +30,12 @@ export const useShortUrls = () => {
     setIsLoading(true);
     
     try {
-      console.log('Criando URL curta para:', params.original_url);
-      
-      const { data, error } = await supabase.functions.invoke('create-short-url', {
-        body: params
+      const originalPath = getInternalPath(params.original_url);
+      const { data: shortCode, error } = await supabase.rpc('create_short_url', {
+        p_original_url: originalPath,
       });
 
-      if (error) {
+      if (error || !shortCode) {
         console.error('Erro ao criar URL curta:', error);
         toast({
           title: "Erro",
@@ -40,16 +46,10 @@ export const useShortUrls = () => {
       }
 
       const response: ShortUrlResponse = {
-        ...data,
-        short_url: getShortUrl(data.short_code),
+        short_code: shortCode,
+        short_url: getShortUrl(shortCode),
+        original_url: originalPath,
       };
-
-      console.log('URL curta criada:', response);
-      
-      toast({
-        title: "Sucesso",
-        description: "URL curta criada com sucesso!",
-      });
 
       return response;
     } catch (error) {

@@ -411,7 +411,7 @@ export const GeradorRifa = () => {
 
     if (error || !data) {
       console.error('Não foi possível gerar o link curto da rifa:', error);
-      return getLinkOriginalRifa();
+      throw new Error('Não foi possível gerar o link curto da rifa');
     }
 
     const linkCurto = `${window.location.origin}/s/${data}`;

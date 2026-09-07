@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Share2, Copy, ExternalLink } from 'lucide-react';
+import { Share2, Copy } from 'lucide-react';
 import { Button } from './button';
 import { useShortUrls } from '@/hooks/useShortUrls';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from './dropdown-menu';
@@ -25,67 +25,42 @@ export const ShareButton = ({
     copyToClipboard,
     isLoading
   } = useShortUrls();
+
+  const getOrCreateShortUrl = async () => {
+    if (shortUrl) return shortUrl;
+
+    const result = await createShortUrl({ original_url: url });
+    if (!result) return null;
+
+    setShortUrl(result.short_url);
+    return result.short_url;
+  };
+
   const handleCreateShortUrl = async () => {
-    if (shortUrl) {
-      await copyToClipboard(shortUrl);
-      return;
-    }
-    const result = await createShortUrl({
-      original_url: url
-    });
-    if (result) {
-      setShortUrl(result.short_url);
-      await copyToClipboard(result.short_url);
-    }
+    const urlToCopy = await getOrCreateShortUrl();
+    if (urlToCopy) await copyToClipboard(urlToCopy);
   };
-  const handleCopyOriginal = async () => {
-    await copyToClipboard(url);
-  };
+
   const handleWhatsAppShare = async () => {
-    const urlToShare = shortUrl || url;
-    if (!shortUrl) {
-      const result = await createShortUrl({
-        original_url: url
-      });
-      if (result) {
-        setShortUrl(result.short_url);
-        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${title}\n\n${description}\n\n${result.short_url}`)}`;
-        window.open(whatsappUrl, '_blank');
-        return;
-      }
-    }
+    const urlToShare = await getOrCreateShortUrl();
+    if (!urlToShare) return;
+
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${title}\n\n${description}\n\n${urlToShare}`)}`;
     window.open(whatsappUrl, '_blank');
   };
+
   const handleTelegramShare = async () => {
-    const urlToShare = shortUrl || url;
-    if (!shortUrl) {
-      const result = await createShortUrl({
-        original_url: url
-      });
-      if (result) {
-        setShortUrl(result.short_url);
-        const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(result.short_url)}&text=${encodeURIComponent(`${title}\n\n${description}`)}`;
-        window.open(telegramUrl, '_blank');
-        return;
-      }
-    }
+    const urlToShare = await getOrCreateShortUrl();
+    if (!urlToShare) return;
+
     const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(urlToShare)}&text=${encodeURIComponent(`${title}\n\n${description}`)}`;
     window.open(telegramUrl, '_blank');
   };
+
   const handleFacebookShare = async () => {
-    const urlToShare = shortUrl || url;
-    if (!shortUrl) {
-      const result = await createShortUrl({
-        original_url: url
-      });
-      if (result) {
-        setShortUrl(result.short_url);
-        const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(result.short_url)}`;
-        window.open(facebookUrl, '_blank');
-        return;
-      }
-    }
+    const urlToShare = await getOrCreateShortUrl();
+    if (!urlToShare) return;
+
     const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(urlToShare)}`;
     window.open(facebookUrl, '_blank');
   };

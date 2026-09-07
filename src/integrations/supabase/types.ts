@@ -4191,6 +4191,10 @@ export type Database = {
         Args: { p_raffle_id: string }
         Returns: string
       }
+      create_short_url: {
+        Args: { p_original_url: string }
+        Returns: string
+      }
       generate_short_code: { Args: never; Returns: string }
       gerar_codigo_suporte: { Args: never; Returns: string }
       get_admin_site_stats: { Args: never; Returns: Json }
