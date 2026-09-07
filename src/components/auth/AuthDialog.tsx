@@ -9,6 +9,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { CadastrarEmpresaDialog } from '@/components/profile/CadastrarEmpresaDialog';
 import { Separator } from '@/components/ui/separator';
+import { useAuth } from '@/hooks/useAuth';
 
 interface AuthDialogProps {
   open: boolean;
@@ -24,6 +25,7 @@ export const AuthDialog = ({ open, onOpenChange, defaultTab = 'login' }: AuthDia
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const { signIn } = useAuth();
 
   // Sincroniza o estado de login/cadastro e intercepta para empresas
   useEffect(() => {
@@ -44,10 +46,7 @@ export const AuthDialog = ({ open, onOpenChange, defaultTab = 'login' }: AuthDia
 
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
+        const { error } = await signIn(email, password);
         
         if (error) throw error;
         

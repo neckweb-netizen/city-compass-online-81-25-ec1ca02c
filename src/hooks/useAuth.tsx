@@ -88,17 +88,17 @@ const useAuthState = () => {
   const redirectAfterLogin = useCallback((userProfile: UserProfile, isExplicitLogin = false) => {
     // Só redireciona se for um login explícito (não automático)
     if (!isExplicitLogin) return;
-    
-    const currentPath = window.location.pathname;
-    
-    // Só redireciona se estiver na página inicial
-    if (currentPath !== '/') return;
-    
-    // Redireciona usuários com empresas para o dashboard
+
+    // A restauração de uma sessão existente nunca passa por esta função.
+    // Assim, o redirecionamento acontece uma única vez a cada login manual.
     if (userProfile.tipo_conta === 'empresa') {
-      window.location.href = '/empresa-dashboard';
+      if (window.location.pathname !== '/empresa-dashboard') {
+        window.location.assign('/empresa-dashboard');
+      }
     } else if (userProfile.tipo_conta === 'admin_geral' || userProfile.tipo_conta === 'admin_cidade') {
-      window.location.href = '/admin';
+      if (!window.location.pathname.startsWith('/admin')) {
+        window.location.assign('/admin');
+      }
     }
     // Usuários normais ficam na página atual
   }, []);
