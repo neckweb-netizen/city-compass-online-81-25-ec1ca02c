@@ -18,11 +18,23 @@ export interface LoyaltyProgram {
   validade_dias: number | null;
   bonus_boas_vindas: number;
   created_at: string;
+  loyalty_rewards?: LoyaltyReward[];
+}
+
+export interface LoyaltyReward {
+  id?: string;
+  program_id?: string;
+  nome: string;
+  descricao?: string | null;
+  carimbos_necessarios: number;
+  ativo: boolean;
+  ordem?: number;
 }
 
 export interface LoyaltyOwnerCard {
   card_id: string;
   public_token: string;
+  display_code: string;
   cliente_nome: string;
   cliente_email: string;
   saldo: number;
@@ -35,6 +47,7 @@ export interface LoyaltyOwnerCard {
 export interface MyLoyaltyCard {
   id: string;
   public_token: string;
+  display_code: string;
   saldo: number;
   total_carimbos: number;
   total_resgates: number;
@@ -48,7 +61,10 @@ export interface MyLoyaltyCard {
 export const useLoyaltyProgram = (empresaId?: string) => useQuery({
   queryKey: ['loyalty-program', empresaId],
   queryFn: async () => {
-    const { data, error } = await db.from('loyalty_programs').select('*').eq('empresa_id', empresaId).maybeSingle();
+    const { data, error } = await db.from('loyalty_programs')
+      .select('*, loyalty_rewards(*)').eq('empresa_id', empresaId)
+      .order('carimbos_necessarios', { referencedTable: 'loyalty_rewards', ascending: true })
+      .maybeSingle();
     if (error) throw error;
     return data as LoyaltyProgram | null;
   },
@@ -63,7 +79,7 @@ export const useLoyaltyManager = (empresaId?: string) => {
   const cardsQuery = useQuery({
     queryKey: ['loyalty-owner-cards', programId],
     queryFn: async () => {
-      const { data, error } = await db.rpc('loyalty_owner_cards', { p_program_id: programId });
+      const { data, error } = await db.rpc('loyalty_owner_cards_v2', { p_program_id: programId });
       if (error) throw error;
       return (data || []) as LoyaltyOwnerCard[];
     },
@@ -71,26 +87,34 @@ export const useLoyaltyManager = (empresaId?: string) => {
   });
 
   const saveProgram = useMutation({
-    mutationFn: async (values: Partial<LoyaltyProgram>) => {
+    mutationFn: async (values: Partial<LoyaltyProgram> & { loyalty_rewards?: LoyaltyReward[] }) => {
+      const rewards = values.loyalty_rewards || [];
       const payload = { ...values, empresa_id: empresaId };
       delete (payload as any).id;
       delete (payload as any).created_at;
+      delete (payload as any).loyalty_rewards;
       const { data, error } = await db.from('loyalty_programs')
         .upsert(payload, { onConflict: 'empresa_id' }).select('*').single();
       if (error) throw error;
-      return data as LoyaltyProgram;
+      const { data: savedRewards, error: rewardsError } = await db.rpc('loyalty_replace_rewards', {
+        p_program_id: data.id,
+        p_rewards: rewards,
+      });
+      if (rewardsError) throw rewardsError;
+      return { ...data, loyalty_rewards: savedRewards } as LoyaltyProgram;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['loyalty-program', empresaId] }),
   });
 
   const applyTransaction = useMutation({
-    mutationFn: async ({ token, tipo, quantidade = 1, observacao = '' }: {
-      token: string; tipo: 'credito' | 'resgate'; quantidade?: number; observacao?: string;
+    mutationFn: async ({ identifier, tipo, quantidade = 1, rewardId, observacao = '' }: {
+      identifier: string; tipo: 'credito' | 'resgate'; quantidade?: number; rewardId?: string; observacao?: string;
     }) => {
-      const { data, error } = await db.rpc('loyalty_apply_transaction', {
-        p_public_token: token,
+      const { data, error } = await db.rpc('loyalty_apply_transaction_v2', {
+        p_card_identifier: identifier,
         p_tipo: tipo,
         p_quantidade: quantidade,
+        p_reward_id: rewardId || null,
         p_observacao: observacao,
         p_request_id: crypto.randomUUID(),
       });
@@ -147,8 +171,8 @@ export const useMyLoyaltyCards = () => {
     queryKey: ['my-loyalty-cards', user?.id],
     queryFn: async () => {
       const { data, error } = await db.from('loyalty_cards').select(`
-        id, public_token, saldo, total_carimbos, total_resgates, ultimo_movimento, created_at,
-        loyalty_programs!inner(*, empresas!inner(nome, slug, imagem_capa_url))
+        id, public_token, display_code, saldo, total_carimbos, total_resgates, ultimo_movimento, created_at,
+        loyalty_programs!inner(*, loyalty_rewards(*), empresas!inner(nome, slug, imagem_capa_url))
       `).eq('usuario_id', user?.id).order('created_at', { ascending: false });
       if (error) throw error;
       return (data || []) as MyLoyaltyCard[];
