@@ -103,6 +103,16 @@ const useAuthState = () => {
     // Usuários normais ficam na página atual
   }, []);
 
+  const redirectAfterInitialLoad = useCallback((userProfile: UserProfile) => {
+    // A abertura do site/PWA começa pela home. Navegações internas não remontam
+    // o AuthProvider e, portanto, não voltam a executar este redirecionamento.
+    if (window.location.pathname !== '/') return;
+
+    if (userProfile.tipo_conta === 'empresa') {
+      window.location.assign('/empresa-dashboard');
+    }
+  }, []);
+
   const fetchTimeoutRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
@@ -133,6 +143,7 @@ const useAuthState = () => {
             const userProfile = await fetchProfile(session.user.id, session.user);
             if (mounted) {
               setProfile(userProfile);
+              if (userProfile) redirectAfterInitialLoad(userProfile);
             }
           }
           
@@ -186,7 +197,7 @@ const useAuthState = () => {
       }
       subscription.unsubscribe();
     };
-  }, [fetchProfile]);
+  }, [fetchProfile, redirectAfterInitialLoad]);
 
   const signIn = async (email: string, password: string) => {
     setLoading(true);
