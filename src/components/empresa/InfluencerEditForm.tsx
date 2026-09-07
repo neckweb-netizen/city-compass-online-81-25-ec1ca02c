@@ -113,7 +113,7 @@ export const InfluencerEditForm = ({ empresa, open, onOpenChange }: InfluencerEd
         site: Object.keys(socialMediaObject).length > 0 ? JSON.stringify(socialMediaObject) : null,
       };
 
-      await updateEmpresa(updateData);
+      updateEmpresa(updateData, empresa.id);
       onOpenChange(false);
       toast({
         title: 'Perfil atualizado!',

@@ -44,28 +44,40 @@ export const useMinhaEmpresa = () => {
 
   // Função para verificar se o usuário pode editar uma empresa específica
   const podeEditar = (empresaId: string) => {
-    if (!user || !empresa) return false;
-    
-    // Verifica se é proprietário direto
-    if (empresa.usuario_id === user.id) return true;
-    
-    // Verifica se é admin atribuído (se a empresa retornada for a mesma que está tentando editar)
-    if (empresa.id === empresaId) return true;
-    
-    return false;
+    if (!user) return false;
+
+    return Boolean(
+      empresas?.some(
+        (empresaDoUsuario) =>
+          empresaDoUsuario.id === empresaId && empresaDoUsuario.usuario_id === user.id,
+      ),
+    );
   };
 
   const updateEmpresaMutation = useMutation({
-    mutationFn: async (dados: any) => {
-      if (!user || !empresa) throw new Error('Usuário ou empresa não encontrados');
+    mutationFn: async ({ empresaId, dados }: { empresaId: string; dados: any }) => {
+      if (!user) throw new Error('Usuário não encontrado');
+
+      const usuarioEhProprietario = empresas?.some(
+        (empresaDoUsuario) =>
+          empresaDoUsuario.id === empresaId && empresaDoUsuario.usuario_id === user.id,
+      );
+
+      if (!usuarioEhProprietario) {
+        throw new Error('Você não tem permissão para editar esta empresa');
+      }
 
       const { data: empresaAtualizada, error } = await supabase
         .from('empresas')
         .update(dados)
-        .eq('id', empresa.id)
+        .eq('id', empresaId)
+        .eq('usuario_id', user.id)
         .select('id, horario_funcionamento, atualizado_em')
-        .single();
+        .maybeSingle();
       if (error) throw error;
+      if (!empresaAtualizada) {
+        throw new Error('Empresa não encontrada ou sem permissão para editar');
+      }
       return empresaAtualizada;
     },
     onSuccess: () => {
@@ -85,12 +97,25 @@ export const useMinhaEmpresa = () => {
     },
   });
 
+  const updateEmpresa = (dados: any, empresaId = empresa?.id) => {
+    if (!empresaId) {
+      toast({
+        title: 'Empresa não encontrada',
+        description: 'Não foi possível identificar a empresa que será atualizada.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    updateEmpresaMutation.mutate({ empresaId, dados });
+  };
+
   return {
     empresa,
     empresas: empresas || [],
     isLoading,
     error,
-    updateEmpresa: updateEmpresaMutation.mutate,
+    updateEmpresa,
     isUpdating: updateEmpresaMutation.isPending,
     podeEditar, // Expõe a função para verificar se pode editar
   };

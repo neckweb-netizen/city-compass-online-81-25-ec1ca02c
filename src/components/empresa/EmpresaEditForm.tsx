@@ -89,7 +89,7 @@ export const EmpresaEditForm = ({ empresa, open, onOpenChange }: EmpresaEditForm
       categoria_id: data.categoria_id,
       imagem_capa_url: data.imagem_capa_url || null,
       horario_funcionamento: horarios,
-    });
+    }, empresa.id);
     
     onOpenChange(false);
   };
