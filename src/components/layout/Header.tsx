@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Bell, BellRing, Moon, Sun, Check, Search } from 'lucide-react';
+import { Bell, BellRing, Building2, Check, Moon, Search, ShieldCheck, Sun } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { AuthDialog } from '@/components/auth/AuthDialog';
 import { useTheme } from '@/components/ui/theme-provider';
@@ -83,6 +83,21 @@ export const Header = () => {
   };
 
   const isHomePage = location.pathname === '/';
+  const isEmpresa = profile?.tipo_conta === 'empresa';
+  const isAdmin = profile?.tipo_conta === 'admin_geral' || profile?.tipo_conta === 'admin_cidade';
+  const dashboardAccess = isEmpresa
+    ? {
+        path: '/empresa-dashboard',
+        label: 'Painel da empresa',
+        Icon: Building2,
+      }
+    : isAdmin
+      ? {
+          path: '/admin',
+          label: 'Painel administrativo',
+          Icon: ShieldCheck,
+        }
+      : null;
 
   return (
     <div className="sticky top-0 z-40 w-full">
@@ -110,7 +125,7 @@ export const Header = () => {
                     }}
                   />
                 </div>
-                <div className="min-w-0">
+                <div className="hidden min-w-0 min-[430px]:block">
                   <h1 className="text-sm lg:text-lg font-bold text-primary truncate">
                     Saj Tem
                   </h1>
@@ -150,12 +165,31 @@ export const Header = () => {
 
             {/* Actions */}
             <div className={cn("flex items-center gap-0.5 sm:gap-1 lg:gap-2 flex-shrink-0", isHomePage && "ml-auto")}>
+              {dashboardAccess && (
+                <Button
+                  type="button"
+                  variant={location.pathname.startsWith(dashboardAccess.path) ? 'secondary' : 'outline'}
+                  size="sm"
+                  onClick={() => navigate(dashboardAccess.path)}
+                  aria-label={dashboardAccess.label}
+                  aria-current={location.pathname.startsWith(dashboardAccess.path) ? 'page' : undefined}
+                  title={dashboardAccess.label}
+                  className="h-9 w-9 shrink-0 rounded-full p-0 shadow-sm sm:h-10 sm:w-10 xl:w-auto xl:gap-2 xl:px-3"
+                >
+                  <dashboardAccess.Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <span className="hidden whitespace-nowrap text-sm font-semibold xl:inline">
+                    {dashboardAccess.label}
+                  </span>
+                </Button>
+              )}
+
               {/* Theme Toggle */}
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-                className="h-10 w-10 lg:h-12 lg:w-12 rounded-full p-0 hover:bg-accent flex-shrink-0"
+                className="hidden h-10 w-10 rounded-full p-0 hover:bg-accent min-[390px]:inline-flex lg:h-12 lg:w-12 flex-shrink-0"
+                aria-label={theme === 'light' ? 'Ativar tema escuro' : 'Ativar tema claro'}
               >
                 {theme === 'light' ? (
                   <Moon className="h-5 w-5 lg:h-6 lg:w-6 text-foreground" />
@@ -287,6 +321,12 @@ export const Header = () => {
                       <>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => navigate('/empresa-dashboard')}>Minha Empresa</DropdownMenuItem>
+                      </>
+                    )}
+                    {(profile.tipo_conta === 'admin_geral' || profile.tipo_conta === 'admin_cidade') && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => navigate('/admin')}>Painel Administrativo</DropdownMenuItem>
                       </>
                     )}
                     <DropdownMenuSeparator />
