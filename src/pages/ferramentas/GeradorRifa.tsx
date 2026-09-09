@@ -237,7 +237,11 @@ export const GeradorRifa = () => {
     try {
       setSalvando(true);
       const { data: { session } } = await supabase.auth.getSession();
-      const userId = session?.user?.id || null;
+      const userId = session?.user?.id;
+      if (!userId) {
+        toast.error('Entre na sua conta para criar e administrar uma rifa com segurança.');
+        return;
+      }
 
       const total = tipoRifa === 'fazendinha' ? 25 : parseInt(qtdNumeros);
       const lista: NumeroRifa[] = [];

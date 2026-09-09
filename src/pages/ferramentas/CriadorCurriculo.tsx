@@ -8,7 +8,7 @@ import { ArrowLeft, Download, Printer, Plus, Trash2, User, Briefcase, Graduation
 import { useNavigate } from 'react-router-dom';
 import { ToolBanner } from '@/components/ferramentas/ToolBanner';
 import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
+import { PDFDocument } from 'pdf-lib';
 import { toast } from 'sonner';
 
 interface Experiencia {
@@ -131,9 +131,9 @@ export const CriadorCurriculo = () => {
         },
       });
 
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      const larguraPagina = pdf.internal.pageSize.getWidth();
-      const alturaPagina = pdf.internal.pageSize.getHeight();
+      const pdf = await PDFDocument.create();
+      const larguraPagina = 595.28;
+      const alturaPagina = 841.89;
       const alturaPaginaEmPixels = Math.ceil(canvas.width * (alturaPagina / larguraPagina));
 
       let posicaoVertical = 0;
@@ -162,17 +162,14 @@ export const CriadorCurriculo = () => {
           alturaFatia,
         );
 
-        if (pagina > 0) pdf.addPage();
-        pdf.addImage(
-          canvasPagina.toDataURL('image/png'),
-          'PNG',
-          0,
-          0,
-          larguraPagina,
-          alturaPagina,
-          undefined,
-          'FAST',
-        );
+        const imagem = await pdf.embedPng(canvasPagina.toDataURL('image/png'));
+        const paginaPdf = pdf.addPage([larguraPagina, alturaPagina]);
+        paginaPdf.drawImage(imagem, {
+          x: 0,
+          y: 0,
+          width: larguraPagina,
+          height: alturaPagina,
+        });
 
         posicaoVertical += alturaFatia;
         pagina += 1;
@@ -187,7 +184,14 @@ export const CriadorCurriculo = () => {
             .replace(/^_+|_+$/g, '')}.pdf`
         : 'curriculo.pdf';
 
-      pdf.save(nomeArquivo);
+      const bytes = await pdf.save({ useObjectStreams: true });
+      const conteudo = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+      const url = URL.createObjectURL(new Blob([conteudo], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = nomeArquivo;
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
       toast.success('Currículo baixado em PDF.');
     } catch (error) {
       console.error('Erro ao gerar PDF do currículo:', error);

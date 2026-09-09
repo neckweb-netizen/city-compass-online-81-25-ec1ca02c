@@ -1,17 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
+import { corsHeaders, errorResponse, HttpError, jsonResponse, requireUser } from "../_shared/security.ts";
 
 const slugify = (value: string) =>
   value
@@ -128,53 +116,16 @@ const normalizeOpeningHours = (details: any) => {
 };
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const json = (body: unknown, status = 200) => jsonResponse(req, body, status);
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(req) });
   if (req.method !== "POST") return json({ status: "ERROR", error: "Método não permitido." }, 405);
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const googleApiKey = Deno.env.get("GOOGLE_PLACES_API_KEY");
-    const authorization = req.headers.get("Authorization");
-
-    if (!supabaseUrl || !serviceRoleKey) {
-      return json({ status: "ERROR", error: "Configuração interna do Supabase ausente." }, 500);
-    }
-
     if (!googleApiKey) {
       return json({ status: "ERROR", error: "GOOGLE_PLACES_API_KEY não está configurada na Edge Function." }, 500);
     }
-
-    if (!authorization?.startsWith("Bearer ")) {
-      return json({ status: "ERROR", error: "Sessão administrativa não encontrada." }, 401);
-    }
-
-    const admin = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
-
-    const token = authorization.replace("Bearer ", "").trim();
-    const { data: { user }, error: userError } = await admin.auth.getUser(token);
-
-    if (userError || !user) {
-      return json({ status: "ERROR", error: "Sessão inválida ou expirada." }, 401);
-    }
-
-    const { data: roleRows, error: roleError } = await admin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .in("role", ["admin_geral", "admin_cidade"])
-      .limit(1);
-
-    if (roleError) {
-      console.error("Erro consultando papel do usuário:", roleError);
-      return json({ status: "ERROR", error: "Não foi possível validar a permissão administrativa." }, 500);
-    }
-
-    if (!roleRows || roleRows.length === 0) {
-      return json({ status: "ERROR", error: "Acesso permitido apenas para administradores." }, 403);
-    }
+    const { user, admin } = await requireUser(req, ["admin_geral", "admin_cidade"]);
 
     const body = (await req.json()) as RequestBody;
 
@@ -566,6 +517,7 @@ Deno.serve(async (req: Request) => {
     return json({ status: "ERROR", error: "Ação desconhecida." }, 400);
   } catch (error) {
     console.error("Erro google-places-admin:", error);
+    if (error instanceof HttpError) return errorResponse(req, error);
     return json({
       status: "ERROR",
       error: error instanceof Error ? error.message : "Erro interno inesperado.",

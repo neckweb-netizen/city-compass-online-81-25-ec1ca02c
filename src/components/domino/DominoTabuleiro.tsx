@@ -383,19 +383,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
     (async () => {
       try {
-        const updates: any = {};
-        if (jogador1Id === usuarioId) updates.jogador_1_id = null;
-        if (jogador2Id === usuarioId) updates.jogador_2_id = null;
-        
-        updates.status = 'aguardando';
-        updates.vez_usuario_id = null;
-        updates.mesa_ponta_esquerda = null;
-        updates.mesa_ponta_direita = null;
-        updates.historico_jogadas = [];
-        updates.passadas_count = 0;
-        updates.atualizado_em = new Date().toISOString();
-
-        await supabase.from('domino_salas').update(updates).eq('id', salaId);
+        await (supabase as any).rpc('sair_lobby_domino');
       } catch (err) {
         console.warn('Erro ao atualizar saída da sala:', err);
       }
@@ -751,8 +739,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         setMesaPedras(jogadasProcessadas);
         inicializarPedrasCompartilhadas(usuarioId, data.jogador_1_id, data.jogador_2_id, jogadasProcessadas.length === 0);
 
-        if (!data.vez_usuario_id && data.jogador_1_id) {
-          await supabase.from('domino_salas').update({ vez_usuario_id: data.jogador_1_id }).eq('id', salaId);
+        if (!data.vez_usuario_id && data.jogador_1_id && data.jogador_2_id) {
           setVezUsuarioId(data.jogador_1_id);
         }
       }

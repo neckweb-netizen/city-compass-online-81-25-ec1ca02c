@@ -153,28 +153,8 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
   const limparResiduosUsuario = async () => {
     if (!usuarioId) return;
     try {
-      await supabase.from('domino_fila').delete().eq('usuario_id', usuarioId);
-      const { data } = await supabase
-        .from('domino_salas')
-        .select('id, jogador_1_id, jogador_2_id')
-        .or(`jogador_1_id.eq.${usuarioId},jogador_2_id.eq.${usuarioId}`);
-
-      if (data && data.length > 0) {
-        for (const sala of data) {
-          const updates: any = {};
-          if (sala.jogador_1_id === usuarioId) updates.jogador_1_id = null;
-          if (sala.jogador_2_id === usuarioId) updates.jogador_2_id = null;
-          updates.status = 'aguardando';
-          updates.vez_usuario_id = null;
-          updates.mesa_ponta_esquerda = null;
-          updates.mesa_ponta_direita = null;
-          updates.passadas_count = 0;
-          updates.historico_jogadas = [];
-          updates.atualizado_em = new Date().toISOString();
-
-          await supabase.from('domino_salas').update(updates).eq('id', sala.id);
-        }
-      }
+      const { error } = await (supabase as any).rpc('sair_lobby_domino');
+      if (error) throw error;
     } catch (err) {
       console.error('❌ [LOBBY-BROADCAST] Erro ao limpar resíduos:', err);
     }
@@ -186,50 +166,8 @@ export const useDominoLobby = (usuarioId: string | undefined) => {
     try {
       if (minhaSala || minhaPosicaoFila !== null) return;
       await limparResiduosUsuario();
-
-      const { data: salasLivres, error: errorSalas } = await supabase
-        .from('domino_salas')
-        .select('*')
-        .or('jogador_1_id.is.null,jogador_2_id.is.null')
-        .order('numero_sala', { ascending: true })
-        .limit(1);
-
-      if (errorSalas) throw errorSalas;
-
-      if (salasLivres && salasLivres.length > 0) {
-        const salaAlvo = salasLivres[0];
-
-        if (!salaAlvo.jogador_1_id) {
-          const { error: erroEntrada } = await supabase
-            .from('domino_salas')
-            .update({
-              jogador_1_id: usuarioId,
-              status: salaAlvo.jogador_2_id ? 'jogando' : 'aguardando',
-              vez_usuario_id: salaAlvo.jogador_2_id ? salaAlvo.jogador_2_id : null,
-              passadas_count: 0,
-              atualizado_em: new Date().toISOString(),
-            })
-            .eq('id', salaAlvo.id);
-          if (erroEntrada) throw erroEntrada;
-        } else {
-          const { error: erroEntrada } = await supabase
-            .from('domino_salas')
-            .update({
-              jogador_2_id: usuarioId,
-              status: 'jogando',
-              vez_usuario_id: salaAlvo.jogador_1_id,
-              passadas_count: 0,
-              atualizado_em: new Date().toISOString(),
-            })
-            .eq('id', salaAlvo.id);
-          if (erroEntrada) throw erroEntrada;
-        }
-      } else {
-        const { error: erroFila } = await supabase
-          .from('domino_fila')
-          .insert([{ usuario_id: usuarioId }]);
-        if (erroFila) throw erroFila;
-      }
+      const { error } = await (supabase as any).rpc('entrar_lobby_domino');
+      if (error) throw error;
 
       await carregarDados();
       notificarOutrosUsuarios();
