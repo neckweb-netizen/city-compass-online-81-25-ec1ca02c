@@ -2,7 +2,6 @@ import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { useMenuConfiguracoes } from '@/hooks/useMenuConfiguracoes';
-import { useTutorial } from '@/hooks/useTutorial';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Watermark } from '@/components/ui/watermark';
@@ -26,9 +25,6 @@ export const DesktopSidebar = ({
     configuracoes,
     isLoading
   } = useMenuConfiguracoes();
-  const {
-    startTutorial
-  } = useTutorial();
 
   // Todos os itens de menu disponíveis - incluindo todos os itens do sistema
   const allMenuItems = [
@@ -198,7 +194,7 @@ export const DesktopSidebar = ({
   };
 
   return (
-    <div className={cn("fixed left-0 top-0 h-full bg-background border-r transition-all duration-300 z-40 group", isOpen ? "w-64" : "w-16")} data-tutorial="sidebar">
+    <div className={cn("fixed left-0 top-0 h-full bg-background border-r transition-all duration-300 z-40 group", isOpen ? "w-64" : "w-16")} data-tutorial="sidebar" data-tour="sidebar">
       {/* Toggle Button */}
       <Button
         variant="ghost"
@@ -241,6 +237,7 @@ export const DesktopSidebar = ({
                 <Link 
                   key={item.id} 
                   to={item.rota}
+                  data-tour={item.id === 'ferramentas' ? 'tools-nav' : undefined}
                   aria-label={item.nome_item}
                   aria-current={isActive(item.rota) ? 'page' : undefined}
                   title={!isOpen ? item.nome_item : undefined}

@@ -60,7 +60,7 @@ export const SearchBar = () => {
   }, []);
 
   return (
-    <section className="w-full max-w-7xl mx-auto px-2 sm:px-4 py-4">
+    <section className="w-full max-w-7xl mx-auto px-2 sm:px-4 py-4" data-tour="home-search">
       <NeonCard className="p-1 max-w-2xl mx-auto">
         <div ref={searchRef} className="relative">
           <form onSubmit={handleSearch} className="relative">

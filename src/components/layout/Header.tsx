@@ -344,6 +344,7 @@ export const Header = () => {
                   size="sm"
                   className="h-10 lg:h-12 rounded-full px-3 lg:px-5 bg-primary hover:bg-primary/90 shadow-md text-xs lg:text-sm flex-shrink-0"
                   data-tutorial="auth-button"
+                  data-tour="auth-button"
                   data-auth-trigger="true"
                 >
                   Entrar

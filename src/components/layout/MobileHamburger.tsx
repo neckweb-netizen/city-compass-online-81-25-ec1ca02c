@@ -5,7 +5,6 @@ import { Menu } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useMenuConfiguracoes } from '@/hooks/useMenuConfiguracoes';
-import { useTutorial } from '@/hooks/useTutorial';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import * as Icons from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -22,9 +21,6 @@ export const MobileHamburger = () => {
     configuracoes,
     isLoading
   } = useMenuConfiguracoes();
-  const {
-    startTutorial
-  } = useTutorial();
   const [open, setOpen] = React.useState(false);
   const [navigatingTo, setNavigatingTo] = React.useState<string | null>(null);
 
@@ -211,7 +207,7 @@ export const MobileHamburger = () => {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button aria-label="Abrir menu de navegação" variant="ghost" size="sm" className="lg:hidden text-foreground hover:text-foreground">
+        <Button aria-label="Abrir menu de navegação" variant="ghost" size="sm" className="lg:hidden text-foreground hover:text-foreground" data-tour="mobile-menu">
           <Menu className="h-5 w-5 text-foreground" />
         </Button>
       </SheetTrigger>
@@ -243,6 +239,7 @@ export const MobileHamburger = () => {
                 return (
                   <Button 
                     key={item.id}
+                    data-tour={item.id === 'ferramentas' ? 'tools-nav' : undefined}
                     aria-current={isActive(item.rota) ? 'page' : undefined}
                     variant="ghost" 
                     className={cn(
