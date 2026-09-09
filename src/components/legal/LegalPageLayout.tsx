@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { ArrowLeft, CalendarDays, Mail } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 export interface LegalSection {
   id: string;
@@ -103,13 +103,7 @@ export const LegalPageLayout = ({ eyebrow, title, description, icon: Icon, secti
           </a>
         </section>
 
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
-          <Link to="/" className="hover:text-primary">Página inicial</Link>
-          <Link to="/politica-de-privacidade" className="hover:text-primary">Política de Privacidade</Link>
-          <Link to="/termos-de-uso" className="hover:text-primary">Termos de Uso</Link>
-        </div>
       </div>
     </div>
   );
 };
-

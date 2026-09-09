@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
+import { Link } from 'react-router-dom';
 
 interface WatermarkProps {
   variant?: 'footer' | 'sidebar';
@@ -34,6 +35,21 @@ export const Watermark: React.FC<WatermarkProps> = ({
               Deivid
             </span>
           </p>
+          <nav aria-label="Informações legais" className="mt-2 flex flex-wrap items-center justify-center gap-x-2 text-xs text-muted-foreground/70">
+            <Link
+              to="/politica-de-privacidade"
+              className="min-h-8 rounded-md px-1 py-2 transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              Política de Privacidade
+            </Link>
+            <span aria-hidden="true" className="text-border">•</span>
+            <Link
+              to="/termos-de-uso"
+              className="min-h-8 rounded-md px-1 py-2 transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              Termos de Uso
+            </Link>
+          </nav>
         </div>
       </div>
     </div>

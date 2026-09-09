@@ -715,13 +715,7 @@ const App = () => {
             © {new Date().getFullYear()} Saj Tem. Todos os direitos reservados.
           </div>
           
-          <div className="flex flex-wrap items-center justify-center gap-4">
-            <a href="/politica-de-privacidade" className="font-medium text-gray-400 hover:text-white transition-colors">
-              Política de Privacidade
-            </a>
-            <a href="/termos-de-uso" className="font-medium text-gray-400 hover:text-white transition-colors">
-              Termos de Uso
-            </a>
+          <div className="flex items-center gap-4">
             <a href="https://instagram.com" target="_blank" rel="noreferrer" className="p-2 bg-purple-950/30 border border-purple-900/40 rounded-xl text-gray-400 hover:text-white hover:bg-purple-900/40 transition-all">
               <img src="" alt="" className="hidden" /><Instagram className="h-4 w-4" />
             </a>
