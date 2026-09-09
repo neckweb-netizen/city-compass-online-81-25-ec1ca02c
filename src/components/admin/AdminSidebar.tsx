@@ -187,7 +187,7 @@ export const AdminSidebar = ({ activeSection, onSectionChange }: AdminSidebarPro
   };
 
   return (
-    <Sidebar data-account-tour="dashboard">
+    <Sidebar data-account-tour="navigation">
       <SidebarHeader className="p-4 border-b">
         <h2 className="text-lg font-semibold text-foreground">Admin Panel</h2>
       </SidebarHeader>

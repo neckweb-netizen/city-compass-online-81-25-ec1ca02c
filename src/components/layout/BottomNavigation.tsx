@@ -36,6 +36,7 @@ export const BottomNavigation = () => {
                 <Button
                   onClick={() => navigate(item.rota)}
                   data-tour="create-action"
+                  data-account-tour="publish"
                   className="w-12 h-12 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-xl flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
                 >
                   <IconComponent className="w-6 h-6 stroke-[2.5]" />
@@ -49,7 +50,7 @@ export const BottomNavigation = () => {
               key={item.rota}
               to={item.rota}
               data-tour={item.rota === '/ferramentas' ? 'tools-nav' : undefined}
-              data-account-tour={item.rota === '/ferramentas' ? 'tools-nav' : undefined}
+              data-account-tour={item.rota === '/canal-informativo' ? 'channel' : item.rota === '/reclamacoes' ? 'community-voice' : undefined}
               className={cn(
                 "min-w-0 flex flex-col items-center justify-center gap-1 transition-colors py-1",
                 ativo ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground"

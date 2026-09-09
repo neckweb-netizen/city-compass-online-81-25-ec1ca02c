@@ -10,6 +10,9 @@ import {
   Compass,
   LayoutDashboard,
   Menu,
+  Megaphone,
+  MessageCircle,
+  PlusCircle,
   Search,
   Sparkles,
   UserRound,
@@ -21,7 +24,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 
 const TOUR_STORAGE_KEY = 'sajtem_visitor_tour_v2_completed';
-const ACCOUNT_TOUR_STORAGE_PREFIX = 'sajtem_account_tour_v1_completed';
+const ACCOUNT_TOUR_STORAGE_PREFIX = 'sajtem_account_tour_v2_completed';
 const TOUR_START_EVENT = 'sajtem:start-visitor-tour';
 const SPOTLIGHT_PADDING = 8;
 
@@ -106,6 +109,41 @@ const visitorSteps: TourStep[] = [
 
 const accountSteps: TourStep[] = [
   {
+    id: 'account-navigation',
+    title: 'Todas as áreas em um só menu',
+    description: 'Use a navegação principal para acessar locais, eventos, oportunidades, jogos, Entre Nós, ferramentas e os demais serviços do Saj Tem.',
+    hint: 'No celular, toque no menu superior para abrir a lista completa de áreas.',
+    icon: Menu,
+    mobileTarget: '[data-account-tour="navigation"]',
+    desktopTarget: '[data-account-tour="navigation"]',
+  },
+  {
+    id: 'account-channel',
+    title: 'Canal Informativo',
+    description: 'Acompanhe notícias, comunicados, resultados e informações importantes publicadas para a comunidade.',
+    hint: 'Use este atalho sempre que quiser saber o que está acontecendo na cidade.',
+    icon: MessageCircle,
+    mobileTarget: '[data-account-tour="channel"]',
+    desktopTarget: '[data-account-tour="channel"]',
+  },
+  {
+    id: 'account-community-voice',
+    title: 'Voz do Povo',
+    description: 'Envie relatos, acompanhe soluções e participe ativamente das melhorias da cidade.',
+    hint: 'Suas interações e atualizações poderão aparecer nas notificações da conta.',
+    icon: Megaphone,
+    mobileTarget: '[data-account-tour="community-voice"]',
+    desktopTarget: '[data-account-tour="community-voice"]',
+  },
+  {
+    id: 'account-publish',
+    title: 'Cadastre e participe',
+    description: 'O botão central abre o cadastro de local e serve como ponto de partida para publicar informações na plataforma.',
+    hint: 'Seus dados ficam associados à conta para facilitar o acompanhamento.',
+    icon: PlusCircle,
+    mobileTarget: '[data-account-tour="publish"]',
+  },
+  {
     id: 'account-profile',
     title: 'Seu perfil e suas preferências',
     description: 'Abra este menu para consultar seu perfil, alterar configurações e sair da conta com segurança.',
@@ -131,15 +169,6 @@ const accountSteps: TourStep[] = [
     icon: LayoutDashboard,
     mobileTarget: '[data-account-tour="dashboard"]',
     desktopTarget: '[data-account-tour="dashboard"]',
-  },
-  {
-    id: 'account-tools',
-    title: 'Continue explorando as ferramentas',
-    description: 'Sua conta também libera o acesso aos utilitários protegidos e mantém seus dados sincronizados.',
-    hint: 'No celular, este atalho permanece disponível no menu inferior.',
-    icon: Wrench,
-    mobileTarget: '[data-account-tour="tools-nav"]',
-    desktopTarget: '[data-account-tour="tools-nav"]',
   },
 ];
 

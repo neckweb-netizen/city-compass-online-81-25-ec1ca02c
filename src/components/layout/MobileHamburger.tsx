@@ -207,7 +207,7 @@ export const MobileHamburger = () => {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button aria-label="Abrir menu de navegação" variant="ghost" size="sm" className="lg:hidden text-foreground hover:text-foreground" data-tour="mobile-menu">
+        <Button aria-label="Abrir menu de navegação" variant="ghost" size="sm" className="lg:hidden text-foreground hover:text-foreground" data-tour="mobile-menu" data-account-tour="navigation">
           <Menu className="h-5 w-5 text-foreground" />
         </Button>
       </SheetTrigger>

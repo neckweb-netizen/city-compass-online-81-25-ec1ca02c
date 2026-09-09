@@ -194,7 +194,7 @@ export const DesktopSidebar = ({
   };
 
   return (
-    <div className={cn("fixed left-0 top-0 h-full bg-background border-r transition-all duration-300 z-40 group", isOpen ? "w-64" : "w-16")} data-tutorial="sidebar" data-tour="sidebar">
+    <div className={cn("fixed left-0 top-0 h-full bg-background border-r transition-all duration-300 z-40 group", isOpen ? "w-64" : "w-16")} data-tutorial="sidebar" data-tour="sidebar" data-account-tour="navigation">
       {/* Toggle Button */}
       <Button
         variant="ghost"
@@ -238,7 +238,7 @@ export const DesktopSidebar = ({
                   key={item.id} 
                   to={item.rota}
                   data-tour={item.id === 'ferramentas' ? 'tools-nav' : undefined}
-                  data-account-tour={item.id === 'ferramentas' ? 'tools-nav' : undefined}
+                  data-account-tour={item.id === 'canal' ? 'channel' : item.id === 'voz-do-povo' ? 'community-voice' : undefined}
                   aria-label={item.nome_item}
                   aria-current={isActive(item.rota) ? 'page' : undefined}
                   title={!isOpen ? item.nome_item : undefined}
