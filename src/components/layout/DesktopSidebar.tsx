@@ -238,6 +238,7 @@ export const DesktopSidebar = ({
                   key={item.id} 
                   to={item.rota}
                   data-tour={item.id === 'ferramentas' ? 'tools-nav' : undefined}
+                  data-account-tour={item.id === 'ferramentas' ? 'tools-nav' : undefined}
                   aria-label={item.nome_item}
                   aria-current={isActive(item.rota) ? 'page' : undefined}
                   title={!isOpen ? item.nome_item : undefined}

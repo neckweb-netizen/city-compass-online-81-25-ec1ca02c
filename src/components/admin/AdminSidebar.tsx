@@ -155,10 +155,10 @@ export const AdminSidebar = ({ activeSection, onSectionChange }: AdminSidebarPro
       label: 'Conteúdo',
       items: [
         { icon: MessageCircle, label: 'Canal Informativo', path: '/admin/canal-informativo', section: 'canal-informativo', badge: 0 },
-        { icon: Megaphone, label: 'Voz do Povo', path: '/admin/reclamacoes', section: 'reclamacoes', badge: !!pendentesVozDoPovo ? pendentesVozDoPovo : 0 },
+        { icon: Megaphone, label: 'Voz do Povo', path: '/admin/reclamacoes', section: 'reclamacoes', badge: pendentesVozDoPovo || 0 },
         { icon: MessagesSquare, label: 'Comentários', path: '/admin/comentarios-problema', section: 'comentarios-problema', badge: 0 },
         { icon: MessagesSquare, label: 'Entre Nós', path: '/admin/entre-nos', section: 'entre-nos', badge: pendentesEntreNos },
-        { icon: Search, label: 'Achados e Perdidos', path: '/admin/achados-e-perdidos', section: 'achados-e-perdidos', badge: !!pendentesAchadosPerdidos ? pendentesAchadosPerdidos : 0 },
+        { icon: Search, label: 'Achados e Perdidos', path: '/admin/achados-e-perdidos', section: 'achados-e-perdidos', badge: pendentesAchadosPerdidos || 0 },
         { icon: Image, label: 'Banners', path: '/admin/banners', section: 'banners', badge: 0 },
         { icon: BookOpen, label: 'Stories', path: '/admin/stories', section: 'stories', badge: 0 },
         { icon: Vote, label: 'Enquetes', path: '/admin/enquetes', section: 'enquetes', badge: 0 },
@@ -187,7 +187,7 @@ export const AdminSidebar = ({ activeSection, onSectionChange }: AdminSidebarPro
   };
 
   return (
-    <Sidebar>
+    <Sidebar data-account-tour="dashboard">
       <SidebarHeader className="p-4 border-b">
         <h2 className="text-lg font-semibold text-foreground">Admin Panel</h2>
       </SidebarHeader>

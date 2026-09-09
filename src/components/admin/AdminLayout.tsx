@@ -8,6 +8,7 @@ import { LogOut, User, Sun, Moon } from 'lucide-react';
 import { useTheme } from '@/components/ui/theme-provider';
 import { supabase } from '@/integrations/supabase/client';
 import { AdminMfaGate } from './AdminMfaGate';
+import { TourTutorial } from '@/components/tutorial/TourTutorial';
 
 export const AdminLayout = () => {
   const { user, profile, loading, signOut } = useAuth();
@@ -110,6 +111,7 @@ export const AdminLayout = () => {
 
   return (
     <AdminMfaGate onSignOut={handleSignOut}>
+      <TourTutorial mode="account" />
       <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background text-foreground transition-colors duration-200">
         <AdminSidebar activeSection={activeSection} onSectionChange={setActiveSection} />
@@ -136,7 +138,7 @@ export const AdminLayout = () => {
                 )}
               </Button>
 
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground" data-account-tour="profile-menu">
                 <User className="w-4 h-4" />
                 <div className="text-right">
                   <p className="font-medium text-foreground">{profile?.nome}</p>

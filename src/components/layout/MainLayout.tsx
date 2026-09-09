@@ -6,8 +6,7 @@ import { BottomNavigation } from './BottomNavigation';
 import { DesktopSidebar } from './DesktopSidebar';
 import { SecurityHeaders } from '@/components/security/SecurityHeaders';
 import { RateLimitWrapper } from '@/components/security/RateLimitWrapper';
-import { TutorialOverlay } from '@/components/tutorial/TutorialOverlay';
-import { useTutorial } from '@/hooks/useTutorial';
+import { TourTutorial } from '@/components/tutorial/TourTutorial';
 import { Watermark } from '@/components/ui/watermark';
 import { PWAInstallPrompt } from '@/components/pwa/PWAInstallPrompt';
 import { cn } from '@/lib/utils';
@@ -17,7 +16,6 @@ interface MainLayoutProps {
 }
 
 export const MainLayout = ({ children }: MainLayoutProps) => {
-  const { showTutorial, closeTutorial } = useTutorial();
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
   
   return (
@@ -44,8 +42,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
           </div>
         </div>
         
-        {/* Tutorial Overlay */}
-        <TutorialOverlay isOpen={showTutorial} onClose={closeTutorial} />
+        <TourTutorial mode="account" />
         
         {/* PWA Install Prompt */}
         <PWAInstallPrompt />

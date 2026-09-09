@@ -49,6 +49,7 @@ export const BottomNavigation = () => {
               key={item.rota}
               to={item.rota}
               data-tour={item.rota === '/ferramentas' ? 'tools-nav' : undefined}
+              data-account-tour={item.rota === '/ferramentas' ? 'tools-nav' : undefined}
               className={cn(
                 "min-w-0 flex flex-col items-center justify-center gap-1 transition-colors py-1",
                 ativo ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground"

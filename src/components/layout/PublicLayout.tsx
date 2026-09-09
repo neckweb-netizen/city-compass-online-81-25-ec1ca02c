@@ -20,6 +20,7 @@ export const PublicLayout: React.FC = () => {
         <div className="min-h-screen bg-background flex w-full">
           {/* Tour Guiado para Visitantes (Aparece na primeira visita) */}
           <TourTutorial />
+          <TourTutorial mode="account" />
 
           {/* Desktop Sidebar - Fixed */}
           <div className="hidden lg:block fixed left-0 top-0 h-full z-30">

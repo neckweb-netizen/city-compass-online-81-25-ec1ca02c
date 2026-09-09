@@ -174,6 +174,7 @@ export const Header = () => {
                   aria-label={dashboardAccess.label}
                   aria-current={location.pathname.startsWith(dashboardAccess.path) ? 'page' : undefined}
                   title={dashboardAccess.label}
+                  data-account-tour="dashboard"
                   className="h-9 w-9 shrink-0 rounded-full p-0 shadow-sm sm:h-10 sm:w-10 xl:w-auto xl:gap-2 xl:px-3"
                 >
                   <dashboardAccess.Icon className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -202,7 +203,7 @@ export const Header = () => {
               {user && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                     <Button variant="ghost" size="sm" className="h-10 w-10 lg:h-12 lg:w-12 rounded-full p-0 relative hover:bg-accent flex-shrink-0">
+                     <Button variant="ghost" size="sm" className="h-10 w-10 lg:h-12 lg:w-12 rounded-full p-0 relative hover:bg-accent flex-shrink-0" data-account-tour="notifications">
                        {totalUnread > 0 ? (
                          <>
                            <BellRing className="h-5 w-5 lg:h-6 lg:w-6 text-primary" />
@@ -294,7 +295,7 @@ export const Header = () => {
               {user && profile ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-10 px-1.5 lg:h-12 lg:px-3 rounded-full hover:bg-accent flex-shrink-0">
+                    <Button variant="ghost" className="h-10 px-1.5 lg:h-12 lg:px-3 rounded-full hover:bg-accent flex-shrink-0" data-account-tour="profile-menu">
                       <Avatar className="h-8 w-8 lg:h-10 lg:w-10">
                         <AvatarFallback className="bg-primary text-primary-foreground text-sm lg:text-base font-semibold">
                           {profile.nome?.charAt(0)?.toUpperCase() || 'U'}

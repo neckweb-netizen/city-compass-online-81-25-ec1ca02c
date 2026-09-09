@@ -4,9 +4,11 @@ import { useLocation } from 'react-router-dom';
 import {
   ArrowLeft,
   ArrowRight,
+  Bell,
   Building2,
   Check,
   Compass,
+  LayoutDashboard,
   Menu,
   Search,
   Sparkles,
@@ -16,8 +18,10 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
 
 const TOUR_STORAGE_KEY = 'sajtem_visitor_tour_v2_completed';
+const ACCOUNT_TOUR_STORAGE_PREFIX = 'sajtem_account_tour_v1_completed';
 const TOUR_START_EVENT = 'sajtem:start-visitor-tour';
 const SPOTLIGHT_PADDING = 8;
 
@@ -46,9 +50,13 @@ interface TooltipPosition {
   arrow: 'top' | 'bottom' | 'left' | 'right' | 'none';
 }
 
+interface TourTutorialProps {
+  mode?: 'visitor' | 'account';
+}
+
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
-const steps: TourStep[] = [
+const visitorSteps: TourStep[] = [
   {
     id: 'navigation',
     title: 'Seu caminho pelo Saj Tem',
@@ -96,6 +104,45 @@ const steps: TourStep[] = [
   },
 ];
 
+const accountSteps: TourStep[] = [
+  {
+    id: 'account-profile',
+    title: 'Seu perfil e suas preferências',
+    description: 'Abra este menu para consultar seu perfil, alterar configurações e sair da conta com segurança.',
+    hint: 'As opções exibidas se adaptam ao tipo da sua conta.',
+    icon: UserRound,
+    mobileTarget: '[data-account-tour="profile-menu"]',
+    desktopTarget: '[data-account-tour="profile-menu"]',
+  },
+  {
+    id: 'account-notifications',
+    title: 'Tudo o que importa para você',
+    description: 'Acompanhe avisos, respostas e interações recebidas sem perder nenhuma atualização importante.',
+    hint: 'O indicador mostra quando existem notificações ainda não lidas.',
+    icon: Bell,
+    mobileTarget: '[data-account-tour="notifications"]',
+    desktopTarget: '[data-account-tour="notifications"]',
+  },
+  {
+    id: 'account-dashboard',
+    title: 'Acesso rápido ao seu painel',
+    description: 'Este atalho leva diretamente ao painel com os recursos administrativos disponíveis para sua conta.',
+    hint: 'Ele aparece somente para empresas e administradores autorizados.',
+    icon: LayoutDashboard,
+    mobileTarget: '[data-account-tour="dashboard"]',
+    desktopTarget: '[data-account-tour="dashboard"]',
+  },
+  {
+    id: 'account-tools',
+    title: 'Continue explorando as ferramentas',
+    description: 'Sua conta também libera o acesso aos utilitários protegidos e mantém seus dados sincronizados.',
+    hint: 'No celular, este atalho permanece disponível no menu inferior.',
+    icon: Wrench,
+    mobileTarget: '[data-account-tour="tools-nav"]',
+    desktopTarget: '[data-account-tour="tools-nav"]',
+  },
+];
+
 const getTargetSelector = (step: TourStep, isMobile: boolean) => (
   isMobile ? step.mobileTarget : step.desktopTarget
 );
@@ -112,8 +159,9 @@ const findVisibleTarget = (selector?: string) => {
   return Array.from(document.querySelectorAll(selector)).find(isVisibleElement) ?? null;
 };
 
-export const TourTutorial = () => {
+export const TourTutorial = ({ mode = 'visitor' }: TourTutorialProps) => {
   const location = useLocation();
+  const { user, profile, loading: authLoading } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
   const [currentStep, setCurrentStep] = useState(0);
@@ -121,14 +169,20 @@ export const TourTutorial = () => {
   const [tooltip, setTooltip] = useState<TooltipPosition | null>(null);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const userId = user?.id;
+  const hasProfile = Boolean(profile);
+  const tourSteps = mode === 'account' ? accountSteps : visitorSteps;
+  const storageKey = mode === 'account' && userId
+    ? `${ACCOUNT_TOUR_STORAGE_PREFIX}:${userId}`
+    : TOUR_STORAGE_KEY;
 
   const availableSteps = useMemo(() => {
     if (!isOpen) return [];
-    return steps.filter((step) => {
+    return tourSteps.filter((step) => {
       const selector = getTargetSelector(step, isMobile);
       return Boolean(findVisibleTarget(selector));
     });
-  }, [isMobile, isOpen]);
+  }, [isMobile, isOpen, tourSteps]);
 
   const closeTour = useCallback((completed = true) => {
     setIsOpen(false);
@@ -136,27 +190,33 @@ export const TourTutorial = () => {
     setCurrentStep(0);
     setHighlight(null);
     setTooltip(null);
-    if (completed) localStorage.setItem(TOUR_STORAGE_KEY, 'true');
-  }, []);
+    if (completed) localStorage.setItem(storageKey, 'true');
+  }, [storageKey]);
 
   const openTour = useCallback(() => {
-    if (location.pathname !== '/') return;
+    if (mode === 'visitor' && location.pathname !== '/') return;
+    if (mode === 'account' && !userId) return;
     setShowIntro(true);
     setCurrentStep(0);
     setIsOpen(true);
-  }, [location.pathname]);
+  }, [location.pathname, mode, userId]);
 
   useEffect(() => {
+    if (mode !== 'visitor') return;
     const handleManualStart = () => openTour();
     window.addEventListener(TOUR_START_EVENT, handleManualStart);
     return () => window.removeEventListener(TOUR_START_EVENT, handleManualStart);
-  }, [openTour]);
+  }, [mode, openTour]);
 
   useEffect(() => {
-    if (location.pathname !== '/' || localStorage.getItem(TOUR_STORAGE_KEY)) return;
-    const timer = window.setTimeout(openTour, 1400);
+    if (authLoading) return;
+    const isEligible = mode === 'visitor'
+      ? !userId && location.pathname === '/'
+      : Boolean(userId && hasProfile);
+    if (!isEligible || localStorage.getItem(storageKey)) return;
+    const timer = window.setTimeout(openTour, mode === 'account' ? 1100 : 1400);
     return () => window.clearTimeout(timer);
-  }, [location.pathname, openTour]);
+  }, [authLoading, hasProfile, location.pathname, mode, openTour, storageKey, userId]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -195,12 +255,18 @@ export const TourTutorial = () => {
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     const cardWidth = Math.min(360, viewportWidth - 24);
-    const estimatedCardHeight = isMobile ? 270 : 250;
+    const estimatedCardHeight = isMobile ? 310 : 250;
+    const measuredCardHeight = dialogRef.current?.getBoundingClientRect().height;
+    const cardHeight = measuredCardHeight && measuredCardHeight > 100
+      ? Math.ceil(measuredCardHeight)
+      : estimatedCardHeight;
+    const highlightTop = clamp(rect.top - SPOTLIGHT_PADDING, 4, viewportHeight - 8);
+    const highlightLeft = clamp(rect.left - SPOTLIGHT_PADDING, 4, viewportWidth - 8);
     const paddedRect: HighlightRect = {
-      top: clamp(rect.top - SPOTLIGHT_PADDING, 4, viewportHeight - 8),
-      left: clamp(rect.left - SPOTLIGHT_PADDING, 4, viewportWidth - 8),
-      width: Math.min(rect.width + SPOTLIGHT_PADDING * 2, viewportWidth - 8),
-      height: Math.min(rect.height + SPOTLIGHT_PADDING * 2, viewportHeight - 8),
+      top: highlightTop,
+      left: highlightLeft,
+      width: Math.min(rect.width + SPOTLIGHT_PADDING * 2, viewportWidth - highlightLeft - 4),
+      height: Math.min(rect.height + SPOTLIGHT_PADDING * 2, viewportHeight - highlightTop - 4),
       borderRadius: Math.min(22, Math.max(12, Number.parseFloat(window.getComputedStyle(element).borderRadius) || 12) + 4),
     };
 
@@ -210,28 +276,29 @@ export const TourTutorial = () => {
 
     if (isMobile) {
       left = (viewportWidth - cardWidth) / 2;
+      const maxCardTop = Math.max(12, viewportHeight - cardHeight - 20);
       if (rect.top > viewportHeight / 2) {
-        top = Math.max(12, rect.top - estimatedCardHeight - 18);
+        top = clamp(rect.top - cardHeight - 32, 12, maxCardTop);
         arrow = 'bottom';
       } else {
-        top = Math.min(viewportHeight - estimatedCardHeight - 12, rect.bottom + 18);
+        top = clamp(rect.bottom + 24, 12, maxCardTop);
         arrow = 'top';
       }
     } else if (rect.right + cardWidth + 24 <= viewportWidth) {
       left = rect.right + 20;
-      top = clamp(rect.top + rect.height / 2 - estimatedCardHeight / 2, 16, viewportHeight - estimatedCardHeight - 16);
+      top = clamp(rect.top + rect.height / 2 - cardHeight / 2, 16, Math.max(16, viewportHeight - cardHeight - 16));
       arrow = 'left';
     } else if (rect.left - cardWidth - 24 >= 0) {
       left = rect.left - cardWidth - 20;
-      top = clamp(rect.top + rect.height / 2 - estimatedCardHeight / 2, 16, viewportHeight - estimatedCardHeight - 16);
+      top = clamp(rect.top + rect.height / 2 - cardHeight / 2, 16, Math.max(16, viewportHeight - cardHeight - 16));
       arrow = 'right';
-    } else if (rect.bottom + estimatedCardHeight + 20 <= viewportHeight) {
+    } else if (rect.bottom + cardHeight + 20 <= viewportHeight) {
       left = clamp(rect.left + rect.width / 2 - cardWidth / 2, 12, viewportWidth - cardWidth - 12);
       top = rect.bottom + 16;
       arrow = 'top';
     } else {
       left = clamp(rect.left + rect.width / 2 - cardWidth / 2, 12, viewportWidth - cardWidth - 12);
-      top = Math.max(12, rect.top - estimatedCardHeight - 16);
+      top = Math.max(12, rect.top - cardHeight - 16);
       arrow = 'bottom';
     }
 
@@ -253,6 +320,13 @@ export const TourTutorial = () => {
       window.removeEventListener('scroll', updatePosition, true);
     };
   }, [isOpen, showIntro, updatePosition]);
+
+  useLayoutEffect(() => {
+    if (!isOpen || showIntro || !dialogRef.current || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => updatePosition());
+    observer.observe(dialogRef.current);
+    return () => observer.disconnect();
+  }, [currentStep, isOpen, showIntro, updatePosition]);
 
   useEffect(() => {
     if (availableSteps.length > 0 && currentStep >= availableSteps.length) {
@@ -276,6 +350,7 @@ export const TourTutorial = () => {
   const step = availableSteps[currentStep];
   const StepIcon = step?.icon ?? Compass;
   const isLastStep = currentStep >= availableSteps.length - 1;
+  const isAccountTour = mode === 'account';
 
   const startGuide = () => {
     if (availableSteps.length === 0) {
@@ -314,9 +389,9 @@ export const TourTutorial = () => {
                   <Sparkles aria-hidden="true" className="h-4 w-4" />
                 </span>
               </div>
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">Tour interativo</p>
-              <h2 id="visitor-tour-title" className="mt-2 text-2xl font-black tracking-tight text-foreground sm:text-3xl">Bem-vindo ao Saj Tem</h2>
-              <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-muted-foreground">Em menos de um minuto, vamos destacar os principais atalhos e mostrar exatamente onde você deve tocar.</p>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">{isAccountTour ? 'Sua conta no Saj Tem' : 'Tour interativo'}</p>
+              <h2 id="visitor-tour-title" className="mt-2 text-2xl font-black tracking-tight text-foreground sm:text-3xl">{isAccountTour ? `Olá, ${profile?.nome?.split(' ')[0] || 'bem-vindo'}!` : 'Bem-vindo ao Saj Tem'}</h2>
+              <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-muted-foreground">{isAccountTour ? 'Sua conta está pronta. Veja onde acompanhar suas atividades, notificações e recursos pessoais.' : 'Em menos de um minuto, vamos destacar os principais atalhos e mostrar exatamente onde você deve tocar.'}</p>
               <div className="mt-6 grid grid-cols-3 gap-2 rounded-2xl bg-muted/60 p-3 text-xs font-semibold text-muted-foreground">
                 <span>{availableSteps.length} etapas</span>
                 <span>Visual</span>
