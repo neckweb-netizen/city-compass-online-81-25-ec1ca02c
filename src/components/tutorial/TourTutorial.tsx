@@ -436,20 +436,37 @@ export const TourTutorial = ({ mode = 'visitor' }: TourTutorialProps) => {
         </div>
       ) : (
         <>
-          <div className="pointer-events-auto absolute inset-0" onClick={() => closeTour(true)} aria-hidden="true" />
           {highlight ? (
-            <div
-              aria-hidden="true"
-              className="absolute border-2 border-primary bg-transparent shadow-[0_0_0_9999px_rgba(8,5,14,0.78)] transition-all duration-300"
-              style={highlight}
-            >
-              <span className="absolute -right-2 -top-2 flex h-5 w-5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
-                <span className="relative inline-flex h-5 w-5 rounded-full border-4 border-background bg-primary" />
-              </span>
-            </div>
+            <>
+              <div aria-hidden="true" className="pointer-events-auto absolute left-0 right-0 top-0" style={{ height: highlight.top }} />
+              <div aria-hidden="true" className="pointer-events-auto absolute left-0" style={{ top: highlight.top, width: highlight.left, height: highlight.height }} />
+              <div
+                aria-hidden="true"
+                className="pointer-events-auto absolute right-0"
+                style={{
+                  top: highlight.top,
+                  left: highlight.left + highlight.width,
+                  height: highlight.height,
+                }}
+              />
+              <div
+                aria-hidden="true"
+                className="pointer-events-auto absolute bottom-0 left-0 right-0"
+                style={{ top: highlight.top + highlight.height }}
+              />
+              <div
+                aria-hidden="true"
+                className="absolute border-2 border-primary bg-transparent shadow-[0_0_0_9999px_rgba(8,5,14,0.78)] transition-all duration-300"
+                style={highlight}
+              >
+                <span className="absolute -right-2 -top-2 flex h-5 w-5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
+                  <span className="relative inline-flex h-5 w-5 rounded-full border-4 border-background bg-primary" />
+                </span>
+              </div>
+            </>
           ) : (
-            <div aria-hidden="true" className="absolute inset-0 bg-black/75" />
+            <div aria-hidden="true" className="pointer-events-auto absolute inset-0 bg-black/75" />
           )}
 
           {step && tooltip && (
