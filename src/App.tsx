@@ -43,6 +43,7 @@ const Categorias = lazy(() => import("./pages/Categorias"));
 const CategoriaLocais = lazy(() => import("./pages/CategoriaLocais"));
 const HelpCenter = lazy(() => import("./pages/HelpCenter"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const TermsOfUse = lazy(() => import("./pages/TermsOfUse"));
 const LocalDashboard = lazy(() => import("./pages/LocalDashboard"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const UnauthorizedPage = lazy(() => import("./pages/UnauthorizedPage"));
@@ -714,7 +715,13 @@ const App = () => {
             © {new Date().getFullYear()} Saj Tem. Todos os direitos reservados.
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <a href="/politica-de-privacidade" className="font-medium text-gray-400 hover:text-white transition-colors">
+              Política de Privacidade
+            </a>
+            <a href="/termos-de-uso" className="font-medium text-gray-400 hover:text-white transition-colors">
+              Termos de Uso
+            </a>
             <a href="https://instagram.com" target="_blank" rel="noreferrer" className="p-2 bg-purple-950/30 border border-purple-900/40 rounded-xl text-gray-400 hover:text-white hover:bg-purple-900/40 transition-all">
               <img src="" alt="" className="hidden" /><Instagram className="h-4 w-4" />
             </a>
@@ -769,6 +776,9 @@ const App = () => {
                 <Route path="help" element={<HelpCenter />} />
                 <Route path="contact" element={<ContactPage />} />
                 <Route path="privacy" element={<PrivacyPolicy />} />
+                <Route path="politica-de-privacidade" element={<PrivacyPolicy />} />
+                <Route path="termos-de-uso" element={<TermsOfUse />} />
+                <Route path="terms" element={<TermsOfUse />} />
                 <Route path="anuncie-gratis" element={<AnuncieGratis />} />
                 <Route path="reclamacoes" element={<Reclamacoes />} />
                 <Route path="reclamacoes/:id" element={<ReclamacaoDetalhes />} />

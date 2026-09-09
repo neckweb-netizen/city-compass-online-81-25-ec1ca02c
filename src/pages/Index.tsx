@@ -14,8 +14,6 @@ import {
   MapPin, 
   Mail, 
   MessageSquare, 
-  Instagram, 
-  Facebook, 
   Globe, 
   ArrowRight,
   Search,
@@ -304,20 +302,6 @@ const Index = () => {
           </div>
         </main>
 
-        <footer className="w-full max-w-7xl mx-auto px-6 py-6 border-t border-purple-950/50 flex flex-col sm:flex-row items-center justify-between gap-4 relative z-10 text-xs text-gray-500">
-          <div>
-            © {new Date().getFullYear()} Saj Tem. Todos os direitos reservados.
-          </div>
-          
-          <div className="flex items-center gap-4">
-            <a href="https://instagram.com" target="_blank" rel="noreferrer" className="p-2 bg-purple-950/30 border border-purple-900/40 rounded-xl text-gray-400 hover:text-white hover:bg-purple-900/40 transition-all">
-              <Instagram className="h-4 w-4" />
-            </a>
-            <a href="https://facebook.com" target="_blank" rel="noreferrer" className="p-2 bg-purple-950/30 border border-purple-900/40 rounded-xl text-gray-400 hover:text-white hover:bg-purple-900/40 transition-all">
-              <Facebook className="h-4 w-4" />
-            </a>
-          </div>
-        </footer>
       </div>
     );
   }

@@ -9,6 +9,7 @@ import { Watermark } from '@/components/ui/watermark';
 import { PWAInstallPrompt } from '@/components/pwa/PWAInstallPrompt';
 import { TourTutorial } from '@/components/tutorial/TourTutorial'; // ADICIONADO: Importação do Tour Guiado
 import { cn } from '@/lib/utils';
+import { SiteFooter } from './SiteFooter';
 
 export const PublicLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
@@ -34,6 +35,8 @@ export const PublicLayout: React.FC = () => {
               <Outlet />
               <Watermark />
             </main>
+
+            <SiteFooter />
             
             {/* Bottom Navigation */}
             <BottomNavigation />
