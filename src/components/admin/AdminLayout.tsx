@@ -115,14 +115,14 @@ export const AdminLayout = () => {
       <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background text-foreground transition-colors duration-200">
         <AdminSidebar activeSection={activeSection} onSectionChange={setActiveSection} />
-        <main className="flex-1 bg-background text-foreground">
-          <header className="h-16 border-b flex items-center px-6 bg-card text-card-foreground border-border shadow-sm">
-            <div className="flex items-center gap-4">
+        <main className="min-w-0 flex-1 bg-background text-foreground">
+          <header className="h-16 min-w-0 border-b flex items-center gap-2 px-3 sm:px-6 bg-card text-card-foreground border-border shadow-sm">
+            <div className="flex min-w-0 items-center gap-2 sm:gap-4">
               <SidebarTrigger />
-              <h1 className="text-xl font-semibold text-foreground">Painel Administrativo</h1>
+              <h1 className="truncate text-base font-semibold text-foreground sm:text-xl">Painel Administrativo</h1>
             </div>
             
-            <div className="ml-auto flex items-center gap-4">
+            <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-4">
               {/* Botão Seletor de Modo Escuro / Modo Claro integrado ao Header Administrativo */}
               <Button
                 variant="ghost"
@@ -138,7 +138,7 @@ export const AdminLayout = () => {
                 )}
               </Button>
 
-              <div className="flex items-center gap-2 text-sm text-muted-foreground" data-account-tour="profile-menu">
+              <div className="hidden items-center gap-2 text-sm text-muted-foreground sm:flex" data-account-tour="profile-menu">
                 <User className="w-4 h-4" />
                 <div className="text-right">
                   <p className="font-medium text-foreground">{profile?.nome}</p>
@@ -157,7 +157,7 @@ export const AdminLayout = () => {
             </div>
           </header>
           
-          <div className="p-6 bg-background text-foreground">
+          <div className="min-w-0 p-3 bg-background text-foreground sm:p-6">
             <Outlet />
           </div>
         </main>

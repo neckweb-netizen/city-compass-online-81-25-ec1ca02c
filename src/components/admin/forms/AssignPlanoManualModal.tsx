@@ -132,25 +132,25 @@ export const AssignPlanoManualModal = ({ open, onOpenChange, onSuccess }: Assign
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="max-h-[90dvh] w-[calc(100vw-2rem)] max-w-[500px] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5" />
+          <DialogTitle className="flex items-center gap-2 pr-5 text-lg sm:text-xl">
+            <CreditCard className="h-5 w-5 shrink-0" />
             Atribuir Plano Manualmente
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
+        <form onSubmit={handleSubmit} className="min-w-0 space-y-5 sm:space-y-6">
+          <div className="min-w-0 space-y-2">
             <Label htmlFor="usuario" className="flex items-center gap-2">
               <User className="h-4 w-4" />
               Local/Usuário
             </Label>
             <Select value={selectedUser} onValueChange={setSelectedUser}>
-              <SelectTrigger>
+              <SelectTrigger className="min-w-0">
                 <SelectValue placeholder="Selecione um local" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-w-[calc(100vw-2rem)]">
                 {usuarios?.map((item) => (
                   <SelectItem key={item.id} value={item.id}>
                     {item.nome} - {item.usuarios?.nome} ({item.usuarios?.email})
@@ -160,7 +160,7 @@ export const AssignPlanoManualModal = ({ open, onOpenChange, onSuccess }: Assign
             </Select>
           </div>
 
-          <div className="space-y-2">
+          <div className="min-w-0 space-y-2">
             <Label htmlFor="plano" className="flex items-center gap-2">
               <CreditCard className="h-4 w-4" />
               Plano
@@ -212,16 +212,17 @@ export const AssignPlanoManualModal = ({ open, onOpenChange, onSuccess }: Assign
             </div>
           )}
 
-          <div className="flex justify-end gap-3">
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={isLoading}
+              className="w-full sm:w-auto"
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button type="submit" disabled={isLoading} className="w-full sm:w-auto">
               {isLoading ? 'Atribuindo...' : 'Atribuir Plano'}
             </Button>
           </div>

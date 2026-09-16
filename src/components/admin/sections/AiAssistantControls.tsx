@@ -140,27 +140,27 @@ export function AiAssistantControls() {
   }
 
   return (
-    <Card className="border-primary/30">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2"><Bot className="h-5 w-5" /> Assistente IA: planos e limites</CardTitle>
+    <Card className="min-w-0 border-primary/30">
+      <CardHeader className="px-4 sm:px-6">
+        <CardTitle className="flex items-start gap-2 text-lg sm:items-center sm:text-xl"><Bot className="mt-0.5 h-5 w-5 shrink-0 sm:mt-0" /> Assistente IA: planos e limites</CardTitle>
         <p className="text-sm text-muted-foreground">Defina aqui quais planos podem aparecer nas recomendações. A IA não escolhe a elegibilidade: o banco verifica plano vigente, aprovação e permissões a cada busca.</p>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="min-w-0 space-y-6 px-4 sm:px-6">
         {loading ? <div className="flex items-center gap-2 text-sm"><Loader2 className="h-4 w-4 animate-spin" /> Carregando...</div> : !settings ? (
           <p role="alert" className="text-sm text-destructive">Configuração indisponível. Verifique a migração e o segundo fator da conta administradora.</p>
         ) : <>
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
-              <div><Label htmlFor="ai-enabled">Assistente ativo</Label><p className="text-xs text-muted-foreground">Comece desligado; ligue após configurar a chave e testar a função.</p></div>
-              <Switch id="ai-enabled" checked={settings.enabled} onCheckedChange={enabled => setSettings({ ...settings, enabled })} />
+            <div className="flex min-w-0 items-center justify-between gap-3 rounded-lg border p-3 sm:p-4">
+              <div className="min-w-0"><Label htmlFor="ai-enabled">Assistente ativo</Label><p className="text-xs text-muted-foreground">Comece desligado; ligue após configurar a chave e testar a função.</p></div>
+              <Switch className="shrink-0" id="ai-enabled" checked={settings.enabled} onCheckedChange={enabled => setSettings({ ...settings, enabled })} />
             </div>
-            <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
-              <div><Label htmlFor="ai-maintenance">Modo manutenção</Label><p className="text-xs text-muted-foreground">Bloqueia imediatamente novas consultas sem apagar dados.</p></div>
-              <Switch id="ai-maintenance" checked={settings.maintenance} onCheckedChange={maintenance => setSettings({ ...settings, maintenance })} />
+            <div className="flex min-w-0 items-center justify-between gap-3 rounded-lg border p-3 sm:p-4">
+              <div className="min-w-0"><Label htmlFor="ai-maintenance">Modo manutenção</Label><p className="text-xs text-muted-foreground">Bloqueia imediatamente novas consultas sem apagar dados.</p></div>
+              <Switch className="shrink-0" id="ai-maintenance" checked={settings.maintenance} onCheckedChange={maintenance => setSettings({ ...settings, maintenance })} />
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            {fields.map(field => <div key={field.key} className="space-y-1">
+            {fields.map(field => <div key={field.key} className="min-w-0 space-y-1">
               <Label htmlFor={field.key}>{field.label}</Label>
               <Input id={field.key} type="number" min={field.min} max={field.max} value={settings[field.key]}
                 onChange={event => setSettings({ ...settings, [field.key]: Number(event.target.value) })} />
@@ -168,13 +168,13 @@ export function AiAssistantControls() {
             </div>)}
           </div>
           <p className="text-xs text-muted-foreground">Modelo previsto: {settings.model}. A chave fica exclusivamente nos secrets da função Supabase; não a cole neste painel.</p>
-          <div className="flex flex-wrap gap-2"><Button disabled={saving} onClick={() => void saveSettings()}>Salvar limites</Button><Button variant="outline" disabled={testingKey} onClick={() => void testKey()}>{testingKey ? 'Testando...' : 'Testar chave Gemini'}</Button></div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap"><Button className="w-full sm:w-auto" disabled={saving} onClick={() => void saveSettings()}>Salvar limites</Button><Button className="w-full sm:w-auto" variant="outline" disabled={testingKey} onClick={() => void testKey()}>{testingKey ? 'Testando...' : 'Testar chave Gemini'}</Button></div>
           <div className="space-y-3 border-t pt-5">
             <h3 className="font-semibold">Planos que participam da descoberta</h3>
             <p className="text-sm text-muted-foreground">Ativar um plano não publica automaticamente todas as empresas: cada perfil ainda deve estar aprovado, ativo e dentro da vigência, com pagamento válido ou concessão administrativa explícita.</p>
-            {plans.map(plan => <div key={plan.id} className="flex items-center justify-between gap-4 rounded-lg border p-3">
-              <div><Label htmlFor={`ai-plan-${plan.id}`}>{plan.nome}</Label><p className="text-xs text-muted-foreground">{plan.ativo ? 'Plano ativo' : 'Plano inativo'}</p></div>
-              <Switch id={`ai-plan-${plan.id}`} disabled={saving || !plan.ativo}
+            {plans.map(plan => <div key={plan.id} className="flex min-w-0 items-center justify-between gap-3 rounded-lg border p-3">
+              <div className="min-w-0"><Label htmlFor={`ai-plan-${plan.id}`}>{plan.nome}</Label><p className="text-xs text-muted-foreground">{plan.ativo ? 'Plano ativo' : 'Plano inativo'}</p></div>
+              <Switch className="shrink-0" id={`ai-plan-${plan.id}`} disabled={saving || !plan.ativo}
                 checked={entitlements.some(item => item.plan_id === plan.id && item.enabled)}
                 onCheckedChange={enabled => void setDiscovery(plan.id, enabled)} />
             </div>)}
@@ -192,16 +192,16 @@ export function AiAssistantControls() {
                 const date = new Date(existing.manual_grant_until);
                 setGrantUntil(new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16));
               } else setGrantUntil('');
-            }} className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+            }} className="flex h-10 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm">
               <option value="">Selecione uma empresa</option>
               {companies.map(company => <option value={company.id} key={company.id}>{company.nome}</option>)}
             </select>
             {selectedCompany && <p className="text-xs text-muted-foreground">Plano: {plans.find(plan => plan.id === companies.find(company => company.id === selectedCompany)?.plano_atual_id)?.nome || 'Não identificado'}. Vigência da empresa até {new Date(companies.find(company => company.id === selectedCompany)?.plano_data_vencimento || '').toLocaleDateString('pt-BR')}.</p>}
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1"><Label htmlFor="ai-grant-date">Conceder até</Label><Input id="ai-grant-date" type="datetime-local" value={grantUntil} onChange={event => setGrantUntil(event.target.value)} /></div>
-              <div className="space-y-1"><Label htmlFor="ai-grant-reason">Motivo administrativo</Label><Input id="ai-grant-reason" maxLength={200} value={grantReason} onChange={event => setGrantReason(event.target.value)} placeholder="Ex.: plano atribuído manualmente" /></div>
+              <div className="min-w-0 space-y-1"><Label htmlFor="ai-grant-date">Conceder até</Label><Input className="min-w-0" id="ai-grant-date" type="datetime-local" value={grantUntil} onChange={event => setGrantUntil(event.target.value)} /></div>
+              <div className="min-w-0 space-y-1"><Label htmlFor="ai-grant-reason">Motivo administrativo</Label><Input className="min-w-0" id="ai-grant-reason" maxLength={200} value={grantReason} onChange={event => setGrantReason(event.target.value)} placeholder="Ex.: plano atribuído manualmente" /></div>
             </div>
-            <div className="flex flex-wrap gap-2"><Button disabled={saving || !selectedCompany} onClick={() => void saveGrant()}>Conceder acesso</Button><Button variant="outline" disabled={saving || !selectedCompany || !grants.some(item => item.company_id === selectedCompany && item.manual_grant_until)} onClick={() => void saveGrant(true)}>Remover concessão</Button></div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap"><Button className="w-full sm:w-auto" disabled={saving || !selectedCompany} onClick={() => void saveGrant()}>Conceder acesso</Button><Button className="w-full sm:w-auto" variant="outline" disabled={saving || !selectedCompany || !grants.some(item => item.company_id === selectedCompany && item.manual_grant_until)} onClick={() => void saveGrant(true)}>Remover concessão</Button></div>
           </div>
         </>}
       </CardContent>

@@ -109,35 +109,35 @@ export const PlanosSection = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       <AiAssistantControls />
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Gestão de Planos</h2>
+      <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Gestão de Planos</h2>
           <p className="text-muted-foreground">
             Gerencie os planos de assinatura do sistema
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={() => setAssignModalOpen(true)} variant="outline">
+        <div className="grid grid-cols-1 gap-2 min-[390px]:grid-cols-2 sm:flex sm:shrink-0">
+          <Button className="w-full sm:w-auto" onClick={() => setAssignModalOpen(true)} variant="outline">
             <UserPlus className="w-4 h-4 mr-2" />
             Atribuir Plano
           </Button>
-          <Button onClick={handleNovoPlano}>
+          <Button className="w-full sm:w-auto" onClick={handleNovoPlano}>
             <Plus className="w-4 h-4 mr-2" />
             Novo Plano
           </Button>
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CreditCard className="w-5 h-5" />
+      <Card className="min-w-0">
+        <CardHeader className="px-4 sm:px-6">
+          <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+            <CreditCard className="h-5 w-5 shrink-0" />
             Planos Cadastrados
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="min-w-0 px-4 sm:px-6">
           {!planos || planos.length === 0 ? (
             <div className="text-center py-8">
               <CreditCard className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
@@ -151,7 +151,40 @@ export const PlanosSection = () => {
               </Button>
             </div>
           ) : (
-            <Table>
+            <>
+            <div className="grid gap-3 lg:hidden">
+              {planos.map((plano) => (
+                <article key={plano.id} className="min-w-0 rounded-xl border bg-card p-4 shadow-sm">
+                  <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="break-words font-semibold">{plano.nome}</h3>
+                      <p className="font-medium text-primary">{formatarPrecoPlano(plano)}</p>
+                    </div>
+                    <Badge variant={plano.ativo ? 'default' : 'secondary'}>
+                      {planoEmpresarial(plano) ? 'Empresarial' : plano.ativo ? 'Ativo' : 'Inativo'}
+                    </Badge>
+                  </div>
+                  {plano.descricao && <p className="mt-3 break-words text-sm text-muted-foreground">{plano.descricao}</p>}
+                  <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-3 border-t pt-4 text-sm">
+                    <div><dt className="text-muted-foreground">Cupons</dt><dd className="font-medium">{formatarLimitePlano(plano.limite_cupons)}</dd></div>
+                    <div><dt className="text-muted-foreground">Produtos / destaque</dt><dd className="font-medium">{formatarLimitePlano(plano.limite_produtos)} / {formatarLimitePlano(plano.produtos_destaque_permitidos)}</dd></div>
+                    <div><dt className="text-muted-foreground">Prioridade</dt><dd className="font-medium">{plano.prioridade_destaque}</dd></div>
+                    <div><dt className="text-muted-foreground">Eventos</dt><dd className="font-medium">{plano.acesso_eventos ? 'Sim' : 'Não'}</dd></div>
+                    <div><dt className="text-muted-foreground">Suporte prioritário</dt><dd className="font-medium">{plano.suporte_prioritario ? 'Sim' : 'Não'}</dd></div>
+                  </dl>
+                  <div className="mt-4 grid grid-cols-2 gap-2 border-t pt-4">
+                    <Button variant="outline" size="sm" className="min-w-0" onClick={() => handleEditarPlano(plano)} aria-label={`Editar ${plano.nome}`}>
+                      <Edit className="mr-2 h-4 w-4 shrink-0" /> Editar
+                    </Button>
+                    <Button variant="outline" size="sm" className="min-w-0 text-destructive hover:text-destructive" onClick={() => handleExcluirPlano(plano)} aria-label={`Excluir ${plano.nome}`}>
+                      <Trash2 className="mr-2 h-4 w-4 shrink-0" /> Excluir
+                    </Button>
+                  </div>
+                </article>
+              ))}
+            </div>
+            <div className="hidden max-w-full overflow-x-auto lg:block">
+            <Table className="min-w-[900px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
@@ -211,6 +244,7 @@ export const PlanosSection = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => handleEditarPlano(plano)}
+                          aria-label={`Editar ${plano.nome}`}
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
@@ -218,6 +252,7 @@ export const PlanosSection = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => handleExcluirPlano(plano)}
+                          aria-label={`Excluir ${plano.nome}`}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -227,6 +262,8 @@ export const PlanosSection = () => {
                 ))}
               </TableBody>
             </Table>
+            </div>
+            </>
           )}
         </CardContent>
       </Card>

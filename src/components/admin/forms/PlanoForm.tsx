@@ -114,7 +114,7 @@ export const PlanoForm = ({ open, onOpenChange, plano, onSubmit, isLoading }: Pl
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full p-4 sm:p-6">
+      <DialogContent className="max-h-[90dvh] w-[calc(100vw-2rem)] max-w-4xl overflow-y-auto p-4 sm:w-full sm:p-6">
         <DialogHeader className="space-y-3 pb-4">
           <DialogTitle className="text-lg sm:text-xl lg:text-2xl">
             {plano ? 'Editar Plano' : 'Novo Plano'}
