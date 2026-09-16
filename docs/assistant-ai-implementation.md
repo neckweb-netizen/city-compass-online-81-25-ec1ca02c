@@ -22,12 +22,12 @@ A função `assistente-ia` agora chama a reserva antes de responder. A cota do m
 
 `20260916210000_ai_admin_company_grants.sql` permite ao admin geral com MFA registrar, no próprio painel, uma concessão excepcional por empresa com motivo e prazo quando o plano foi atribuído manualmente. Isso não substitui aprovação, plano elegível e vigência.
 
-O modelo previsto é `gemini-3.1-flash-lite`, sem chave no código. Em 16/09/2026, a conferência no Supabase Dashboard → Edge Functions → Secrets confirmou o nome exato `GEMINI_API_KEY`, com atualização às 16:34 UTC. O valor não foi aberto. A presença do segredo não confirma conexão real: o diagnóstico ainda exige sessão admin AAL2. Não usar variável `VITE_`, Vercel frontend ou este painel para a chave. Não ativar o assistente antes de testar o diagnóstico com MFA, confirmar o deploy e selecionar plano e empresa elegíveis.
+O modelo previsto é `gemini-3.1-flash-lite`, sem chave no código. Em 16/09/2026, a conferência no Supabase Dashboard → Edge Functions → Secrets confirmou o nome exato `GEMINI_API_KEY`, sem abrir o valor. O primeiro diagnóstico admin AAL2 falhou; após ajustar a requisição para usar pensamento mínimo e ampliar o limite de saída, um segundo teste no painel confirmou **“Chave Gemini configurada e conexão funcionando”**. A função está na versão 6. Não usar variável `VITE_`, Vercel frontend ou este painel para a chave. O controle global permanece desligado até selecionar plano e empresa elegíveis e concluir o teste de busca de ponta a ponta.
 
 ## Ativação segura pendente
 
 1. Os commits `fbfd2e9` e `6091a51` foram publicados no GitHub; confirmar que o deploy de produção contém `6091a51` ou posterior.
-2. Em `/admin/planos`, após MFA, usar **Testar chave Gemini**. Apenas sucesso nesse teste confirma que o secret é utilizável; o botão não revela a chave.
+2. O teste **Testar chave Gemini** em `/admin/planos`, após MFA, passou em produção. Repetir após trocar chave ou modelo; o botão não revela a chave.
 3. Habilitar `discovery` somente nos planos desejados. Para uma empresa com plano atribuído manualmente, registrar prazo e motivo da concessão. Conferir vigência/aprovação.
 4. Ligar **Assistente ativo**, carregar o site como visitante e testar busca, ausência de resultados, limite e abertura de perfil. Desligar ou usar modo manutenção se houver erro.
 
