@@ -95,15 +95,18 @@ export function AiAssistantControls() {
 
   async function setDiscovery(planId: string, enabled: boolean) {
     setSaving(true);
-    const { error } = await supabase.from('ai_plan_entitlements' as never).upsert({
-      plan_id: planId,
-      feature: 'discovery',
-      enabled,
-      updated_at: new Date().toISOString(),
-    } as never, { onConflict: 'plan_id,feature' });
+    const existing = entitlements.some(item => item.plan_id === planId && item.feature === 'discovery');
+    const query = existing
+      ? supabase.from('ai_plan_entitlements' as never)
+        .update({ enabled, updated_at: new Date().toISOString() } as never)
+        .eq('plan_id', planId).eq('feature', 'discovery')
+      : supabase.from('ai_plan_entitlements' as never)
+        .insert({ plan_id: planId, feature: 'discovery', enabled } as never);
+    const { data, error } = await query.select('plan_id').maybeSingle();
     setSaving(false);
-    if (error) {
-      toast.error('Não foi possível atualizar o plano. Confirme o MFA.');
+    if (error || !data) {
+      console.error('Falha ao atualizar benefício de IA do plano:', error);
+      toast.error('Não foi possível atualizar o plano. Confira sua sessão e tente novamente.');
       return;
     }
     setEntitlements(previous => [...previous.filter(item => item.plan_id !== planId), { plan_id: planId, feature: 'discovery', enabled }]);
@@ -127,13 +130,20 @@ export function AiAssistantControls() {
       return toast.error('Informe um motivo e uma data futura para a concessão.');
     }
     setSaving(true);
-    const { error } = await supabase.from('ai_company_access' as never).upsert({
-      company_id: selectedCompany,
+    const existing = grants.some(item => item.company_id === selectedCompany);
+    const values = {
       manual_grant_until: remove ? null : new Date(grantUntil).toISOString(),
       manual_grant_reason: remove ? null : grantReason.trim(),
-    } as never, { onConflict: 'company_id' });
+    };
+    const query = existing
+      ? supabase.from('ai_company_access' as never).update(values as never).eq('company_id', selectedCompany)
+      : supabase.from('ai_company_access' as never).insert({ company_id: selectedCompany, ...values } as never);
+    const { data, error } = await query.select('company_id').maybeSingle();
     setSaving(false);
-    if (error) return toast.error('Não foi possível salvar a concessão. Confirme o MFA.');
+    if (error || !data) {
+      console.error('Falha ao salvar concessão de IA:', error);
+      return toast.error('Não foi possível salvar a concessão. Confira sua sessão e tente novamente.');
+    }
     const saved = { company_id: selectedCompany, manual_grant_until: remove ? null : new Date(grantUntil).toISOString(), manual_grant_reason: remove ? null : grantReason.trim() };
     setGrants(previous => [...previous.filter(item => item.company_id !== selectedCompany), saved]);
     toast.success(remove ? 'Concessão removida.' : 'Concessão registrada com prazo.');
