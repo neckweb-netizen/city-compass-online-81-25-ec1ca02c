@@ -129,6 +129,9 @@ export function AiAssistantControls() {
     if (!remove && (!grantReason.trim() || !Number.isFinite(new Date(grantUntil).getTime()) || new Date(grantUntil).getTime() <= Date.now())) {
       return toast.error('Informe um motivo e uma data futura para a concessão.');
     }
+    if (!remove && new Date(grantUntil).getTime() > new Date(company.plano_data_vencimento).getTime()) {
+      return toast.error('A concessão não pode ultrapassar a vigência do plano da empresa.');
+    }
     setSaving(true);
     const existing = grants.some(item => item.company_id === selectedCompany);
     const values = {
@@ -138,16 +141,22 @@ export function AiAssistantControls() {
     const query = existing
       ? supabase.from('ai_company_access' as never).update(values as never).eq('company_id', selectedCompany)
       : supabase.from('ai_company_access' as never).insert({ company_id: selectedCompany, ...values } as never);
-    const { data, error } = await query.select('company_id').maybeSingle();
+    const { data, error } = await query.select('company_id,manual_grant_until,manual_grant_reason').maybeSingle();
     setSaving(false);
     if (error || !data) {
       console.error('Falha ao salvar concessão de IA:', error);
       return toast.error('Não foi possível salvar a concessão. Confira sua sessão e tente novamente.');
     }
-    const saved = { company_id: selectedCompany, manual_grant_until: remove ? null : new Date(grantUntil).toISOString(), manual_grant_reason: remove ? null : grantReason.trim() };
+    const saved = data as CompanyGrant;
     setGrants(previous => [...previous.filter(item => item.company_id !== selectedCompany), saved]);
-    toast.success(remove ? 'Concessão removida.' : 'Concessão registrada com prazo.');
+    toast.success(remove ? 'Concessão removida.' : 'Concessão registrada. A empresa participa se as demais regras estiverem válidas.');
   }
+
+  const selectedPlanId = companies.find(company => company.id === selectedCompany)?.plano_atual_id;
+  const planEnabled = plans.some(plan => plan.id === selectedPlanId && plan.ativo)
+    && entitlements.some(item => item.plan_id === selectedPlanId && item.feature === 'discovery' && item.enabled);
+  const manualGrant = grants.find(item => item.company_id === selectedCompany);
+  const grantActive = Boolean(manualGrant?.manual_grant_until && new Date(manualGrant.manual_grant_until).getTime() > Date.now());
 
   return (
     <Card className="min-w-0 border-primary/30">
@@ -181,7 +190,7 @@ export function AiAssistantControls() {
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap"><Button className="w-full sm:w-auto" disabled={saving} onClick={() => void saveSettings()}>Salvar limites</Button><Button className="w-full sm:w-auto" variant="outline" disabled={testingKey} onClick={() => void testKey()}>{testingKey ? 'Testando...' : 'Testar chave Gemini'}</Button></div>
           <div className="space-y-3 border-t pt-5">
             <h3 className="font-semibold">Planos que participam da descoberta</h3>
-            <p className="text-sm text-muted-foreground">Ativar um plano não publica automaticamente todas as empresas: cada perfil ainda deve estar aprovado, ativo e dentro da vigência, com pagamento válido ou concessão administrativa explícita.</p>
+            <p className="text-sm text-muted-foreground">Este botão habilita o <strong>tipo de plano</strong>, não concede acesso individual a empresas sem pagamento. Para planos atribuídos manualmente, use a concessão com motivo e prazo na seção abaixo.</p>
             {plans.map(plan => <div key={plan.id} className="flex min-w-0 items-center justify-between gap-3 rounded-lg border p-3">
               <div className="min-w-0"><Label htmlFor={`ai-plan-${plan.id}`}>{plan.nome}</Label><p className="text-xs text-muted-foreground">{plan.ativo ? 'Plano ativo' : 'Plano inativo'}</p></div>
               <Switch className="shrink-0" id={`ai-plan-${plan.id}`} disabled={saving || !plan.ativo}
@@ -207,6 +216,13 @@ export function AiAssistantControls() {
               {companies.map(company => <option value={company.id} key={company.id}>{company.nome}</option>)}
             </select>
             {selectedCompany && <p className="text-xs text-muted-foreground">Plano: {plans.find(plan => plan.id === companies.find(company => company.id === selectedCompany)?.plano_atual_id)?.nome || 'Não identificado'}. Vigência da empresa até {new Date(companies.find(company => company.id === selectedCompany)?.plano_data_vencimento || '').toLocaleDateString('pt-BR')}.</p>}
+            {selectedCompany && <div role="status" aria-live="polite" className="space-y-1 rounded-lg border border-primary/20 bg-muted/40 p-3 text-sm">
+              <p className="font-semibold">Situação da empresa na IA</p>
+              <p>Plano na IA: {planEnabled ? 'habilitado' : 'não habilitado'}.</p>
+              <p>Concessão manual: {grantActive ? `vigente até ${new Date(manualGrant!.manual_grant_until!).toLocaleDateString('pt-BR')}` : 'não concedida ou vencida'}.</p>
+              {!grantActive && <p className="text-muted-foreground">Se esta empresa não possui pagamento válido, ela ainda não aparece nas recomendações. Preencha o motivo e a data abaixo e clique em “Conceder acesso”.</p>}
+              {grantActive && !planEnabled && <p className="text-muted-foreground">Ative também o plano acima para que ela possa participar.</p>}
+            </div>}
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="min-w-0 space-y-1"><Label htmlFor="ai-grant-date">Conceder até</Label><Input className="min-w-0" id="ai-grant-date" type="datetime-local" value={grantUntil} onChange={event => setGrantUntil(event.target.value)} /></div>
               <div className="min-w-0 space-y-1"><Label htmlFor="ai-grant-reason">Motivo administrativo</Label><Input className="min-w-0" id="ai-grant-reason" maxLength={200} value={grantReason} onChange={event => setGrantReason(event.target.value)} placeholder="Ex.: plano atribuído manualmente" /></div>

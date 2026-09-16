@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.112.3";
 import { corsHeaders, errorResponse, HttpError, jsonResponse, requireUser } from "../_shared/security.ts";
+import { platformAnswer } from "./platform-answers.ts";
 
 type Company = {
   id: string;
@@ -100,7 +101,7 @@ async function geminiExtractTerm(message: string, key: string, model: string): P
 function publicCompany(company: Company) {
   return {
     id: company.id,
-    name: company.nome,
+    name: company.nome.trim(),
     description: company.descricao?.slice(0, 180) || null,
     address: company.endereco,
     profileUrl: `/locais/${encodeURIComponent(company.slug || company.id)}`,
@@ -202,6 +203,18 @@ Deno.serve(async (req: Request) => {
       sessionId = session.id;
     }
 
+    const siteAnswer = platformAnswer(message);
+    if (siteAnswer) {
+      const { error: messagesError } = await db.from("ai_messages").insert([
+        { session_id: sessionId, role: "user", content: message },
+        { session_id: sessionId, role: "assistant", content: siteAnswer.text },
+      ]);
+      if (messagesError) throw new HttpError(503, "Não foi possível guardar a conversa");
+      const { error: eventError } = await db.from("ai_events").insert({ session_id: sessionId, event_type: "search" });
+      if (eventError) throw new HttpError(503, "Não foi possível registrar a busca");
+      return jsonResponse(req, { sessionId, sessionToken, text: siteAnswer.text, results: [], links: siteAnswer.links });
+    }
+
     const { data: eligible, error: eligibleError } = await db.rpc("ai_eligible_companies", { p_limit: 20 });
     if (eligibleError) throw new HttpError(503, "Busca indisponível");
     const allowedIds = (eligible || []).map((item: { company_id: string }) => item.company_id);
@@ -237,8 +250,12 @@ Deno.serve(async (req: Request) => {
     }
 
     const responseText = matches.length
-      ? matches.length === 1 ? `Encontrei ${matches[0].nome}. Confira os dados no perfil antes de entrar em contato.` : `Encontrei ${matches.length} opções. Veja os perfis e me diga qual deseja conhecer melhor.`
-      : "Não encontrei empresas elegíveis para essa busca agora. Tente outro termo ou explore os locais cadastrados.";
+      ? matches.length === 1 ? `Encontrei ${matches[0].nome.trim()}. Confira os dados no perfil antes de entrar em contato.` : `Encontrei ${matches.length} opções. Veja os perfis e me diga qual deseja conhecer melhor.`
+      : companies.length
+        ? "Não encontrei uma empresa correspondente nessa busca. Tente outro termo ou explore os locais cadastrados."
+        : /\b(empresa|loja|local|restaurante|pizzaria|barbearia|servico|comprar|onde|encontrar|buscar|procuro|perto)\b/.test(normalize(message))
+          ? "Ainda não há empresas habilitadas para recomendações da IA. Você pode explorar os locais cadastrados na busca tradicional."
+          : "Posso explicar recursos do Saj Tem ou ajudar a procurar empresas da cidade. Diga o que gostaria de saber ou qual tipo de local procura.";
     const { error: messagesError } = await db.from("ai_messages").insert([
       { session_id: sessionId, role: "user", content: message },
       { session_id: sessionId, role: "assistant", content: responseText },
@@ -256,7 +273,7 @@ Deno.serve(async (req: Request) => {
       })), { onConflict: "dedupe_key", ignoreDuplicates: true });
       if (impressionsError) throw new HttpError(503, "Não foi possível registrar os resultados");
     }
-    return jsonResponse(req, { sessionId, sessionToken, text: responseText, results: matches.map(publicCompany) });
+    return jsonResponse(req, { sessionId, sessionToken, text: responseText, results: matches.map(publicCompany), links: matches.length ? [] : [{ label: "Explorar locais", url: "/locais" }] });
   } catch (error) {
     return errorResponse(req, error);
   }

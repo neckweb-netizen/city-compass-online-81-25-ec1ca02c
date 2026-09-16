@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
 type Result = { id: string; name: string; description: string | null; address: string | null; profileUrl: string };
-type ChatTurn = { id: number; role: 'user' | 'assistant'; text: string; results?: Result[] };
+type AssistantLink = { label: string; url: string };
+type ChatTurn = { id: number; role: 'user' | 'assistant'; text: string; results?: Result[]; links?: AssistantLink[] };
+const allowedLinks = new Set(['/', '/locais', '/ferramentas']);
 type Recognition = {
   lang: string;
   continuous: boolean;
@@ -86,7 +88,10 @@ export function AiAssistantChat() {
       }
       session.current = { id: data.sessionId, token: data.sessionToken };
       const answer = String(data.text);
-      setTurns(previous => [...previous, { id: ++turnId.current, role: 'assistant', text: answer, results: Array.isArray(data.results) ? data.results : [] }]);
+      const links = Array.isArray(data.links)
+        ? data.links.filter((link: AssistantLink) => allowedLinks.has(link?.url) && typeof link?.label === 'string')
+        : [];
+      setTurns(previous => [...previous, { id: ++turnId.current, role: 'assistant', text: answer, results: Array.isArray(data.results) ? data.results : [], links }]);
       speak(answer);
     } catch {
       setError('Não foi possível responder agora. Edite e reenvie sua pergunta.');
@@ -182,6 +187,7 @@ export function AiAssistantChat() {
             {result.address && <p className="mt-1 text-xs text-muted-foreground">{result.address}</p>}
             <Link to={result.profileUrl} onClick={() => trackProfile(result.id)} className="mt-2 inline-block font-medium text-primary underline">Abrir perfil</Link>
           </div>)}
+          {turn.links?.map(link => <Link key={link.url} to={link.url} onClick={closeChat} className="mr-2 mt-2 inline-block rounded-lg border border-primary/30 bg-card px-3 py-2 font-medium text-primary underline underline-offset-2">{link.label}</Link>)}
         </div>)}
         {busy && <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Buscando...</p>}
       </div>
