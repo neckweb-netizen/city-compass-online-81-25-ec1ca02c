@@ -20,6 +20,8 @@ type Settings = {
 
 type Plan = { id: string; nome: string; ativo: boolean };
 type Entitlement = { plan_id: string; feature: string; enabled: boolean };
+type Company = { id: string; nome: string; plano_atual_id: string; plano_data_vencimento: string };
+type CompanyGrant = { company_id: string; manual_grant_until: string | null; manual_grant_reason: string | null };
 
 const fields: { key: keyof Pick<Settings, 'daily_request_limit' | 'daily_model_limit' | 'visitor_daily_limit' | 'max_message_length'>; label: string; hint: string; min: number; max: number }[] = [
   { key: 'daily_request_limit', label: 'Consultas por dia no site', hint: 'Teto global diário, incluindo buscas sem Gemini.', min: 1, max: 100000 },
@@ -32,20 +34,28 @@ export function AiAssistantControls() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [entitlements, setEntitlements] = useState<Entitlement[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [grants, setGrants] = useState<CompanyGrant[]>([]);
+  const [selectedCompany, setSelectedCompany] = useState('');
+  const [grantUntil, setGrantUntil] = useState('');
+  const [grantReason, setGrantReason] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [testingKey, setTestingKey] = useState(false);
 
   useEffect(() => {
     let active = true;
     async function load() {
-      const [configResult, plansResult, entitlementsResult] = await Promise.all([
+      const [configResult, plansResult, entitlementsResult, companiesResult, grantsResult] = await Promise.all([
         supabase.from('ai_settings' as never).select('enabled,maintenance,daily_request_limit,daily_model_limit,visitor_daily_limit,max_message_length,model').eq('id', true).maybeSingle(),
         supabase.from('planos').select('id,nome,ativo').order('nome'),
         supabase.from('ai_plan_entitlements' as never).select('plan_id,feature,enabled').eq('feature', 'discovery'),
+        supabase.from('empresas').select('id,nome,plano_atual_id,plano_data_vencimento').eq('ativo', true).eq('status_aprovacao', 'aprovado').gt('plano_data_vencimento', new Date().toISOString()).not('plano_atual_id', 'is', null).order('nome').limit(100),
+        supabase.from('ai_company_access' as never).select('company_id,manual_grant_until,manual_grant_reason'),
       ]);
       if (!active) return;
       setLoading(false);
-      const error = configResult.error || plansResult.error || entitlementsResult.error;
+      const error = configResult.error || plansResult.error || entitlementsResult.error || companiesResult.error || grantsResult.error;
       if (error) {
         toast.error('Não foi possível carregar a configuração da IA. Confirme o MFA e a migração.');
         return;
@@ -53,6 +63,8 @@ export function AiAssistantControls() {
       setSettings(configResult.data as Settings | null);
       setPlans((plansResult.data || []) as Plan[]);
       setEntitlements((entitlementsResult.data || []) as Entitlement[]);
+      setCompanies((companiesResult.data || []) as Company[]);
+      setGrants((grantsResult.data || []) as CompanyGrant[]);
     }
     void load();
     return () => { active = false; };
@@ -98,6 +110,35 @@ export function AiAssistantControls() {
     toast.success(enabled ? 'Plano habilitado para descoberta pela IA.' : 'Plano removido da descoberta pela IA.');
   }
 
+  async function testKey() {
+    setTestingKey(true);
+    const { data, error } = await supabase.functions.invoke('assistente-ia', { body: { action: 'diagnostic' } });
+    setTestingKey(false);
+    if (error) toast.error('O teste não conseguiu acessar a função. Confira a publicação e o MFA.');
+    else if (data?.reachable) toast.success('Chave Gemini configurada e conexão funcionando.');
+    else toast.error(data?.configured ? 'A chave existe, mas a chamada ao Gemini falhou.' : 'GEMINI_API_KEY não foi encontrada na função.');
+  }
+
+  async function saveGrant(remove = false) {
+    if (!selectedCompany) return toast.error('Escolha uma empresa.');
+    const company = companies.find(item => item.id === selectedCompany);
+    if (!company) return toast.error('Empresa indisponível.');
+    if (!remove && (!grantReason.trim() || !Number.isFinite(new Date(grantUntil).getTime()) || new Date(grantUntil).getTime() <= Date.now())) {
+      return toast.error('Informe um motivo e uma data futura para a concessão.');
+    }
+    setSaving(true);
+    const { error } = await supabase.from('ai_company_access' as never).upsert({
+      company_id: selectedCompany,
+      manual_grant_until: remove ? null : new Date(grantUntil).toISOString(),
+      manual_grant_reason: remove ? null : grantReason.trim(),
+    } as never, { onConflict: 'company_id' });
+    setSaving(false);
+    if (error) return toast.error('Não foi possível salvar a concessão. Confirme o MFA.');
+    const saved = { company_id: selectedCompany, manual_grant_until: remove ? null : new Date(grantUntil).toISOString(), manual_grant_reason: remove ? null : grantReason.trim() };
+    setGrants(previous => [...previous.filter(item => item.company_id !== selectedCompany), saved]);
+    toast.success(remove ? 'Concessão removida.' : 'Concessão registrada com prazo.');
+  }
+
   return (
     <Card className="border-primary/30">
       <CardHeader>
@@ -127,7 +168,7 @@ export function AiAssistantControls() {
             </div>)}
           </div>
           <p className="text-xs text-muted-foreground">Modelo previsto: {settings.model}. A chave fica exclusivamente nos secrets da função Supabase; não a cole neste painel.</p>
-          <Button disabled={saving} onClick={() => void saveSettings()}>Salvar limites</Button>
+          <div className="flex flex-wrap gap-2"><Button disabled={saving} onClick={() => void saveSettings()}>Salvar limites</Button><Button variant="outline" disabled={testingKey} onClick={() => void testKey()}>{testingKey ? 'Testando...' : 'Testar chave Gemini'}</Button></div>
           <div className="space-y-3 border-t pt-5">
             <h3 className="font-semibold">Planos que participam da descoberta</h3>
             <p className="text-sm text-muted-foreground">Ativar um plano não publica automaticamente todas as empresas: cada perfil ainda deve estar aprovado, ativo e dentro da vigência, com pagamento válido ou concessão administrativa explícita.</p>
@@ -137,6 +178,30 @@ export function AiAssistantControls() {
                 checked={entitlements.some(item => item.plan_id === plan.id && item.enabled)}
                 onCheckedChange={enabled => void setDiscovery(plan.id, enabled)} />
             </div>)}
+          </div>
+          <div className="space-y-3 border-t pt-5">
+            <h3 className="font-semibold">Empresas com plano atribuído manualmente</h3>
+            <p className="text-sm text-muted-foreground">Sem pagamento confirmado, a empresa só pode ser descoberta pela IA se você conceder uma autorização com motivo e validade. O plano ainda precisa estar habilitado acima; a empresa deve continuar aprovada e com vigência ativa.</p>
+            <Label htmlFor="ai-grant-company">Empresa</Label>
+            <select id="ai-grant-company" value={selectedCompany} onChange={event => {
+              const id = event.target.value;
+              setSelectedCompany(id);
+              const existing = grants.find(item => item.company_id === id);
+              setGrantReason(existing?.manual_grant_reason || '');
+              if (existing?.manual_grant_until) {
+                const date = new Date(existing.manual_grant_until);
+                setGrantUntil(new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16));
+              } else setGrantUntil('');
+            }} className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+              <option value="">Selecione uma empresa</option>
+              {companies.map(company => <option value={company.id} key={company.id}>{company.nome}</option>)}
+            </select>
+            {selectedCompany && <p className="text-xs text-muted-foreground">Plano: {plans.find(plan => plan.id === companies.find(company => company.id === selectedCompany)?.plano_atual_id)?.nome || 'Não identificado'}. Vigência da empresa até {new Date(companies.find(company => company.id === selectedCompany)?.plano_data_vencimento || '').toLocaleDateString('pt-BR')}.</p>}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1"><Label htmlFor="ai-grant-date">Conceder até</Label><Input id="ai-grant-date" type="datetime-local" value={grantUntil} onChange={event => setGrantUntil(event.target.value)} /></div>
+              <div className="space-y-1"><Label htmlFor="ai-grant-reason">Motivo administrativo</Label><Input id="ai-grant-reason" maxLength={200} value={grantReason} onChange={event => setGrantReason(event.target.value)} placeholder="Ex.: plano atribuído manualmente" /></div>
+            </div>
+            <div className="flex flex-wrap gap-2"><Button disabled={saving || !selectedCompany} onClick={() => void saveGrant()}>Conceder acesso</Button><Button variant="outline" disabled={saving || !selectedCompany || !grants.some(item => item.company_id === selectedCompany && item.manual_grant_until)} onClick={() => void saveGrant(true)}>Remover concessão</Button></div>
           </div>
         </>}
       </CardContent>

@@ -15,9 +15,10 @@ interface LegalPageLayoutProps {
   description: string;
   icon: LucideIcon;
   sections: LegalSection[];
+  effectiveDate?: string;
 }
 
-export const LegalPageLayout = ({ eyebrow, title, description, icon: Icon, sections }: LegalPageLayoutProps) => {
+export const LegalPageLayout = ({ eyebrow, title, description, icon: Icon, sections, effectiveDate = '9 de setembro de 2026' }: LegalPageLayoutProps) => {
   const navigate = useNavigate();
 
   return (
@@ -46,7 +47,7 @@ export const LegalPageLayout = ({ eyebrow, title, description, icon: Icon, secti
               <p className="mt-4 max-w-3xl text-sm leading-7 text-muted-foreground sm:text-base">{description}</p>
               <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-border bg-muted/60 px-3 py-1.5 text-xs font-medium text-muted-foreground">
                 <CalendarDays aria-hidden="true" className="h-3.5 w-3.5" />
-                Vigente desde 9 de setembro de 2026
+                Vigente desde {effectiveDate}
               </div>
             </div>
           </div>

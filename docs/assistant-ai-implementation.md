@@ -1,6 +1,6 @@
 # Assistente IA — auditoria e execução incremental
 
-Estado em 2026-09-16: fundação e controles SQL aplicados ao projeto Supabase `uyleozhwzngnvyddfvni`, mas **desativados**. A experiência de chat/voz não está ativa.
+Estado em 2026-09-16: fundação e controles SQL aplicados ao projeto Supabase `uyleozhwzngnvyddfvni`; a Edge Function `assistente-ia` está publicada, mas o controle global segue **desativado**. O chat ainda não foi enviado ao site publicado.
 
 ## Inventário confirmado no repositório
 
@@ -16,16 +16,27 @@ Estado em 2026-09-16: fundação e controles SQL aplicados ao projeto Supabase `
 
 A migration `20260916151132_ai_assistant_foundation.sql` cria entitlements por plano, controle global, bloqueio/concessão manual por empresa, sessões, mensagens, eventos e uso diário. Todas as tabelas novas têm RLS e nenhum acesso direto para `anon`/`authenticated`. A RPC `public.ai_eligible_companies` é executável somente por `service_role`, verifica aprovação, vigência, entitlement, pagamento confirmado **ou** concessão manual com prazo e motivo. Começa desabilitada globalmente e sem planos habilitados. Não há preço novo, cobrança por lead ou chamada de LLM nesta etapa.
 
-A migration `20260916190000_ai_assistant_controls.sql` adiciona limites configuráveis (1.000 consultas globais/dia, 100 chamadas de modelo/dia, 20 consultas por visitante/dia e 500 caracteres/mensagem), além de uma reserva atômica no banco via `public.ai_consume_quota`. Apenas `service_role` pode consumi-la. O admin geral com MFA AAL2 pode configurar limites e escolher planos para `discovery` em `/admin/planos`. A função pública futura **deve** chamar a reserva antes de cada resposta e limitar tokens/timeout na chamada ao provedor; sem essa integração os limites não controlam tráfego porque ainda não há endpoint público.
+A migration `20260916190000_ai_assistant_controls.sql` adiciona limites configuráveis (1.000 consultas globais/dia, 100 chamadas de modelo/dia, 20 consultas por visitante/dia e 500 caracteres/mensagem), além de uma reserva atômica no banco via `public.ai_consume_quota`. Apenas `service_role` pode consumi-la. O admin geral com MFA AAL2 pode configurar limites e escolher planos para `discovery` em `/admin/planos`. A função publicada já consome a cota antes de responder e limita saída/tempo na chamada ao provedor.
 
-O modelo previsto é `gemini-3.1-flash-lite`, sem chave no código. Quando o endpoint estiver implantado, cadastrar `GEMINI_API_KEY` em Supabase Dashboard → Edge Functions → Secrets. Não usar variável `VITE_`, Vercel frontend ou este painel para a chave. Não ativar o assistente antes de testar o endpoint e reconciliar pagamento/concessões.
+A função `assistente-ia` agora chama a reserva antes de responder. A cota do modelo é separada por `20260916201500_ai_assistant_model_quota.sql` e pode ser usada pelo teste administrativo sem ativar o chat, conforme `20260916220000_ai_model_diagnostic_quota.sql`. Ela valida a chave pública do projeto, limita corpo e mensagem, mantém uma sessão de 24 horas com token opaco, consulta só empresas elegíveis, busca por nome/descrição/categoria e chama Gemini apenas como fallback de interpretação de perguntas mais complexas. O modelo não decide quais empresas são elegíveis. Há um chat responsivo com entrada textual, voz do navegador quando suportada e leitura opcional da resposta. Ações de abertura de perfil e impressões são registradas com revalidação de sessão/resultado. Ainda não há produtos, cupons, agenda, busca semântica, analytics de custos ou cobertura integral das intenções do plano mestre.
+
+`20260916210000_ai_admin_company_grants.sql` permite ao admin geral com MFA registrar, no próprio painel, uma concessão excepcional por empresa com motivo e prazo quando o plano foi atribuído manualmente. Isso não substitui aprovação, plano elegível e vigência.
+
+O modelo previsto é `gemini-3.1-flash-lite`, sem chave no código. Em 16/09/2026, a conferência no Supabase Dashboard → Edge Functions → Secrets encontrou um segredo chamado `Gemini API Key`, mas **não** `GEMINI_API_KEY`, que é o nome exato lido pela função. O valor não foi aberto. É preciso cadastrar a mesma chave com o nome `GEMINI_API_KEY`; a conexão real ainda depende do diagnóstico com sessão admin AAL2. Não usar variável `VITE_`, Vercel frontend ou este painel para a chave. Não ativar o assistente antes de testar o diagnóstico com MFA, enviar o frontend ao GitHub/deploy e selecionar plano e empresa elegíveis.
+
+## Ativação segura pendente
+
+1. Publicar o commit do frontend no GitHub após autorização explícita para este commit (push anterior foi bloqueado) e aguardar o deploy.
+2. Em `/admin/planos`, após MFA, usar **Testar chave Gemini**. Apenas sucesso nesse teste confirma que o secret é utilizável; o botão não revela a chave.
+3. Habilitar `discovery` somente nos planos desejados. Para uma empresa com plano atribuído manualmente, registrar prazo e motivo da concessão. Conferir vigência/aprovação.
+4. Ligar **Assistente ativo**, carregar o site como visitante e testar busca, ausência de resultados, limite e abertura de perfil. Desligar ou usar modo manutenção se houver erro.
 
 ## Próximas etapas e critérios
 
 1. Validar o motor de elegibilidade em ambiente isolado com testes SQL de casos permitidos/negados: sem plano, expirado, sem pagamento, bloqueado, cidade/categoria incompatível e acesso de cliente às tabelas. A verificação em produção confirmou `enabled=false`, nenhum entitlement, zero empresas elegíveis e nenhuma permissão de leitura/gravação para `anon`/`authenticated` nas tabelas novas.
-2. Criar Edge Function com limite por sessão/IP/usuário, validação de entradas, busca determinística sobre a função de elegibilidade, criação de sessão e telemetria. Sem função pública até estes testes passarem.
-3. Criar UI textual responsiva, ações mensuradas e contexto curto. O LLM entra apenas para interpretação/redação complexa, com provider server-side, orçamento, timeout e fallback determinístico.
-4. Adicionar voz opcional e acessível, depois painel da empresa, FAQ e analytics. O controle de planos e limites no admin já existe; ainda falta a auditoria dedicada das mudanças desses controles.
+2. A função de busca e o chat inicial existem e o endpoint público foi testado em modo desligado: status 200 com `enabled:false`, chat 503 e diagnóstico sem admin 401. Ainda falta teste end-to-end com empresa elegível.
+3. Ampliar busca além dos primeiros 20 candidatos elegíveis e adicionar intents/produtos/cupons/eventos. O LLM hoje interpreta termo de busca como fallback; não redige respostas livres.
+4. Completar analytics, custo real/token, retenção, painel da empresa, FAQ e testes cross-browser de voz. O controle de planos e limites no admin já existe; ainda falta auditoria dedicada das mudanças desses controles.
 5. Atualizar política de privacidade para refletir exatamente dados e provedores usados, antes de ativar coleta de conversas/voz em produção.
 
 ## Riscos conhecidos

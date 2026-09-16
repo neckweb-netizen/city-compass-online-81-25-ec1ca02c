@@ -25,6 +25,7 @@ const sections: LegalSection[] = [
           <li><strong className="text-foreground">Notificações:</strong> preferências e identificadores técnicos necessários para enviar avisos ao dispositivo, quando houver permissão.</li>
           <li><strong className="text-foreground">Uso e dispositivo:</strong> endereço IP, navegador, sistema, páginas acessadas, registros de segurança, falhas e métricas de desempenho.</li>
           <li><strong className="text-foreground">Ferramentas pessoais:</strong> informações inseridas voluntariamente em recursos financeiros, de saúde, currículo, veículo ou outros utilitários. Alguns recursos podem guardar dados apenas no próprio dispositivo; a tela da ferramenta informa quando isso ocorrer.</li>
+          <li><strong className="text-foreground">Assistente de busca:</strong> perguntas digitadas ou transcritas, respostas e identificador temporário da conversa, quando você decidir usar esse recurso. O reconhecimento de voz é oferecido pelo navegador e pode processar áudio conforme as configurações e a política dele; o Saj Tem não guarda o áudio bruto por padrão.</li>
         </ul>
       </>
     ),
@@ -38,6 +39,7 @@ const sections: LegalSection[] = [
         <li>Entregar notificações solicitadas e comunicações essenciais sobre a conta.</li>
         <li>Moderar conteúdo, prevenir fraude, abuso e acessos indevidos.</li>
         <li>Medir desempenho, corrigir falhas e melhorar a experiência.</li>
+        <li>Interpretar perguntas no assistente e encontrar empresas elegíveis, com limites de uso para controlar abuso e custos. Perguntas complexas podem ser processadas pelo provedor de IA; resultados comerciais vêm do nosso banco de dados.</li>
         <li>Cumprir obrigações legais, regulatórias ou determinações de autoridades competentes.</li>
       </ul>
     ),
@@ -49,6 +51,7 @@ const sections: LegalSection[] = [
         <p>Não vendemos seus dados pessoais. Podemos compartilhá-los somente no limite necessário com:</p>
         <ul className={listClassName}>
           <li>provedores de hospedagem, banco de dados, autenticação, armazenamento, mapas, análise, comunicação e notificações;</li>
+          <li>provedor de inteligência artificial, somente com o texto necessário para interpretar uma pergunta complexa, sem enviar o catálogo completo de empresas;</li>
           <li>empresas com as quais você solicita contato, reserva, agendamento ou benefício;</li>
           <li>autoridades públicas ou terceiros, quando houver obrigação legal, ordem válida ou necessidade de proteger direitos e segurança.</li>
         </ul>
@@ -61,6 +64,7 @@ const sections: LegalSection[] = [
       <>
         <p>Usamos armazenamento local, cookies ou tecnologias equivalentes para manter sessões, preferências, funcionamento do PWA, segurança e desempenho. Permissões como localização, câmera e notificações podem ser gerenciadas no navegador ou no sistema do dispositivo.</p>
         <p>Os dados são mantidos pelo tempo necessário às finalidades informadas, à manutenção da conta e ao cumprimento de obrigações legais. Depois disso, poderão ser eliminados ou anonimizados, salvo quando a conservação for autorizada ou exigida por lei.</p>
+        <p>A sessão do assistente expira em 24 horas. O histórico e eventos associados ainda seguem a política geral de retenção acima; estamos definindo um prazo específico antes de ampliar o recurso.</p>
       </>
     ),
   },
@@ -83,7 +87,7 @@ export const PrivacyPolicy = () => {
     return () => { document.title = 'Saj Tem - Santo Antônio de Jesus'; };
   }, []);
 
-  return <LegalPageLayout eyebrow="Privacidade e proteção de dados" title="Política de Privacidade" description="Transparência sobre quais dados usamos, por que precisamos deles e como você pode exercer seus direitos no Saj Tem." icon={ShieldCheck} sections={sections} />;
+  return <LegalPageLayout eyebrow="Privacidade e proteção de dados" title="Política de Privacidade" description="Transparência sobre quais dados usamos, por que precisamos deles e como você pode exercer seus direitos no Saj Tem." icon={ShieldCheck} sections={sections} effectiveDate="16 de setembro de 2026" />;
 };
 
 export default PrivacyPolicy;
