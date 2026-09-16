@@ -13,6 +13,7 @@ import { BannerSection } from './BannerSection';
 import { CategoriesGrid } from './CategoriesGrid';
 import { AondeIrButton } from './AondeIrButton';
 import { DominoSpotlight } from './DominoSpotlight';
+import { AiAssistantHomeEntry } from './AiAssistantHomeEntry';
 
 import { useCidadePadrao } from '@/hooks/useCidadePadrao';
 import { useHomeSectionsOrder } from '@/hooks/useHomeSectionsOrder';
@@ -264,6 +265,7 @@ export const HomeContent = ({
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto space-y-6 px-4 py-4 pb-20">
+        <AiAssistantHomeEntry />
         {activeSections.map(
           (section, index) => {
             if (

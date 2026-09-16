@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
-import { Bot, Loader2, Mic, Send, Volume2, VolumeX, X } from 'lucide-react';
+import { Bot, Loader2, Mic, Pencil, Send, Volume2, VolumeX, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -9,11 +9,14 @@ type Result = { id: string; name: string; description: string | null; address: s
 type ChatTurn = { id: number; role: 'user' | 'assistant'; text: string; results?: Result[] };
 type Recognition = {
   lang: string;
-  onresult: ((event: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
-  onerror: (() => void) | null;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: { results: ArrayLike<ArrayLike<{ transcript: string }> & { isFinal: boolean }> }) => void) | null;
+  onerror: ((event: { error: string }) => void) | null;
   onend: (() => void) | null;
   start: () => void;
   stop: () => void;
+  abort: () => void;
 };
 
 export function AiAssistantChat() {
@@ -22,11 +25,14 @@ export function AiAssistantChat() {
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [listening, setListening] = useState(false);
+  const [editingTurnId, setEditingTurnId] = useState<number | null>(null);
   const [speechEnabled, setSpeechEnabled] = useState(false);
   const [error, setError] = useState('');
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const session = useRef<{ id: string; token: string } | null>(null);
   const recognition = useRef<Recognition | null>(null);
+  const turnId = useRef(0);
+  const busyRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -35,9 +41,17 @@ export function AiAssistantChat() {
       .then(({ data, error: requestError }) => { if (active && !requestError) setAvailable(data?.enabled === true); });
     return () => {
       active = false;
-      recognition.current?.stop();
+      const currentRecognition = recognition.current;
+      recognition.current = null;
+      currentRecognition?.abort();
       window.speechSynthesis?.cancel();
     };
+  }, []);
+
+  useEffect(() => {
+    const openAssistant = () => setOpen(true);
+    window.addEventListener('sajtem:open-assistant', openAssistant);
+    return () => window.removeEventListener('sajtem:open-assistant', openAssistant);
   }, []);
 
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }); }, [turns, busy]);
@@ -51,6 +65,37 @@ export function AiAssistantChat() {
     window.speechSynthesis.speak(utterance);
   }
 
+  async function sendMessage(message: string, replacingId: number | null = editingTurnId) {
+    const trimmed = message.trim();
+    if (!trimmed || busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
+    setInput('');
+    setError('');
+    setEditingTurnId(null);
+    if (replacingId !== null) session.current = null;
+    const userTurn = { id: ++turnId.current, role: 'user' as const, text: trimmed };
+    setTurns(previous => replacingId === null ? [...previous, userTurn] : [userTurn]);
+    try {
+      const { data, error: requestError } = await supabase.functions.invoke('assistente-ia', {
+        body: { action: 'chat', message: trimmed, sessionId: session.current?.id, sessionToken: session.current?.token },
+      });
+      if (requestError || !data?.text) {
+        setError(data?.error || 'Não foi possível responder agora. Edite e reenvie sua pergunta.');
+        return;
+      }
+      session.current = { id: data.sessionId, token: data.sessionToken };
+      const answer = String(data.text);
+      setTurns(previous => [...previous, { id: ++turnId.current, role: 'assistant', text: answer, results: Array.isArray(data.results) ? data.results : [] }]);
+      speak(answer);
+    } catch {
+      setError('Não foi possível responder agora. Edite e reenvie sua pergunta.');
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+  }
+
   function startListening() {
     const browser = window as Window & { SpeechRecognition?: new () => Recognition; webkitSpeechRecognition?: new () => Recognition };
     const Constructor = browser.SpeechRecognition || browser.webkitSpeechRecognition;
@@ -62,9 +107,29 @@ export function AiAssistantChat() {
       const instance = new Constructor();
       recognition.current = instance;
       instance.lang = 'pt-BR';
-      instance.onresult = event => setInput(event.results[0]?.[0]?.transcript || '');
-      instance.onerror = () => setError('Não foi possível ouvir. Confira a permissão do microfone ou digite.');
-      instance.onend = () => { setListening(false); recognition.current = null; };
+      instance.continuous = false;
+      instance.interimResults = true;
+      let finalText = '';
+      let failed = false;
+      instance.onresult = event => {
+        const results = Array.from(event.results);
+        finalText = results.filter(result => result.isFinal).map(result => result[0]?.transcript || '').join(' ').trim();
+        const interimText = results.filter(result => !result.isFinal).map(result => result[0]?.transcript || '').join(' ').trim();
+        setInput([finalText, interimText].filter(Boolean).join(' '));
+      };
+      instance.onerror = event => {
+        failed = true;
+        setError(event.error === 'not-allowed' || event.error === 'service-not-allowed'
+          ? 'Permita o microfone no navegador ou digite sua pergunta.'
+          : 'Não foi possível concluir a escuta. Confira o texto e envie manualmente.');
+      };
+      instance.onend = () => {
+        if (recognition.current !== instance) return;
+        setListening(false);
+        recognition.current = null;
+        if (!failed && finalText) void sendMessage(finalText);
+        else if (!failed) setError('Não entendi sua fala. Você pode tentar de novo ou digitar.');
+      };
       instance.start();
       setListening(true);
       setError('');
@@ -75,24 +140,16 @@ export function AiAssistantChat() {
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    const message = input.trim();
-    if (!message || busy) return;
-    setInput('');
-    setError('');
-    setBusy(true);
-    setTurns(previous => [...previous, { id: Date.now(), role: 'user', text: message }]);
-    const { data, error: requestError } = await supabase.functions.invoke('assistente-ia', {
-      body: { action: 'chat', message, sessionId: session.current?.id, sessionToken: session.current?.token },
-    });
-    setBusy(false);
-    if (requestError || !data?.text) {
-      setError(data?.error || 'Não foi possível responder agora. Tente novamente.');
-      return;
-    }
-    session.current = { id: data.sessionId, token: data.sessionToken };
-    const text = String(data.text);
-    setTurns(previous => [...previous, { id: Date.now() + 1, role: 'assistant', text, results: Array.isArray(data.results) ? data.results : [] }]);
-    speak(text);
+    await sendMessage(input);
+  }
+
+  function closeChat() {
+    const currentRecognition = recognition.current;
+    recognition.current = null;
+    currentRecognition?.abort();
+    window.speechSynthesis?.cancel();
+    setListening(false);
+    setOpen(false);
   }
 
   function trackProfile(companyId: string) {
@@ -112,12 +169,13 @@ export function AiAssistantChat() {
         <Button variant="ghost" size="icon" aria-label={speechEnabled ? 'Desativar voz' : 'Ativar voz'} onClick={() => { window.speechSynthesis?.cancel(); setSpeechEnabled(!speechEnabled); }}>
           {speechEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
         </Button>
-        <Button variant="ghost" size="icon" aria-label="Fechar conversa" onClick={() => { window.speechSynthesis?.cancel(); setOpen(false); }}><X className="h-4 w-4" /></Button>
+        <Button variant="ghost" size="icon" aria-label="Fechar conversa" onClick={closeChat}><X className="h-4 w-4" /></Button>
       </header>
       <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-3" aria-live="polite">
         {!turns.length && <p className="rounded-xl bg-muted p-3 text-sm">Olá! O que você procura? Experimente: “Quero encontrar uma pizzaria”. Você pode falar ou digitar.</p>}
         {turns.map(turn => <div key={turn.id} className={turn.role === 'user' ? 'ml-8 rounded-xl bg-primary p-3 text-sm text-primary-foreground' : 'mr-4 rounded-xl bg-muted p-3 text-sm'}>
-          <p>{turn.text}</p>
+          <p className="whitespace-pre-wrap break-words">{turn.text}</p>
+          {turn.role === 'user' && !busy && <button type="button" className="mt-2 inline-flex items-center gap-1 text-xs underline underline-offset-2" onClick={() => { setInput(turn.text); setEditingTurnId(turn.id); setError(''); }}><Pencil className="h-3 w-3" /> Editar e reenviar</button>}
           {turn.results?.map(result => <div key={result.id} className="mt-2 rounded-lg border bg-card p-3 text-card-foreground">
             <p className="font-semibold">{result.name}</p>
             {result.description && <p className="mt-1 text-xs text-muted-foreground">{result.description}</p>}
@@ -127,14 +185,16 @@ export function AiAssistantChat() {
         </div>)}
         {busy && <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Buscando...</p>}
       </div>
+      {listening && <p role="status" className="flex items-center gap-2 px-3 pt-2 text-xs font-medium text-primary"><span className="h-2 w-2 animate-pulse rounded-full bg-primary" /> Ouvindo você… fale até terminar. A pergunta será enviada automaticamente.</p>}
+      {editingTurnId !== null && <p role="status" className="px-3 pt-2 text-xs text-muted-foreground">Corrija a pergunta abaixo. Reenviar iniciará uma nova conversa com o texto corrigido.</p>}
       {error && <p role="alert" className="px-3 text-xs text-destructive">{error}</p>}
       <form onSubmit={event => void submit(event)} className="flex gap-2 border-t p-3">
-        <Input aria-label="Sua pergunta" maxLength={500} placeholder="O que você procura?" value={input} onChange={event => setInput(event.target.value)} disabled={busy} />
-        <Button type="button" variant="outline" size="icon" aria-label={listening ? 'Parar microfone' : 'Falar pergunta'} onClick={() => listening ? recognition.current?.stop() : startListening()}><Mic className="h-4 w-4" /></Button>
-        <Button type="submit" size="icon" aria-label="Enviar pergunta" disabled={busy || !input.trim()}><Send className="h-4 w-4" /></Button>
+        <Input aria-label="Sua pergunta" maxLength={500} placeholder={listening ? 'Ouvindo sua pergunta...' : 'O que você procura?'} value={input} onChange={event => setInput(event.target.value)} disabled={busy || listening} />
+        <Button type="button" variant={listening ? 'default' : 'outline'} size="icon" aria-label={listening ? 'Parar e enviar fala' : 'Falar pergunta'} disabled={busy} onClick={() => listening ? recognition.current?.stop() : startListening()}><Mic className={listening ? 'h-4 w-4 animate-pulse' : 'h-4 w-4'} /></Button>
+        <Button type="submit" size="icon" aria-label={editingTurnId !== null ? 'Reenviar pergunta corrigida' : 'Enviar pergunta'} disabled={busy || listening || !input.trim()}><Send className="h-4 w-4" /></Button>
       </form>
       <p className="px-3 pb-2 text-[11px] text-muted-foreground">Não envie dados sensíveis. Perguntas complexas podem usar IA; o microfone depende do navegador.</p>
     </section>}
-    <Button className="ml-auto flex rounded-full px-5 shadow-lg" onClick={() => setOpen(value => !value)} aria-expanded={open} aria-label="Abrir assistente de IA"><Bot className="mr-2 h-5 w-5" /> Pergunte ao Saj Tem</Button>
+    <Button className="ml-auto flex rounded-full px-5 shadow-lg" onClick={() => open ? closeChat() : setOpen(true)} aria-expanded={open} aria-label={open ? 'Fechar assistente de IA' : 'Abrir assistente de IA'}><Bot className="mr-2 h-5 w-5" /> Pergunte ao Saj Tem</Button>
   </div>;
 }
