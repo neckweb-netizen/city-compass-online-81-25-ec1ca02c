@@ -3,6 +3,7 @@ import { ListObjectsV2Command, S3Client } from "https://esm.sh/@aws-sdk/client-s
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.112.3";
 import { corsHeaders, errorResponse, HttpError, jsonResponse, requireUser } from "../_shared/security.ts";
 import { platformAnswer } from "./platform-answers.ts";
+import { findKnowledgeArticle, readKnowledge, saveKnowledgeArticle, type KnowledgeArticle } from "./knowledge-r2.ts";
 
 type Company = {
   id: string;
@@ -158,6 +159,15 @@ Deno.serve(async (req: Request) => {
         return jsonResponse(req, { configured: true, reachable: false, reason });
       }
     }
+    if (body.action === "knowledge_read") {
+      await requireUser(req, ["admin_geral"]);
+      return jsonResponse(req, await readKnowledge(true));
+    }
+    if (body.action === "knowledge_save") {
+      await requireUser(req, ["admin_geral"]);
+      if (body.etag !== null && typeof body.etag !== "string") throw new HttpError(400, "Versão da base inválida");
+      return jsonResponse(req, await saveKnowledgeArticle(body.article, body.etag as string | null));
+    }
     if (body.action === "diagnostic") {
       const auth = await requireUser(req, ["admin_geral"]);
       if (auth.aal !== "aal2") throw new HttpError(403, "Confirme o segundo fator");
@@ -260,6 +270,7 @@ Deno.serve(async (req: Request) => {
     const ordinal = /\b(primeir[ao]|segund[ao]|terceir[ao])\b/i.exec(normalize(message));
     const position = ordinal ? ({ primeiro: 0, primeira: 0, segundo: 1, segunda: 1, terceiro: 2, terceira: 2 } as Record<string, number>)[ordinal[1]] : undefined;
     let matches: Company[] = [];
+    let knowledgeArticle: KnowledgeArticle | null = null;
     if (position !== undefined && priorIds[position]) {
       const selected = companies.find(item => item.id === priorIds[position]);
       if (selected) matches = [selected];
@@ -267,22 +278,28 @@ Deno.serve(async (req: Request) => {
       const terms = searchTerms(message);
       const direct = companies.filter(item => terms.length > 0 && terms.some(term => searchable(item).includes(term)));
       matches = direct.slice(0, 5);
-      if (!matches.length && companies.length && message.length > 35 && Deno.env.get("GEMINI_API_KEY")) {
-        const { data: modelQuota, error: modelQuotaError } = await db.rpc("ai_consume_model_quota", { p_visitor_hash: visitorHash });
-        if (!modelQuotaError && modelQuota) {
-          const result = await geminiExtractTerm(message, Deno.env.get("GEMINI_API_KEY")!, config.model);
-          if (result.term) matches = companies.filter(item => searchable(item).includes(normalize(result.term!))).slice(0, 5);
-        }
+    }
+    if (!matches.length && Deno.env.get("AI_R2_BUCKET")) {
+      try {
+        knowledgeArticle = findKnowledgeArticle(message, (await readKnowledge()).articles);
+      } catch {
+        // Storage availability must not interrupt company discovery or the normal fallback.
       }
     }
-
-    const responseText = matches.length
+    if (!matches.length && !knowledgeArticle && position === undefined && companies.length && message.length > 35 && Deno.env.get("GEMINI_API_KEY")) {
+      const { data: modelQuota, error: modelQuotaError } = await db.rpc("ai_consume_model_quota", { p_visitor_hash: visitorHash });
+      if (!modelQuotaError && modelQuota) {
+        const result = await geminiExtractTerm(message, Deno.env.get("GEMINI_API_KEY")!, config.model);
+        if (result.term) matches = companies.filter(item => searchable(item).includes(normalize(result.term!))).slice(0, 5);
+      }
+    }
+    const responseText = knowledgeArticle?.answer || (matches.length
       ? matches.length === 1 ? `Encontrei ${matches[0].nome.trim()}. Confira os dados no perfil antes de entrar em contato.` : `Encontrei ${matches.length} opções. Veja os perfis e me diga qual deseja conhecer melhor.`
       : companies.length
         ? "Não encontrei uma empresa correspondente nessa busca. Tente outro termo ou explore os locais cadastrados."
         : /\b(empresa|loja|local|restaurante|pizzaria|barbearia|servico|comprar|onde|encontrar|buscar|procuro|perto)\b/.test(normalize(message))
           ? "Ainda não há empresas habilitadas para recomendações da IA. Você pode explorar os locais cadastrados na busca tradicional."
-          : "Posso explicar recursos do Saj Tem ou ajudar a procurar empresas da cidade. Diga o que gostaria de saber ou qual tipo de local procura.";
+          : "Posso explicar recursos do Saj Tem ou ajudar a procurar empresas da cidade. Diga o que gostaria de saber ou qual tipo de local procura.");
     const { error: messagesError } = await db.from("ai_messages").insert([
       { session_id: sessionId, role: "user", content: message },
       { session_id: sessionId, role: "assistant", content: responseText },
@@ -291,7 +308,7 @@ Deno.serve(async (req: Request) => {
     const { error: contextError } = await db.from("ai_sessions")
       .update({ context: { token_hash: await sha256(sessionToken), result_ids: matches.map(item => item.id) } }).eq("id", sessionId);
     if (contextError) throw new HttpError(503, "Não foi possível atualizar a conversa");
-    const { error: searchEventError } = await db.from("ai_events").insert({ session_id: sessionId, event_type: matches.length ? "search" : "no_result" });
+    const { error: searchEventError } = await db.from("ai_events").insert({ session_id: sessionId, event_type: matches.length || knowledgeArticle ? "search" : "no_result" });
     if (searchEventError) throw new HttpError(503, "Não foi possível registrar a busca");
     if (matches.length) {
       const { error: impressionsError } = await db.from("ai_events").upsert(matches.map((item, index) => ({
@@ -300,7 +317,10 @@ Deno.serve(async (req: Request) => {
       })), { onConflict: "dedupe_key", ignoreDuplicates: true });
       if (impressionsError) throw new HttpError(503, "Não foi possível registrar os resultados");
     }
-    return jsonResponse(req, { sessionId, sessionToken, text: responseText, results: matches.map(publicCompany), links: matches.length ? [] : [{ label: "Explorar locais", url: "/locais" }] });
+    const links = matches.length ? [] : knowledgeArticle?.sourceUrl
+      ? [{ label: "Ver fonte", url: knowledgeArticle.sourceUrl }]
+      : [{ label: "Explorar locais", url: "/locais" }];
+    return jsonResponse(req, { sessionId, sessionToken, text: responseText, results: matches.map(publicCompany), links });
   } catch (error) {
     return errorResponse(req, error);
   }

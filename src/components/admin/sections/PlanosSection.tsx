@@ -29,6 +29,7 @@ import { AssignPlanoManualModal } from '@/components/admin/forms/AssignPlanoManu
 import type { Tables } from '@/integrations/supabase/types';
 import { formatarLimitePlano, formatarPrecoPlano, planoEmpresarial } from '@/lib/planos';
 import { AiAssistantControls } from './AiAssistantControls';
+import { AiKnowledgeControls } from './AiKnowledgeControls';
 
 type Plano = Tables<'planos'>;
 
@@ -111,6 +112,7 @@ export const PlanosSection = () => {
   return (
     <div className="min-w-0 space-y-6">
       <AiAssistantControls />
+      <AiKnowledgeControls />
       <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Gestão de Planos</h2>
