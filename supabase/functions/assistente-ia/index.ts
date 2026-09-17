@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { ListObjectsV2Command, S3Client } from "https://esm.sh/@aws-sdk/client-s3@3.1109.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.112.3";
 import { corsHeaders, errorResponse, HttpError, jsonResponse, requireUser } from "../_shared/security.ts";
 import { platformAnswer } from "./platform-answers.ts";
@@ -130,6 +131,32 @@ Deno.serve(async (req: Request) => {
 
     if (body.action === "status") {
       return jsonResponse(req, { enabled: config.enabled && !config.maintenance });
+    }
+    if (body.action === "knowledge_diagnostic") {
+      await requireUser(req, ["admin_geral"]);
+      const endpoint = Deno.env.get("AI_R2_ENDPOINT")?.replace(/\/$/, "");
+      const bucket = Deno.env.get("AI_R2_BUCKET");
+      const accessKeyId = Deno.env.get("AI_R2_ACCESS_KEY_ID");
+      const secretAccessKey = Deno.env.get("AI_R2_SECRET_ACCESS_KEY");
+      if (!endpoint || !bucket || !accessKeyId || !secretAccessKey) {
+        return jsonResponse(req, { configured: false, reachable: false, reason: "missing_secret" });
+      }
+      let endpointUrl: URL;
+      try { endpointUrl = new URL(endpoint); } catch {
+        return jsonResponse(req, { configured: true, reachable: false, reason: "invalid_endpoint" });
+      }
+      if (endpointUrl.protocol !== "https:" || !endpointUrl.hostname.endsWith(".r2.cloudflarestorage.com") || endpointUrl.pathname !== "/") {
+        return jsonResponse(req, { configured: true, reachable: false, reason: "invalid_endpoint" });
+      }
+      try {
+        const client = new S3Client({ region: "auto", endpoint, credentials: { accessKeyId, secretAccessKey } });
+        const result = await client.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: "knowledge/", MaxKeys: 1 }));
+        return jsonResponse(req, { configured: true, reachable: true, hasKnowledgeFiles: (result.KeyCount || 0) > 0 });
+      } catch (error) {
+        const name = error instanceof Error ? error.name : "";
+        const reason = name === "AccessDenied" ? "access_denied" : name === "NoSuchBucket" ? "bucket_not_found" : "connection_failed";
+        return jsonResponse(req, { configured: true, reachable: false, reason });
+      }
     }
     if (body.action === "diagnostic") {
       const auth = await requireUser(req, ["admin_geral"]);

@@ -42,6 +42,7 @@ export function AiAssistantControls() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testingKey, setTestingKey] = useState(false);
+  const [testingKnowledge, setTestingKnowledge] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -122,6 +123,23 @@ export function AiAssistantControls() {
     else toast.error(data?.configured ? 'A chave existe, mas a chamada ao Gemini falhou.' : 'GEMINI_API_KEY não foi encontrada na função.');
   }
 
+  async function testKnowledge() {
+    setTestingKnowledge(true);
+    const { data, error } = await supabase.functions.invoke('assistente-ia', { body: { action: 'knowledge_diagnostic' } });
+    setTestingKnowledge(false);
+    if (error) return toast.error('Não foi possível testar o armazenamento. Confirme o MFA e a publicação da função.');
+    if (data?.reachable) return toast.success(data.hasKnowledgeFiles
+      ? 'Bucket privado da IA conectado; já há arquivos em knowledge/.'
+      : 'Bucket privado da IA conectado. Ainda não há arquivos em knowledge/.');
+    const reasons: Record<string, string> = {
+      missing_secret: 'Falta pelo menos um dos quatro secrets AI_R2_ no Supabase.',
+      invalid_endpoint: 'AI_R2_ENDPOINT não é um endpoint S3 válido do R2.',
+      access_denied: 'A chave não tem permissão para listar o bucket da IA.',
+      bucket_not_found: 'Bucket não encontrado. Confira a conta, o endpoint e o nome.',
+    };
+    toast.error(reasons[data?.reason] || 'Não foi possível conectar ao bucket da IA. Confira os quatro secrets.');
+  }
+
   async function saveGrant(remove = false) {
     if (!selectedCompany) return toast.error('Escolha uma empresa.');
     const company = companies.find(item => item.id === selectedCompany);
@@ -187,7 +205,7 @@ export function AiAssistantControls() {
             </div>)}
           </div>
           <p className="text-xs text-muted-foreground">Modelo previsto: {settings.model}. A chave fica exclusivamente nos secrets da função Supabase; não a cole neste painel.</p>
-          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap"><Button className="w-full sm:w-auto" disabled={saving} onClick={() => void saveSettings()}>Salvar limites</Button><Button className="w-full sm:w-auto" variant="outline" disabled={testingKey} onClick={() => void testKey()}>{testingKey ? 'Testando...' : 'Testar chave Gemini'}</Button></div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap"><Button className="w-full sm:w-auto" disabled={saving} onClick={() => void saveSettings()}>Salvar limites</Button><Button className="w-full sm:w-auto" variant="outline" disabled={testingKey} onClick={() => void testKey()}>{testingKey ? 'Testando...' : 'Testar chave Gemini'}</Button><Button className="w-full sm:w-auto" variant="outline" disabled={testingKnowledge} onClick={() => void testKnowledge()}>{testingKnowledge ? 'Verificando R2...' : 'Testar base de conhecimento (R2)'}</Button></div>
           <div className="space-y-3 border-t pt-5">
             <h3 className="font-semibold">Planos que participam da descoberta</h3>
             <p className="text-sm text-muted-foreground">Este botão habilita o <strong>tipo de plano</strong>, não concede acesso individual a empresas sem pagamento. Para planos atribuídos manualmente, use a concessão com motivo e prazo na seção abaixo.</p>
