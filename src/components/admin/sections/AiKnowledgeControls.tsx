@@ -20,6 +20,7 @@ type Article = {
 };
 
 type Draft = Omit<Article, 'keywords' | 'sourceUrl' | 'updatedAt'> & { keywords: string; sourceUrl: string };
+type Unanswered = { question: string; createdAt: string };
 const emptyDraft = (): Draft => ({ id: crypto.randomUUID(), title: '', answer: '', keywords: '', sourceUrl: '', active: true });
 
 export function AiKnowledgeControls() {
@@ -29,6 +30,8 @@ export function AiKnowledgeControls() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
+  const [unanswered, setUnanswered] = useState<Unanswered[]>([]);
+  const [loadingUnanswered, setLoadingUnanswered] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -44,6 +47,14 @@ export function AiKnowledgeControls() {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+
+  async function loadUnanswered() {
+    setLoadingUnanswered(true);
+    const { data, error: requestError } = await supabase.functions.invoke('assistente-ia', { body: { action: 'knowledge_unanswered' } });
+    setLoadingUnanswered(false);
+    if (requestError || !Array.isArray(data?.questions)) return toast.error('Não foi possível carregar as perguntas. Confira o MFA.');
+    setUnanswered((data.questions as Unanswered[]).filter(item => typeof item.question === 'string'));
+  }
 
   function edit(article: Article) {
     setDraft({ ...article, keywords: article.keywords.join(', '), sourceUrl: article.sourceUrl || '' });
@@ -92,6 +103,22 @@ export function AiKnowledgeControls() {
             <span className="text-xs text-muted-foreground">{article.active ? 'Ativo' : 'Desativado'} · Atualizado em {new Date(article.updatedAt).toLocaleDateString('pt-BR')}</span>
           </button>)}
         </div>}
+        <div className="space-y-3 border-t pt-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="font-semibold">Perguntas sem resposta</h3>
+            <Button variant="outline" size="sm" disabled={loadingUnanswered} onClick={() => void loadUnanswered()}>
+              {loadingUnanswered ? 'Carregando...' : 'Revisar perguntas'}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">São dúvidas registradas nas conversas. Revise os fatos antes de transformá-las em artigos; nenhuma resposta é publicada automaticamente.</p>
+          {unanswered.length > 0 && <div className="max-h-64 space-y-2 overflow-y-auto">
+            {unanswered.map((item, index) => <div key={`${item.createdAt}-${index}`} className="flex min-w-0 flex-wrap items-start justify-between gap-2 rounded-lg border p-3 text-sm">
+              <span className="min-w-0 flex-1 break-words">{item.question}</span>
+              <Button size="sm" variant="ghost" onClick={() => setDraft({ ...emptyDraft(), title: item.question.slice(0, 120) })}>Criar artigo</Button>
+            </div>)}
+          </div>}
+          {!loadingUnanswered && unanswered.length === 0 && <p className="text-xs text-muted-foreground">Clique em “Revisar perguntas” para carregar a fila.</p>}
+        </div>
         <div className="space-y-3 border-t pt-5">
           <h3 className="font-semibold">{articles.some(article => article.id === draft.id) ? 'Editar artigo' : 'Novo artigo'}</h3>
           <p className="text-xs text-muted-foreground">Cadastre informações sobre o site, ferramentas e orientações verificadas. Não copie preços, horários ou promoções de empresas para cá: esses dados mudam e têm regras próprias.</p>

@@ -5,7 +5,6 @@ const KEY = "knowledge/articles-v1.json";
 const MAX_BYTES = 1_000_000;
 const MAX_ARTICLES = 200;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const COMMON_WORDS = new Set(["como", "qual", "quais", "quando", "onde", "porque", "funciona", "sobre", "para", "quero", "saber", "pode", "site"]);
 
 export type KnowledgeArticle = {
   id: string;
@@ -116,21 +115,4 @@ export async function saveKnowledgeArticle(input: unknown, expectedEtag: string 
     }
     throw new HttpError(503, "Não foi possível salvar na base de conhecimento");
   }
-}
-
-function words(value: string): string[] {
-  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
-    .replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter(word => word.length >= 4 && !COMMON_WORDS.has(word));
-}
-
-export function findKnowledgeArticle(question: string, articles: KnowledgeArticle[]): KnowledgeArticle | null {
-  const query = [...new Set(words(question))].slice(0, 12);
-  if (!query.length) return null;
-  const scored = articles.filter(article => article.active).map(article => {
-    const title = new Set(words(article.title));
-    const keywords = new Set(article.keywords.flatMap(words));
-    const score = query.reduce((total, word) => total + (title.has(word) ? 3 : 0) + (keywords.has(word) ? 3 : 0), 0);
-    return { article, score };
-  }).sort((a, b) => b.score - a.score);
-  return scored[0]?.score >= 3 ? scored[0].article : null;
 }

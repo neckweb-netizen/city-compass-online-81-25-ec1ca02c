@@ -3,7 +3,16 @@ export type PlatformAnswer = { text: string; links: { label: string; url: string
 // Factual answers about the site, independent of commercial eligibility.
 // Keep these aligned with the published routes and Terms of Use.
 export function platformAnswer(message: string): PlatformAnswer | null {
-  const text = message.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const text = message.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+  if (/^(oi|ola|bom dia|boa tarde|boa noite|e ai|tudo bem)[!?. ]*$/.test(text)) {
+    return { text: "Olá! Posso ajudar você a conhecer recursos do Saj Tem ou encontrar empresas e serviços da cidade. O que procura?", links: [{ label: "Explorar locais", url: "/locais" }] };
+  }
+  if (/^(obrigad[ao]|valeu|agradeco)[!?. ]*$/.test(text)) {
+    return { text: "Por nada! Se precisar de mais alguma informação sobre o Saj Tem ou os locais da cidade, é só perguntar.", links: [] };
+  }
+  if (/^(ajuda|me ajude|o que voce faz|no que pode ajudar)[!?. ]*$/.test(text)) {
+    return { text: "Posso explicar funções do Saj Tem e ajudar a procurar empresas cadastradas. Pergunte sobre um recurso ou diga que tipo de local deseja encontrar.", links: [{ label: "Ver ferramentas", url: "/ferramentas" }] };
+  }
   const aboutSite = /\b(saj\s*tem|site|plataforma|aplicativo|app)\b/.test(text);
   if (/\b(empresa|perfil|selo)\s+verificad[ao]\b/.test(text)) {
     return {

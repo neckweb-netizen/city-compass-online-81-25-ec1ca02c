@@ -12,10 +12,8 @@ type Settings = {
   enabled: boolean;
   maintenance: boolean;
   daily_request_limit: number;
-  daily_model_limit: number;
   visitor_daily_limit: number;
   max_message_length: number;
-  model: string;
 };
 
 type Plan = { id: string; nome: string; ativo: boolean };
@@ -23,9 +21,8 @@ type Entitlement = { plan_id: string; feature: string; enabled: boolean };
 type Company = { id: string; nome: string; plano_atual_id: string; plano_data_vencimento: string };
 type CompanyGrant = { company_id: string; manual_grant_until: string | null; manual_grant_reason: string | null };
 
-const fields: { key: keyof Pick<Settings, 'daily_request_limit' | 'daily_model_limit' | 'visitor_daily_limit' | 'max_message_length'>; label: string; hint: string; min: number; max: number }[] = [
-  { key: 'daily_request_limit', label: 'Consultas por dia no site', hint: 'Teto global diário, incluindo buscas sem Gemini.', min: 1, max: 100000 },
-  { key: 'daily_model_limit', label: 'Chamadas ao Gemini por dia', hint: 'Teto separado para proteger o custo da chave.', min: 0, max: 10000 },
+const fields: { key: keyof Pick<Settings, 'daily_request_limit' | 'visitor_daily_limit' | 'max_message_length'>; label: string; hint: string; min: number; max: number }[] = [
+  { key: 'daily_request_limit', label: 'Consultas por dia no site', hint: 'Teto global diário de buscas.', min: 1, max: 100000 },
   { key: 'visitor_daily_limit', label: 'Consultas por visitante por dia', hint: 'Limite compartilhado por identidade anônima ou conta.', min: 1, max: 1000 },
   { key: 'max_message_length', label: 'Caracteres por mensagem', hint: 'Evita entradas grandes e gasto desnecessário de tokens.', min: 50, max: 2000 },
 ];
@@ -41,14 +38,13 @@ export function AiAssistantControls() {
   const [grantReason, setGrantReason] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [testingKey, setTestingKey] = useState(false);
   const [testingKnowledge, setTestingKnowledge] = useState(false);
 
   useEffect(() => {
     let active = true;
     async function load() {
       const [configResult, plansResult, entitlementsResult, companiesResult, grantsResult] = await Promise.all([
-        supabase.from('ai_settings' as never).select('enabled,maintenance,daily_request_limit,daily_model_limit,visitor_daily_limit,max_message_length,model').eq('id', true).maybeSingle(),
+        supabase.from('ai_settings' as never).select('enabled,maintenance,daily_request_limit,visitor_daily_limit,max_message_length').eq('id', true).maybeSingle(),
         supabase.from('planos').select('id,nome,ativo').order('nome'),
         supabase.from('ai_plan_entitlements' as never).select('plan_id,feature,enabled').eq('feature', 'discovery'),
         supabase.from('empresas').select('id,nome,plano_atual_id,plano_data_vencimento').eq('ativo', true).eq('status_aprovacao', 'aprovado').gt('plano_data_vencimento', new Date().toISOString()).not('plano_atual_id', 'is', null).order('nome').limit(100),
@@ -85,7 +81,6 @@ export function AiAssistantControls() {
       enabled: settings.enabled,
       maintenance: settings.maintenance,
       daily_request_limit: settings.daily_request_limit,
-      daily_model_limit: settings.daily_model_limit,
       visitor_daily_limit: settings.visitor_daily_limit,
       max_message_length: settings.max_message_length,
     } as never).eq('id', true);
@@ -112,15 +107,6 @@ export function AiAssistantControls() {
     }
     setEntitlements(previous => [...previous.filter(item => item.plan_id !== planId), { plan_id: planId, feature: 'discovery', enabled }]);
     toast.success(enabled ? 'Plano habilitado para descoberta pela IA.' : 'Plano removido da descoberta pela IA.');
-  }
-
-  async function testKey() {
-    setTestingKey(true);
-    const { data, error } = await supabase.functions.invoke('assistente-ia', { body: { action: 'diagnostic' } });
-    setTestingKey(false);
-    if (error) toast.error('O teste não conseguiu acessar a função. Confira a publicação e o MFA.');
-    else if (data?.reachable) toast.success('Chave Gemini configurada e conexão funcionando.');
-    else toast.error(data?.configured ? 'A chave existe, mas a chamada ao Gemini falhou.' : 'GEMINI_API_KEY não foi encontrada na função.');
   }
 
   async function testKnowledge() {
@@ -188,7 +174,7 @@ export function AiAssistantControls() {
         ) : <>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex min-w-0 items-center justify-between gap-3 rounded-lg border p-3 sm:p-4">
-              <div className="min-w-0"><Label htmlFor="ai-enabled">Assistente ativo</Label><p className="text-xs text-muted-foreground">Comece desligado; ligue após configurar a chave e testar a função.</p></div>
+              <div className="min-w-0"><Label htmlFor="ai-enabled">Assistente ativo</Label><p className="text-xs text-muted-foreground">Ative após testar a base de conhecimento e as buscas.</p></div>
               <Switch className="shrink-0" id="ai-enabled" checked={settings.enabled} onCheckedChange={enabled => setSettings({ ...settings, enabled })} />
             </div>
             <div className="flex min-w-0 items-center justify-between gap-3 rounded-lg border p-3 sm:p-4">
@@ -204,8 +190,8 @@ export function AiAssistantControls() {
               <p className="text-xs text-muted-foreground">{field.hint}</p>
             </div>)}
           </div>
-          <p className="text-xs text-muted-foreground">Modelo previsto: {settings.model}. A chave fica exclusivamente nos secrets da função Supabase; não a cole neste painel.</p>
-          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap"><Button className="w-full sm:w-auto" disabled={saving} onClick={() => void saveSettings()}>Salvar limites</Button><Button className="w-full sm:w-auto" variant="outline" disabled={testingKey} onClick={() => void testKey()}>{testingKey ? 'Testando...' : 'Testar chave Gemini'}</Button><Button className="w-full sm:w-auto" variant="outline" disabled={testingKnowledge} onClick={() => void testKnowledge()}>{testingKnowledge ? 'Verificando R2...' : 'Testar base de conhecimento (R2)'}</Button></div>
+          <p className="text-xs text-muted-foreground">Respostas baseadas em conteúdo revisado, sem modelos externos. Perguntas sem resposta ajudam a ampliar a base.</p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap"><Button className="w-full sm:w-auto" disabled={saving} onClick={() => void saveSettings()}>Salvar limites</Button><Button className="w-full sm:w-auto" variant="outline" disabled={testingKnowledge} onClick={() => void testKnowledge()}>{testingKnowledge ? 'Verificando R2...' : 'Testar base de conhecimento (R2)'}</Button></div>
           <div className="space-y-3 border-t pt-5">
             <h3 className="font-semibold">Planos que participam da descoberta</h3>
             <p className="text-sm text-muted-foreground">Este botão habilita o <strong>tipo de plano</strong>, não concede acesso individual a empresas sem pagamento. Para planos atribuídos manualmente, use a concessão com motivo e prazo na seção abaixo.</p>

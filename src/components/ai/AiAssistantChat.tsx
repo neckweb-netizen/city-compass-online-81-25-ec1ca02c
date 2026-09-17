@@ -199,7 +199,7 @@ export function AiAssistantChat() {
         <Button type="button" variant={listening ? 'default' : 'outline'} size="icon" aria-label={listening ? 'Parar e enviar fala' : 'Falar pergunta'} disabled={busy} onClick={() => listening ? recognition.current?.stop() : startListening()}><Mic className={listening ? 'h-4 w-4 animate-pulse' : 'h-4 w-4'} /></Button>
         <Button type="submit" size="icon" aria-label={editingTurnId !== null ? 'Reenviar pergunta corrigida' : 'Enviar pergunta'} disabled={busy || listening || !input.trim()}><Send className="h-4 w-4" /></Button>
       </form>
-      <p className="px-3 pb-2 text-[11px] text-muted-foreground">Não envie dados sensíveis. Perguntas complexas podem usar IA; o microfone depende do navegador.</p>
+      <p className="px-3 pb-2 text-[11px] text-muted-foreground">Não envie dados sensíveis. As respostas usam informações revisadas; o microfone depende do navegador.</p>
     </section>}
     <Button className="ml-auto flex rounded-full px-5 shadow-lg" onClick={() => open ? closeChat() : setOpen(true)} aria-expanded={open} aria-label={open ? 'Fechar assistente de IA' : 'Abrir assistente de IA'}><Bot className="mr-2 h-5 w-5" /> Pergunte ao Saj Tem</Button>
   </div>;

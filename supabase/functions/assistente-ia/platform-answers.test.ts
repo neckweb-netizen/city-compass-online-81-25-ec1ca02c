@@ -11,3 +11,9 @@ test('answers the three observed voice transcripts without a company catalog', (
 test('does not confuse a product search for a question about the site', () => {
   assert.equal(platformAnswer('Onde comprar pizza?'), null);
 });
+
+test('responds to basic Portuguese conversation without intercepting searches', () => {
+  assert.match(platformAnswer('Bom dia!')?.text || '', /Olá/);
+  assert.match(platformAnswer('Valeu')?.text || '', /Por nada/);
+  assert.equal(platformAnswer('Oi, onde comprar pizza?'), null);
+});
