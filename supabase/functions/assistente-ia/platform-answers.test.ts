@@ -15,5 +15,9 @@ test('does not confuse a product search for a question about the site', () => {
 test('responds to basic Portuguese conversation without intercepting searches', () => {
   assert.match(platformAnswer('Bom dia!')?.text || '', /Olá/);
   assert.match(platformAnswer('Valeu')?.text || '', /Por nada/);
+  assert.match(platformAnswer('Oi, tudo bem?')?.text || '', /Tudo bem/);
+  assert.match(platformAnswer('Como você está?')?.text || '', /Tudo bem/);
+  assert.match(platformAnswer('Muito obrigado pela ajuda!')?.text || '', /Por nada/);
+  assert.match(platformAnswer('Até mais!')?.text || '', /Até mais/);
   assert.equal(platformAnswer('Oi, onde comprar pizza?'), null);
 });

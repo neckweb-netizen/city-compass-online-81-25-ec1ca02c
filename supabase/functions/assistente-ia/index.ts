@@ -162,7 +162,7 @@ Deno.serve(async (req: Request) => {
       if (!Array.isArray(session.context?.result_ids) || !session.context.result_ids.includes(companyId)) {
         throw new HttpError(403, "Resultado não apresentado nesta conversa");
       }
-      const { data: eligible, error: eligibleError } = await db.rpc("ai_eligible_companies", { p_limit: 20 });
+      const { data: eligible, error: eligibleError } = await db.rpc("ai_eligible_companies", { p_limit: 1000 });
       if (eligibleError || !eligible?.some((item: { company_id: string }) => item.company_id === companyId)) {
         throw new HttpError(403, "Empresa não elegível");
       }
@@ -228,14 +228,18 @@ Deno.serve(async (req: Request) => {
       return jsonResponse(req, { sessionId, sessionToken, text: siteAnswer.text, results: [], links: siteAnswer.links });
     }
 
-    const { data: eligible, error: eligibleError } = await db.rpc("ai_eligible_companies", { p_limit: 20 });
+    const { data: eligible, error: eligibleError } = await db.rpc("ai_eligible_companies", { p_limit: 1000 });
     if (eligibleError) throw new HttpError(503, "Busca indisponível");
     const allowedIds = (eligible || []).map((item: { company_id: string }) => item.company_id);
     const { data: companyRows, error: companyError } = allowedIds.length
       ? await db.from("empresas").select("id,nome,descricao,endereco,telefone,slug,categoria_id").in("id", allowedIds)
       : { data: [] as Company[], error: null };
     if (companyError) throw new HttpError(503, "Busca indisponível");
-    const companies = (companyRows || []) as Company[];
+    // PostgREST does not preserve the order of ids passed to .in(). The RPC
+    // ranks paid, current plans first, so restore that order before matching.
+    const orderById = new Map(allowedIds.map((id: string, index: number) => [id, index]));
+    const companies = ((companyRows || []) as Company[])
+      .sort((a, b) => (orderById.get(a.id) ?? 1000) - (orderById.get(b.id) ?? 1000));
     const categoryIds = [...new Set(companies.map(item => item.categoria_id).filter((id): id is string => Boolean(id)))];
     const { data: categoryRows, error: categoryError } = categoryIds.length
       ? await db.from("categorias").select("id,nome").in("id", categoryIds)

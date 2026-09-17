@@ -4,11 +4,15 @@ export type PlatformAnswer = { text: string; links: { label: string; url: string
 // Keep these aligned with the published routes and Terms of Use.
 export function platformAnswer(message: string): PlatformAnswer | null {
   const text = message.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-  if (/^(oi|ola|bom dia|boa tarde|boa noite|e ai|tudo bem)[!?. ]*$/.test(text)) {
-    return { text: "Olá! Posso ajudar você a conhecer recursos do Saj Tem ou encontrar empresas e serviços da cidade. O que procura?", links: [{ label: "Explorar locais", url: "/locais" }] };
+  const social = text.replace(/[!?.,;:]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (/^(?:(?:oi|ola|opa|e ai|bom dia|boa tarde|boa noite)(?: (?:tudo bem|tudo bom|como vai|como voce esta|beleza))?|tudo bem|tudo bom|como vai|como voce esta|beleza)$/.test(social)) {
+    return { text: "Olá! Tudo bem por aqui. Posso ajudar a encontrar empresas ou explicar recursos do Saj Tem. O que você procura?", links: [{ label: "Explorar locais", url: "/locais" }] };
   }
-  if (/^(obrigad[ao]|valeu|agradeco)[!?. ]*$/.test(text)) {
+  if (/^(?:(?:muito )?(?:obrigado|obrigada|valeu)(?: mesmo)?(?: pela ajuda)?|agradeco)$/.test(social)) {
     return { text: "Por nada! Se precisar de mais alguma informação sobre o Saj Tem ou os locais da cidade, é só perguntar.", links: [] };
+  }
+  if (/^(tchau|ate logo|ate mais|falou)$/.test(social)) {
+    return { text: "Até mais! Quando precisar, posso ajudar você a explorar o Saj Tem.", links: [] };
   }
   if (/^(ajuda|me ajude|o que voce faz|no que pode ajudar)[!?. ]*$/.test(text)) {
     return { text: "Posso explicar funções do Saj Tem e ajudar a procurar empresas cadastradas. Pergunte sobre um recurso ou diga que tipo de local deseja encontrar.", links: [{ label: "Ver ferramentas", url: "/ferramentas" }] };
