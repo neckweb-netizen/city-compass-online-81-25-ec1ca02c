@@ -8,6 +8,7 @@ import { ArrowLeft, HelpCircle, MessageCircle, Phone, Mail } from 'lucide-react'
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { siteFaq } from '../../supabase/functions/assistente-ia/site-faq';
 export const HelpCenter = () => {
   const navigate = useNavigate();
   const {
@@ -59,91 +60,13 @@ export const HelpCenter = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-4">
-              <div>
-                <h4 className="font-medium">Como cadastrar meu local?</h4>
-                <p className="text-sm text-muted-foreground">
-                  Acesse seu perfil e clique em "Cadastrar Local" na seção "Área do Local". Preencha todas as informações e aguarde a aprovação.
-                </p>
+            {siteFaq.map(({ question, answer, link }) => (
+              <div key={question}>
+                <h4 className="font-medium">{question}</h4>
+                <p className="text-sm text-muted-foreground">{answer}</p>
+                <a className="text-sm text-primary underline-offset-4 hover:underline" href={link.url}>{link.label}</a>
               </div>
-              
-              <div>
-                <h4 className="font-medium">Como avaliar um local?</h4>
-                <p className="text-sm text-muted-foreground">
-                  Entre no perfil do local e clique no botão "Avaliar" para deixar sua avaliação com estrelas e comentários.
-                </p>
-              </div>
-              
-              <div>
-                <h4 className="font-medium">Como usar cupons de desconto?</h4>
-                <p className="text-sm text-muted-foreground">
-                  Visualize os cupons disponíveis na aba "Cupons", clique no cupom desejado e apresente o código no local participante.
-                </p>
-              </div>
-              
-              <div>
-                <h4 className="font-medium">Como favoritar locais?</h4>
-                <p className="text-sm text-muted-foreground">
-                  Clique no ícone de coração no perfil do local para adicioná-lo aos seus favoritos e acesse depois pelo seu perfil.
-                </p>
-              </div>
-
-              <div>
-                <h4 className="font-medium">Como buscar vagas de emprego?</h4>
-                <p className="text-sm text-muted-foreground">
-                  Acesse a seção "Vagas" no menu para ver oportunidades disponíveis. Use os filtros por categoria para encontrar sua área.
-                </p>
-              </div>
-
-              <div>
-                <h4 className="font-medium">Como anunciar serviços autônomos?</h4>
-                <p className="text-sm text-muted-foreground">
-                  Na seção "Serviços", clique em "Anunciar Serviço" para cadastrar seus serviços profissionais e atrair clientes.
-                </p>
-              </div>
-
-              <div>
-                <h4 className="font-medium">Como acompanhar eventos da cidade?</h4>
-                <p className="text-sm text-muted-foreground">
-                  Acesse a aba "Eventos" para ver todos os eventos programados na sua cidade com datas, locais e descrições.
-                </p>
-              </div>
-
-              <div>
-                <h4 className="font-medium">O que são as Stories?</h4>
-                <p className="text-sm text-muted-foreground">
-                  Stories são atualizações rápidas dos locais com promoções, novidades e conteúdos que ficam disponíveis por tempo limitado.
-                </p>
-              </div>
-
-              <div>
-                <h4 className="font-medium">Como encontrar lugares públicos?</h4>
-                <p className="text-sm text-muted-foreground">
-                  Use o botão "Aonde Ir" na página inicial para descobrir praças, parques e outros locais públicos da sua cidade.
-                </p>
-              </div>
-
-              <div>
-                <h4 className="font-medium">Como funciona o canal informativo?</h4>
-                <p className="text-sm text-muted-foreground">
-                  O canal informativo traz notícias e informações importantes sobre a cidade, sempre atualizadas pela administração local.
-                </p>
-              </div>
-
-              <div>
-                <h4 className="font-medium">Posso usar o app offline?</h4>
-                <p className="text-sm text-muted-foreground">
-                  O app funciona melhor online, mas você pode instalar como PWA no seu celular para acesso mais rápido.
-                </p>
-              </div>
-
-              <div>
-                <h4 className="font-medium">Como receber notificações?</h4>
-                <p className="text-sm text-muted-foreground">
-                  Permita notificações no seu navegador para receber alertas sobre novos cupons, eventos e oportunidades.
-                </p>
-              </div>
-            </div>
+            ))}
           </CardContent>
         </Card>
 

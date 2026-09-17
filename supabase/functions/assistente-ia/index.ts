@@ -3,6 +3,7 @@ import { ListObjectsV2Command, S3Client } from "https://esm.sh/@aws-sdk/client-s
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.112.3";
 import { corsHeaders, errorResponse, HttpError, jsonResponse, requireUser } from "../_shared/security.ts";
 import { platformAnswer } from "./platform-answers.ts";
+import { findSiteFaq } from "./site-faq.ts";
 import { readKnowledge, saveKnowledgeArticle, type KnowledgeArticle } from "./knowledge-r2.ts";
 import { answerKnowledgeFollowUp, findKnowledgeArticle, isKnowledgeFollowUp } from "./knowledge-match.ts";
 
@@ -209,7 +210,10 @@ Deno.serve(async (req: Request) => {
       sessionId = session.id;
     }
 
-    const siteAnswer = platformAnswer(message);
+    const faqAnswer = findSiteFaq(message);
+    const siteAnswer = faqAnswer
+      ? { text: faqAnswer.answer, links: [faqAnswer.link] }
+      : platformAnswer(message);
     if (siteAnswer) {
       const { error: messagesError } = await db.from("ai_messages").insert([
         { session_id: sessionId, role: "user", content: message },
