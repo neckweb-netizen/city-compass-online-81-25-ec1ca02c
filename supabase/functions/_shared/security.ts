@@ -9,6 +9,22 @@ export class HttpError extends Error {
   }
 }
 
+// Legacy webhook handlers run without gateway JWT verification. Only an
+// explicitly supplied service-role credential may invoke their side effects.
+export function requireServiceRole(req: Request): void {
+  const expected = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const supplied = req.headers.get("Authorization")?.match(/^Bearer (.+)$/)?.[1];
+  if (!expected) throw new HttpError(503, "Configuração do servidor incompleta");
+  if (!supplied || supplied.length !== expected.length) {
+    throw new HttpError(401, "Autenticação obrigatória");
+  }
+  let mismatch = 0;
+  for (let index = 0; index < expected.length; index++) {
+    mismatch |= expected.charCodeAt(index) ^ supplied.charCodeAt(index);
+  }
+  if (mismatch !== 0) throw new HttpError(401, "Autenticação obrigatória");
+}
+
 const configuredOrigins = (Deno.env.get("ALLOWED_ORIGINS") ?? "https://sajtem.com,https://www.sajtem.com,https://sajtem.vercel.app")
   .split(",")
   .map((origin) => origin.trim())
