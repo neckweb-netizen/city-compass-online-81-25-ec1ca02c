@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders(req) });
   try {
     if (req.method !== "GET" && req.method !== "POST") throw new HttpError(405, "Método não permitido");
-    enforceRateLimit(req, "firebase-public-config", 60, 60_000);
+    await enforceRateLimit(req, "firebase-public-config", 60, 60_000);
     return jsonResponse(req, await fetchFirebaseWebConfig());
   } catch (error) {
     return errorResponse(req, error);

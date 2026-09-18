@@ -33,9 +33,8 @@ Deno.serve(async (req) => {
 
   try {
     if (req.method !== "POST") throw new HttpError(405, "Método não permitido");
-    enforceRateLimit(req, "delete-account", 3, 60 * 60 * 1000);
-
     const { user, admin } = await requireUser(req);
+    await enforceRateLimit(req, "delete-account", 3, 60 * 60 * 1000, user.id);
     const body = await req.json().catch(() => ({}));
     const confirmation = typeof body.confirmation === "string" ? body.confirmation.trim().toLowerCase() : "";
 

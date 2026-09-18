@@ -20,7 +20,7 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     if (req.method !== "POST") throw new HttpError(405, "Método não permitido");
-    enforceRateLimit(req, "contact", 5, 10 * 60 * 1000);
+    await enforceRateLimit(req, "contact", 5, 10 * 60 * 1000);
     const contentLength = Number(req.headers.get("content-length") || 0);
     if (contentLength > 20_000) throw new HttpError(413, "Mensagem muito grande");
     const input: ContactEmailRequest = await req.json();

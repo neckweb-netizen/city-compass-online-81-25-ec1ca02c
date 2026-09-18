@@ -214,8 +214,8 @@ Deno.serve(async (req: Request) => {
   try {
     if (req.method !== "POST") throw new HttpError(405, "Método não permitido");
 
-    enforceRateLimit(req, "fipe-consulta", 60, 60_000);
     const { user, admin } = await requireUser(req);
+    await enforceRateLimit(req, "fipe-consulta", 60, 60_000, user.id);
 
     let body: RequestBody;
     try {

@@ -4,7 +4,7 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders(req) })
 
   try {
-    enforceRateLimit(req, 'weather', 60, 60 * 1000)
+    await enforceRateLimit(req, 'weather', 60, 60 * 1000)
     const apiKey = Deno.env.get('OPENWEATHER_API_KEY')
     if (!apiKey) throw new HttpError(503, 'Serviço de clima não configurado')
 

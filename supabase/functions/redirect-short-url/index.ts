@@ -27,9 +27,9 @@ Deno.serve(async (req) => {
       throw new HttpError(404, 'URL não encontrada ou expirada')
     }
 
-    const siteUrl = (Deno.env.get('SITE_URL') || 'https://sajtem.vercel.app').replace(/\/$/, '')
+    const siteUrl = (Deno.env.get('SITE_URL') || 'https://sajtem.com.br').replace(/\/$/, '')
     const parsed = new URL(data.original_url, siteUrl)
-    if (!['http:', 'https:'].includes(parsed.protocol)) {
+    if (!['http:', 'https:'].includes(parsed.protocol) || parsed.origin !== new URL(siteUrl).origin) {
       throw new HttpError(400, 'Destino inválido')
     }
 

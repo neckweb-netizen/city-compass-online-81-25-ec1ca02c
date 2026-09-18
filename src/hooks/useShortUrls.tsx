@@ -15,7 +15,7 @@ interface ShortUrlResponse {
 const getInternalPath = (url: string): string => {
   const parsedUrl = new URL(url, window.location.origin);
 
-  if (parsedUrl.origin !== window.location.origin) {
+  if (parsedUrl.origin !== window.location.origin || url.includes('\\')) {
     throw new Error('Apenas páginas do Saj Tem podem ser encurtadas');
   }
 

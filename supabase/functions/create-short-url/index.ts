@@ -17,9 +17,17 @@ Deno.serve(async (req) => {
     }
 
     // Validate URL format
+    let internalPath: string;
     try {
       const parsedUrl = new URL(original_url)
-      if (!['http:', 'https:'].includes(parsedUrl.protocol)) throw new Error('invalid protocol')
+      const siteUrl = new URL(Deno.env.get('SITE_URL') || 'https://sajtem.com.br');
+      const allowedOrigins = new Set([
+        siteUrl.origin, 'https://sajtem.com.br', 'https://www.sajtem.com.br', 'https://sajtem.vercel.app',
+      ]);
+      if (!['http:', 'https:'].includes(parsedUrl.protocol) || !allowedOrigins.has(parsedUrl.origin) || original_url.includes('\\')) {
+        throw new Error('invalid destination');
+      }
+      internalPath = `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
     } catch {
       throw new HttpError(400, 'URL inválida')
     }
@@ -38,7 +46,7 @@ Deno.serve(async (req) => {
       .from('short_urls')
       .insert({
         short_code: shortCodeData,
-        original_url,
+        original_url: internalPath,
         expires_at: expires_at || null,
         created_by: user.id
       })
@@ -50,7 +58,7 @@ Deno.serve(async (req) => {
       throw new HttpError(500, 'Erro ao criar URL curta')
     }
 
-    const siteUrl = (Deno.env.get('SITE_URL') || 'https://sajtem.vercel.app').replace(/\/$/, '')
+    const siteUrl = (Deno.env.get('SITE_URL') || 'https://sajtem.com.br').replace(/\/$/, '')
     const shortUrl = `${siteUrl}/s/${data.short_code}`;
 
     return jsonResponse(req, {

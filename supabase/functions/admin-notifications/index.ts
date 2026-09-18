@@ -67,8 +67,8 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders(req) });
   try {
     if (req.method !== "POST") throw new HttpError(405, "Método não permitido");
-    enforceRateLimit(req, "admin-notifications", 30, 60_000);
     const { user, profile, admin } = await requireUser(req, ["admin_geral", "admin_cidade"]);
+    await enforceRateLimit(req, "admin-notifications", 30, 60_000, user.id);
     const input = await req.json() as CampaignInput;
 
     if (input.action === "cancel") {

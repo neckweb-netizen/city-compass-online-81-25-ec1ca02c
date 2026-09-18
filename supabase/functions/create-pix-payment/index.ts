@@ -8,8 +8,8 @@ Deno.serve(async (req) => {
 
   try {
     if (req.method !== 'POST') throw new HttpError(405, 'Método não permitido');
-    enforceRateLimit(req, 'pix', 10, 10 * 60 * 1000);
     const { user, profile, admin: supabase } = await requireUser(req);
+    await enforceRateLimit(req, 'pix', 10, 10 * 60 * 1000, user.id);
     const { planoId, userInfo } = await req.json();
     if (!planoId || typeof planoId !== 'string') throw new HttpError(400, 'Plano inválido');
 

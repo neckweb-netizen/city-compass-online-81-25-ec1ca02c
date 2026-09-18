@@ -14,26 +14,34 @@ const configuredOrigins = (Deno.env.get("ALLOWED_ORIGINS") ?? "https://sajtem.co
   .map((origin) => origin.trim())
   .filter(Boolean);
 
-const rateLimitBuckets = new Map<string, { count: number; resetAt: number }>();
+export async function enforceRateLimit(
+  req: Request, namespace: string, limit: number, windowMs: number, userId?: string,
+): Promise<void> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !serviceRoleKey) throw new HttpError(503, "Limite de acesso indisponível");
 
-export function enforceRateLimit(req: Request, namespace: string, limit: number, windowMs: number): void {
-  const forwardedFor = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  const clientAddress = forwardedFor || req.headers.get("x-real-ip") || "unknown";
-  const key = `${namespace}:${clientAddress}`;
-  const now = Date.now();
-  const current = rateLimitBuckets.get(key);
-
-  if (!current || current.resetAt <= now) {
-    rateLimitBuckets.set(key, { count: 1, resetAt: now + windowMs });
-  } else {
-    current.count += 1;
-    if (current.count > limit) throw new HttpError(429, "Muitas tentativas. Aguarde e tente novamente.");
-  }
-
-  if (rateLimitBuckets.size > 10_000) {
-    for (const [bucketKey, bucket] of rateLimitBuckets) {
-      if (bucket.resetAt <= now) rateLimitBuckets.delete(bucketKey);
+  // The gateway's last forwarded address cannot be chosen by prepending a fake first hop.
+  // A global budget also bounds abuse if the upstream proxy preserves caller-supplied headers.
+  const forwardedFor = req.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim();
+  const clientAddress = (req.headers.get("x-real-ip") || forwardedFor || "unknown").slice(0, 80);
+  const actor = userId ? `user:${userId}` : `ip:${clientAddress}`;
+  const seconds = Math.max(1, Math.ceil(windowMs / 1000));
+  const client = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  for (const [bucket, allowance] of [
+    [`${namespace}:${actor}`, limit],
+    [`${namespace}:global`, Math.max(limit * 100, 1000)],
+  ] as const) {
+    const { data, error } = await client.rpc("consume_edge_rate_limit", {
+      p_bucket: bucket, p_limit: allowance, p_window_seconds: seconds,
+    });
+    if (error) {
+      console.error("Rate limit unavailable:", error);
+      throw new HttpError(503, "Limite de acesso indisponível");
     }
+    if (!data) throw new HttpError(429, "Muitas tentativas. Aguarde e tente novamente.");
   }
 }
 

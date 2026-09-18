@@ -21,7 +21,7 @@ export default function ShortUrlRedirect() {
         }
 
         const destination = new URL(data, window.location.origin);
-        if (!['http:', 'https:'].includes(destination.protocol)) {
+        if (!['http:', 'https:'].includes(destination.protocol) || destination.origin !== window.location.origin) {
           throw new Error('Destino inválido');
         }
 
