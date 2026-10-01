@@ -5,10 +5,24 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
-type Result = { id: string; name: string; description: string | null; address: string | null; profileUrl: string };
+type Result = {
+  id: string;
+  kind?: 'company' | 'product' | 'coupon' | 'event' | 'job' | 'service' | 'booking' | 'tool';
+  name: string;
+  description: string | null;
+  address: string | null;
+  profileUrl: string;
+  actionLabel?: string;
+  companyId?: string;
+  distanceKm?: number | null;
+};
 type AssistantLink = { label: string; url: string };
 type ChatTurn = { id: number; role: 'user' | 'assistant'; text: string; results?: Result[]; links?: AssistantLink[] };
-const allowedLinks = new Set(['/', '/locais', '/ferramentas']);
+const allowedLinkPrefixes = ['/', '/locais', '/ferramentas', '/eventos', '/oportunidades'];
+const resultKindLabels: Record<NonNullable<Result['kind']>, string> = {
+  company: 'Empresa', product: 'Produto', coupon: 'Cupom', event: 'Evento', job: 'Vaga',
+  service: 'Serviço', booking: 'Agendamento', tool: 'Ferramenta',
+};
 type Recognition = {
   lang: string;
   continuous: boolean;
@@ -67,6 +81,22 @@ export function AiAssistantChat() {
     window.speechSynthesis.speak(utterance);
   }
 
+  function isAllowedInternalUrl(value: unknown): value is string {
+    if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//')) return false;
+    return allowedLinkPrefixes.some(prefix => value === prefix || (prefix !== '/' && value.startsWith(`${prefix}/`)));
+  }
+
+  async function optionalLocation(message: string): Promise<{ latitude: number; longitude: number } | null> {
+    if (!/\b(perto de mim|pr[oó]xim[oa] de mim|mais perto|mais pr[oó]xim[oa])\b/i.test(message) || !navigator.geolocation) return null;
+    return await new Promise(resolve => {
+      navigator.geolocation.getCurrentPosition(
+        position => resolve({ latitude: position.coords.latitude, longitude: position.coords.longitude }),
+        () => resolve(null),
+        { enableHighAccuracy: false, timeout: 6000, maximumAge: 300000 },
+      );
+    });
+  }
+
   async function sendMessage(message: string, replacingId: number | null = editingTurnId) {
     const trimmed = message.trim();
     if (!trimmed || busyRef.current) return;
@@ -79,8 +109,9 @@ export function AiAssistantChat() {
     const userTurn = { id: ++turnId.current, role: 'user' as const, text: trimmed };
     setTurns(previous => replacingId === null ? [...previous, userTurn] : [userTurn]);
     try {
+      const location = await optionalLocation(trimmed);
       const { data, error: requestError } = await supabase.functions.invoke('assistente-ia', {
-        body: { action: 'chat', message: trimmed, sessionId: session.current?.id, sessionToken: session.current?.token },
+        body: { action: 'chat', message: trimmed, sessionId: session.current?.id, sessionToken: session.current?.token, location },
       });
       if (requestError || !data?.text) {
         setError(data?.error || 'Não foi possível responder agora. Edite e reenvie sua pergunta.');
@@ -89,9 +120,12 @@ export function AiAssistantChat() {
       session.current = { id: data.sessionId, token: data.sessionToken };
       const answer = String(data.text);
       const links = Array.isArray(data.links)
-        ? data.links.filter((link: AssistantLink) => allowedLinks.has(link?.url) && typeof link?.label === 'string')
+        ? data.links.filter((link: AssistantLink) => isAllowedInternalUrl(link?.url) && typeof link?.label === 'string')
         : [];
-      setTurns(previous => [...previous, { id: ++turnId.current, role: 'assistant', text: answer, results: Array.isArray(data.results) ? data.results : [], links }]);
+      const results = Array.isArray(data.results)
+        ? data.results.filter((result: Result) => result && typeof result.id === 'string' && typeof result.name === 'string' && isAllowedInternalUrl(result.profileUrl))
+        : [];
+      setTurns(previous => [...previous, { id: ++turnId.current, role: 'assistant', text: answer, results, links }]);
       speak(answer);
     } catch {
       setError('Não foi possível responder agora. Edite e reenvie sua pergunta.');
@@ -157,10 +191,13 @@ export function AiAssistantChat() {
     setOpen(false);
   }
 
-  function trackProfile(companyId: string) {
-    if (!session.current) return;
+  function trackResult(result: Result) {
+    if (!session.current || !result.companyId) {
+      setOpen(false);
+      return;
+    }
     void supabase.functions.invoke('assistente-ia', {
-      body: { action: 'track', eventType: 'profile', companyId, sessionId: session.current.id, sessionToken: session.current.token },
+      body: { action: 'track', eventType: 'profile', companyId: result.companyId, sessionId: session.current.id, sessionToken: session.current.token },
     });
     setOpen(false);
   }
@@ -170,22 +207,26 @@ export function AiAssistantChat() {
     {open && <section className="mb-3 flex h-[min(70dvh,540px)] w-[min(calc(100vw-24px),420px)] flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-2xl" aria-label="Conversa com o assistente">
       <header className="flex items-center gap-2 border-b p-3">
         <Bot className="h-5 w-5 text-primary" aria-hidden="true" />
-        <div className="min-w-0 flex-1"><h2 className="font-semibold">Assistente Saj Tem</h2><p className="text-xs text-muted-foreground">Encontre locais e serviços da cidade</p></div>
+        <div className="min-w-0 flex-1"><h2 className="font-semibold">Assistente Saj Tem</h2><p className="text-xs text-muted-foreground">Busque locais, ofertas e oportunidades</p></div>
         <Button variant="ghost" size="icon" aria-label={speechEnabled ? 'Desativar voz' : 'Ativar voz'} onClick={() => { window.speechSynthesis?.cancel(); setSpeechEnabled(!speechEnabled); }}>
           {speechEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
         </Button>
         <Button variant="ghost" size="icon" aria-label="Fechar conversa" onClick={closeChat}><X className="h-4 w-4" /></Button>
       </header>
       <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-3" aria-live="polite">
-        {!turns.length && <p className="rounded-xl bg-muted p-3 text-sm">Olá! O que você procura? Experimente: “Quero encontrar uma pizzaria”. Você pode falar ou digitar.</p>}
+        {!turns.length && <p className="rounded-xl bg-muted p-3 text-sm">Olá! Posso buscar empresas, produtos, cupons, eventos, vagas, serviços e ferramentas. Você pode falar ou digitar.</p>}
         {turns.map(turn => <div key={turn.id} className={turn.role === 'user' ? 'ml-8 rounded-xl bg-primary p-3 text-sm text-primary-foreground' : 'mr-4 rounded-xl bg-muted p-3 text-sm'}>
           <p className="whitespace-pre-wrap break-words">{turn.text}</p>
           {turn.role === 'user' && !busy && <button type="button" className="mt-2 inline-flex items-center gap-1 text-xs underline underline-offset-2" onClick={() => { setInput(turn.text); setEditingTurnId(turn.id); setError(''); }}><Pencil className="h-3 w-3" /> Editar e reenviar</button>}
           {turn.results?.map(result => <div key={result.id} className="mt-2 rounded-lg border bg-card p-3 text-card-foreground">
-            <p className="font-semibold">{result.name}</p>
+            <div className="flex items-start justify-between gap-2">
+              <p className="font-semibold">{result.name}</p>
+              {result.kind && <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">{resultKindLabels[result.kind]}</span>}
+            </div>
             {result.description && <p className="mt-1 text-xs text-muted-foreground">{result.description}</p>}
             {result.address && <p className="mt-1 text-xs text-muted-foreground">{result.address}</p>}
-            <Link to={result.profileUrl} onClick={() => trackProfile(result.id)} className="mt-2 inline-block font-medium text-primary underline">Abrir perfil</Link>
+            {typeof result.distanceKm === 'number' && <p className="mt-1 text-xs font-medium text-primary">A aproximadamente {result.distanceKm.toFixed(1).replace('.', ',')} km</p>}
+            <Link to={result.profileUrl} onClick={() => trackResult(result)} className="mt-2 inline-block font-medium text-primary underline">{result.actionLabel || 'Ver detalhes'}</Link>
           </div>)}
           {turn.links?.map(link => <Link key={link.url} to={link.url} onClick={closeChat} className="mr-2 mt-2 inline-block rounded-lg border border-primary/30 bg-card px-3 py-2 font-medium text-primary underline underline-offset-2">{link.label}</Link>)}
         </div>)}

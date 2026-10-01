@@ -15,7 +15,7 @@ export function platformAnswer(message: string): PlatformAnswer | null {
     return { text: "Até mais! Quando precisar, posso ajudar você a explorar o Saj Tem.", links: [] };
   }
   if (/^(ajuda|me ajude|o que voce faz|no que pode ajudar)[!?. ]*$/.test(text)) {
-    return { text: "Posso explicar funções do Saj Tem e ajudar a procurar empresas cadastradas. Pergunte sobre um recurso ou diga que tipo de local deseja encontrar.", links: [{ label: "Ver ferramentas", url: "/ferramentas" }] };
+    return { text: "Posso explicar funções do Saj Tem e procurar empresas, produtos, cupons, eventos, vagas, serviços, agendamentos e ferramentas. Diga o que você precisa ou onde quer encontrar.", links: [{ label: "Ver ferramentas", url: "/ferramentas" }] };
   }
   const aboutSite = /\b(saj\s*tem|site|plataforma|aplicativo|app)\b/.test(text);
   if (/\b(empresa|perfil|selo)\s+verificad[ao]\b/.test(text)) {
