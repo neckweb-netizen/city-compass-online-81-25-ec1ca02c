@@ -36,3 +36,11 @@ test('answers time and privacy questions directly', () => {
 test('keeps company opening-hours questions available to catalog search', () => {
   assert.equal(platformAnswer('Qual o horário da Natulab?'), null);
 });
+
+test('answers Saj Tem contact questions without opening a company catalog', () => {
+  const withQuestionMark = platformAnswer('Saj Tem WhatsApp?');
+  const voiceTranscript = platformAnswer('Saj tem whatsapp');
+  assert.match(withQuestionMark?.text || '', /não tem um número oficial de WhatsApp confirmado/i);
+  assert.match(voiceTranscript?.text || '', /Entre em Contato/i);
+  assert.equal(withQuestionMark?.links[0]?.url, '/contact');
+});

@@ -56,6 +56,12 @@ export function platformAnswer(message: string, now = new Date()): PlatformAnswe
     };
   }
   const aboutSite = /\b(saj\s*tem|site|plataforma|aplicativo|app)\b/.test(text);
+  if (aboutSite && /\b(whatsapp|zap|telefone|numero|contato|falar com|email|e-mail)\b/.test(text)) {
+    return {
+      text: "O Saj Tem ainda não tem um número oficial de WhatsApp confirmado nesta versão. Para falar com a equipe, use a página Entre em Contato do site.",
+      links: [{ label: "Entre em Contato", url: "/contact" }],
+    };
+  }
   if (/\b(empresa|perfil|selo)\s+verificad[ao]\b/.test(text)) {
     return {
       text: "Uma empresa verificada tem um selo indicado no perfil pelo Saj Tem. Isso não garante preços, qualidade ou disponibilidade: confirme as informações diretamente com a empresa.",

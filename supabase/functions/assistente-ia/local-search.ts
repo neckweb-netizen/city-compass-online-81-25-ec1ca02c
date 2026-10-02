@@ -127,6 +127,9 @@ export function detectIntents(query: string): SearchKind[] {
 export function shouldSearchCatalog(query: string, hasPriorResults = false): boolean {
   const normalized = normalizeText(query);
   if (!normalized) return false;
+  const aboutPlatform = /\b(saj tem|site|plataforma|aplicativo|app)\b/.test(normalized);
+  const platformSubject = /\b(whatsapp|zap|telefone|numero|contato|email|instagram|facebook|dono|administrador|privado|privatizado)\b/.test(normalized);
+  if (aboutPlatform && platformSubject) return false;
   if (/^(?:(?:qual(?: e)?(?: o)?|que|tem|e o)\s+)?horario(?: de funcionamento| agora)?$/.test(normalized)) return false;
   if (/^(?:e|eh|isso e)\s+(?:privado|privada|privatizado|privatizada)$/.test(normalized)) return false;
   if (hasPriorResults && (/\b(primeir[ao]|segund[ao]|terceir[ao]|quart[ao]|quint[ao]|mais barato|mais barata|mais perto|onde fica|endereco|telefone|whatsapp|quanto custa|qual o preco|agendar|marcar)\b/.test(normalized))) {

@@ -44,4 +44,7 @@ test('opens the catalog only for an actual local-search request', () => {
   assert.equal(shouldSearchCatalog('Natulab'), true);
   assert.equal(shouldSearchCatalog('Qual o horário da Natulab?'), true);
   assert.equal(shouldSearchCatalog('onde fica a segunda opção?', true), true);
+  assert.equal(shouldSearchCatalog('Saj Tem WhatsApp?'), false);
+  assert.equal(shouldSearchCatalog('Saj tem whatsapp'), false);
+  assert.equal(shouldSearchCatalog('O site tem Instagram'), false);
 });
