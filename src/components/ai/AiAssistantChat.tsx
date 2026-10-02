@@ -207,14 +207,14 @@ export function AiAssistantChat() {
     {open && <section className="mb-3 flex h-[min(70dvh,540px)] w-[min(calc(100vw-24px),420px)] flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-2xl" aria-label="Conversa com o assistente">
       <header className="flex items-center gap-2 border-b p-3">
         <Bot className="h-5 w-5 text-primary" aria-hidden="true" />
-        <div className="min-w-0 flex-1"><h2 className="font-semibold">Assistente Saj Tem</h2><p className="text-xs text-muted-foreground">Busque locais, ofertas e oportunidades</p></div>
+        <div className="min-w-0 flex-1"><h2 className="font-semibold">Assistente Saj Tem</h2><p className="text-xs text-muted-foreground">Converse ou faça uma busca local</p></div>
         <Button variant="ghost" size="icon" aria-label={speechEnabled ? 'Desativar voz' : 'Ativar voz'} onClick={() => { window.speechSynthesis?.cancel(); setSpeechEnabled(!speechEnabled); }}>
           {speechEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
         </Button>
         <Button variant="ghost" size="icon" aria-label="Fechar conversa" onClick={closeChat}><X className="h-4 w-4" /></Button>
       </header>
       <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-3" aria-live="polite">
-        {!turns.length && <p className="rounded-xl bg-muted p-3 text-sm">Olá! Posso buscar empresas, produtos, cupons, eventos, vagas, serviços e ferramentas. Você pode falar ou digitar.</p>}
+        {!turns.length && <p className="rounded-xl bg-muted p-3 text-sm">Olá! Pode conversar comigo normalmente. Eu respondo perguntas sobre o Saj Tem e só mostro empresas quando você pedir uma busca local.</p>}
         {turns.map(turn => <div key={turn.id} className={turn.role === 'user' ? 'ml-8 rounded-xl bg-primary p-3 text-sm text-primary-foreground' : 'mr-4 rounded-xl bg-muted p-3 text-sm'}>
           <p className="whitespace-pre-wrap break-words">{turn.text}</p>
           {turn.role === 'user' && !busy && <button type="button" className="mt-2 inline-flex items-center gap-1 text-xs underline underline-offset-2" onClick={() => { setInput(turn.text); setEditingTurnId(turn.id); setError(''); }}><Pencil className="h-3 w-3" /> Editar e reenviar</button>}
@@ -230,13 +230,13 @@ export function AiAssistantChat() {
           </div>)}
           {turn.links?.map(link => <Link key={link.url} to={link.url} onClick={closeChat} className="mr-2 mt-2 inline-block rounded-lg border border-primary/30 bg-card px-3 py-2 font-medium text-primary underline underline-offset-2">{link.label}</Link>)}
         </div>)}
-        {busy && <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Buscando...</p>}
+        {busy && <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Respondendo...</p>}
       </div>
       {listening && <p role="status" className="flex items-center gap-2 px-3 pt-2 text-xs font-medium text-primary"><span className="h-2 w-2 animate-pulse rounded-full bg-primary" /> Ouvindo você… fale até terminar. A pergunta será enviada automaticamente.</p>}
       {editingTurnId !== null && <p role="status" className="px-3 pt-2 text-xs text-muted-foreground">Corrija a pergunta abaixo. Reenviar iniciará uma nova conversa com o texto corrigido.</p>}
       {error && <p role="alert" className="px-3 text-xs text-destructive">{error}</p>}
       <form onSubmit={event => void submit(event)} className="flex gap-2 border-t p-3">
-        <Input aria-label="Sua pergunta" maxLength={500} placeholder={listening ? 'Ouvindo sua pergunta...' : 'O que você procura?'} value={input} onChange={event => setInput(event.target.value)} disabled={busy || listening} />
+        <Input aria-label="Sua pergunta" maxLength={500} placeholder={listening ? 'Ouvindo sua pergunta...' : 'O que você quer saber?'} value={input} onChange={event => setInput(event.target.value)} disabled={busy || listening} />
         <Button type="button" variant={listening ? 'default' : 'outline'} size="icon" aria-label={listening ? 'Parar e enviar fala' : 'Falar pergunta'} disabled={busy} onClick={() => listening ? recognition.current?.stop() : startListening()}><Mic className={listening ? 'h-4 w-4 animate-pulse' : 'h-4 w-4'} /></Button>
         <Button type="submit" size="icon" aria-label={editingTurnId !== null ? 'Reenviar pergunta corrigida' : 'Enviar pergunta'} disabled={busy || listening || !input.trim()}><Send className="h-4 w-4" /></Button>
       </form>

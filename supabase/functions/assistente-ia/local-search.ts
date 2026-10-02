@@ -54,7 +54,7 @@ const INTENT_TERMS: Record<SearchKind, RegExp> = {
   event: /\b(evento|show|festa|curso|palestra|oficina|agenda cultural)\b/,
   job: /\b(vaga|emprego|trabalho|estagio|clt|freelance|oportunidade)\b/,
   service: /\b(autonomo|profissional|prestador|servico)\b/,
-  booking: /\b(agendar|agendamento|marcar|reservar|horario)\b/,
+  booking: /\b(agendar|agendamento|marcar|reservar)\b/,
   tool: /\b(ferramenta|calculadora|gerador|consulta|curriculo|rifa|fipe)\b/,
 };
 
@@ -122,6 +122,25 @@ export function detectIntents(query: string): SearchKind[] {
   const normalized = normalizeText(query);
   return (Object.entries(INTENT_TERMS) as [SearchKind, RegExp][])
     .filter(([, pattern]) => pattern.test(normalized)).map(([kind]) => kind);
+}
+
+export function shouldSearchCatalog(query: string, hasPriorResults = false): boolean {
+  const normalized = normalizeText(query);
+  if (!normalized) return false;
+  if (/^(?:(?:qual(?: e)?(?: o)?|que|tem|e o)\s+)?horario(?: de funcionamento| agora)?$/.test(normalized)) return false;
+  if (/^(?:e|eh|isso e)\s+(?:privado|privada|privatizado|privatizada)$/.test(normalized)) return false;
+  if (hasPriorResults && (/\b(primeir[ao]|segund[ao]|terceir[ao]|quart[ao]|quint[ao]|mais barato|mais barata|mais perto|onde fica|endereco|telefone|whatsapp|quanto custa|qual o preco|agendar|marcar)\b/.test(normalized))) {
+    return true;
+  }
+  if (detectIntents(normalized).length > 0) return true;
+  if (/\b(onde (?:comprar|encontrar|fica)|quero (?:comprar|encontrar|achar)|estou procurando|procuro|buscar|busque|mostre|perto de mim|proximo de mim)\b/.test(normalized)) return true;
+  if (/\b(horario|endereco|telefone|whatsapp)\s+(?:de|da|do|dos|das)\s+\S+/.test(normalized)) return true;
+
+  // A short noun/name such as "pizza", "dentista" or "Natulab" is a useful
+  // catalog query. Question-like and conversational sentences are not.
+  const words = normalized.split(" ");
+  const questionLike = /^(quem|o que|que|qual|quais|como|quando|porque|por que|sera|e|eh|isso|voce|essa|esta|a conversa|meus dados)\b/.test(normalized);
+  return words.length <= 4 && !questionLike && !/[?]/.test(query) && words.some(word => word.length >= 4);
 }
 
 function tokenScore(token: string, words: string[]): number {

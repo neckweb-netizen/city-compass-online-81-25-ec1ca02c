@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { detectIntents, isNearbyQuery, ordinalIndex, rankLocalItems, TOOL_ITEMS } from './local-search.ts';
+import { detectIntents, isNearbyQuery, ordinalIndex, rankLocalItems, shouldSearchCatalog, TOOL_ITEMS } from './local-search.ts';
 
 test('understands synonyms and small typing mistakes without a model', () => {
   const items = [
@@ -29,4 +29,19 @@ test('keeps an explicit service search within the requested content type', () =>
     { id: '2', kind: 'company' as const, name: 'Auto Service', description: null, address: null, url: '/locais/auto-service' },
   ];
   assert.deepEqual(rankLocalItems('quero um serviço profissional', items).map(item => item.id), ['1']);
+});
+
+test('opens the catalog only for an actual local-search request', () => {
+  assert.equal(shouldSearchCatalog('Que horas são?'), false);
+  assert.equal(shouldSearchCatalog('Qual horário?'), false);
+  assert.equal(shouldSearchCatalog('Tem horário'), false);
+  assert.equal(shouldSearchCatalog('O Saj Tem é privatizado?'), false);
+  assert.equal(shouldSearchCatalog('É privatizado?'), false);
+  assert.equal(shouldSearchCatalog('Como funciona isso?'), false);
+  assert.equal(shouldSearchCatalog('Onde comprar pizza?'), true);
+  assert.equal(shouldSearchCatalog('dentista perto de mim'), true);
+  assert.equal(shouldSearchCatalog('Consulta FIPE'), true);
+  assert.equal(shouldSearchCatalog('Natulab'), true);
+  assert.equal(shouldSearchCatalog('Qual o horário da Natulab?'), true);
+  assert.equal(shouldSearchCatalog('onde fica a segunda opção?', true), true);
 });

@@ -2,12 +2,12 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { ListObjectsV2Command, S3Client } from "https://esm.sh/@aws-sdk/client-s3@3.1109.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.112.3";
 import { corsHeaders, errorResponse, HttpError, jsonResponse, requireUser } from "../_shared/security.ts";
-import { platformAnswer } from "./platform-answers.ts";
+import { conversationalFallback, platformAnswer } from "./platform-answers.ts";
 import { findSiteFaq } from "./site-faq.ts";
 import { readKnowledge, saveKnowledgeArticle, type KnowledgeArticle } from "./knowledge-r2.ts";
 import { answerKnowledgeFollowUp, findKnowledgeArticle, isKnowledgeFollowUp } from "./knowledge-match.ts";
 import {
-  detectIntents, formatPrice, isNearbyQuery, normalizeText, ordinalIndex, rankLocalItems, TOOL_ITEMS,
+  detectIntents, formatPrice, isNearbyQuery, normalizeText, ordinalIndex, rankLocalItems, shouldSearchCatalog, TOOL_ITEMS,
   type LocalSearchItem, type SearchKind,
 } from "./local-search.ts";
 
@@ -269,6 +269,21 @@ Deno.serve(async (req: Request) => {
       const { error: eventError } = await db.from("ai_events").insert({ session_id: sessionId, event_type: "search" });
       if (eventError) throw new HttpError(503, "Não foi possível registrar a busca");
       return jsonResponse(req, { sessionId, sessionToken, text: siteAnswer.text, results: [], links: siteAnswer.links });
+    }
+
+    if (!shouldSearchCatalog(message, priorResults.length > 0)) {
+      const directAnswer = conversationalFallback();
+      const { error: messagesError } = await db.from("ai_messages").insert([
+        { session_id: sessionId, role: "user", content: message },
+        { session_id: sessionId, role: "assistant", content: directAnswer.text },
+      ]);
+      if (messagesError) throw new HttpError(503, "Não foi possível guardar a conversa");
+      const { error: contextError } = await db.from("ai_sessions")
+        .update({ context: { token_hash: await sha256(sessionToken), result_ids: [], article_id: null } }).eq("id", sessionId);
+      if (contextError) throw new HttpError(503, "Não foi possível atualizar a conversa");
+      const { error: eventError } = await db.from("ai_events").insert({ session_id: sessionId, event_type: "no_result" });
+      if (eventError) throw new HttpError(503, "Não foi possível registrar a conversa");
+      return jsonResponse(req, { sessionId, sessionToken, text: directAnswer.text, results: [], links: [] });
     }
 
     const intents = detectIntents(message);

@@ -21,3 +21,18 @@ test('responds to basic Portuguese conversation without intercepting searches', 
   assert.match(platformAnswer('Até mais!')?.text || '', /Até mais/);
   assert.equal(platformAnswer('Oi, onde comprar pizza?'), null);
 });
+
+test('answers time and privacy questions directly', () => {
+  const fixed = new Date('2026-10-01T12:15:00.000Z');
+  assert.match(platformAnswer('Que horas são?', fixed)?.text || '', /09:15/);
+  assert.match(platformAnswer('Qual horário?')?.text || '', /hora atual.*funcionamento.*evento/i);
+  assert.match(platformAnswer('Tem horário')?.text || '', /hora atual.*funcionamento.*evento/i);
+  assert.match(platformAnswer('Essa conversa é privada?')?.text || '', /não deve enviar/i);
+  assert.match(platformAnswer('O Saj Tem é privatizado?')?.text || '', /não tenho essa informação confirmada/i);
+  assert.match(platformAnswer('É privatizado?')?.text || '', /não tenho essa informação confirmada/i);
+  assert.match(platformAnswer('Você é uma IA?')?.text || '', /sem usar o Gemini/i);
+});
+
+test('keeps company opening-hours questions available to catalog search', () => {
+  assert.equal(platformAnswer('Qual o horário da Natulab?'), null);
+});
