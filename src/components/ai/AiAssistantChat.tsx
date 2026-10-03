@@ -53,10 +53,23 @@ export function AiAssistantChat() {
 
   useEffect(() => {
     let active = true;
-    void supabase.functions.invoke('assistente-ia', { body: { action: 'status' } })
-      .then(({ data, error: requestError }) => { if (active && !requestError) setAvailable(data?.enabled === true); });
+    const checkAvailability = () => {
+      void supabase.functions.invoke('assistente-ia', { body: { action: 'status' } })
+        .then(({ data, error: requestError }) => {
+          if (!active) return;
+          setAvailable(!requestError && data?.enabled === true);
+          if (requestError || data?.enabled !== true) setOpen(false);
+        });
+    };
+    checkAvailability();
+    const timer = window.setInterval(checkAvailability, 60000);
+    window.addEventListener('focus', checkAvailability);
+    window.addEventListener('sajtem:ai-availability-changed', checkAvailability);
     return () => {
       active = false;
+      window.clearInterval(timer);
+      window.removeEventListener('focus', checkAvailability);
+      window.removeEventListener('sajtem:ai-availability-changed', checkAvailability);
       const currentRecognition = recognition.current;
       recognition.current = null;
       currentRecognition?.abort();

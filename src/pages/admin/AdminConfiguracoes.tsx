@@ -8,7 +8,8 @@ import {
   Globe, 
   FileText,
   HelpCircle,
-  AlertTriangle
+  AlertTriangle,
+  Bot
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { AiAvailabilityControl } from "@/components/admin/sections/AiAvailabilityControl";
 
 export const AdminConfiguracoes = () => {
   const [loading, setLoading] = useState(false);
@@ -173,6 +175,7 @@ export const AdminConfiguracoes = () => {
           <TabsTrigger value="manutencao" className="gap-2 h-10 rounded-lg"><ShieldAlert className="h-4 w-4" /> Modo Manutenção</TabsTrigger>
           <TabsTrigger value="scripts" className="gap-2 h-10 rounded-lg"><Code className="h-4 w-4" /> Scripts & Analytics</TabsTrigger>
           <TabsTrigger value="layout" className="gap-2 h-10 rounded-lg"><Globe className="h-4 w-4" /> Rodapé & Suporte</TabsTrigger>
+          <TabsTrigger value="ia" className="gap-2 h-10 rounded-lg"><Bot className="h-4 w-4" /> Assistente IA</TabsTrigger>
         </TabsList>
 
         {/* ABA 1: SEO E METADADOS DO GOOGLE */}
@@ -287,6 +290,10 @@ export const AdminConfiguracoes = () => {
               </div>
             </div>
           </div>
+        </TabsContent>
+
+        <TabsContent value="ia" className="space-y-6 focus-visible:outline-none focus-visible:ring-0">
+          <AiAvailabilityControl />
         </TabsContent>
       </Tabs>
     </div>
