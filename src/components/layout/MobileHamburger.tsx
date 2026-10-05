@@ -24,7 +24,7 @@ export const MobileHamburger = () => {
   } = useMenuConfiguracoes();
   const [open, setOpen] = React.useState(false);
   const [navigatingTo, setNavigatingTo] = React.useState<string | null>(null);
-  const { data: producaoLocalAtiva = false } = useProducaoLocalDisponivel();
+  const { data: producaoLocalAtiva = true } = useProducaoLocalDisponivel();
 
   // Todos os itens de menu disponíveis - incluindo todos os itens do sistema
   const allMenuItems = [
@@ -192,17 +192,10 @@ export const MobileHamburger = () => {
   }
 
   const handleNavigation = (rota: string) => {
-    // Feedback visual imediato
     setNavigatingTo(rota);
-    
-    // Fechar o menu IMEDIATAMENTE ao clicar
     setOpen(false);
-    
-    // Navegar com pequeno delay apenas para suavizar a transição
-    setTimeout(() => {
-      navigate(rota);
-      setNavigatingTo(null);
-    }, 150);
+    navigate(rota);
+    setNavigatingTo(null);
   };
 
   const isActive = (rota: string) => {

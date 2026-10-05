@@ -24,16 +24,37 @@ export interface ProdutorLocal {
 
 export const useProducaoLocalDisponivel = () => useQuery({
   queryKey: ['producao-local', 'disponibilidade'],
-  queryFn: async () => {
-    const { data, error } = await supabase
-      .from('configuracoes_sistema' as any)
-      .select('producao_local_ativa')
-      .limit(1)
-      .maybeSingle();
+  queryFn: async ({ signal }) => {
+    const controller = new AbortController();
+    const abortRequest = () => controller.abort();
+    const timeout = window.setTimeout(abortRequest, 6_000);
+    signal.addEventListener('abort', abortRequest, { once: true });
 
-    if (error) throw error;
-    return data ? (data as any).producao_local_ativa === true : false;
+    try {
+      const { data, error } = await supabase
+        .from('configuracoes_sistema' as any)
+        .select('producao_local_ativa')
+        .limit(1)
+        .abortSignal(controller.signal)
+        .maybeSingle();
+
+      if (error) {
+        console.warn('[producao-local] Não foi possível consultar a disponibilidade.', error.message);
+        return true;
+      }
+
+      return data ? (data as any).producao_local_ativa !== false : true;
+    } catch (error) {
+      console.warn('[producao-local] Consulta de disponibilidade interrompida.', error);
+      return true;
+    } finally {
+      window.clearTimeout(timeout);
+      signal.removeEventListener('abort', abortRequest);
+    }
   },
+  placeholderData: true,
+  refetchOnMount: 'always',
+  retry: false,
   staleTime: 60_000,
 });
 

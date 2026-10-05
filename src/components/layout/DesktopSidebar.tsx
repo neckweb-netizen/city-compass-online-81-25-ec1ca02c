@@ -26,7 +26,7 @@ export const DesktopSidebar = ({
     configuracoes,
     isLoading
   } = useMenuConfiguracoes();
-  const { data: producaoLocalAtiva = false } = useProducaoLocalDisponivel();
+  const { data: producaoLocalAtiva = true } = useProducaoLocalDisponivel();
 
   // Todos os itens de menu disponíveis - incluindo todos os itens do sistema
   const allMenuItems = [

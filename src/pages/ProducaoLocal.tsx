@@ -90,8 +90,6 @@ export default function ProducaoLocal() {
     document.getElementById('onde-comprar')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  if (disponibilidade.isLoading) return <div className="flex min-h-[55vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
-
   if (!disponibilidade.data) {
     return <div className="mx-auto max-w-3xl px-4 py-16"><Alert><Sprout className="h-5 w-5" /><AlertTitle>Produção Local em preparação</AlertTitle><AlertDescription>Esta área está temporariamente indisponível enquanto os dados são revisados.</AlertDescription></Alert></div>;
   }
