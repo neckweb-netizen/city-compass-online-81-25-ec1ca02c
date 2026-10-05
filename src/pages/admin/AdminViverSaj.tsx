@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, Check, ExternalLink, HeartPulse, Landmark, Lightbulb, Loader2, RefreshCw, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, CarFront, Check, ExternalLink, HeartPulse, Landmark, Lightbulb, Loader2, Plus, RefreshCw, Search, Trash2, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import type { HealthService, InnovationChallenge, LocalRequest, ViverSajModule } from '@/features/viver-saj/types';
+import type { DirectoryBusiness, HealthService, InnovationChallenge, LocalRequest, ViverSajBusinessAssignment, ViverSajModule } from '@/features/viver-saj/types';
 import { supabase } from '@/integrations/supabase/client';
 
 const emptyHealth = { nome: '', tipo: 'ubs', descricao: '', endereco: '', bairro: '', telefone: '', horario: '', atendimento_sus: true, atendimento_24h: false, servicos: '', fonte_nome: 'CNES — Ministério da Saúde', fonte_url: 'https://cnes.datasus.gov.br/' };
@@ -24,24 +24,31 @@ export default function AdminViverSaj() {
   const [requests, setRequests] = useState<LocalRequest[]>([]);
   const [health, setHealth] = useState<HealthService[]>([]);
   const [challenges, setChallenges] = useState<InnovationChallenge[]>([]);
+  const [businesses, setBusinesses] = useState<DirectoryBusiness[]>([]);
+  const [mobility, setMobility] = useState<ViverSajBusinessAssignment[]>([]);
+  const [businessSearch, setBusinessSearch] = useState('');
   const [healthForm, setHealthForm] = useState(emptyHealth);
   const [challengeForm, setChallengeForm] = useState(emptyChallenge);
 
   const load = async () => {
     setLoading(true);
-    const [moduleResult, requestResult, healthResult, challengeResult] = await Promise.all([
+    const [moduleResult, requestResult, healthResult, challengeResult, businessResult, mobilityResult] = await Promise.all([
       supabase.from('viver_saj_modulos' as any).select('*').order('ordem'),
       supabase.from('pedidos_locais' as any).select('*').order('criado_em', { ascending: false }).limit(100),
       supabase.from('servicos_saude_saj' as any).select('*').order('atendimento_24h', { ascending: false }).order('nome'),
       supabase.from('desafios_inovacao' as any).select('*').order('criado_em', { ascending: false }),
+      supabase.from('empresas').select('id,nome,slug,descricao,endereco,telefone,verificado,categorias(nome)').eq('ativo', true).eq('status_aprovacao', 'aprovado').order('nome').limit(300),
+      supabase.from('viver_saj_empresas' as any).select('modulo,empresa_id,ordem,ativo,empresas(id,nome,slug,descricao,endereco,telefone,verificado,categorias(nome))').eq('modulo', 'mobilidade').order('ordem'),
     ]);
     setLoading(false);
-    const error = moduleResult.error || requestResult.error || healthResult.error || challengeResult.error;
+    const error = moduleResult.error || requestResult.error || healthResult.error || challengeResult.error || businessResult.error || mobilityResult.error;
     if (error) { toast.error('Não foi possível carregar a gestão do Viver SAJ.'); return; }
     setModules((moduleResult.data ?? []) as ViverSajModule[]);
     setRequests((requestResult.data ?? []) as LocalRequest[]);
     setHealth((healthResult.data ?? []) as HealthService[]);
     setChallenges((challengeResult.data ?? []) as InnovationChallenge[]);
+    setBusinesses((businessResult.data ?? []).map((item: any) => ({ ...item, categoria: item.categorias?.nome ?? null })) as DirectoryBusiness[]);
+    setMobility((mobilityResult.data ?? []).map((item: any) => ({ ...item, empresas: item.empresas ? { ...item.empresas, categoria: item.empresas.categorias?.nome ?? null } : null })) as ViverSajBusinessAssignment[]);
   };
 
   useEffect(() => { void load(); }, []);
@@ -105,7 +112,28 @@ export default function AdminViverSaj() {
     setChallenges(current => current.map(item => item.id === id ? { ...item, status } : item));
   };
 
+  const addMobilityBusiness = async (business: DirectoryBusiness) => {
+    setSaving(true);
+    const { error } = await supabase.from('viver_saj_empresas' as any).upsert({ modulo: 'mobilidade', empresa_id: business.id, ordem: mobility.length + 1, ativo: true }, { onConflict: 'modulo,empresa_id' });
+    setSaving(false);
+    if (error) return toast.error('Não foi possível adicionar a empresa em Mobilidade.');
+    await load();
+    toast.success(`${business.nome} adicionada em Mobilidade.`);
+  };
+
+  const removeMobilityBusiness = async (businessId: string) => {
+    const { error } = await supabase.from('viver_saj_empresas' as any).delete().eq('modulo', 'mobilidade').eq('empresa_id', businessId);
+    if (error) return toast.error('Não foi possível remover a empresa de Mobilidade.');
+    setMobility(current => current.filter(item => item.empresa_id !== businessId));
+    toast.success('Empresa removida somente da área de Mobilidade.');
+  };
+
   const totals = useMemo(() => ({ open: requests.filter(item => item.status === 'aberto').length, health: health.filter(item => item.ativo).length, published: challenges.filter(item => item.status === 'publicado').length }), [requests, health, challenges]);
+  const selectedMobilityIds = useMemo(() => new Set(mobility.map(item => item.empresa_id)), [mobility]);
+  const businessOptions = useMemo(() => {
+    const term = businessSearch.trim().toLowerCase();
+    return businesses.filter(item => !selectedMobilityIds.has(item.id) && (!term || [item.nome, item.categoria, item.endereco].join(' ').toLowerCase().includes(term))).slice(0, 40);
+  }, [businessSearch, businesses, selectedMobilityIds]);
 
   if (loading) return <div className="flex justify-center py-24"><Loader2 className="h-8 w-8 animate-spin" /></div>;
 
@@ -113,12 +141,14 @@ export default function AdminViverSaj() {
     <div className="flex flex-wrap items-start justify-between gap-4"><div className="flex items-center gap-3"><div className="rounded-2xl bg-violet-500/10 p-3"><Landmark className="h-6 w-6 text-violet-600" /></div><div><h1 className="text-2xl font-black">Viver SAJ</h1><p className="text-sm text-muted-foreground">Controle módulos, modere pedidos e mantenha saúde e inovação atualizadas.</p></div></div><div className="flex gap-2"><Button variant="outline" onClick={() => void load()}><RefreshCw className="mr-2 h-4 w-4" /> Atualizar</Button><Button asChild variant="outline"><Link to="/viver-saj" target="_blank"><ExternalLink className="mr-2 h-4 w-4" /> Ver página</Link></Button></div></div>
     <div className="grid gap-3 sm:grid-cols-3"><Card><CardContent className="p-4"><p className="text-sm text-muted-foreground">Pedidos abertos</p><p className="text-3xl font-black text-violet-600">{totals.open}</p></CardContent></Card><Card><CardContent className="p-4"><p className="text-sm text-muted-foreground">Serviços de saúde ativos</p><p className="text-3xl font-black text-rose-600">{totals.health}</p></CardContent></Card><Card><CardContent className="p-4"><p className="text-sm text-muted-foreground">Desafios publicados</p><p className="text-3xl font-black text-amber-600">{totals.published}</p></CardContent></Card></div>
 
-    <Tabs defaultValue="modules"><TabsList className="h-auto flex-wrap"><TabsTrigger value="modules">Organização</TabsTrigger><TabsTrigger value="requests">Pedidos ({totals.open})</TabsTrigger><TabsTrigger value="health">Saúde</TabsTrigger><TabsTrigger value="innovation">Inovação</TabsTrigger></TabsList>
+    <Tabs defaultValue="modules"><TabsList className="h-auto flex-wrap"><TabsTrigger value="modules">Organização</TabsTrigger><TabsTrigger value="requests">Pedidos ({totals.open})</TabsTrigger><TabsTrigger value="health">Saúde</TabsTrigger><TabsTrigger value="mobility">Mobilidade ({mobility.length})</TabsTrigger><TabsTrigger value="innovation">Inovação</TabsTrigger></TabsList>
       <TabsContent value="modules" className="mt-5 space-y-3"><Card><CardHeader><CardTitle>Módulos da central</CardTitle><CardDescription>Ative somente o necessário e defina a ordem. A home continuará exibindo apenas um card compacto.</CardDescription></CardHeader></Card>{modules.map((item, index) => <Card key={item.chave} className={!item.ativo ? 'bg-muted/30' : ''}><CardContent className="flex items-center gap-3 p-4"><div className="min-w-0 flex-1"><p className="font-black">{item.titulo}</p><p className="truncate text-xs text-muted-foreground">{item.descricao}</p></div><Button size="icon" variant="outline" disabled={saving || index === 0} onClick={() => moveModule(index, -1)} aria-label="Mover para cima"><ArrowUp className="h-4 w-4" /></Button><Button size="icon" variant="outline" disabled={saving || index === modules.length - 1} onClick={() => moveModule(index, 1)} aria-label="Mover para baixo"><ArrowDown className="h-4 w-4" /></Button><Switch checked={item.ativo} disabled={saving} onCheckedChange={active => toggleModule(item.chave, active)} aria-label={`Ativar ${item.titulo}`} /></CardContent></Card>)}</TabsContent>
 
       <TabsContent value="requests" className="mt-5 space-y-3">{requests.length === 0 ? <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">Nenhum pedido publicado.</CardContent></Card> : requests.map(item => <Card key={item.id}><CardHeader><div className="flex flex-wrap items-start justify-between gap-2"><div><CardTitle className="text-lg">{item.titulo}</CardTitle><CardDescription>{item.categoria} · {item.bairro || 'bairro não informado'} · {new Date(item.criado_em).toLocaleDateString('pt-BR')}</CardDescription></div><Badge variant={item.status === 'aberto' ? 'default' : item.status === 'rejeitado' ? 'destructive' : 'secondary'}>{item.status}</Badge></div></CardHeader><CardContent><p className="text-sm text-muted-foreground">{item.descricao}</p><div className="mt-4 flex flex-wrap gap-2"><Button size="sm" onClick={() => void moderateRequest(item.id, 'aberto')}><Check className="mr-1 h-4 w-4" /> Abrir</Button><Button size="sm" variant="outline" onClick={() => void moderateRequest(item.id, 'encerrado')}>Encerrar</Button><Button size="sm" variant="destructive" onClick={() => void moderateRequest(item.id, 'rejeitado')}><X className="mr-1 h-4 w-4" /> Rejeitar</Button></div></CardContent></Card>)}</TabsContent>
 
       <TabsContent value="health" className="mt-5 grid gap-5 xl:grid-cols-[.9fr_1.1fr]"><Card><CardHeader><CardTitle className="flex items-center gap-2"><HeartPulse className="h-5 w-5 text-rose-600" /> Novo serviço</CardTitle><CardDescription>Publique apenas informações verificadas e mantenha a fonte.</CardDescription></CardHeader><CardContent className="space-y-4"><div className="space-y-2"><Label>Nome</Label><Input value={healthForm.nome} onChange={e => setHealthForm(v => ({ ...v, nome: e.target.value }))} /></div><div className="space-y-2"><Label>Tipo</Label><Select value={healthForm.tipo} onValueChange={tipo => setHealthForm(v => ({ ...v, tipo }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{['upa','hospital','ubs','caps','farmacia_publica','hemocentro','laboratorio','clinica','farmacia','outro'].map(type => <SelectItem key={type} value={type}>{type.replace('_', ' ')}</SelectItem>)}</SelectContent></Select></div><div className="space-y-2"><Label>Descrição</Label><Textarea value={healthForm.descricao} onChange={e => setHealthForm(v => ({ ...v, descricao: e.target.value }))} /></div><div className="grid gap-3 sm:grid-cols-2"><div className="space-y-2"><Label>Endereço</Label><Input value={healthForm.endereco} onChange={e => setHealthForm(v => ({ ...v, endereco: e.target.value }))} /></div><div className="space-y-2"><Label>Bairro</Label><Input value={healthForm.bairro} onChange={e => setHealthForm(v => ({ ...v, bairro: e.target.value }))} /></div><div className="space-y-2"><Label>Telefone</Label><Input value={healthForm.telefone} onChange={e => setHealthForm(v => ({ ...v, telefone: e.target.value }))} /></div><div className="space-y-2"><Label>Horário</Label><Input value={healthForm.horario} onChange={e => setHealthForm(v => ({ ...v, horario: e.target.value }))} /></div></div><div className="space-y-2"><Label>Serviços (separados por vírgula)</Label><Input value={healthForm.servicos} onChange={e => setHealthForm(v => ({ ...v, servicos: e.target.value }))} /></div><div className="flex gap-5"><Label className="flex items-center gap-2"><Switch checked={healthForm.atendimento_sus} onCheckedChange={atendimento_sus => setHealthForm(v => ({ ...v, atendimento_sus }))} /> SUS</Label><Label className="flex items-center gap-2"><Switch checked={healthForm.atendimento_24h} onCheckedChange={atendimento_24h => setHealthForm(v => ({ ...v, atendimento_24h }))} /> 24 horas</Label></div><Button className="w-full" onClick={() => void saveHealth()} disabled={saving}>Publicar serviço</Button></CardContent></Card><div className="space-y-3">{health.map(item => <Card key={item.id} className={!item.ativo ? 'bg-muted/30' : ''}><CardContent className="flex items-center gap-3 p-4"><HeartPulse className="h-5 w-5 text-rose-600" /><div className="min-w-0 flex-1"><p className="font-black">{item.nome}</p><p className="truncate text-xs text-muted-foreground">{item.tipo} · {item.bairro || 'sem bairro'} {item.atendimento_24h ? '· 24h' : ''}</p></div><Switch checked={item.ativo} onCheckedChange={active => void toggleHealth(item.id, active)} /></CardContent></Card>)}</div></TabsContent>
+
+      <TabsContent value="mobility" className="mt-5 grid gap-5 xl:grid-cols-2"><Card><CardHeader><CardTitle className="flex items-center gap-2"><CarFront className="h-5 w-5 text-emerald-600" /> Empresas selecionadas</CardTitle><CardDescription>Somente estas empresas e as cadastradas diretamente na categoria Mobilidade Urbana aparecem no módulo. Remover aqui não apaga a empresa.</CardDescription></CardHeader><CardContent className="space-y-3">{mobility.length === 0 ? <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Nenhuma empresa selecionada manualmente.</p> : mobility.map(item => <div key={item.empresa_id} className="flex items-center gap-3 rounded-xl border p-3"><CarFront className="h-5 w-5 text-emerald-600" /><div className="min-w-0 flex-1"><p className="truncate font-bold">{item.empresas?.nome || 'Empresa indisponível'}</p><p className="truncate text-xs text-muted-foreground">{item.empresas?.categoria || 'Sem categoria'}</p></div><Button size="icon" variant="ghost" onClick={() => void removeMobilityBusiness(item.empresa_id)} aria-label={`Remover ${item.empresas?.nome || 'empresa'} de Mobilidade`}><Trash2 className="h-4 w-4" /></Button></div>)}</CardContent></Card><Card><CardHeader><CardTitle>Adicionar empresa existente</CardTitle><CardDescription>Pesquise no catálogo já aprovado. Oficinas não entram sozinhas; adicione apenas táxi, transporte, locação, bicicleta ou serviço realmente ligado ao deslocamento.</CardDescription></CardHeader><CardContent className="space-y-3"><div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={businessSearch} onChange={event => setBusinessSearch(event.target.value)} className="pl-9" placeholder="Buscar empresa ou categoria" /></div><div className="max-h-[32rem] space-y-2 overflow-y-auto pr-1">{businessOptions.map(item => <div key={item.id} className="flex items-center gap-3 rounded-xl border p-3"><div className="min-w-0 flex-1"><p className="truncate font-bold">{item.nome}</p><p className="truncate text-xs text-muted-foreground">{item.categoria || 'Sem categoria'}{item.endereco ? ` · ${item.endereco}` : ''}</p></div><Button size="sm" variant="outline" disabled={saving} onClick={() => void addMobilityBusiness(item)}><Plus className="mr-1 h-4 w-4" /> Adicionar</Button></div>)}{businessOptions.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">Nenhuma empresa disponível com essa busca.</p>}</div></CardContent></Card></TabsContent>
 
       <TabsContent value="innovation" className="mt-5 grid gap-5 xl:grid-cols-[.9fr_1.1fr]"><Card><CardHeader><CardTitle className="flex items-center gap-2"><Lightbulb className="h-5 w-5 text-amber-600" /> Novo desafio</CardTitle></CardHeader><CardContent className="space-y-4"><div className="space-y-2"><Label>Título</Label><Input value={challengeForm.titulo} onChange={e => setChallengeForm(v => ({ ...v, titulo: e.target.value }))} /></div><div className="space-y-2"><Label>Área</Label><Input value={challengeForm.area} onChange={e => setChallengeForm(v => ({ ...v, area: e.target.value }))} placeholder="Ex.: Mobilidade, comércio, educação" /></div><div className="space-y-2"><Label>Descrição do problema</Label><Textarea value={challengeForm.descricao} onChange={e => setChallengeForm(v => ({ ...v, descricao: e.target.value }))} /></div><div className="grid gap-3 sm:grid-cols-2"><div className="space-y-2"><Label>Proponente</Label><Input value={challengeForm.proponente} onChange={e => setChallengeForm(v => ({ ...v, proponente: e.target.value }))} /></div><div className="space-y-2"><Label>Prazo</Label><Input type="date" value={challengeForm.prazo} onChange={e => setChallengeForm(v => ({ ...v, prazo: e.target.value }))} /></div></div><div className="space-y-2"><Label>Status inicial</Label><Select value={challengeForm.status} onValueChange={status => setChallengeForm(v => ({ ...v, status }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="rascunho">Rascunho</SelectItem><SelectItem value="publicado">Publicado</SelectItem></SelectContent></Select></div><Button className="w-full" onClick={() => void saveChallenge()} disabled={saving}>Criar desafio</Button></CardContent></Card><div className="space-y-3">{challenges.length === 0 ? <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">Nenhum desafio criado.</CardContent></Card> : challenges.map(item => <Card key={item.id}><CardHeader><div className="flex flex-wrap justify-between gap-2"><Badge>{item.area}</Badge><Badge variant="outline">{item.status}</Badge></div><CardTitle className="text-lg">{item.titulo}</CardTitle></CardHeader><CardContent><p className="line-clamp-4 text-sm text-muted-foreground">{item.descricao}</p><div className="mt-4 flex gap-2"><Button size="sm" onClick={() => void updateChallenge(item.id, 'publicado')}>Publicar</Button><Button size="sm" variant="outline" onClick={() => void updateChallenge(item.id, 'encerrado')}>Encerrar</Button><Button size="sm" variant="ghost" onClick={() => void updateChallenge(item.id, 'rascunho')}>Rascunho</Button></div></CardContent></Card>)}</div></TabsContent>
     </Tabs>

@@ -60,3 +60,21 @@ export interface InnovationChallenge {
   criado_em: string;
 }
 
+export interface DirectoryBusiness {
+  id: string;
+  nome: string;
+  slug: string;
+  descricao: string | null;
+  endereco: string | null;
+  telefone: string | null;
+  verificado: boolean;
+  categoria?: string | null;
+}
+
+export interface ViverSajBusinessAssignment {
+  modulo: ViverSajModuleKey;
+  empresa_id: string;
+  ordem: number;
+  ativo: boolean;
+  empresas: DirectoryBusiness | null;
+}
