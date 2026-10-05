@@ -12,6 +12,13 @@ test('does not confuse a product search for a question about the site', () => {
   assert.equal(platformAnswer('Onde comprar pizza?'), null);
 });
 
+test('sends explicit local requests to the guided flow instead of a random catalog', () => {
+  const answer = platformAnswer('Quero publicar um pedido e receber orçamentos');
+  assert.match(answer?.text || '', /sem jogar uma lista aleatória/i);
+  assert.equal(answer?.links[0]?.url, '/viver-saj?area=desejos');
+  assert.equal(platformAnswer('Onde comprar pizza?'), null);
+});
+
 test('responds to basic Portuguese conversation without intercepting searches', () => {
   assert.match(platformAnswer('Bom dia!')?.text || '', /Olá/);
   assert.match(platformAnswer('Valeu')?.text || '', /Por nada/);

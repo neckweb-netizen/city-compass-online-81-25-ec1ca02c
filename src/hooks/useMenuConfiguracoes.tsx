@@ -27,7 +27,6 @@ export const useMenuConfiguracoes = () => {
       const { data, error } = await supabase
         .from('menu_configuracoes')
         .select('*')
-        .eq('ativo', true)
         .order('ordem');
 
       if (error) {

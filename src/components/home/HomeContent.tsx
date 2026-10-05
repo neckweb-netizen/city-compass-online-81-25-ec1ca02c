@@ -15,6 +15,7 @@ import { AondeIrButton } from './AondeIrButton';
 import { DominoSpotlight } from './DominoSpotlight';
 import { AiAssistantHomeEntry } from './AiAssistantHomeEntry';
 import { LocalProductionHomeEntry } from './LocalProductionHomeEntry';
+import { ViverSajHomeEntry } from './ViverSajHomeEntry';
 
 import { useCidadePadrao } from '@/hooks/useCidadePadrao';
 import { useHomeSectionsOrder } from '@/hooks/useHomeSectionsOrder';
@@ -81,6 +82,7 @@ const VozDoPovoSection = lazy(() =>
 );
 
 const sectionComponents = {
+  viver_saj: () => <ViverSajHomeEntry />,
   jogos: () => <DominoSpotlight />,
   banner: () => <BannerSection secao="home" />,
 

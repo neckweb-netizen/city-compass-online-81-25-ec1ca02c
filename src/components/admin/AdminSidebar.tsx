@@ -28,7 +28,8 @@ import {
   Megaphone,
   MessagesSquare,
   Search,
-  Sprout
+  Sprout,
+  Landmark
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { 
@@ -58,6 +59,7 @@ export const AdminSidebar = ({ activeSection, onSectionChange }: AdminSidebarPro
   const [pendentesAchadosPerdidos, setPendentesAchadosPerdidos] = useState(0);
   const [pendentesEntreNos, setPendentesEntreNos] = useState(0);
   const [pendentesProducao, setPendentesProducao] = useState(0);
+  const [pedidosViverSaj, setPedidosViverSaj] = useState(0);
 
   // Busca as contagens de itens pendentes direto no Supabase
   const buscarContagensPendentes = async () => {
@@ -69,6 +71,7 @@ export const AdminSidebar = ({ activeSection, onSectionChange }: AdminSidebarPro
         { count: countEntreNos },
         { count: countDenuncias },
         { count: countProducao, error: errorProducao },
+        { count: countPedidosViverSaj },
       ] = await Promise.all([
         supabase.from('empresas' as any).select('*', { count: 'exact', head: true }).eq('status_aprovacao', 'pendente'),
         supabase.from('problemas_cidade' as any).select('*', { count: 'exact', head: true }).eq('status_aprovacao', 'pendente'),
@@ -76,6 +79,7 @@ export const AdminSidebar = ({ activeSection, onSectionChange }: AdminSidebarPro
         supabase.from('entre_nos_postagens' as any).select('*', { count: 'exact', head: true }).eq('status', 'pendente'),
         supabase.from('entre_nos_denuncias' as any).select('*', { count: 'exact', head: true }).eq('status', 'aberta'),
         supabase.from('produtores_locais' as any).select('*', { count: 'exact', head: true }).eq('status', 'pendente'),
+        supabase.from('pedidos_locais' as any).select('*', { count: 'exact', head: true }).eq('status', 'aberto'),
       ]);
 
       if (!errorLocais && countLocais !== null) setPendentesLocais(countLocais);
@@ -83,6 +87,7 @@ export const AdminSidebar = ({ activeSection, onSectionChange }: AdminSidebarPro
       if (!errorAchados && countAchados !== null) setPendentesAchadosPerdidos(countAchados);
       setPendentesEntreNos((countEntreNos || 0) + (countDenuncias || 0));
       if (!errorProducao && countProducao !== null) setPendentesProducao(countProducao);
+      if (countPedidosViverSaj !== null) setPedidosViverSaj(countPedidosViverSaj);
     } catch (error) {
       console.error('Erro ao buscar contadores de notificações do admin:', error);
     }
@@ -113,6 +118,9 @@ export const AdminSidebar = ({ activeSection, onSectionChange }: AdminSidebarPro
     const canalProducao = supabase.channel('rt-admin-producao-local')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'produtores_locais' }, () => buscarContagensPendentes())
       .subscribe();
+    const canalViverSaj = supabase.channel('rt-admin-viver-saj')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos_locais' }, () => buscarContagensPendentes())
+      .subscribe();
 
     return () => {
       supabase.removeChannel(canalLocais);
@@ -120,6 +128,7 @@ export const AdminSidebar = ({ activeSection, onSectionChange }: AdminSidebarPro
       supabase.removeChannel(canalAchados);
       supabase.removeChannel(canalEntreNos);
       supabase.removeChannel(canalProducao);
+      supabase.removeChannel(canalViverSaj);
     };
   }, []);
 
@@ -143,6 +152,7 @@ export const AdminSidebar = ({ activeSection, onSectionChange }: AdminSidebarPro
         { icon: MapPin, label: 'Cidades', path: '/admin/cidades', section: 'cidades', badge: 0 },
         { icon: MapPin, label: 'Lugares Públicos', path: '/admin/lugares-publicos', section: 'lugares-publicos', badge: 0 },
         { icon: Sprout, label: 'Produção Local', path: '/admin/producao-local', section: 'producao-local', badge: pendentesProducao },
+        { icon: Landmark, label: 'Viver SAJ', path: '/admin/viver-saj', section: 'viver-saj', badge: pedidosViverSaj },
       ]
     },
     {

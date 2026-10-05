@@ -72,6 +72,13 @@ export const MobileHamburger = () => {
       categoria: 'principal'
     }, 
     {
+      id: 'viver-saj',
+      nome_item: 'Viver SAJ',
+      icone: 'Landmark',
+      rota: '/viver-saj',
+      categoria: 'principal'
+    },
+    {
       id: 'achados-e-perdidos',
       nome_item: 'Achados e Perdidos',
       icone: 'Search',

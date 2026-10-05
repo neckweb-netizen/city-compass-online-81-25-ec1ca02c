@@ -57,6 +57,7 @@ const AnuncieGratis = lazy(() => import("./pages/AnuncieGratis").then(m => ({ de
 const EntreNos = lazy(() => import("./pages/EntreNos"));
 const Fidelidade = lazy(() => import("./pages/Fidelidade"));
 const ProducaoLocal = lazy(() => import("./pages/ProducaoLocal"));
+const ViverSaj = lazy(() => import("./pages/ViverSaj"));
 
 // Ferramentas públicas e jogos
 const Domino = lazy(() => import("./pages/Domino"));
@@ -112,6 +113,7 @@ const ShortUrlRedirect = lazy(() => import("./pages/ShortUrlRedirect"));
 const AdminGoogleImporter = lazy(() => import("./components/admin/GoogleImporter"));
 const AdminEntreNos = lazy(() => import("./pages/admin/AdminEntreNos"));
 const AdminProducaoLocal = lazy(() => import("./pages/admin/AdminProducaoLocal"));
+const AdminViverSaj = lazy(() => import("./pages/admin/AdminViverSaj"));
 
 import { MainLayout } from "./components/layout/MainLayout";
 import { PublicLayout } from "./components/layout/PublicLayout";
@@ -790,6 +792,7 @@ const App = () => {
                   </ProtectedRoute>
                 } />
                 <Route path="producao-local" element={<ProducaoLocal />} />
+                <Route path="viver-saj" element={<ViverSaj />} />
                 <Route path="unauthorized" element={<UnauthorizedPage />} />
                 
                 <Route path="domino" element={<Domino />} />
@@ -856,6 +859,7 @@ const App = () => {
                 <Route path="importar-google" element={<AdminGoogleImporter />} />
                 <Route path="entre-nos" element={<AdminEntreNos />} />
                 <Route path="producao-local" element={<AdminProducaoLocal />} />
+                <Route path="viver-saj" element={<AdminViverSaj />} />
               </Route>
 
               <Route path="*" element={<NotFound />} />

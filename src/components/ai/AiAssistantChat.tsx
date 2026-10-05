@@ -18,7 +18,7 @@ type Result = {
 };
 type AssistantLink = { label: string; url: string };
 type ChatTurn = { id: number; role: 'user' | 'assistant'; text: string; results?: Result[]; links?: AssistantLink[] };
-const allowedLinkPrefixes = ['/', '/locais', '/ferramentas', '/eventos', '/oportunidades'];
+const allowedLinkPrefixes = ['/', '/locais', '/ferramentas', '/eventos', '/oportunidades', '/viver-saj'];
 const resultKindLabels: Record<NonNullable<Result['kind']>, string> = {
   company: 'Empresa', product: 'Produto', coupon: 'Cupom', event: 'Evento', job: 'Vaga',
   service: 'Serviço', booking: 'Agendamento', tool: 'Ferramenta',

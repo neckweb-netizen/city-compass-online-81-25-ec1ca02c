@@ -10,6 +10,7 @@ export interface HomeSection {
 
 // All sections rendered by HomeContent or supplied by Index.extraSections.
 export const HOME_SECTIONS = {
+  viver_saj: { name: 'Viver SAJ', description: 'Central compacta de pedidos, saúde, agenda, produção, inovação e mobilidade.' },
   producao_local: { name: 'Produção Local', description: 'Atalho para dados rurais, produtores e produtos locais.' },
   stories: { name: 'Stories', description: 'Stories publicados e disponíveis.' },
   enquetes: { name: 'Enquetes', description: 'Aparece quando existe uma enquete ativa.' },

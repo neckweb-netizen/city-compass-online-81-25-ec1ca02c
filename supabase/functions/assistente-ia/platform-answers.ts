@@ -27,7 +27,10 @@ export function platformAnswer(message: string, now = new Date()): PlatformAnswe
     return { text: "Até mais! Quando precisar, posso ajudar você a explorar o Saj Tem.", links: [] };
   }
   if (/^(ajuda|me ajude|o que voce faz|no que pode ajudar)[!?. ]*$/.test(text)) {
-    return { text: "Posso responder perguntas sobre o Saj Tem, explicar privacidade e recursos do site, informar a hora atual e ajudar a procurar empresas, produtos, eventos, vagas, serviços e ferramentas. Pode perguntar normalmente.", links: [] };
+    return {
+      text: "Posso conversar sobre o Saj Tem, explicar privacidade e recursos, informar a hora atual e ajudar a procurar empresas, produtos, eventos, vagas, serviços e ferramentas. Se você não encontrar o que precisa, também posso encaminhar você para publicar um pedido e receber respostas locais.",
+      links: [{ label: "Publicar o que procuro", url: "/viver-saj?area=desejos" }],
+    };
   }
   const asksCurrentTime = /\b(que horas sao|qual(?: e)? a hora|hora agora|horario agora)\b/.test(text);
   if (asksCurrentTime) {
@@ -56,6 +59,12 @@ export function platformAnswer(message: string, now = new Date()): PlatformAnswe
     };
   }
   const aboutSite = /\b(saj\s*tem|site|plataforma|aplicativo|app)\b/.test(text);
+  if (/\b(publicar|criar|fazer|enviar)\b.*\b(pedido|desejo|solicitacao)\b|\b(receber|quero)\b.*\b(ofertas|orcamentos)\b|\bnao encontrei\b.*\b(produto|servico|empresa|o que preciso)\b/.test(text)) {
+    return {
+      text: "Posso ajudar sem jogar uma lista aleatória de empresas. Em ‘Estou procurando’, você descreve o que precisa, informa a região e escolhe como prefere receber contato. O pedido fica organizado para empresas locais responderem.",
+      links: [{ label: "Publicar o que procuro", url: "/viver-saj?area=desejos" }],
+    };
+  }
   if (aboutSite && /\b(whatsapp|zap|telefone|numero|contato|falar com|email|e-mail)\b/.test(text)) {
     return {
       text: "O Saj Tem ainda não tem um número oficial de WhatsApp confirmado nesta versão. Para falar com a equipe, use a página Entre em Contato do site.",
@@ -70,8 +79,8 @@ export function platformAnswer(message: string, now = new Date()): PlatformAnswe
   }
   if (aboutSite && /\b(produto|produtos|vende|comprar)\b/.test(text)) {
     return {
-      text: "O Saj Tem pode mostrar produtos cadastrados pelas empresas em seus perfis. O catálogo e a disponibilidade dependem de cada empresa; confira o perfil e confirme antes de comprar.",
-      links: [{ label: "Explorar locais", url: "/locais" }],
+      text: "O Saj Tem mostra produtos cadastrados pelas empresas. Você pode explorar o catálogo ou, se não encontrar o que precisa, publicar um pedido guiado para receber respostas locais — sem uma lista aleatória.",
+      links: [{ label: "Explorar locais", url: "/locais" }, { label: "Publicar pedido", url: "/viver-saj?area=desejos" }],
     };
   }
   if (aboutSite && /\b(o que|que e|qual e|como funciona|serve|faz|conhecer)\b/.test(text)) {
