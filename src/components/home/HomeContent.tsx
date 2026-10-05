@@ -90,6 +90,8 @@ const sectionComponents = {
 
   stories: () => <StoriesSection />,
 
+  producao_local: () => <LocalProductionHomeEntry />,
+
   categories: () => <CategoriesGrid />,
 
   enquetes: () => <EnqueteSection />,
@@ -267,7 +269,6 @@ export const HomeContent = ({
     <div className="min-h-screen bg-background">
       <div className="container mx-auto space-y-6 px-4 py-4 pb-20">
         <AiAssistantHomeEntry />
-        <LocalProductionHomeEntry />
         {activeSections.map(
           (section, index) => {
             if (

@@ -57,37 +57,32 @@ export const AdminSidebar = ({ activeSection, onSectionChange }: AdminSidebarPro
   const [pendentesVozDoPovo, setPendentesVozDoPovo] = useState(0);
   const [pendentesAchadosPerdidos, setPendentesAchadosPerdidos] = useState(0);
   const [pendentesEntreNos, setPendentesEntreNos] = useState(0);
+  const [pendentesProducao, setPendentesProducao] = useState(0);
 
   // Busca as contagens de itens pendentes direto no Supabase
   const buscarContagensPendentes = async () => {
     try {
-      // 1. Correção para buscar pela coluna correta 'status_aprovacao'
-      const { count: countLocais, error: errorLocais } = await supabase
-        .from('empresas' as any)
-        .select('*', { count: 'exact', head: true })
-        .eq('status_aprovacao', 'pendente');
-      if (!errorLocais && countLocais !== null) setPendentesLocais(countLocais);
-
-      // 2. Correção para buscar pela coluna correta de moderação de problemas
-      const { count: countVoz, error: errorVoz } = await supabase
-        .from('problemas_cidade' as any)
-        .select('*', { count: 'exact', head: true })
-        .eq('status_aprovacao', 'pendente');
-      if (!errorVoz && countVoz !== null) setPendentesVozDoPovo(countVoz);
-
-      // 3. Contagem de Achados e Perdidos Pendentes
-      const { count: countAchados, error: errorAchados } = await supabase
-        .from('achados_perdidos' as any)
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'pendente');
-      if (!errorAchados && countAchados !== null) setPendentesAchadosPerdidos(countAchados);
-
-      const [{ count: countEntreNos }, { count: countDenuncias }] = await Promise.all([
+      const [
+        { count: countLocais, error: errorLocais },
+        { count: countVoz, error: errorVoz },
+        { count: countAchados, error: errorAchados },
+        { count: countEntreNos },
+        { count: countDenuncias },
+        { count: countProducao, error: errorProducao },
+      ] = await Promise.all([
+        supabase.from('empresas' as any).select('*', { count: 'exact', head: true }).eq('status_aprovacao', 'pendente'),
+        supabase.from('problemas_cidade' as any).select('*', { count: 'exact', head: true }).eq('status_aprovacao', 'pendente'),
+        supabase.from('achados_perdidos' as any).select('*', { count: 'exact', head: true }).eq('status', 'pendente'),
         supabase.from('entre_nos_postagens' as any).select('*', { count: 'exact', head: true }).eq('status', 'pendente'),
-        supabase.from('entre_nos_denuncias' as any).select('*', { count: 'exact', head: true }).eq('status', 'aberta')
+        supabase.from('entre_nos_denuncias' as any).select('*', { count: 'exact', head: true }).eq('status', 'aberta'),
+        supabase.from('produtores_locais' as any).select('*', { count: 'exact', head: true }).eq('status', 'pendente'),
       ]);
-      setPendentesEntreNos((countEntreNos || 0) + (countDenuncias || 0));
 
+      if (!errorLocais && countLocais !== null) setPendentesLocais(countLocais);
+      if (!errorVoz && countVoz !== null) setPendentesVozDoPovo(countVoz);
+      if (!errorAchados && countAchados !== null) setPendentesAchadosPerdidos(countAchados);
+      setPendentesEntreNos((countEntreNos || 0) + (countDenuncias || 0));
+      if (!errorProducao && countProducao !== null) setPendentesProducao(countProducao);
     } catch (error) {
       console.error('Erro ao buscar contadores de notificações do admin:', error);
     }
@@ -115,12 +110,16 @@ export const AdminSidebar = ({ activeSection, onSectionChange }: AdminSidebarPro
       .on('postgres_changes', { event: '*', schema: 'public', table: 'entre_nos_postagens' }, () => buscarContagensPendentes())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'entre_nos_denuncias' }, () => buscarContagensPendentes())
       .subscribe();
+    const canalProducao = supabase.channel('rt-admin-producao-local')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'produtores_locais' }, () => buscarContagensPendentes())
+      .subscribe();
 
     return () => {
       supabase.removeChannel(canalLocais);
       supabase.removeChannel(canalVoz);
       supabase.removeChannel(canalAchados);
       supabase.removeChannel(canalEntreNos);
+      supabase.removeChannel(canalProducao);
     };
   }, []);
 
@@ -143,7 +142,7 @@ export const AdminSidebar = ({ activeSection, onSectionChange }: AdminSidebarPro
         { icon: Tag, label: 'Categorias', path: '/admin/categorias', section: 'categorias', badge: 0 },
         { icon: MapPin, label: 'Cidades', path: '/admin/cidades', section: 'cidades', badge: 0 },
         { icon: MapPin, label: 'Lugares Públicos', path: '/admin/lugares-publicos', section: 'lugares-publicos', badge: 0 },
-        { icon: Sprout, label: 'Produção Local', path: '/admin/producao-local', section: 'producao-local', badge: 0 },
+        { icon: Sprout, label: 'Produção Local', path: '/admin/producao-local', section: 'producao-local', badge: pendentesProducao },
       ]
     },
     {

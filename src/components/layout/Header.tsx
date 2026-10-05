@@ -168,14 +168,17 @@ export const Header = () => {
               {dashboardAccess && (
                 <Button
                   type="button"
-                  variant={location.pathname.startsWith(dashboardAccess.path) ? 'secondary' : 'outline'}
+                  variant={isEmpresa ? 'default' : location.pathname.startsWith(dashboardAccess.path) ? 'secondary' : 'outline'}
                   size="sm"
                   onClick={() => navigate(dashboardAccess.path)}
                   aria-label={dashboardAccess.label}
                   aria-current={location.pathname.startsWith(dashboardAccess.path) ? 'page' : undefined}
                   title={dashboardAccess.label}
                   data-account-tour="dashboard"
-                  className="h-9 w-9 shrink-0 rounded-full p-0 shadow-sm sm:h-10 sm:w-10 xl:w-auto xl:gap-2 xl:px-3"
+                  className={cn(
+                    'h-9 w-9 shrink-0 rounded-full p-0 shadow-sm sm:h-10 sm:w-10 xl:w-auto xl:gap-2 xl:px-3',
+                    isEmpresa && 'border border-primary bg-primary text-primary-foreground shadow-md hover:bg-primary/90 hover:text-primary-foreground focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
+                  )}
                 >
                   <dashboardAccess.Icon className="h-4 w-4 sm:h-5 sm:w-5" />
                   <span className="hidden whitespace-nowrap text-sm font-semibold xl:inline">

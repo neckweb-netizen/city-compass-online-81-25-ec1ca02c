@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, ExternalLink, Loader2, MapPin, RefreshCw, Sprout, X } from 'lucide-react';
+import { Check, ExternalLink, LayoutList, Loader2, MapPin, RefreshCw, Sprout, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -81,6 +82,11 @@ export default function AdminProducaoLocal() {
   }), [produtores, search]);
 
   const list = (status: FilterStatus) => visible.filter(item => item.status === status);
+  const totals = useMemo(() => ({
+    pendente: produtores.filter(item => item.status === 'pendente').length,
+    aprovado: produtores.filter(item => item.status === 'aprovado').length,
+    rejeitado: produtores.filter(item => item.status === 'rejeitado').length,
+  }), [produtores]);
 
   const renderProducerList = (status: FilterStatus) => {
     const items = list(status);
@@ -90,9 +96,15 @@ export default function AdminProducaoLocal() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4"><div><div className="flex items-center gap-3"><div className="rounded-2xl bg-emerald-500/10 p-3"><Sprout className="h-6 w-6 text-emerald-600" /></div><div><h1 className="text-2xl font-black">Produção Local</h1><p className="text-sm text-muted-foreground">Disponibilidade da página e moderação dos produtores.</p></div></div></div><Button asChild variant="outline"><a href="/producao-local" target="_blank" rel="noopener noreferrer"><ExternalLink className="mr-2 h-4 w-4" /> Ver página pública</a></Button></div>
+      <div className="flex flex-wrap items-start justify-between gap-4"><div><div className="flex items-center gap-3"><div className="rounded-2xl bg-emerald-500/10 p-3"><Sprout className="h-6 w-6 text-emerald-600" /></div><div><h1 className="text-2xl font-black">Produção Local</h1><p className="text-sm text-muted-foreground">Aprove ou rejeite cadastros e controle a presença da produção local no SAJ TEM.</p></div></div></div><div className="flex flex-wrap gap-2"><Button asChild variant="outline"><Link to="/admin/home-sections"><LayoutList className="mr-2 h-4 w-4" /> Posição na página inicial</Link></Button><Button asChild variant="outline"><a href="/producao-local" target="_blank" rel="noopener noreferrer"><ExternalLink className="mr-2 h-4 w-4" /> Ver página pública</a></Button></div></div>
 
       <Card><CardHeader><CardTitle>Disponibilidade pública</CardTitle><CardDescription>Desative a área sem remover os dados cadastrados.</CardDescription></CardHeader><CardContent><div className="flex items-center justify-between gap-4 rounded-2xl border p-4"><div><Label htmlFor="production-enabled" className="text-base font-bold">Página Produção Local</Label><p className="text-sm text-muted-foreground">{enabled ? 'Visível no site e nos menus.' : 'Oculta para visitantes.'}</p></div><Switch id="production-enabled" checked={enabled} disabled={savingConfig || loading} onCheckedChange={next => void saveEnabled(next)} /></div></CardContent></Card>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Card className="border-amber-500/30"><CardContent className="p-4"><p className="text-sm text-muted-foreground">Aguardando análise</p><p className="mt-1 text-3xl font-black text-amber-600">{totals.pendente}</p></CardContent></Card>
+        <Card className="border-emerald-500/30"><CardContent className="p-4"><p className="text-sm text-muted-foreground">Aprovados e publicados</p><p className="mt-1 text-3xl font-black text-emerald-600">{totals.aprovado}</p></CardContent></Card>
+        <Card className="border-destructive/30"><CardContent className="p-4"><p className="text-sm text-muted-foreground">Rejeitados</p><p className="mt-1 text-3xl font-black text-destructive">{totals.rejeitado}</p></CardContent></Card>
+      </div>
 
       <div className="flex flex-wrap gap-3"><Input value={search} onChange={event => setSearch(event.target.value)} className="max-w-md" placeholder="Buscar produtor, comunidade ou produto" /><Button variant="outline" onClick={() => void load()} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Atualizar</Button></div>
 

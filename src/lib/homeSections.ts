@@ -10,6 +10,7 @@ export interface HomeSection {
 
 // All sections rendered by HomeContent or supplied by Index.extraSections.
 export const HOME_SECTIONS = {
+  producao_local: { name: 'Produção Local', description: 'Atalho para dados rurais, produtores e produtos locais.' },
   stories: { name: 'Stories', description: 'Stories publicados e disponíveis.' },
   enquetes: { name: 'Enquetes', description: 'Aparece quando existe uma enquete ativa.' },
   search: { name: 'Barra de Busca', description: 'Busca de empresas, produtos e serviços.' },
