@@ -56,6 +56,7 @@ const ContactPage = lazy(() => import("./pages/ContactPage").then(m => ({ defaul
 const AnuncieGratis = lazy(() => import("./pages/AnuncieGratis").then(m => ({ default: m.AnuncieGratis })));
 const EntreNos = lazy(() => import("./pages/EntreNos"));
 const Fidelidade = lazy(() => import("./pages/Fidelidade"));
+const ProducaoLocal = lazy(() => import("./pages/ProducaoLocal"));
 
 // Ferramentas públicas e jogos
 const Domino = lazy(() => import("./pages/Domino"));
@@ -110,6 +111,7 @@ const AdminComentariosProblema = lazy(() => import("./pages/admin/AdminComentari
 const ShortUrlRedirect = lazy(() => import("./pages/ShortUrlRedirect"));
 const AdminGoogleImporter = lazy(() => import("./components/admin/GoogleImporter"));
 const AdminEntreNos = lazy(() => import("./pages/admin/AdminEntreNos"));
+const AdminProducaoLocal = lazy(() => import("./pages/admin/AdminProducaoLocal"));
 
 import { MainLayout } from "./components/layout/MainLayout";
 import { PublicLayout } from "./components/layout/PublicLayout";
@@ -787,6 +789,7 @@ const App = () => {
                     <Fidelidade />
                   </ProtectedRoute>
                 } />
+                <Route path="producao-local" element={<ProducaoLocal />} />
                 <Route path="unauthorized" element={<UnauthorizedPage />} />
                 
                 <Route path="domino" element={<Domino />} />
@@ -852,6 +855,7 @@ const App = () => {
                 <Route path="comentarios-problema" element={<AdminComentariosProblema />} />
                 <Route path="importar-google" element={<AdminGoogleImporter />} />
                 <Route path="entre-nos" element={<AdminEntreNos />} />
+                <Route path="producao-local" element={<AdminProducaoLocal />} />
               </Route>
 
               <Route path="*" element={<NotFound />} />
@@ -866,4 +870,3 @@ const App = () => {
 };
 
 export default App;
-

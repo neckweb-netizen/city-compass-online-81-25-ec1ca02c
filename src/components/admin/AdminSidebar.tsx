@@ -27,7 +27,8 @@ import {
   Vote,
   Megaphone,
   MessagesSquare,
-  Search
+  Search,
+  Sprout
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { 
@@ -142,6 +143,7 @@ export const AdminSidebar = ({ activeSection, onSectionChange }: AdminSidebarPro
         { icon: Tag, label: 'Categorias', path: '/admin/categorias', section: 'categorias', badge: 0 },
         { icon: MapPin, label: 'Cidades', path: '/admin/cidades', section: 'cidades', badge: 0 },
         { icon: MapPin, label: 'Lugares Públicos', path: '/admin/lugares-publicos', section: 'lugares-publicos', badge: 0 },
+        { icon: Sprout, label: 'Produção Local', path: '/admin/producao-local', section: 'producao-local', badge: 0 },
       ]
     },
     {

@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Watermark } from '@/components/ui/watermark';
 import * as Icons from 'lucide-react';
+import { useProducaoLocalDisponivel } from '@/hooks/useProducaoLocal';
 
 interface DesktopSidebarProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ export const DesktopSidebar = ({
     configuracoes,
     isLoading
   } = useMenuConfiguracoes();
+  const { data: producaoLocalAtiva = false } = useProducaoLocalDisponivel();
 
   // Todos os itens de menu disponíveis - incluindo todos os itens do sistema
   const allMenuItems = [
@@ -62,6 +64,13 @@ export const DesktopSidebar = ({
       nome_item: 'Oportunidades',
       icone: 'Briefcase',
       rota: '/oportunidades',
+      categoria: 'principal'
+    },
+    {
+      id: 'producao-local',
+      nome_item: 'Produção Local',
+      icone: 'Sprout',
+      rota: '/producao-local',
       categoria: 'principal'
     }, 
     {
@@ -173,7 +182,7 @@ export const DesktopSidebar = ({
   });
 
   // Filtrar apenas itens principais ativos
-  const menuItems = finalMenuItems.filter(item => item.categoria === 'principal' && item.ativo !== false && (!item.apenas_admin || profile?.tipo_conta === 'admin_geral' || profile?.tipo_conta === 'admin_cidade'));
+  const menuItems = finalMenuItems.filter(item => item.categoria === 'principal' && item.ativo !== false && (item.id !== 'producao-local' || producaoLocalAtiva) && (!item.apenas_admin || profile?.tipo_conta === 'admin_geral' || profile?.tipo_conta === 'admin_cidade'));
 
   // Adicionar itens específicos se aplicável
   if (profile?.tipo_conta === 'empresa') {

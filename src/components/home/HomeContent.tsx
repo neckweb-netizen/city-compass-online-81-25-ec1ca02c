@@ -14,6 +14,7 @@ import { CategoriesGrid } from './CategoriesGrid';
 import { AondeIrButton } from './AondeIrButton';
 import { DominoSpotlight } from './DominoSpotlight';
 import { AiAssistantHomeEntry } from './AiAssistantHomeEntry';
+import { LocalProductionHomeEntry } from './LocalProductionHomeEntry';
 
 import { useCidadePadrao } from '@/hooks/useCidadePadrao';
 import { useHomeSectionsOrder } from '@/hooks/useHomeSectionsOrder';
@@ -266,6 +267,7 @@ export const HomeContent = ({
     <div className="min-h-screen bg-background">
       <div className="container mx-auto space-y-6 px-4 py-4 pb-20">
         <AiAssistantHomeEntry />
+        <LocalProductionHomeEntry />
         {activeSections.map(
           (section, index) => {
             if (

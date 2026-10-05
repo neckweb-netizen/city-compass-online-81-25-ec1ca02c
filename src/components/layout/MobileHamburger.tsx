@@ -9,6 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import * as Icons from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Watermark } from '@/components/ui/watermark';
+import { useProducaoLocalDisponivel } from '@/hooks/useProducaoLocal';
 
 export const MobileHamburger = () => {
   const navigate = useNavigate();
@@ -23,6 +24,7 @@ export const MobileHamburger = () => {
   } = useMenuConfiguracoes();
   const [open, setOpen] = React.useState(false);
   const [navigatingTo, setNavigatingTo] = React.useState<string | null>(null);
+  const { data: producaoLocalAtiva = false } = useProducaoLocalDisponivel();
 
   // Todos os itens de menu disponíveis - incluindo todos os itens do sistema
   const allMenuItems = [
@@ -60,6 +62,13 @@ export const MobileHamburger = () => {
       nome_item: 'Oportunidades',
       icone: 'Briefcase',
       rota: '/oportunidades',
+      categoria: 'principal'
+    },
+    {
+      id: 'producao-local',
+      nome_item: 'Produção Local',
+      icone: 'Sprout',
+      rota: '/producao-local',
       categoria: 'principal'
     }, 
     {
@@ -170,7 +179,7 @@ export const MobileHamburger = () => {
   });
 
   // Filtrar apenas itens principais ativos
-  const menuItems = finalMenuItems.filter(item => item.categoria === 'principal' && item.ativo !== false && (!item.apenas_admin || profile?.tipo_conta === 'admin_geral' || profile?.tipo_conta === 'admin_cidade'));
+  const menuItems = finalMenuItems.filter(item => item.categoria === 'principal' && item.ativo !== false && (item.id !== 'producao-local' || producaoLocalAtiva) && (!item.apenas_admin || profile?.tipo_conta === 'admin_geral' || profile?.tipo_conta === 'admin_cidade'));
 
   // Adicionar itens específicos se aplicável
   if (profile?.tipo_conta === 'empresa') {
