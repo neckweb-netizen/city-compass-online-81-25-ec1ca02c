@@ -116,7 +116,7 @@ export const AdminLayout = () => {
       <div className="min-h-screen flex w-full bg-background text-foreground transition-colors duration-200">
         <AdminSidebar activeSection={activeSection} onSectionChange={setActiveSection} />
         <main className="min-w-0 flex-1 bg-background text-foreground">
-          <header className="h-16 min-w-0 border-b flex items-center gap-2 px-3 sm:px-6 bg-card text-card-foreground border-border shadow-sm">
+          <header className="sticky top-0 z-40 h-16 min-w-0 border-b flex items-center gap-2 px-3 sm:px-6 bg-card/95 backdrop-blur-sm text-card-foreground border-border shadow-sm">
             <div className="flex min-w-0 items-center gap-2 sm:gap-4">
               <SidebarTrigger />
               <h1 className="truncate text-base font-semibold text-foreground sm:text-xl">Painel Administrativo</h1>

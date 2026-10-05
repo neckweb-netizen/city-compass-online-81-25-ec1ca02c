@@ -19,7 +19,11 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 
-export const Header = () => {
+interface HeaderProps {
+  sidebarOpen?: boolean;
+}
+
+export const Header = ({ sidebarOpen = true }: HeaderProps) => {
   const { user, profile, signOut } = useAuth();
   const { theme, setTheme } = useTheme();
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
@@ -100,7 +104,11 @@ export const Header = () => {
       : null;
 
   return (
-    <div className="sticky top-0 z-40 w-full">
+    <>
+    <div className={cn(
+      'fixed inset-y-auto right-0 top-0 z-50 transition-[left] duration-300',
+      sidebarOpen ? 'left-0 lg:left-64' : 'left-0 lg:left-16',
+    )}>
       <header className="bg-background/95 backdrop-blur-sm border-b border-border shadow-sm w-full">
         <div className="w-full max-w-full px-2 py-2 lg:px-6 lg:py-3">
           <div className="flex items-center justify-between w-full min-w-0 gap-1.5 sm:gap-2 lg:gap-4">
@@ -365,5 +373,7 @@ export const Header = () => {
         />
       </header>
     </div>
+    <div aria-hidden="true" className="h-[57px] shrink-0 lg:h-[73px]" />
+    </>
   );
 };

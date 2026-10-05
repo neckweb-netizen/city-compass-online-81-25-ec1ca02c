@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   Hammer, Clock, MapPin, Mail, MessageSquare, Instagram, Facebook, 
   ArrowRight, Sparkles, DollarSign, FileText, NotebookPen, Search, 
-  ShieldCheck, Globe, Calculator, Percent, FileSpreadsheet, Volume2, Grid, Ticket, CarFront, HeartPulse, WalletCards, Baby, Pill, ChevronLeft, ChevronRight
+  ShieldCheck, Globe, Calculator, Percent, FileSpreadsheet, Volume2, Grid, Ticket, CarFront, HeartPulse, WalletCards, Baby, Pill, ChevronLeft, ChevronRight, Fuel, Scale
 } from "lucide-react";
 import { initGA, logPageView } from "@/utils/analytics";
 import { trackToolView } from "@/lib/toolAnalytics";
@@ -76,6 +76,8 @@ const ControleFinanceiro = lazy(() => import("./pages/ferramentas/ControleFinanc
 const AcompanhamentoGestacional = lazy(() => import("./pages/ferramentas/AcompanhamentoGestacional"));
 const MedicamentosLembretes = lazy(() => import("./pages/ferramentas/MedicamentosLembretes"));
 const MeuVeiculo = lazy(() => import("./pages/ferramentas/MeuVeiculo"));
+const CalculadoraCombustivel = lazy(() => import("./pages/ferramentas/CalculadoraCombustivel"));
+const ComparadorPrecos = lazy(() => import("./pages/ferramentas/ComparadorPrecos"));
 
 // Admin pages com resolução resiliente do AdminBanners
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
@@ -342,6 +344,26 @@ const FerramentasCatalogInternal = () => {
       corGradiente: 'from-sky-500/20 via-sky-500/5 to-transparent border-sky-500/30',
       corTexto: 'text-sky-500',
     },
+    {
+      id: 'calculadora-combustivel',
+      titulo: 'Combustível e Custo da Viagem',
+      descricao: 'Calcule litros, custo total, divisão entre passageiros e compare gasolina com etanol.',
+      icone: Fuel,
+      rota: '/ferramentas/calculadora-combustivel',
+      categoria: 'Veículos',
+      corGradiente: 'from-amber-500/20 via-orange-500/5 to-transparent border-amber-500/30',
+      corTexto: 'text-amber-600',
+    },
+    {
+      id: 'comparador-precos',
+      titulo: 'Comparador de Preços por Unidade',
+      descricao: 'Compare embalagens de tamanhos diferentes e descubra qual opção realmente custa menos.',
+      icone: Scale,
+      rota: '/ferramentas/comparador-precos',
+      categoria: 'Compras',
+      corGradiente: 'from-teal-500/20 via-cyan-500/5 to-transparent border-teal-500/30',
+      corTexto: 'text-teal-600',
+    },
   ];
 
   const categoriasUnicas = ['Todas', ...Array.from(new Set(ferramentas.map(f => f.categoria)))];
@@ -358,6 +380,7 @@ const FerramentasCatalogInternal = () => {
     Acessibilidade: { icone: Volume2, cor: 'text-indigo-600 dark:text-indigo-300', fundo: 'bg-indigo-100 dark:bg-indigo-950/50' },
     Saúde: { icone: HeartPulse, cor: 'text-rose-600 dark:text-rose-300', fundo: 'bg-rose-100 dark:bg-rose-950/50' },
     Veículos: { icone: CarFront, cor: 'text-sky-600 dark:text-sky-300', fundo: 'bg-sky-100 dark:bg-sky-950/50' },
+    Compras: { icone: Scale, cor: 'text-teal-600 dark:text-teal-300', fundo: 'bg-teal-100 dark:bg-teal-950/50' },
   };
 
   const scrollCategorias = (direction: 'left' | 'right') => {
@@ -806,6 +829,8 @@ const App = () => {
                 <Route path="ferramentas/acompanhamento-gestacional" element={<AcompanhamentoGestacional />} />
                 <Route path="ferramentas/medicamentos" element={<MedicamentosLembretes />} />
                 <Route path="ferramentas/meu-veiculo" element={<MeuVeiculo />} />
+                <Route path="ferramentas/calculadora-combustivel" element={<CalculadoraCombustivel />} />
+                <Route path="ferramentas/comparador-precos" element={<ComparadorPrecos />} />
 
                 {/* FERRAMENTAS PROTEGIDAS */}
                 <Route path="ferramentas/gerador-cobranca" element={<ProtectedRoute><GeradorCobranca /></ProtectedRoute>} />
