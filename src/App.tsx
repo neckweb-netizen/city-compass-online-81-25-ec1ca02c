@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   Hammer, Clock, MapPin, Mail, MessageSquare, Instagram, Facebook, 
   ArrowRight, Sparkles, DollarSign, FileText, NotebookPen, Search, 
-  ShieldCheck, Globe, Calculator, Percent, FileSpreadsheet, Volume2, Grid, Ticket, CarFront, HeartPulse, WalletCards, Baby, Pill, ChevronLeft, ChevronRight, Fuel, Scale
+  ShieldCheck, Globe, Calculator, Percent, FileSpreadsheet, Volume2, Grid, Ticket, CarFront, HeartPulse, WalletCards, Baby, Pill, ChevronLeft, ChevronRight, Fuel, Scale, UtensilsCrossed
 } from "lucide-react";
 import { initGA, logPageView } from "@/utils/analytics";
 import { trackToolView } from "@/lib/toolAnalytics";
@@ -78,6 +78,8 @@ const MedicamentosLembretes = lazy(() => import("./pages/ferramentas/Medicamento
 const MeuVeiculo = lazy(() => import("./pages/ferramentas/MeuVeiculo"));
 const CalculadoraCombustivel = lazy(() => import("./pages/ferramentas/CalculadoraCombustivel"));
 const ComparadorPrecos = lazy(() => import("./pages/ferramentas/ComparadorPrecos"));
+const CardapioDigital = lazy(() => import("./pages/ferramentas/CardapioDigital"));
+const CardapioPublico = lazy(() => import("./pages/CardapioPublico"));
 
 // Admin pages com resolução resiliente do AdminBanners
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
@@ -363,6 +365,16 @@ const FerramentasCatalogInternal = () => {
       categoria: 'Compras',
       corGradiente: 'from-teal-500/20 via-cyan-500/5 to-transparent border-teal-500/30',
       corTexto: 'text-teal-600',
+    },
+    {
+      id: 'cardapio-digital',
+      titulo: 'Cardápio Digital',
+      descricao: 'Crie um perfil moderno com produtos, categorias, fotos, carrinho e pedidos pelo WhatsApp.',
+      icone: UtensilsCrossed,
+      rota: '/ferramentas/cardapio-digital',
+      categoria: 'Comércio',
+      corGradiente: 'from-violet-500/20 via-fuchsia-500/5 to-transparent border-violet-500/30',
+      corTexto: 'text-violet-600',
     },
   ];
 
@@ -831,6 +843,8 @@ const App = () => {
                 <Route path="ferramentas/meu-veiculo" element={<MeuVeiculo />} />
                 <Route path="ferramentas/calculadora-combustivel" element={<CalculadoraCombustivel />} />
                 <Route path="ferramentas/comparador-precos" element={<ComparadorPrecos />} />
+                <Route path="ferramentas/cardapio-digital" element={<CardapioDigital />} />
+                <Route path="cardapio/:slug" element={<CardapioPublico />} />
 
                 {/* FERRAMENTAS PROTEGIDAS */}
                 <Route path="ferramentas/gerador-cobranca" element={<ProtectedRoute><GeradorCobranca /></ProtectedRoute>} />

@@ -15,6 +15,7 @@ export const BANNER_SECTION_VALUES = [
   'calculadora_margem',
   'simulador_rescisao',
   'leitor_voz',
+  'cardapio_digital',
 ] as const;
 
 export type BannerSection = typeof BANNER_SECTION_VALUES[number];
@@ -36,4 +37,5 @@ export const BANNER_SECTION_OPTIONS: ReadonlyArray<{ value: BannerSection; label
   { value: 'calculadora_margem', label: 'Ferramenta - Calculadora de Maquininha & Margem' },
   { value: 'simulador_rescisao', label: 'Ferramenta - Simulador de Rescisão (CLT)' },
   { value: 'leitor_voz', label: 'Ferramenta - Leitor de Texto em Voz Alta' },
+  { value: 'cardapio_digital', label: 'Cardápio Digital - Perfis Públicos' },
 ];

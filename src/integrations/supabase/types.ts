@@ -4436,6 +4436,7 @@ export type Database = {
         | "calculadora_margem"
         | "simulador_rescisao"
         | "leitor_voz"
+        | "cardapio_digital"
       tipo_vaga: "clt" | "temporario" | "estagio" | "freelance"
     }
     CompositeTypes: {
@@ -4602,6 +4603,7 @@ export const Constants = {
         "calculadora_margem",
         "simulador_rescisao",
         "leitor_voz",
+        "cardapio_digital",
       ],
       tipo_vaga: ["clt", "temporario", "estagio", "freelance"],
     },

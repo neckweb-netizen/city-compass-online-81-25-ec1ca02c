@@ -23,7 +23,7 @@ import {
   Ticket,
   FileSpreadsheet,
   Percent,
-  Volume2
+  UtensilsCrossed
 } from 'lucide-react';
 
 interface ItemAchadoPerdido {
@@ -69,14 +69,14 @@ const FERRAMENTAS_DESTAQUE = [
     corBg: 'bg-pink-500/10 border-pink-500/20',
   },
   {
-    id: 'leitor-voz',
-    titulo: 'Leitor de Texto em Voz Alta',
-    descricao: 'Converta qualquer texto em áudio narrado com voz natural e ajustes.',
-    icone: Volume2,
-    rota: '/ferramentas/leitor-voz',
-    tag: 'IA Grátis',
-    corTexto: 'text-indigo-500',
-    corBg: 'bg-indigo-500/10 border-indigo-500/20',
+    id: 'cardapio-digital',
+    titulo: 'Cardápio Digital',
+    descricao: 'Crie um perfil moderno e receba pedidos pelo WhatsApp.',
+    icone: UtensilsCrossed,
+    rota: '/ferramentas/cardapio-digital',
+    tag: 'NOVO',
+    corTexto: 'text-violet-500',
+    corBg: 'bg-violet-500/10 border-violet-500/20',
   },
 ];
 
