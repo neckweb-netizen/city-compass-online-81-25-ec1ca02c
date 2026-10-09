@@ -27,6 +27,7 @@ interface AssignPlanoManualModalProps {
 }
 
 export const AssignPlanoManualModal = ({ open, onOpenChange, onSuccess }: AssignPlanoManualModalProps) => {
+  const [targetType, setTargetType] = useState<'empresa' | 'usuario'>('empresa');
   const [selectedUser, setSelectedUser] = useState<string>('');
   const [selectedPlano, setSelectedPlano] = useState<string>('');
   const [dias, setDias] = useState<string>('30');
@@ -54,6 +55,20 @@ export const AssignPlanoManualModal = ({ open, onOpenChange, onSuccess }: Assign
       }));
     },
     enabled: open,
+  });
+
+  const { data: contas } = useQuery({
+    queryKey: ['usuarios-planos-cardapio'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('usuarios')
+        .select('id, nome, email, plano_id, plano_data_vencimento')
+        .order('nome');
+
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: open && targetType === 'usuario',
   });
 
   // Buscar planos disponíveis
@@ -90,14 +105,21 @@ export const AssignPlanoManualModal = ({ open, onOpenChange, onSuccess }: Assign
       const dataVencimento = new Date(hoje);
       dataVencimento.setDate(hoje.getDate() + parseInt(dias));
 
-      // Atualizar empresa com novo plano
-      const { error } = await supabase
-        .from('empresas')
-        .update({
-          plano_atual_id: selectedPlano,
-          plano_data_vencimento: dataVencimento.toISOString(),
-        })
-        .eq('id', selectedUser);
+      const { error } = targetType === 'empresa'
+        ? await supabase
+            .from('empresas')
+            .update({
+              plano_atual_id: selectedPlano,
+              plano_data_vencimento: dataVencimento.toISOString(),
+            })
+            .eq('id', selectedUser)
+        : await supabase
+            .from('usuarios')
+            .update({
+              plano_id: selectedPlano,
+              plano_data_vencimento: dataVencimento.toISOString(),
+            })
+            .eq('id', selectedUser);
 
       if (error) throw error;
 
@@ -142,20 +164,40 @@ export const AssignPlanoManualModal = ({ open, onOpenChange, onSuccess }: Assign
 
         <form onSubmit={handleSubmit} className="min-w-0 space-y-5 sm:space-y-6">
           <div className="min-w-0 space-y-2">
+            <Label>Aplicar plano em</Label>
+            <Select value={targetType} onValueChange={(value: 'empresa' | 'usuario') => { setTargetType(value); setSelectedUser(''); }}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="empresa">Empresa cadastrada</SelectItem>
+                <SelectItem value="usuario">Conta de usuário / Cardápio Digital</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Para ampliar o Cardápio Digital de uma conta sem empresa, selecione “Conta de usuário”.
+            </p>
+          </div>
+
+          <div className="min-w-0 space-y-2">
             <Label htmlFor="usuario" className="flex items-center gap-2">
               <User className="h-4 w-4" />
-              Local/Usuário
+              {targetType === 'empresa' ? 'Empresa / responsável' : 'Conta do usuário'}
             </Label>
             <Select value={selectedUser} onValueChange={setSelectedUser}>
               <SelectTrigger className="min-w-0">
-                <SelectValue placeholder="Selecione um local" />
+                <SelectValue placeholder={targetType === 'empresa' ? 'Selecione uma empresa' : 'Selecione uma conta'} />
               </SelectTrigger>
               <SelectContent className="max-w-[calc(100vw-2rem)]">
-                {usuarios?.map((item) => (
-                  <SelectItem key={item.id} value={item.id}>
-                    {item.nome} - {item.usuarios?.nome} ({item.usuarios?.email})
-                  </SelectItem>
-                ))}
+                {targetType === 'empresa'
+                  ? usuarios?.map((item) => (
+                      <SelectItem key={item.id} value={item.id}>
+                        {item.nome} - {item.usuarios?.nome} ({item.usuarios?.email})
+                      </SelectItem>
+                    ))
+                  : contas?.map((item) => (
+                      <SelectItem key={item.id} value={item.id}>
+                        {item.nome} ({item.email})
+                      </SelectItem>
+                    ))}
               </SelectContent>
             </Select>
           </div>

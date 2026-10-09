@@ -169,6 +169,7 @@ export const PlanosSection = () => {
                   {plano.descricao && <p className="mt-3 break-words text-sm text-muted-foreground">{plano.descricao}</p>}
                   <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-3 border-t pt-4 text-sm">
                     <div><dt className="text-muted-foreground">Cupons</dt><dd className="font-medium">{formatarLimitePlano(plano.limite_cupons)}</dd></div>
+                    <div><dt className="text-muted-foreground">Cardápios</dt><dd className="font-medium">{formatarLimitePlano(plano.limite_cardapios)}</dd></div>
                     <div><dt className="text-muted-foreground">Produtos / destaque</dt><dd className="font-medium">{formatarLimitePlano(plano.limite_produtos)} / {formatarLimitePlano(plano.produtos_destaque_permitidos)}</dd></div>
                     <div><dt className="text-muted-foreground">Prioridade</dt><dd className="font-medium">{plano.prioridade_destaque}</dd></div>
                     <div><dt className="text-muted-foreground">Eventos</dt><dd className="font-medium">{plano.acesso_eventos ? 'Sim' : 'Não'}</dd></div>
@@ -192,6 +193,7 @@ export const PlanosSection = () => {
                   <TableHead>Nome</TableHead>
                   <TableHead>Preço</TableHead>
                   <TableHead>Cupons</TableHead>
+                  <TableHead>Cardápios</TableHead>
                   <TableHead>Produtos</TableHead>
                   <TableHead>Destaque</TableHead>
                   <TableHead>Eventos</TableHead>
@@ -217,6 +219,7 @@ export const PlanosSection = () => {
                       {formatarPrecoPlano(plano)}
                     </TableCell>
                     <TableCell>{formatarLimitePlano(plano.limite_cupons)}</TableCell>
+                    <TableCell>{formatarLimitePlano(plano.limite_cardapios)}</TableCell>
                     <TableCell>
                       {formatarLimitePlano(plano.limite_produtos)} / {formatarLimitePlano(plano.produtos_destaque_permitidos)}
                     </TableCell>

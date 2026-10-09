@@ -4,17 +4,34 @@ import type { Cardapio } from '@/features/cardapio/types';
 
 const cardapioSelect = '*,cardapio_itens(*)';
 
-export const useMyCardapio = (userId?: string) => useQuery({
-  queryKey: ['cardapio-digital', 'meu', userId],
+export interface CardapioPlanUsage {
+  plano_id: string | null;
+  plano_nome: string;
+  limite_cardapios: number;
+  cardapios_usados: number;
+}
+
+export const useMyCardapios = (userId?: string) => useQuery({
+  queryKey: ['cardapio-digital', 'meus', userId],
   enabled: Boolean(userId),
   queryFn: async () => {
     const { data, error } = await supabase.from('cardapios' as any)
       .select(cardapioSelect)
       .eq('user_id', userId)
-      .order('ordem', { referencedTable: 'cardapio_itens', ascending: true })
-      .maybeSingle();
+      .order('criado_em', { ascending: false })
+      .order('ordem', { referencedTable: 'cardapio_itens', ascending: true });
     if (error) throw error;
-    return data as Cardapio | null;
+    return (data ?? []) as Cardapio[];
+  },
+});
+
+export const useCardapioPlanUsage = (userId?: string) => useQuery({
+  queryKey: ['cardapio-digital', 'plano', userId],
+  enabled: Boolean(userId),
+  queryFn: async () => {
+    const { data, error } = await supabase.rpc('obter_meu_limite_cardapios');
+    if (error) throw error;
+    return (data?.[0] ?? null) as CardapioPlanUsage | null;
   },
 });
 

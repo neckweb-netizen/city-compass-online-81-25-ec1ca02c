@@ -39,6 +39,7 @@ const planoSchema = z.object({
   descricao: z.string().optional(),
   preco_mensal: z.string().min(1, 'Preço é obrigatório'),
   limite_cupons: z.string().min(0, 'Limite de cupons é obrigatório'),
+  limite_cardapios: z.string().min(1, 'Limite de cardápios é obrigatório'),
   limite_produtos: z.string().min(0, 'Limite de produtos é obrigatório'),
   produtos_destaque_permitidos: z.string().min(0, 'Produtos destaque é obrigatório'),
   prioridade_destaque: z.string().min(0, 'Prioridade de destaque é obrigatória'),
@@ -57,6 +58,7 @@ export const PlanoForm = ({ open, onOpenChange, plano, onSubmit, isLoading }: Pl
       descricao: plano?.descricao || '',
       preco_mensal: plano?.preco_mensal?.toString() || '0',
       limite_cupons: plano?.limite_cupons?.toString() || '0',
+      limite_cardapios: plano?.limite_cardapios?.toString() || '1',
       limite_produtos: plano?.limite_produtos?.toString() || '0',
       produtos_destaque_permitidos: plano?.produtos_destaque_permitidos?.toString() || '0',
       prioridade_destaque: plano?.prioridade_destaque?.toString() || '0',
@@ -74,6 +76,7 @@ export const PlanoForm = ({ open, onOpenChange, plano, onSubmit, isLoading }: Pl
         descricao: plano.descricao || '',
         preco_mensal: plano.preco_mensal?.toString() || '0',
         limite_cupons: plano.limite_cupons?.toString() || '0',
+        limite_cardapios: plano.limite_cardapios?.toString() || '1',
         limite_produtos: plano.limite_produtos?.toString() || '0',
         produtos_destaque_permitidos: plano.produtos_destaque_permitidos?.toString() || '0',
         prioridade_destaque: plano.prioridade_destaque?.toString() || '0',
@@ -88,6 +91,7 @@ export const PlanoForm = ({ open, onOpenChange, plano, onSubmit, isLoading }: Pl
         descricao: '',
         preco_mensal: '0',
         limite_cupons: '0',
+        limite_cardapios: '1',
         limite_produtos: '0',
         produtos_destaque_permitidos: '0',
         prioridade_destaque: '0',
@@ -103,6 +107,7 @@ export const PlanoForm = ({ open, onOpenChange, plano, onSubmit, isLoading }: Pl
       ...data,
       preco_mensal: parseFloat(data.preco_mensal),
       limite_cupons: parseInt(data.limite_cupons, 10),
+      limite_cardapios: parseInt(data.limite_cardapios, 10),
       limite_produtos: parseInt(data.limite_produtos, 10),
       produtos_destaque_permitidos: parseInt(data.produtos_destaque_permitidos, 10),
       prioridade_destaque: parseInt(data.prioridade_destaque, 10),
@@ -208,6 +213,27 @@ export const PlanoForm = ({ open, onOpenChange, plano, onSubmit, isLoading }: Pl
                           placeholder="0"
                           className="h-9 sm:h-10 text-sm sm:text-base"
                           {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                      <p className="text-xs text-muted-foreground">Use -1 para ilimitado.</p>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="limite_cardapios"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium">Limite de Cardápios</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min="-1"
+                          placeholder="1"
+                          className="h-9 sm:h-10 text-sm sm:text-base"
+                          {...field}
                         />
                       </FormControl>
                       <FormMessage />
