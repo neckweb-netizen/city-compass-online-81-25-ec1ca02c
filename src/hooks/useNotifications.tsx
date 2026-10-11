@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { usePushNotifications } from '@/contexts/PushNotificationsContext';
+import { navigateToSafeUrl } from '@/lib/safeNavigation';
 
 export interface AppNotification {
   id: string;
@@ -90,7 +91,7 @@ export const useNotifications = () => {
             description: item.message || undefined,
             duration: 6000,
             ...(item.action_url ? {
-              action: { label: item.action_label || 'Abrir', onClick: () => { window.location.href = item.action_url!; } },
+              action: { label: item.action_label || 'Abrir', onClick: () => navigateToSafeUrl(item.action_url) },
             } : {}),
           });
         }

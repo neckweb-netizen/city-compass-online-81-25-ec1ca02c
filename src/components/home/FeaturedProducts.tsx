@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { ChevronLeft, ChevronRight, ShoppingBag, Verified, MessageCircle } from 'lucide-react';
 import { useProdutos, Produto } from '@/hooks/useProdutos';
 import { Button } from '@/components/ui/button';
+import { getSafeNavigationUrl } from '@/lib/safeNavigation';
 
 export const FeaturedProducts = () => {
   const { data: produtos, isLoading } = useProdutos();
@@ -163,7 +164,7 @@ export const FeaturedProducts = () => {
                       className="flex-1 text-xs px-2 py-1 h-7"
                     >
                       <a 
-                        href={produto.link_compra} 
+                        href={getSafeNavigationUrl(produto.link_compra) ?? undefined}
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="flex items-center gap-1"
@@ -181,7 +182,7 @@ export const FeaturedProducts = () => {
                       className="flex-1 text-xs px-2 py-1 h-7 text-green-600 hover:text-green-700 hover:bg-green-50"
                     >
                       <a 
-                        href={produto.link_whatsapp} 
+                        href={getSafeNavigationUrl(produto.link_whatsapp) ?? undefined}
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="flex items-center gap-1"

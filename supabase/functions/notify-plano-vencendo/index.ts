@@ -80,7 +80,7 @@ serve(async (req) => {
     // Função para limpar telefone
     const limparTelefone = (telefone: string | null): string => {
       if (!telefone) return "";
-      return telefone.replace(/[\s\-\(\)\.]/g, "");
+      return telefone.replace(/[\s().-]/g, "");
     };
 
     // Calcular dias restantes

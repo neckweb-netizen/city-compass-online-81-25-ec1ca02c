@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { PlanosModal } from './PlanosModal';
+import { navigateToSafeUrl } from '@/lib/safeNavigation';
 
 const tipoAvisoConfig = {
   info: { icon: Info, color: 'bg-blue-500/10 text-blue-400 border-blue-500/20', bgColor: 'border-blue-500/20' },
@@ -246,7 +247,7 @@ export const MuralAvisos = () => {
                                 if (botao.texto === 'Renovar Plano') {
                                   handleRenovarPlano();
                                 } else {
-                                  window.open(botao.link, '_blank');
+                                  navigateToSafeUrl(botao.link);
                                 }
                               }}
                             >

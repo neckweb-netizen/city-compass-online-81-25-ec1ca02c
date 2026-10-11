@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { BannerCodeRender } from '@/components/home/BannerCodeRender';
 import { cn } from '@/lib/utils';
 import type { SyntheticEvent } from 'react';
+import { getSafeNavigationUrl } from '@/lib/safeNavigation';
 
 interface ToolBannerProps {
   secao: string;
@@ -58,7 +59,7 @@ export const ToolBanner = ({ secao, className }: ToolBannerProps) => {
     >
       {banners.map((banner) => {
         const mediaUrl = banner.imagem_url || banner.imagem || '';
-        const linkUrl = banner.link_url || banner.link_destino;
+        const linkUrl = getSafeNavigationUrl(banner.link_url || banner.link_destino);
 
         const media = banner.tipo_midia === 'codigo' && banner.codigo_html ? (
           <BannerCodeRender

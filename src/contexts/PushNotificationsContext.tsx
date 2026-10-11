@@ -10,6 +10,7 @@ import {
   subscribeToForegroundMessages,
   syncFirebasePushIfGranted,
 } from '@/lib/firebaseMessaging';
+import { navigateToSafeUrl } from '@/lib/safeNavigation';
 
 export interface NotificationPreferences {
   in_app_enabled: boolean;
@@ -138,7 +139,7 @@ export const PushNotificationsProvider = ({ children }: { children: ReactNode })
       toast.info(title, {
         description,
         duration: 7000,
-        ...(actionUrl ? { action: { label: 'Abrir', onClick: () => { window.location.href = actionUrl; } } } : {}),
+        ...(actionUrl ? { action: { label: 'Abrir', onClick: () => navigateToSafeUrl(actionUrl) } } : {}),
       });
     }).then((cleanup) => { unsubscribe = cleanup; }).catch(() => undefined);
     return () => unsubscribe?.();

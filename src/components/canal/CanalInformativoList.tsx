@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/table';
 import html2canvas from 'html2canvas';
 import { useRef, useState, useCallback } from 'react';
+import { getSafeNavigationUrl, isSameOriginNavigation } from '@/lib/safeNavigation';
 
 const getTypeIcon = (tipo: string) => {
   switch (tipo) {
@@ -140,23 +141,10 @@ const CanalInformativoItemComponent = ({ item }: { item: CanalInformativoItem })
   }, [shortUrl, item.id, createShortUrl]);
 
   const handleLinkClick = () => {
-    if (item.link_externo) {
-      try {
-        const linkUrl = new URL(item.link_externo);
-        const currentHost = window.location.host;
-        
-        // Se o link é do mesmo domínio, abrir na mesma aba
-        if (linkUrl.host === currentHost) {
-          window.location.href = item.link_externo;
-        } else {
-          // Se é externo, abrir em nova aba
-          window.open(item.link_externo, '_blank');
-        }
-      } catch (error) {
-        // Se não conseguir fazer parse da URL, assumir que é externo
-        window.open(item.link_externo, '_blank');
-      }
-    }
+    const safeUrl = getSafeNavigationUrl(item.link_externo);
+    if (!safeUrl) return;
+    if (isSameOriginNavigation(safeUrl)) window.location.assign(safeUrl);
+    else window.open(safeUrl, '_blank', 'noopener,noreferrer');
   };
 
   const generateSorteioImage = async () => {

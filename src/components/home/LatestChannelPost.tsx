@@ -9,6 +9,7 @@ import { ExternalLink, Image, Video, FileText, Trophy, ArrowRight } from 'lucide
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
+import { navigateToSafeUrl } from '@/lib/safeNavigation';
 
 const getTypeIcon = (tipo: string) => {
   switch (tipo) {
@@ -55,7 +56,7 @@ export const LatestChannelPost = () => {
 
   const handleLinkClick = () => {
     if (latestPost.link_externo) {
-      window.open(latestPost.link_externo, '_blank');
+      navigateToSafeUrl(latestPost.link_externo);
     }
   };
 

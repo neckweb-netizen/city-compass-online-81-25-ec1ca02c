@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, RefreshCw, Trophy, User, Maximize2, Minimize2, ShieldAlert, Award, MessageSquare, Timer, Move, ExternalLink } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { getSafeNavigationUrl } from '@/lib/safeNavigation';
 
 interface DominoTabuleiroProps {
   usuarioId: string;
@@ -1157,7 +1158,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
               <BannerCodeContainer codigoHtml={bannerAtivo.codigo_html || ''} />
             ) : bannerAtivo.link_url ? (
               <a 
-                href={bannerAtivo.link_url} 
+                href={getSafeNavigationUrl(bannerAtivo.link_url) ?? undefined}
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="group relative flex h-full w-full items-center justify-center"

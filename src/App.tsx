@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { initGA, logPageView } from "@/utils/analytics";
 import { trackToolView } from "@/lib/toolAnalytics";
+import { getSafeNavigationUrl } from "@/lib/safeNavigation";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -182,7 +183,7 @@ const BannersFerramentas = () => {
       {banners.map((b) => (
         <a
           key={b.id}
-          href={b.link_destino || "#"}
+          href={getSafeNavigationUrl(b.link_destino) ?? undefined}
           target="_blank"
           rel="noopener noreferrer"
           className="block w-full rounded-2xl overflow-hidden shadow-sm border border-border/60 hover:opacity-95 transition-opacity"

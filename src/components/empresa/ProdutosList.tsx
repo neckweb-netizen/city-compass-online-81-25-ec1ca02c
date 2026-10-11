@@ -20,6 +20,7 @@ import { ProdutoForm } from './ProdutoForm';
 import { Plus, Edit, Trash2, Star, ShoppingCart, MessageCircle } from 'lucide-react';
 import { useMinhaEmpresa } from '@/hooks/useMinhaEmpresa';
 import { usePlanoLimites } from '@/hooks/usePlanoLimites';
+import { getSafeNavigationUrl } from '@/lib/safeNavigation';
 
 interface ProdutosListProps {
   empresaId: string;
@@ -178,7 +179,7 @@ export const ProdutosList = ({ empresaId }: ProdutosListProps) => {
                             className="flex-1 sm:flex-none"
                           >
                             <a 
-                              href={produto.link_compra} 
+                              href={getSafeNavigationUrl(produto.link_compra) ?? undefined}
                               target="_blank" 
                               rel="noopener noreferrer"
                               className="flex items-center gap-2"
@@ -196,7 +197,7 @@ export const ProdutosList = ({ empresaId }: ProdutosListProps) => {
                             className="flex-1 sm:flex-none text-green-600 hover:text-green-700 hover:bg-green-50"
                           >
                             <a 
-                              href={produto.link_whatsapp} 
+                              href={getSafeNavigationUrl(produto.link_whatsapp) ?? undefined}
                               target="_blank" 
                               rel="noopener noreferrer"
                               className="flex items-center gap-2"

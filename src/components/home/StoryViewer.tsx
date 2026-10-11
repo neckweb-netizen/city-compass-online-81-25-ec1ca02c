@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
+import { getSafeNavigationUrl, isSameOriginNavigation } from '@/lib/safeNavigation';
 
 interface Story {
   id: string;
@@ -88,14 +89,9 @@ export const StoryViewer = ({
 
     // 1. Caso o botão seja do tipo personalizado e possua um link
     if (currentStory.botao_tipo === 'personalizado' && currentStory.botao_link) {
-      const link = currentStory.botao_link.trim();
-      const currentHost = window.location.host;
-
-      // Verifica se o link fornecido é de uma página de dentro do próprio site/sistema
-      const isInternalLink = 
-        link.startsWith('/') || 
-        link.startsWith(window.location.origin) || 
-        (link.includes(currentHost) && !link.startsWith('http'));
+      const link = getSafeNavigationUrl(currentStory.botao_link);
+      if (!link) return;
+      const isInternalLink = isSameOriginNavigation(link);
 
       if (isInternalLink) {
         // Extrai apenas o caminho da URL para o roteador interno navegar sem recarregar a aplicação
@@ -117,7 +113,7 @@ export const StoryViewer = ({
       } else {
         // Se for um link externo de verdade (ex: WhatsApp, outro site), abre fora do app
         console.log('🌐 Opening external link outside PWA:', link);
-        window.open(link, '_blank');
+        window.open(link, '_blank', 'noopener,noreferrer');
       }
 
     // 2. Caso padrão: Abrir perfil da empresa vinculada

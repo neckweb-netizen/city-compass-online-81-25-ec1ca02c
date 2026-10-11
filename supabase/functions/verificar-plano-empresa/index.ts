@@ -80,7 +80,7 @@ const handler = async (req: Request): Promise<Response> => {
     let mensagem = '';
 
     switch (tipo_verificacao) {
-      case 'anuncio':
+      case 'anuncio': {
         // Contar anúncios ativos da empresa
         const { count: anunciosCount } = await supabaseClient
           .from('empresas')
@@ -96,8 +96,9 @@ const handler = async (req: Request): Promise<Response> => {
           mensagem = `Limite de anúncios atingido. Seu plano ${plano.nome} permite ${limite} anúncio(s).`;
         }
         break;
+      }
 
-      case 'cupom':
+      case 'cupom': {
         // Contar cupons ativos da empresa
         const { count: cuponsCount } = await supabaseClient
           .from('cupons')
@@ -114,6 +115,7 @@ const handler = async (req: Request): Promise<Response> => {
           mensagem = `Limite de cupons atingido. Seu plano ${plano.nome} permite ${limite} cupom(s).`;
         }
         break;
+      }
 
       case 'evento':
         if (!plano.acesso_eventos) {

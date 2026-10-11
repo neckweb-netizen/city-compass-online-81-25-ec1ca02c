@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { X, Play, Volume2, VolumeX } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { navigateToSafeUrl } from '@/lib/safeNavigation';
 
 interface VideoPlayerWithAdProps {
   videoUrl: string;
@@ -77,7 +78,7 @@ export const VideoPlayerWithAd = ({ videoUrl, videoTitle, className }: VideoPlay
 
   const handleAdClick = () => {
     if (selectedBanner?.link_url) {
-      window.open(selectedBanner.link_url, '_blank');
+      navigateToSafeUrl(selectedBanner.link_url);
     }
   };
 
