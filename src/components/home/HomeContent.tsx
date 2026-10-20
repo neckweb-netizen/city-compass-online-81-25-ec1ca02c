@@ -11,7 +11,7 @@ import { StoriesSection } from './StoriesSection';
 import { SearchBar } from './SearchBar';
 import { BannerSection } from './BannerSection';
 import { CategoriesGrid } from './CategoriesGrid';
-import { AondeIrButton } from './AondeIrButton';
+import { HomeQuickActions } from './HomeQuickActions';
 import { DominoSpotlight } from './DominoSpotlight';
 import { AiAssistantHomeEntry } from './AiAssistantHomeEntry';
 import { LocalProductionHomeEntry } from './LocalProductionHomeEntry';
@@ -88,7 +88,7 @@ const sectionComponents = {
 
   search: () => <SearchBar />,
 
-  aonde_ir: () => <AondeIrButton />,
+  aonde_ir: () => <HomeQuickActions />,
 
   stories: () => <StoriesSection />,
 

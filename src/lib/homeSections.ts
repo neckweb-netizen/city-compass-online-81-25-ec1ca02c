@@ -15,7 +15,7 @@ export const HOME_SECTIONS = {
   stories: { name: 'Stories', description: 'Stories publicados e disponíveis.' },
   enquetes: { name: 'Enquetes', description: 'Aparece quando existe uma enquete ativa.' },
   search: { name: 'Barra de Busca', description: 'Busca de empresas, produtos e serviços.' },
-  aonde_ir: { name: 'Aonde ir?', description: 'Atalho para descobrir lugares na cidade.' },
+  aonde_ir: { name: 'Ações rápidas', description: 'Atalhos para descobrir lugares e chamar serviços locais.' },
   banner: { name: 'Banner Principal', description: 'Banners ativos configurados para a página inicial.' },
   featured_section: { name: 'Seção em Destaque', description: 'Locais em destaque disponíveis na cidade.' },
   categories: { name: 'Categorias', description: 'Categorias de empresas e serviços.' },
