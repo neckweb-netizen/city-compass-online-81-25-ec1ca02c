@@ -245,19 +245,29 @@ export const ChameAquiButton = () => {
             </div>
           ) : (
             <Tabs defaultValue="moto-taxi" className="w-full">
-              <TabsList className="grid h-auto w-full grid-cols-2 gap-1 rounded-2xl bg-muted/70 p-1">
-                <TabsTrigger value="moto-taxi" className="min-h-12 gap-2 rounded-xl px-2 text-xs sm:text-sm">
+              <TabsList className="grid h-auto w-full grid-cols-2 gap-2 rounded-2xl bg-slate-100/90 p-1.5 dark:bg-slate-900/80">
+                <TabsTrigger
+                  value="moto-taxi"
+                  className="group min-h-14 gap-2 rounded-xl border border-violet-300/70 bg-gradient-to-br from-violet-100 via-fuchsia-100 to-purple-200 px-2 text-xs font-bold text-violet-950 shadow-sm hover:from-violet-200 hover:to-purple-300 data-[state=active]:border-violet-500 data-[state=active]:bg-transparent data-[state=active]:from-violet-600 data-[state=active]:via-fuchsia-600 data-[state=active]:to-purple-700 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-violet-500/25 dark:border-violet-700/70 dark:from-violet-950 dark:via-fuchsia-950 dark:to-purple-950 dark:text-violet-100 sm:text-sm"
+                >
                   <Bike className="h-4 w-4" />
                   Moto-Táxi
-                  <span className="rounded-full bg-background/80 px-1.5 py-0.5 text-[10px]">{motoTaxiCompanies.length}</span>
+                  <span className="rounded-full bg-white/75 px-1.5 py-0.5 text-[10px] text-violet-900 group-data-[state=active]:bg-white/20 group-data-[state=active]:text-white dark:bg-black/25 dark:text-violet-100">
+                    {motoTaxiCompanies.length}
+                  </span>
                 </TabsTrigger>
-                <TabsTrigger value="gas-agua" className="min-h-12 gap-2 rounded-xl px-2 text-xs sm:text-sm">
+                <TabsTrigger
+                  value="gas-agua"
+                  className="group min-h-14 gap-2 rounded-xl border border-cyan-300/80 bg-gradient-to-br from-amber-100 via-orange-100 to-cyan-100 px-2 text-xs font-bold text-slate-900 shadow-sm hover:from-amber-200 hover:to-cyan-200 data-[state=active]:border-cyan-500 data-[state=active]:bg-transparent data-[state=active]:from-orange-500 data-[state=active]:via-amber-500 data-[state=active]:to-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-cyan-500/25 dark:border-cyan-700/70 dark:from-orange-950 dark:via-amber-950 dark:to-cyan-950 dark:text-cyan-50 sm:text-sm"
+                >
                   <span className="flex items-center -space-x-1">
-                    <Flame className="h-4 w-4" />
-                    <Droplets className="h-4 w-4" />
+                    <Flame className="h-4 w-4 text-orange-600 group-data-[state=active]:text-white dark:text-orange-300" />
+                    <Droplets className="h-4 w-4 text-cyan-600 group-data-[state=active]:text-white dark:text-cyan-300" />
                   </span>
                   Gás e Água
-                  <span className="rounded-full bg-background/80 px-1.5 py-0.5 text-[10px]">{gasWaterCompanies.length}</span>
+                  <span className="rounded-full bg-white/75 px-1.5 py-0.5 text-[10px] text-slate-800 group-data-[state=active]:bg-white/20 group-data-[state=active]:text-white dark:bg-black/25 dark:text-cyan-50">
+                    {gasWaterCompanies.length}
+                  </span>
                 </TabsTrigger>
               </TabsList>
 
