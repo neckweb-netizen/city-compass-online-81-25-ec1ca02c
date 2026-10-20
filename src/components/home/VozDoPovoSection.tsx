@@ -14,7 +14,7 @@ export const VozDoPovoSection = () => {
 
   return (
     <section className="w-full max-w-7xl mx-auto px-2 sm:px-4">
-      <div className="rounded-3xl border border-border/60 bg-card p-5 sm:p-7 shadow-sm">
+      <div className="home-showcase-card home-showcase-card--plum rounded-3xl border border-primary/15 bg-card p-5 sm:p-7">
         <div className="mb-5 flex flex-col gap-3 border-b border-border/40 pb-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-2">

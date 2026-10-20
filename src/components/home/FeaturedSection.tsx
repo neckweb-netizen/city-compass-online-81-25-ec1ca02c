@@ -23,7 +23,7 @@ export const FeaturedSection = ({
 
   if (isLoading) {
     return (
-      <NeonCard className="mx-2 rounded-3xl border border-border/60 bg-card p-4 shadow-sm sm:mx-4 lg:mx-6">
+      <NeonCard className="home-showcase-card mx-2 rounded-3xl border border-primary/15 bg-card p-4 sm:mx-4 lg:mx-6">
         <div className="mb-3 flex items-center justify-between sm:mb-4">
           <div className="flex items-center space-x-1 sm:space-x-2">
             <h2 className="text-lg font-bold sm:text-xl">
@@ -71,7 +71,7 @@ export const FeaturedSection = ({
   };
 
   return (
-    <NeonCard className="mx-2 rounded-3xl border border-border/60 bg-card p-4 shadow-sm sm:mx-4 lg:mx-6">
+    <NeonCard className="home-showcase-card mx-2 rounded-3xl border border-primary/15 bg-card p-4 sm:mx-4 lg:mx-6">
       <div className="mb-3 flex items-center justify-between sm:mb-4">
         <div className="flex items-center space-x-1 sm:space-x-2">
           <h2 className="text-lg font-bold sm:text-xl">

@@ -309,7 +309,7 @@ const Index = () => {
   // COMPONENTES DAS SEÇÕES
   const ComponenteFerramentas = (
     <section key="secao-ferramentas" className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 my-6">
-      <div className="bg-card border border-border/60 rounded-3xl p-6 sm:p-8 shadow-sm">
+      <div className="home-showcase-card home-showcase-card--lilac bg-card border border-primary/15 rounded-3xl p-6 sm:p-8">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border/40 pb-4 mb-6">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
@@ -378,7 +378,7 @@ const Index = () => {
 
   const ComponenteAchados = (
     <section key="secao-achados" className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 my-6">
-      <div className="bg-card border border-border/60 rounded-3xl p-6 sm:p-8 shadow-sm">
+      <div className="home-showcase-card home-showcase-card--plum bg-card border border-primary/15 rounded-3xl p-6 sm:p-8">
         <div className="flex items-center justify-between border-b border-border/40 pb-4 mb-6">
           <div>
             <h2 className="text-lg sm:text-xl font-bold text-foreground flex items-center gap-2">

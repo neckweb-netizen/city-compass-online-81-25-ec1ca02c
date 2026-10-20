@@ -60,7 +60,7 @@ export const CategoriesGrid = () => {
 
   if (isLoading) {
     return (
-      <NeonCard className="py-6 sm:py-8 lg:py-12 mx-2 sm:mx-4 rounded-3xl border border-border/60 bg-card shadow-sm">
+      <NeonCard className="home-showcase-card home-showcase-card--lilac py-6 sm:py-8 lg:py-12 mx-2 sm:mx-4 rounded-3xl border border-primary/15 bg-card">
         <div className="text-center mb-6 sm:mb-8">
           <h2 className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-4">Categorias</h2>
           <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto px-4">
@@ -89,7 +89,7 @@ export const CategoriesGrid = () => {
   }
 
   return (
-    <NeonCard className="py-6 sm:py-8 lg:py-12 mx-2 sm:mx-4 rounded-3xl border border-border/60 bg-card shadow-sm">
+    <NeonCard className="home-showcase-card home-showcase-card--lilac py-6 sm:py-8 lg:py-12 mx-2 sm:mx-4 rounded-3xl border border-primary/15 bg-card">
       <div className="text-center mb-6 sm:mb-8">
         <h2 className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-4">Categorias</h2>
         <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto px-4">

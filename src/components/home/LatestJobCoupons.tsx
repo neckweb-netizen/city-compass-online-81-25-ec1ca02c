@@ -143,7 +143,7 @@ export const LatestJobCoupons = () => {
 
   return (
     <section className="w-full max-w-7xl mx-auto px-2 sm:px-4 py-4">
-      <NeonCard className="overflow-hidden rounded-3xl border border-border/60 bg-card shadow-sm">
+      <NeonCard className="home-showcase-card home-showcase-card--indigo overflow-hidden rounded-3xl border border-primary/15 bg-card">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
