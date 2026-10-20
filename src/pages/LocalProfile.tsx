@@ -2,6 +2,7 @@ import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresaById } from '@/hooks/useEmpresas';
+import { GoogleMapsAttribution } from '@/components/ui/google-maps-attribution';
 import { useFavoritos } from '@/hooks/useFavoritos';
 import { useEmpresaAvaliacoes, useEmpresaEstatisticasAvaliacoes, useUsuarioJaAvaliou } from '@/hooks/useAvaliacoes';
 import { Card, CardContent } from '@/components/ui/card';
@@ -200,6 +201,8 @@ const EmpresaProfile = () => {
               <Camera className="h-16 w-16 text-violet-600/50 dark:text-violet-300/50" />
             </div>
           )}
+
+          <GoogleMapsAttribution imageUrl={empresa.imagem_capa_url} className="bottom-2 left-2" />
 
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent flex items-end">
             <div className="p-6 text-white w-full">

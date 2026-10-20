@@ -40,26 +40,14 @@ type BulkRefreshPublicPlacesBody = {
 
 type RequestBody = SearchBody | ImportBody | BulkRefreshBody | BulkRefreshPublicPlacesBody;
 
-const resolveGooglePhotoUrl = async (photoReference: unknown, googleApiKey: string) => {
+const buildGooglePhotoUrl = (photoReference: unknown, placeId: unknown) => {
   const reference = String(photoReference || "").trim();
-  if (!reference) return null;
+  const normalizedPlaceId = String(placeId || "").trim();
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  if (!reference || !normalizedPlaceId || !supabaseUrl) return null;
 
-  const params = new URLSearchParams({
-    maxwidth: "1200",
-    photo_reference: reference,
-    key: googleApiKey,
-  });
-
-  try {
-    const response = await fetch(`https://maps.googleapis.com/maps/api/place/photo?${params.toString()}`, {
-      redirect: "manual",
-    });
-    const location = response.headers.get("location");
-    return location?.startsWith("https://lh3.googleusercontent.com/") ? location : null;
-  } catch (error) {
-    console.error("Erro resolvendo foto do Google Places:", error);
-    return null;
-  }
+  const params = new URLSearchParams({ place_id: normalizedPlaceId });
+  return `${supabaseUrl}/functions/v1/google-place-photo?${params.toString()}`;
 };
 
 const hasWorkingImage = async (imageUrl: unknown) => {
@@ -228,7 +216,7 @@ Deno.serve(async (req: Request) => {
           const detailsResponse = await fetch(`https://maps.googleapis.com/maps/api/place/details/json?${detailsParams.toString()}`);
           const detailsData = await detailsResponse.json();
           const details = detailsData?.result;
-          const imageUrl = await resolveGooglePhotoUrl(details?.photos?.[0]?.photo_reference, googleApiKey);
+          const imageUrl = buildGooglePhotoUrl(details?.photos?.[0]?.photo_reference, candidate.place_id);
 
           if (detailsData?.status !== "OK" || !imageUrl) {
             skipped.push({ id: place.id, nome: place.nome, reason: "Foto não disponível no Google Maps" });
@@ -322,7 +310,7 @@ Deno.serve(async (req: Request) => {
           const lat = details?.geometry?.location?.lat;
           const lng = details?.geometry?.location?.lng;
           const telefone = details.formatted_phone_number || details.international_phone_number || null;
-          const imagemCapaUrl = await resolveGooglePhotoUrl(details?.photos?.[0]?.photo_reference, googleApiKey);
+          const imagemCapaUrl = buildGooglePhotoUrl(details?.photos?.[0]?.photo_reference, placeId);
           const { error: updateError } = await admin.from("empresas").update({
             place_id: placeId,
             endereco: details.formatted_address || company.endereco || null,
@@ -443,7 +431,7 @@ Deno.serve(async (req: Request) => {
       const lat = details?.geometry?.location?.lat;
       const lng = details?.geometry?.location?.lng;
       const telefone = details.formatted_phone_number || details.international_phone_number || null;
-      const imagemCapaUrl = await resolveGooglePhotoUrl(details?.photos?.[0]?.photo_reference, googleApiKey);
+      const imagemCapaUrl = buildGooglePhotoUrl(details?.photos?.[0]?.photo_reference, placeId);
 
       const payload = {
         cidade_id: SAJ_CITY_ID,

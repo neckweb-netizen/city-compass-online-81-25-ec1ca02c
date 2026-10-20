@@ -6,6 +6,7 @@ import { Star, MapPin } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useNavigate } from 'react-router-dom';
 import { getOptimizedImageUrl } from '@/lib/imageOptimization';
+import { GoogleMapsAttribution } from '@/components/ui/google-maps-attribution';
 
 interface FeaturedSectionProps {
   cidadeId: string;
@@ -131,6 +132,8 @@ export const FeaturedSection = ({
                         </span>
                       </div>
                     )}
+
+                    <GoogleMapsAttribution imageUrl={empresa.imagem_capa_url} />
 
                     <div className="absolute right-1 top-1 sm:right-2 sm:top-2">
                       <Badge className="bg-primary/90 text-xs text-primary-foreground">

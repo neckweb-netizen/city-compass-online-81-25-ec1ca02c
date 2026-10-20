@@ -8,6 +8,7 @@ import { useFavoritos } from '@/hooks/useFavoritos';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { getOptimizedImageUrl } from '@/lib/imageOptimization';
+import { GoogleMapsAttribution } from '@/components/ui/google-maps-attribution';
 import {
   Star,
   MapPin,
@@ -111,6 +112,7 @@ export const LocalCard = ({
               sizes="(max-width: 640px) calc(100vw - 32px), (max-width: 1024px) 50vw, 33vw"
               onError={() => setImageFailed(true)}
             />
+            <GoogleMapsAttribution imageUrl={empresa.imagem_capa_url} />
           </div>
         ) : (
           <div
