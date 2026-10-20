@@ -12,6 +12,7 @@ export const CategoriesGrid = () => {
   const { data: categorias, isLoading, error } = useCategorias();
   const navigate = useNavigate();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const categoriasVisiveis = categorias?.filter((categoria) => categoria.tipo !== 'evento');
 
   const handleCategoriaClick = (categoriaSlug: string) => {
     navigate(`/categoria/${categoriaSlug}`);
@@ -30,19 +31,21 @@ export const CategoriesGrid = () => {
   };
 
   const renderIcon = (categoria: any) => {
-    if (!categoria.icone_url) {
-      return <span className="text-2xl">🏢</span>;
+    const icon = categoria.icone_url?.trim();
+
+    if (!icon) {
+      return <span className="text-2xl">🏷️</span>;
     }
 
     // Se for um emoji (caracteres Unicode) - regex expandida para cobrir mais emojis
-    if (categoria.icone_url.match(/[\u{1F000}-\u{1F9FF}]|[\u{2600}-\u{27BF}]|[\u{1F300}-\u{1F5FF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{FE00}-\u{FE0F}]|[\u{E0020}-\u{E007F}]|[\u{200D}]|[\u{20E3}]|[\u{2700}-\u{27BF}]|[\u{24C2}]|[\u{1F170}-\u{1F251}]/u)) {
-      return <span className="text-2xl">{categoria.icone_url}</span>;
+    if (icon.match(/[\u{1F000}-\u{1F9FF}]|[\u{2600}-\u{27BF}]|[\u{1F300}-\u{1F5FF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{FE00}-\u{FE0F}]|[\u{E0020}-\u{E007F}]|[\u{200D}]|[\u{20E3}]|[\u{2700}-\u{27BF}]|[\u{24C2}]|[\u{1F170}-\u{1F251}]/u)) {
+      return <span className="text-2xl">{icon}</span>;
     }
 
     // Se for uma URL
     return (
       <img 
-        src={categoria.icone_url} 
+        src={icon}
         alt={categoria.nome}
         className="w-8 h-8 object-contain"
         loading="lazy"
@@ -84,7 +87,7 @@ export const CategoriesGrid = () => {
     );
   }
 
-  if (error || !categorias?.length) {
+  if (error || !categoriasVisiveis?.length) {
     return null;
   }
 
@@ -122,7 +125,7 @@ export const CategoriesGrid = () => {
             className="flex gap-3 sm:gap-4 overflow-x-auto scrollbar-hide px-8 sm:px-12 py-2"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
-            {categorias.map((categoria) => (
+            {categoriasVisiveis.map((categoria) => (
               <Card 
                 key={categoria.id}
                 className="min-w-20 sm:min-w-24 flex-shrink-0 hover:shadow-lg transition-all duration-300 cursor-pointer border border-border/40 bg-muted/40 hover:scale-105"
@@ -131,7 +134,7 @@ export const CategoriesGrid = () => {
                 <CardContent className="p-2 sm:p-3 text-center space-y-1 sm:space-y-2">
                   <div className="w-10 h-10 sm:w-12 sm:h-12 mx-auto bg-primary/20 rounded-full flex items-center justify-center relative">
                     {renderIcon(categoria)}
-                    <span className="fallback-icon text-xl sm:text-2xl hidden">🏢</span>
+                    <span className="fallback-icon text-xl sm:text-2xl hidden">🏷️</span>
                   </div>
                   <p className="text-xs font-medium leading-tight line-clamp-2">{categoria.nome}</p>
                 </CardContent>
