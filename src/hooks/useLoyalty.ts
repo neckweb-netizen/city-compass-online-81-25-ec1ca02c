@@ -42,6 +42,7 @@ export interface LoyaltyOwnerCard {
   total_resgates: number;
   ultimo_movimento: string | null;
   adesao_em: string;
+  expires_at: string | null;
 }
 
 export interface MyLoyaltyCard {
@@ -53,6 +54,7 @@ export interface MyLoyaltyCard {
   total_resgates: number;
   ultimo_movimento: string | null;
   created_at: string;
+  expires_at: string | null;
   loyalty_programs: LoyaltyProgram & {
     empresas: { nome: string; slug: string; imagem_capa_url: string | null };
   };
@@ -128,7 +130,21 @@ export const useLoyaltyManager = (empresaId?: string) => {
     },
   });
 
-  return { programQuery, cardsQuery, saveProgram, applyTransaction };
+  const renewCard = useMutation({
+    mutationFn: async ({ identifier }: { identifier: string }) => {
+      const { data, error } = await db.rpc('loyalty_renew_card_v3', {
+        p_card_identifier: identifier,
+      });
+      if (error) throw error;
+      return data?.[0] as { card_id: string; expires_at: string } | undefined;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['loyalty-owner-cards', programId] });
+      queryClient.invalidateQueries({ queryKey: ['my-loyalty-cards'] });
+    },
+  });
+
+  return { programQuery, cardsQuery, saveProgram, applyTransaction, renewCard };
 };
 
 export const useJoinLoyaltyProgram = (empresaId?: string) => {
@@ -153,6 +169,12 @@ export const useJoinLoyaltyProgram = (empresaId?: string) => {
       if (!user || !programId) throw new Error('Entre na sua conta para participar.');
       const { data, error } = await db.from('loyalty_cards')
         .insert({ program_id: programId, usuario_id: user.id }).select('*').single();
+      if (error?.code === '23505') {
+        const { data: existing, error: existingError } = await db.from('loyalty_cards').select('*')
+          .eq('program_id', programId).eq('usuario_id', user.id).single();
+        if (existingError) throw existingError;
+        return existing;
+      }
       if (error) throw error;
       return data;
     },
@@ -171,7 +193,7 @@ export const useMyLoyaltyCards = () => {
     queryKey: ['my-loyalty-cards', user?.id],
     queryFn: async () => {
       const { data, error } = await db.from('loyalty_cards').select(`
-        id, public_token, display_code, saldo, total_carimbos, total_resgates, ultimo_movimento, created_at,
+        id, public_token, display_code, saldo, total_carimbos, total_resgates, ultimo_movimento, created_at, expires_at,
         loyalty_programs!inner(*, loyalty_rewards(*), empresas!inner(nome, slug, imagem_capa_url))
       `).eq('usuario_id', user?.id).order('created_at', { ascending: false });
       if (error) throw error;
