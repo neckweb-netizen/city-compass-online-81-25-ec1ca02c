@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Award, Gift, Loader2, Plus, Save, Search, ShieldCheck, Sparkles, Stamp, Trash2, Users } from 'lucide-react';
+import { Award, Clock3, Gift, Loader2, Minus, Plus, RefreshCw, Save, Search, ShieldCheck, Sparkles, Stamp, Trash2, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -95,9 +95,11 @@ const ProgramForm = ({ program, onSave, saving }: { program: LoyaltyProgram | nu
 };
 
 export const LoyaltyManager = ({ empresaId }: { empresaId: string }) => {
-  const { programQuery, cardsQuery, saveProgram, applyTransaction } = useLoyaltyManager(empresaId);
+  const { programQuery, cardsQuery, saveProgram, applyTransaction, renewCard } = useLoyaltyManager(empresaId);
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<LoyaltyOwnerCard | null>(null);
+  const [creditAmount, setCreditAmount] = useState(1);
+  const [observation, setObservation] = useState('');
   const program = programQuery.data || null;
   const cards = useMemo(() => cardsQuery.data || [], [cardsQuery.data]);
   const rewards = useMemo(() => (program?.loyalty_rewards || []).filter((reward) => reward.ativo).sort((a, b) => a.carimbos_necessarios - b.carimbos_necessarios), [program?.loyalty_rewards]);
@@ -115,10 +117,32 @@ export const LoyaltyManager = ({ empresaId }: { empresaId: string }) => {
   const move = async (tipo: 'credito' | 'resgate', rewardId?: string) => {
     if (!selected) return;
     try {
-      await applyTransaction.mutateAsync({ identifier: selected.display_code, tipo, rewardId });
-      toast.success(tipo === 'credito' ? 'Carimbo adicionado e cliente notificado!' : 'Recompensa resgatada e registrada!');
-      setSelected(null);
+      const result = await applyTransaction.mutateAsync({
+        identifier: selected.display_code,
+        tipo,
+        quantidade: tipo === 'credito' ? creditAmount : 1,
+        rewardId,
+        observacao: observation,
+      });
+      if (result) setSelected((current) => current ? {
+        ...current,
+        saldo: result.saldo,
+        total_carimbos: result.total_carimbos,
+        total_resgates: result.total_resgates,
+        ultimo_movimento: new Date().toISOString(),
+      } : current);
+      toast.success(tipo === 'credito' ? `${creditAmount} carimbo(s) adicionado(s) e cliente notificado!` : 'Recompensa resgatada e registrada!');
+      setObservation('');
+      setCreditAmount(1);
     } catch (error: any) { toast.error(error?.message || 'Não foi possível registrar.'); }
+  };
+  const renew = async () => {
+    if (!selected) return;
+    try {
+      const result = await renewCard.mutateAsync({ identifier: selected.display_code });
+      if (result) setSelected((current) => current ? { ...current, expires_at: result.expires_at } : current);
+      toast.success('Cartão renovado e cliente notificado!');
+    } catch (error: any) { toast.error(error?.message || 'Não foi possível renovar o cartão.'); }
   };
   const handleQrRead = useCallback((token: string) => {
     setQuery(token);
@@ -127,6 +151,8 @@ export const LoyaltyManager = ({ empresaId }: { empresaId: string }) => {
     setSelected(card || null);
     if (!card) toast.error('Este cartão não pertence ao programa da empresa.');
   }, [cards]);
+
+  const selectedExpired = Boolean(selected?.expires_at && new Date(selected.expires_at).getTime() <= Date.now());
 
   if (programQuery.isLoading) return <div className="grid min-h-48 place-items-center"><Loader2 className="h-7 w-7 animate-spin text-violet-300" /></div>;
 
@@ -147,17 +173,22 @@ export const LoyaltyManager = ({ empresaId }: { empresaId: string }) => {
         <div className="flex flex-col gap-2 sm:flex-row"><div className="relative flex-1"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleQrRead(query); }} className="pl-9" placeholder="Nome, e-mail ou código de 8 caracteres" autoCapitalize="characters" autoComplete="off" /></div><LoyaltyScanner onRead={handleQrRead} /></div>
         <p className="text-xs text-muted-foreground">Você também pode usar um leitor QR USB/Bluetooth: mantenha o campo selecionado e leia o código normalmente.</p>
         <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
-          {filtered.slice(0, 50).map((card) => <button key={card.card_id} type="button" onClick={() => setSelected(card)} className={`w-full rounded-xl border p-3 text-left transition ${selected?.card_id === card.card_id ? 'border-violet-400 bg-violet-500/10' : 'border-white/10 hover:bg-white/5'}`}>
-            <div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="truncate font-medium">{card.cliente_nome}</p><p className="truncate text-xs text-muted-foreground">{card.cliente_email} · Código {card.display_code}</p></div><Badge variant="outline">{card.saldo}/{highestGoal}</Badge></div>
+          {filtered.slice(0, 50).map((card) => { const expired = Boolean(card.expires_at && new Date(card.expires_at).getTime() <= Date.now()); return <button key={card.card_id} type="button" onClick={() => setSelected(card)} className={`w-full rounded-xl border p-3 text-left transition ${selected?.card_id === card.card_id ? 'border-violet-400 bg-violet-500/10' : 'border-white/10 hover:bg-white/5'}`}>
+            <div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="truncate font-medium">{card.cliente_nome}</p><p className="truncate text-xs text-muted-foreground">{card.cliente_email} · Código {card.display_code}</p></div><div className="flex items-center gap-2">{expired && <Badge className="bg-amber-500/15 text-amber-200">Vencido</Badge>}<Badge variant="outline">{card.saldo}/{highestGoal}</Badge></div></div>
             <Progress value={Math.min(100, card.saldo / highestGoal * 100)} className="mt-2 h-1.5" />
-          </button>)}
+          </button>; })}
           {!filtered.length && <p className="py-8 text-center text-sm text-muted-foreground">Nenhum cliente encontrado.</p>}
         </div>
         {selected && <div className="rounded-xl border border-violet-400/25 bg-violet-500/10 p-4">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><p className="font-semibold">{selected.cliente_nome}</p><p className="text-xs text-muted-foreground">Código {selected.display_code} · Saldo: {selected.saldo} {program.rotulo_carimbo}(s)</p></div><Badge>{rewards.filter((reward) => selected.saldo >= reward.carimbos_necessarios).length} prêmio(s) disponível(is)</Badge></div>
-          <Button disabled={applyTransaction.isPending} onClick={() => move('credito')}><Stamp className="mr-2 h-4 w-4" /> Adicionar 1 carimbo</Button>
+          {selectedExpired && <div className="mb-4 flex flex-col justify-between gap-3 rounded-xl border border-amber-400/25 bg-amber-500/10 p-3 sm:flex-row sm:items-center"><div><p className="flex items-center gap-2 font-semibold text-amber-100"><Clock3 className="h-4 w-4" /> Cartão vencido</p><p className="mt-1 text-xs text-muted-foreground">Renove o cartão antes de adicionar carimbos ou entregar prêmios.</p></div><Button type="button" variant="outline" onClick={renew} disabled={renewCard.isPending}>{renewCard.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Renovar cartão</Button></div>}
+          <div className="grid gap-3 sm:grid-cols-[auto_1fr_auto] sm:items-end">
+            <div><Label className="mb-2 block text-xs">Quantidade de carimbos</Label><div className="flex items-center rounded-lg border border-white/10 bg-black/15"><Button type="button" variant="ghost" size="icon" onClick={() => setCreditAmount((value) => Math.max(1, value - 1))} disabled={creditAmount <= 1 || applyTransaction.isPending || selectedExpired}><Minus className="h-4 w-4" /></Button><span className="min-w-10 text-center font-bold">{creditAmount}</span><Button type="button" variant="ghost" size="icon" onClick={() => setCreditAmount((value) => Math.min(10, value + 1))} disabled={creditAmount >= 10 || applyTransaction.isPending || selectedExpired}><Plus className="h-4 w-4" /></Button></div></div>
+            <div><Label htmlFor="loyalty-observation" className="mb-2 block text-xs">Observação opcional</Label><Input id="loyalty-observation" value={observation} onChange={(event) => setObservation(event.target.value)} maxLength={240} placeholder="Ex.: compra no balcão" disabled={applyTransaction.isPending || selectedExpired} /></div>
+            <Button disabled={applyTransaction.isPending || selectedExpired} onClick={() => move('credito')}>{applyTransaction.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Stamp className="mr-2 h-4 w-4" />} Adicionar {creditAmount}</Button>
+          </div>
           <div className="mt-4 grid gap-2 sm:grid-cols-2">{rewards.map((reward) => <div key={reward.id} className="rounded-xl border border-white/10 bg-black/10 p-3"><div className="mb-2 flex justify-between gap-2"><div><p className="text-sm font-medium">{reward.nome}</p><p className="text-xs text-muted-foreground">{reward.carimbos_necessarios} carimbos</p></div>{selected.saldo >= reward.carimbos_necessarios && <Badge className="bg-emerald-500/15 text-emerald-300">Liberado</Badge>}</div>
-            <AlertDialog><AlertDialogTrigger asChild><Button size="sm" variant="secondary" className="w-full" disabled={applyTransaction.isPending || selected.saldo < reward.carimbos_necessarios}><Award className="mr-2 h-4 w-4" /> Resgatar este prêmio</Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Entregar “{reward.nome}”?</AlertDialogTitle><AlertDialogDescription>Serão descontados {reward.carimbos_necessarios} carimbos de {selected.cliente_nome}. A operação ficará registrada no histórico.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={() => move('resgate', reward.id)}>Confirmar resgate</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+            <AlertDialog><AlertDialogTrigger asChild><Button size="sm" variant="secondary" className="w-full" disabled={applyTransaction.isPending || selectedExpired || selected.saldo < reward.carimbos_necessarios}><Award className="mr-2 h-4 w-4" /> Resgatar este prêmio</Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Entregar “{reward.nome}”?</AlertDialogTitle><AlertDialogDescription>Serão descontados {reward.carimbos_necessarios} carimbos de {selected.cliente_nome}. A operação ficará registrada no histórico.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={() => move('resgate', reward.id)}>Confirmar resgate</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
           </div>)}</div>
         </div>}
       </CardContent>
