@@ -1,4 +1,4 @@
-import { Award, Clock3, Copy, Gift, History, Loader2, ShieldCheck, Sparkles, Stamp } from 'lucide-react';
+import { AlertTriangle, Award, Clock3, Copy, Gift, History, Loader2, ShieldCheck, Sparkles, Stamp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -24,23 +24,24 @@ const DigitalCard = ({ card }: { card: MyLoyaltyCard }) => {
   const program = card.loyalty_programs;
   const company = program.empresas;
   const rewards = (program.loyalty_rewards || []).filter((reward) => reward.ativo).sort((a, b) => a.carimbos_necessarios - b.carimbos_necessarios);
-  const nextReward = rewards.find((reward) => card.saldo < reward.carimbos_necessarios) || rewards[rewards.length - 1];
-  const goal = nextReward?.carimbos_necessarios || program.carimbos_necessarios;
+  const nextReward = rewards.find((reward) => card.saldo < reward.carimbos_necessarios);
+  const goal = nextReward?.carimbos_necessarios || rewards[rewards.length - 1]?.carimbos_necessarios || program.carimbos_necessarios;
   const maxGoal = rewards.length ? rewards[rewards.length - 1].carimbos_necessarios : goal;
   const percent = Math.min(100, Math.round(card.saldo / goal * 100));
-  const expiresAt = program.validade_dias ? new Date(new Date(card.created_at).getTime() + program.validade_dias * 86400000) : null;
+  const expiresAt = card.expires_at ? new Date(card.expires_at) : program.validade_dias ? new Date(new Date(card.created_at).getTime() + program.validade_dias * 86400000) : null;
+  const expired = Boolean(expiresAt && expiresAt.getTime() <= Date.now());
   return <Card className="overflow-hidden border-white/10 bg-[#171121]">
     <div className="relative p-5 text-white sm:p-7" style={{ background: `linear-gradient(135deg, ${program.cor_principal}, #171022 75%)` }}>
       <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/10 blur-2xl" />
-      <div className="relative flex items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[.2em] text-white/65">{company.nome}</p><h2 className="mt-1 text-2xl font-bold">{program.nome}</h2></div><Gift className="h-8 w-8 text-white/85" /></div>
+      <div className="relative flex items-start justify-between gap-3"><div><div className="flex flex-wrap items-center gap-2"><p className="text-xs font-bold uppercase tracking-[.2em] text-white/65">{company.nome}</p>{expired && <Badge className="bg-amber-300 text-amber-950"><AlertTriangle className="mr-1 h-3 w-3" /> Vencido</Badge>}</div><h2 className="mt-1 text-2xl font-bold">{program.nome}</h2></div><Gift className="h-8 w-8 text-white/85" /></div>
       <div className="relative mt-6 grid grid-cols-5 gap-2 sm:grid-cols-10">
         {Array.from({ length: maxGoal }, (_, index) => <div key={index} className={`grid aspect-square place-items-center rounded-full border text-xs font-bold ${index < card.saldo ? 'border-white bg-white text-violet-950 shadow-md' : 'border-white/25 bg-black/15 text-white/45'}`}>{index < card.saldo ? <Stamp className="h-4 w-4" /> : index + 1}</div>)}
       </div>
-      <div className="relative mt-4"><div className="mb-1 flex justify-between text-xs"><span>{card.saldo} de {goal} para o próximo prêmio</span><span>{percent}%</span></div><Progress value={percent} className="h-2 bg-black/25" /></div>
+      <div className="relative mt-4"><div className="mb-1 flex justify-between text-xs"><span>{nextReward ? `${card.saldo} de ${goal} para o próximo prêmio` : 'Você já possui prêmio disponível para resgate'}</span><span>{percent}%</span></div><Progress value={percent} className="h-2 bg-black/25" /></div>
       <div className="relative mt-4 grid gap-2 sm:grid-cols-2">{rewards.map((reward) => <div key={reward.id} className="rounded-xl bg-black/20 p-3"><p className="text-xs text-white/60">{reward.carimbos_necessarios} {program.rotulo_carimbo}(s)</p><p className="font-semibold">{reward.nome}</p>{card.saldo >= reward.carimbos_necessarios && <Badge className="mt-2 bg-emerald-400 text-emerald-950">Disponível</Badge>}</div>)}</div>
     </div>
     <CardContent className="grid gap-6 p-5 md:grid-cols-[auto_1fr]">
-      <div className="flex flex-col items-center gap-2"><div className="rounded-2xl bg-white p-2"><LoyaltyQRCode token={card.display_code} size={164} /></div><p className="text-center text-xs text-muted-foreground">Apresente o QR Code ou informe este código:</p><code className="rounded-lg bg-violet-500/10 px-3 py-1.5 text-lg font-black tracking-[.18em] text-violet-200">{card.display_code}</code><Button variant="ghost" size="sm" onClick={() => navigator.clipboard.writeText(card.display_code).then(() => toast.success('Código copiado!'))}><Copy className="mr-2 h-3.5 w-3.5" /> Copiar código</Button></div>
+      <div className="flex flex-col items-center gap-2"><div className={`rounded-2xl bg-white p-2 ${expired ? 'opacity-45 grayscale' : ''}`}><LoyaltyQRCode token={card.display_code} size={164} /></div><p className="text-center text-xs text-muted-foreground">{expired ? 'Este cartão precisa ser renovado pela empresa.' : 'Apresente o QR Code ou informe este código:'}</p><code className="rounded-lg bg-violet-500/10 px-3 py-1.5 text-lg font-black tracking-[.18em] text-violet-200">{card.display_code}</code><Button variant="ghost" size="sm" onClick={() => navigator.clipboard.writeText(card.display_code).then(() => toast.success('Código copiado!'))}><Copy className="mr-2 h-3.5 w-3.5" /> Copiar código</Button></div>
       <div>
         <div className="mb-3 flex items-center justify-between"><h3 className="flex items-center gap-2 font-semibold"><History className="h-4 w-4" /> Histórico</h3><Badge variant="outline">{card.total_resgates} resgate(s)</Badge></div>
         <CardHistory cardId={card.id} />
