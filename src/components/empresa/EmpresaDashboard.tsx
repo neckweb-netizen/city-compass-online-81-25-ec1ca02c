@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Building2, MapPin, Phone, Globe, Mail, Settings, Star, Calendar, Package, ChevronDown, CreditCard, Briefcase, CalendarCheck, Gift } from 'lucide-react';
+import { Building2, MapPin, Phone, Globe, Settings, Star, Calendar, Package, CreditCard, Briefcase, CalendarCheck, Gift, MessageSquareText } from 'lucide-react';
 import { useMinhaEmpresa } from '@/hooks/useMinhaEmpresa';
 import { EmpresaEditForm } from './EmpresaEditForm';
 import { EmpresaProdutos } from './EmpresaProdutos';
@@ -26,6 +26,7 @@ import { AgendamentosEmpresa } from './AgendamentosEmpresa';
 import { ConfiguracaoAgendamentos } from './ConfiguracaoAgendamentos';
 import { LoyaltyActivationTip } from '@/components/loyalty/LoyaltyActivationTip';
 import { LoyaltyManager } from '@/components/loyalty/LoyaltyManager';
+import { EmpresaPedidosLocais } from './EmpresaPedidosLocais';
 
 export const EmpresaDashboard = () => {
   const { user, profile } = useAuth();
@@ -194,7 +195,7 @@ export const EmpresaDashboard = () => {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-3 sm:grid-cols-5 w-full gap-2 p-3 bg-[#221A32] border border-purple-950/20 h-auto rounded-xl">
+        <TabsList className="grid grid-cols-3 sm:grid-cols-6 w-full gap-2 p-3 bg-[#221A32] border border-purple-950/20 h-auto rounded-xl">
           <TabsTrigger 
             value="overview" 
             className="flex flex-col items-center gap-1 text-xs py-2 px-2 text-white border-0 bg-transparent data-[state=active]:bg-purple-600 data-[state=active]:text-white hover:bg-purple-950/40 rounded-md h-auto transition-all"
@@ -236,6 +237,13 @@ export const EmpresaDashboard = () => {
           >
             <Briefcase className="w-4 h-4" />
             <span className="text-center leading-tight">Vagas</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="pedidos"
+            className="flex flex-col items-center gap-1 text-xs py-2 px-2 text-white border-0 bg-transparent data-[state=active]:bg-purple-600 data-[state=active]:text-white hover:bg-purple-950/40 rounded-md h-auto transition-all"
+          >
+            <MessageSquareText className="w-4 h-4" />
+            <span className="text-center leading-tight">Pedidos</span>
           </TabsTrigger>
           <TabsTrigger 
             value="planos" 
@@ -377,6 +385,10 @@ export const EmpresaDashboard = () => {
 
         <TabsContent value="vagas" className="mt-6">
           <EmpresaVagas empresaId={empresaAtual.id} />
+        </TabsContent>
+
+        <TabsContent value="pedidos" className="mt-6">
+          <EmpresaPedidosLocais empresaId={empresaAtual.id} />
         </TabsContent>
 
         <TabsContent value="planos" className="mt-6">
