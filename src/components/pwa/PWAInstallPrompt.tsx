@@ -4,6 +4,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { X, Download, Zap, Bell, Wifi, Gauge } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
+const PWA_SNOOZED_AT_KEY = 'pwa-install-snoozed-at';
+const PWA_SNOOZE_DURATION_MS = 24 * 60 * 60 * 1000;
+
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
   readonly userChoice: Promise<{
@@ -58,12 +61,17 @@ export const PWAInstallPrompt: React.FC = () => {
       }
     }
 
+    const snoozedAt = Number(localStorage.getItem(PWA_SNOOZED_AT_KEY) || 0);
+    const isSnoozed = snoozedAt > 0 && Date.now() - snoozedAt < PWA_SNOOZE_DURATION_MS;
+
     // Listener nativo do navegador para interceptar se o app é elegível para instalação
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      setShowBanner(true);
-      logPWAEvent('banner_exibido');
+      if (!isSnoozed) {
+        setShowBanner(true);
+        logPWAEvent('banner_exibido');
+      }
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -79,7 +87,7 @@ export const PWAInstallPrompt: React.FC = () => {
     window.addEventListener('appinstalled', handleAppInstalled);
 
     // No iOS não há evento beforeinstallprompt; mantemos o acesso às instruções até a instalação.
-    if (iOS && !standalone) {
+    if (iOS && !standalone && !isSnoozed) {
       setShowBanner(true);
       logPWAEvent('banner_exibido');
     }
@@ -110,6 +118,12 @@ export const PWAInstallPrompt: React.FC = () => {
   const handleBannerClick = () => {
     setShowBanner(false);
     setShowFullPrompt(true);
+  };
+
+  const handleCloseBanner = () => {
+    localStorage.setItem(PWA_SNOOZED_AT_KEY, String(Date.now()));
+    setShowBanner(false);
+    logPWAEvent('banner_adiado_24h');
   };
 
   const handleCloseFullPrompt = () => {
@@ -148,6 +162,7 @@ export const PWAInstallPrompt: React.FC = () => {
             </div>
           </button>
           <Button onClick={handleBannerClick} variant="secondary" size="sm" className="hidden shrink-0 rounded-full bg-primary-foreground px-4 font-semibold text-primary shadow-lg hover:bg-primary-foreground/95 min-[360px]:inline-flex">Instalar</Button>
+          <Button onClick={handleCloseBanner} variant="ghost" size="icon" aria-label="Fechar aviso por 24 horas" className="h-9 w-9 shrink-0 rounded-full text-primary-foreground hover:bg-primary-foreground/20 hover:text-primary-foreground"><X className="h-4 w-4" /></Button>
         </div>
       </aside>
     );
