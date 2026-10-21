@@ -22,18 +22,38 @@ export const useHealthServices = () => useQuery({
   },
 });
 
-export const useHealthBusinesses = () => useQuery({
-  queryKey: ['viver-saj', 'saude', 'empresas'],
+const useModuleBusinesses = (module: 'saude' | 'mobilidade') => useQuery({
+  queryKey: ['viver-saj', module, 'empresas'],
   queryFn: async () => {
-    const { data, error } = await supabase.from('empresas')
-      .select('id,nome,slug,descricao,endereco,telefone,verificado,categorias!inner(nome,slug)')
-      .eq('ativo', true).eq('status_aprovacao', 'aprovado')
-      .in('categorias.slug', ['saude', 'saude-e-bem-estar'])
-      .order('verificado', { ascending: false }).order('nome').limit(60);
-    if (error) throw error;
-    return (data ?? []).map((item: any) => ({ ...item, categoria: item.categorias?.nome ?? 'Saúde' })) as DirectoryBusiness[];
+    const [categoryLinks, curated] = await Promise.all([
+      supabase.from('viver_saj_categorias' as any)
+        .select('categoria_id').eq('modulo', module).eq('ativo', true).order('ordem'),
+      supabase.from('viver_saj_empresas' as any)
+        .select('ordem,empresas!inner(id,nome,slug,descricao,endereco,telefone,verificado,ativo,status_aprovacao,categorias(nome))')
+        .eq('modulo', module).eq('ativo', true)
+        .eq('empresas.ativo', true).eq('empresas.status_aprovacao', 'aprovado').order('ordem'),
+    ]);
+    if (categoryLinks.error) throw categoryLinks.error;
+    if (curated.error) throw curated.error;
+
+    const categoryIds = (categoryLinks.data ?? []).map((item: any) => item.categoria_id);
+    let automatic: any[] = [];
+    if (categoryIds.length > 0) {
+      const result = await supabase.from('empresas')
+        .select('id,nome,slug,descricao,endereco,telefone,verificado,categoria_id,categorias(nome)')
+        .eq('ativo', true).eq('status_aprovacao', 'aprovado').in('categoria_id', categoryIds)
+        .order('verificado', { ascending: false }).order('nome').limit(100);
+      if (result.error) throw result.error;
+      automatic = result.data ?? [];
+    }
+
+    const selected = (curated.data ?? []).map((row: any) => ({ ...row.empresas, categoria: row.empresas?.categorias?.nome ?? null }));
+    const categorized = automatic.map((item: any) => ({ ...item, categoria: item.categorias?.nome ?? null }));
+    return [...new Map([...selected, ...categorized].map(item => [item.id, item])).values()] as DirectoryBusiness[];
   },
 });
+
+export const useHealthBusinesses = () => useModuleBusinesses('saude');
 
 export const useMyLocalRequests = (userId?: string) => useQuery({
   queryKey: ['viver-saj', 'pedidos', userId],
@@ -84,23 +104,4 @@ export const useMadeInSaj = () => useQuery({
   },
 });
 
-export const useMobilityBusinesses = () => useQuery({
-  queryKey: ['viver-saj', 'mobilidade'],
-  queryFn: async () => {
-    const [curated, categorized] = await Promise.all([
-      supabase.from('viver_saj_empresas' as any)
-        .select('ordem,empresas!inner(id,nome,slug,descricao,endereco,telefone,verificado,ativo,status_aprovacao,categorias(nome))')
-        .eq('modulo', 'mobilidade').eq('ativo', true)
-        .eq('empresas.ativo', true).eq('empresas.status_aprovacao', 'aprovado').order('ordem'),
-      supabase.from('empresas')
-        .select('id,nome,slug,descricao,endereco,telefone,verificado,categorias!inner(nome,slug)')
-        .eq('ativo', true).eq('status_aprovacao', 'aprovado').eq('categorias.slug', 'mobilidade-urbana')
-        .order('verificado', { ascending: false }).order('nome').limit(60),
-    ]);
-    if (curated.error) throw curated.error;
-    if (categorized.error) throw categorized.error;
-    const selected = (curated.data ?? []).map((row: any) => ({ ...row.empresas, categoria: row.empresas?.categorias?.nome ?? 'Mobilidade Urbana' }));
-    const automatic = (categorized.data ?? []).map((item: any) => ({ ...item, categoria: item.categorias?.nome ?? 'Mobilidade Urbana' }));
-    return [...new Map([...selected, ...automatic].map(item => [item.id, item])).values()] as DirectoryBusiness[];
-  },
-});
+export const useMobilityBusinesses = () => useModuleBusinesses('mobilidade');
