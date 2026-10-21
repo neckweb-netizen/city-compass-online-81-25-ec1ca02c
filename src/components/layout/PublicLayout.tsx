@@ -6,7 +6,6 @@ import { DesktopSidebar } from './DesktopSidebar';
 import { SecurityHeaders } from '@/components/security/SecurityHeaders';
 import { RateLimitWrapper } from '@/components/security/RateLimitWrapper';
 import { Watermark } from '@/components/ui/watermark';
-import { PWAInstallPrompt } from '@/components/pwa/PWAInstallPrompt';
 import { TourTutorial } from '@/components/tutorial/TourTutorial'; // ADICIONADO: Importação do Tour Guiado
 import { cn } from '@/lib/utils';
 import { AiAssistantChat } from '@/components/ai/AiAssistantChat';
@@ -42,8 +41,6 @@ export const PublicLayout: React.FC = () => {
           </div>
         </div>
         
-        {/* PWA Install Prompt */}
-        <PWAInstallPrompt />
         <AiAssistantChat />
       </RateLimitWrapper>
     </>
