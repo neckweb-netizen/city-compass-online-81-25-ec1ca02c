@@ -51,7 +51,7 @@ export function DesejosModule() {
     }
     setForm({ titulo: '', descricao: '', categoria: '', bairro: '', faixa_orcamento: '', prazo: '' });
     await queryClient.invalidateQueries({ queryKey: ['viver-saj', 'pedidos'] });
-    toast.success('Pedido publicado. Empresas compatíveis já podem responder.');
+    toast.success('Pedido publicado. Empresas locais já podem responder pelo painel delas.');
   };
 
   return (
@@ -60,7 +60,7 @@ export function DesejosModule() {
         <CardHeader className="bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white">
           <Badge className="mb-2 w-fit bg-white/15 text-white hover:bg-white/20">Conversa guiada, sem resultados aleatórios</Badge>
           <CardTitle className="flex items-center gap-2 text-2xl"><Bot className="h-6 w-6" /> O que você está procurando?</CardTitle>
-          <p className="text-sm text-violet-50">Responda às perguntas abaixo. O pedido será mostrado apenas a empresas locais aptas a responder.</p>
+          <p className="text-sm text-violet-50">Responda às perguntas abaixo. Empresas locais verão a categoria e só responderão quando puderem atender.</p>
         </CardHeader>
         <CardContent className="space-y-4 p-5">
           <div className="rounded-2xl rounded-tl-sm bg-muted p-4 text-sm"><strong>Assistente SAJ:</strong> Primeiro, diga em poucas palavras o que você precisa.</div>
