@@ -8,7 +8,6 @@ import { SecurityHeaders } from '@/components/security/SecurityHeaders';
 import { RateLimitWrapper } from '@/components/security/RateLimitWrapper';
 import { TourTutorial } from '@/components/tutorial/TourTutorial';
 import { Watermark } from '@/components/ui/watermark';
-import { PWAInstallPrompt } from '@/components/pwa/PWAInstallPrompt';
 import { cn } from '@/lib/utils';
 
 interface MainLayoutProps {
@@ -44,8 +43,6 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
         
         <TourTutorial mode="account" />
         
-        {/* PWA Install Prompt */}
-        <PWAInstallPrompt />
       </RateLimitWrapper>
     </>
   );
