@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { X, Download, Plus, Zap, Bell, Wifi, Gauge } from 'lucide-react';
+import { X, Download, Zap, Bell, Wifi, Gauge } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+
+const PWA_DISMISSED_AT_KEY = 'pwa-install-dismissed-at';
+const PWA_DISMISS_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -58,16 +61,18 @@ export const PWAInstallPrompt: React.FC = () => {
       }
     }
 
-    // REMOVIDO: A checagem de "isDismissed" foi removida para forçar o banner a aparecer sempre nos testes
+    const dismissedAt = Number(localStorage.getItem(PWA_DISMISSED_AT_KEY) || 0);
+    const wasRecentlyDismissed = dismissedAt > 0 && Date.now() - dismissedAt < PWA_DISMISS_DURATION_MS;
 
     // Listener nativo do navegador para interceptar se o app é elegível para instalação
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       
-      // MODIFICADO: Agora exibe o banner IMEDIATAMENTE (sem o delay de 1 minuto) para facilitar seu teste
-      setShowBanner(true);
-      logPWAEvent('banner_exibido');
+      if (!wasRecentlyDismissed) {
+        setShowBanner(true);
+        logPWAEvent('banner_exibido');
+      }
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -82,8 +87,8 @@ export const PWAInstallPrompt: React.FC = () => {
 
     window.addEventListener('appinstalled', handleAppInstalled);
 
-    // Para iOS, mostrar banner imediatamente também para testes
-    if (iOS && !standalone) {
+    // No iOS não há evento beforeinstallprompt; exibimos as instruções uma vez por período.
+    if (iOS && !standalone && !wasRecentlyDismissed) {
       setShowBanner(true);
       logPWAEvent('banner_exibido');
     }
@@ -115,12 +120,14 @@ export const PWAInstallPrompt: React.FC = () => {
 
   const handleCloseBanner = () => {
     setShowBanner(false);
-    // REMOVIDO: Não salva mais no localStorage o bloqueio para permitir que você teste várias vezes seguidas
+    localStorage.setItem(PWA_DISMISSED_AT_KEY, String(Date.now()));
+    logPWAEvent('banner_fechado');
   };
 
   const handleCloseFullPrompt = () => {
     setShowFullPrompt(false);
-    // REMOVIDO: Não salva mais no localStorage o bloqueio para permitir que você teste várias vezes seguidas
+    localStorage.setItem(PWA_DISMISSED_AT_KEY, String(Date.now()));
+    logPWAEvent('prompt_fechado');
   };
 
   // Não mostrar se já estiver rodando em modo de app isolado
@@ -128,13 +135,16 @@ export const PWAInstallPrompt: React.FC = () => {
     return null;
   }
 
-  // Banner no topo
+  // Card flutuante: não interfere no header fixo nem no menu inferior mobile.
   if (showBanner && !showFullPrompt) {
     return (
-      <div className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-primary via-primary to-primary/95 text-primary-foreground shadow-xl border-b border-primary-foreground/10 animate-in slide-in-from-top duration-500">
-        <div className="flex items-center justify-between p-4 max-w-7xl mx-auto">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-md overflow-hidden flex-shrink-0 p-1">
+      <aside
+        aria-label="Instalar aplicativo Saj Tem"
+        className="fixed inset-x-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-[60] mx-auto max-w-md animate-in slide-in-from-bottom-4 duration-300 lg:inset-x-auto lg:bottom-5 lg:right-5 lg:mx-0 lg:w-[390px]"
+      >
+        <div className="flex items-center gap-3 rounded-2xl border border-primary-foreground/15 bg-gradient-to-r from-primary via-primary to-primary/90 p-3 text-primary-foreground shadow-2xl backdrop-blur-xl sm:p-4">
+          <button type="button" onClick={handleBannerClick} className="flex min-w-0 flex-1 items-center gap-3 text-left" aria-label="Ver opções para instalar o Saj Tem">
+            <div className="h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-white p-1 shadow-md">
               <img 
                 src="/icon-192.png"
                 alt="Saj Tem Logo" 
@@ -144,31 +154,15 @@ export const PWAInstallPrompt: React.FC = () => {
                 }}
               />
             </div>
-            <div>
-              <p className="text-base font-semibold tracking-tight">Instale o Saj Tem</p>
-              <p className="text-sm opacity-90 font-medium">Experiência otimizada e notificações</p>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold tracking-tight sm:text-base">Instale o Saj Tem</p>
+              <p className="truncate text-xs font-medium opacity-85 sm:text-sm">Acesso rápido e notificações</p>
             </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button
-              onClick={handleBannerClick}
-              variant="secondary"
-              size="sm"
-              className="bg-primary-foreground text-primary hover:bg-primary-foreground/95 font-semibold px-6 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
-            >
-              Instalar
-            </Button>
-            <Button
-              onClick={handleCloseBanner}
-              variant="ghost"
-              size="sm"
-              className="text-primary-foreground hover:bg-primary-foreground/20 rounded-full w-8 h-8 p-0"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+          </button>
+          <Button onClick={handleBannerClick} variant="secondary" size="sm" className="hidden shrink-0 rounded-full bg-primary-foreground px-4 font-semibold text-primary shadow-lg hover:bg-primary-foreground/95 min-[360px]:inline-flex">Instalar</Button>
+          <Button onClick={handleCloseBanner} variant="ghost" size="icon" aria-label="Fechar aviso de instalação" className="h-9 w-9 shrink-0 rounded-full text-primary-foreground hover:bg-primary-foreground/20 hover:text-primary-foreground"><X className="h-4 w-4" /></Button>
         </div>
-      </div>
+      </aside>
     );
   }
 
@@ -176,8 +170,8 @@ export const PWAInstallPrompt: React.FC = () => {
   if (!showFullPrompt) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-md animate-in fade-in duration-300">
-      <div className="flex items-center justify-center min-h-screen p-6">
+    <div className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-md animate-in fade-in duration-300">
+      <div className="flex min-h-[100dvh] items-center justify-center p-6">
         <div className="relative w-full max-w-sm mx-auto animate-in zoom-in-95 duration-300">
           {/* Close Button */}
           <Button 
