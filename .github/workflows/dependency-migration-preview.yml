@@ -1,4 +1,4 @@
-name: Dependency migration dry run
+name: Dependency migration dry run — patched form types
 on:
   push:
     branches: [security/sajtem-hardening-2026-11]
