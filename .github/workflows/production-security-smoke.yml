@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  schedule:
+    - cron: '0 11 * * *' # daily 08:00 America/Bahia (UTC-3)
 
 permissions:
   contents: read
@@ -59,4 +61,14 @@ jobs:
             -F 'folder=banners' \
             -F 'file=@/etc/hostname;type=image/png')
           echo "R2 upload anonymous HTTP status: $status"
+          test "$status" = "401" || test "$status" = "403"
+      - name: Security event endpoint rejects anonymous requests
+        shell: bash
+        run: |
+          set -euo pipefail
+          status=$(curl --silent --show-error --max-time 20 --output /dev/null --write-out '%{http_code}' \
+            -X POST 'https://uyleozhwzngnvyddfvni.supabase.co/functions/v1/log-security-event' \
+            -H 'content-type: application/json' \
+            --data '{"event_type":"login_success"}')
+          echo "Security log anonymous HTTP status: $status"
           test "$status" = "401" || test "$status" = "403"
