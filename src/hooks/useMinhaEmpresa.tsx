@@ -121,6 +121,7 @@ export const useMinhaEmpresa = () => {
     isLoading,
     error,
     updateEmpresa,
+    updateEmpresaAsync,
     isUpdating: updateEmpresaMutation.isPending,
     podeEditar, // Expõe a função para verificar se pode editar
   };
