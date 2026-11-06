@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
     // Reject oversized requests before parsing multipart data into memory.
     const declaredLength = req.headers.get('content-length');
     if (declaredLength !== null &&
-        (!/^\\d+$/.test(declaredLength) || Number(declaredLength) > MAX_REQUEST_SIZE)) {
+        (!/^\d+$/.test(declaredLength) || Number(declaredLength) > MAX_REQUEST_SIZE)) {
       throw new HttpError(413, 'Requisição de upload muito grande');
     }
 
