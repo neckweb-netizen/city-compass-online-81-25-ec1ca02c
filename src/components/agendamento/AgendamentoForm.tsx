@@ -40,7 +40,7 @@ export const AgendamentoForm: React.FC<AgendamentoFormProps> = ({
     timeZone: 'America/Bahia', year: 'numeric', month: '2-digit', day: '2-digit'
   }).format(new Date()), []);
 
-  const { data: horarios = [], isFetching: carregandoHorarios } = useQuery({
+  const { data: horarios = [], isFetching: carregandoHorarios, isError: erroHorarios, refetch: tentarNovamente } = useQuery({
     queryKey: ['horarios-agendamento', empresaId, formData.servico, formData.data],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('listar_horarios_agendamento', {
@@ -191,7 +191,7 @@ export const AgendamentoForm: React.FC<AgendamentoFormProps> = ({
                 <Clock className="w-4 h-4" />
                 Horários disponíveis
               </Label>
-              {!formData.data ? <p className="rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground">Escolha o serviço e a data.</p> : carregandoHorarios ? <div className="flex items-center justify-center gap-2 rounded-xl border p-4 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin"/>Consultando agenda...</div> : horarios.length === 0 ? <p className="rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground">Não há horários livres nesta data. Escolha outro dia.</p> : <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">{horarios.map(({ horario }) => <Button key={horario} type="button" size="sm" variant={formData.horario === horario ? 'default' : 'outline'} className="h-10 rounded-xl" onClick={() => setFormData(prev => ({ ...prev, horario }))}>{horaLocal(horario)}</Button>)}</div>}
+              {!formData.data ? <p className="rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground">Escolha o serviço e a data.</p> : carregandoHorarios ? <div className="flex items-center justify-center gap-2 rounded-xl border p-4 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin"/>Consultando agenda...</div> : erroHorarios ? <div role="alert" className="rounded-xl border border-destructive/30 p-4 text-center text-sm"><p className="text-destructive">Não foi possível consultar os horários. Verifique sua conexão e tente novamente.</p><Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => void tentarNovamente()}>Tentar novamente</Button></div> : horarios.length === 0 ? <p className="rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground">Não há horários livres nesta data. Escolha outro dia.</p> : <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">{horarios.map(({ horario }) => <Button key={horario} type="button" size="sm" variant={formData.horario === horario ? 'default' : 'outline'} className="h-10 rounded-xl" onClick={() => setFormData(prev => ({ ...prev, horario }))}>{horaLocal(horario)}</Button>)}</div>}
             </div>
           </div>
 
@@ -209,7 +209,7 @@ export const AgendamentoForm: React.FC<AgendamentoFormProps> = ({
           <Button 
             type="submit" 
             className="w-full" 
-            disabled={isCreating || !formData.horario}
+            disabled={isCreating || carregandoHorarios || erroHorarios || !formData.horario}
           >
             {isCreating ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Reservando...</> : 'Solicitar agendamento'}
           </Button>

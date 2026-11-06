@@ -77,12 +77,15 @@ export const useAgendamentos = (empresaId?: string) => {
 
   const atualizarStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('agendamentos')
         .update({ status })
-        .eq('id', id);
+        .eq('id', id)
+        .select('id')
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) throw new Error('Agendamento não encontrado ou sem permissão para alterar.');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agendamentos'] });
@@ -95,7 +98,7 @@ export const useAgendamentos = (empresaId?: string) => {
       console.error('Erro ao atualizar status:', error);
       toast({
         title: 'Erro ao atualizar',
-        description: 'Não foi possível atualizar o status.',
+        description: error instanceof Error ? error.message : 'Não foi possível atualizar o status.',
         variant: 'destructive',
       });
     },
