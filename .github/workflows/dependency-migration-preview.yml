@@ -19,7 +19,7 @@ jobs:
       - name: Build patched dependency graph in isolation
         run: |
           npm pkg set 'overrides.re2js=2.8.7'
-          npm install --save-exact zod@4.6.7
+          npm install --save-exact zod@4.6.7 @hookform/resolvers@5.2.2
           python3 - <<'PY'
           from pathlib import Path
           for p in Path('src').rglob('*'):
