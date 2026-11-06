@@ -105,9 +105,23 @@ self.addEventListener('push', (event) => {
   }));
 });
 
+// Notification links must stay on Saj Tem to prevent a malicious or
+// misconfigured campaign from redirecting the PWA to an external website.
+const safeNotificationTarget = (raw) => {
+  const fallback = new URL('/notificacoes', self.location.origin).href;
+  try {
+    const target = new URL(raw || '/notificacoes', self.location.origin);
+    return target.origin === self.location.origin && /^https?:$/.test(target.protocol)
+      ? target.href
+      : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const target = new URL(event.notification.data?.action_url || '/notificacoes', self.location.origin).href;
+  const target = safeNotificationTarget(event.notification.data?.action_url);
   event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
     for (const client of clients) {
       if ('navigate' in client) return client.navigate(target).then(() => client.focus());
