@@ -50,3 +50,13 @@ jobs:
             --data '{"action":"process"}')
           echo "FCM worker anonymous HTTP status: $status"
           test "$status" = "401" || test "$status" = "403"
+      - name: R2 upload rejects anonymous multipart requests
+        shell: bash
+        run: |
+          set -euo pipefail
+          status=$(curl --silent --show-error --max-time 20 --output /dev/null --write-out '%{http_code}' \
+            -X POST 'https://uyleozhwzngnvyddfvni.supabase.co/functions/v1/upload-r2' \
+            -F 'folder=banners' \
+            -F 'file=@/etc/hostname;type=image/png')
+          echo "R2 upload anonymous HTTP status: $status"
+          test "$status" = "401" || test "$status" = "403"
