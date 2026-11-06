@@ -1,0 +1,35 @@
+name: Dependency migration dry run
+on:
+  push:
+    branches: [security/sajtem-hardening-2026-11]
+    paths:
+      - .github/workflows/dependency-migration-preview.yml
+permissions:
+  contents: read
+jobs:
+  verify-upgrade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Build patched dependency graph in isolation
+        run: |
+          npm pkg set 'overrides.re2js=2.8.7'
+          npm install --save-exact zod@4.6.7 @hookform/resolvers@5.2.2
+          npm run typecheck
+          npm run lint
+          npm run build
+          npm audit --audit-level=high --omit=dev
+      - name: Export validated dependency manifests
+        if: success()
+        run: |
+          echo 'PACKAGE_JSON_BEGIN'
+          cat package.json
+          echo 'PACKAGE_JSON_END'
+          echo 'PACKAGE_LOCK_BEGIN'
+          cat package-lock.json
+          echo 'PACKAGE_LOCK_END'
