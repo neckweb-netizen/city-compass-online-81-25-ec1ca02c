@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import { useCriarProduto, useAtualizarProduto, type ProdutoInput } from '@/hooks/useProdutos';
 import { 
   Dialog,
@@ -77,7 +77,7 @@ export const ProdutoForm = ({ empresaId, produto, onClose }: ProdutoFormProps) =
     formState: { errors },
     setValue,
     watch,
-  } = useForm<ProdutoInput>({
+  } = useForm<z.input<typeof produtoSchema>, unknown, z.output<typeof produtoSchema>>({
     resolver: zodResolver(produtoSchema),
     defaultValues: produto || {
       nome: '',
@@ -99,10 +99,10 @@ export const ProdutoForm = ({ empresaId, produto, onClose }: ProdutoFormProps) =
 
   const watchedValues = watch();
 
-  const onSubmit = async (data: ProdutoInput) => {
+  const onSubmit = async (data: z.output<typeof produtoSchema>) => {
     try {
       const produtoData = {
-        ...data,
+        ...(data as ProdutoInput),
         tags: tags,
         empresa_id: empresaId,
       };

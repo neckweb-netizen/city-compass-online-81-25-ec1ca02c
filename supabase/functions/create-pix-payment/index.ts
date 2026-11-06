@@ -10,7 +10,11 @@ Deno.serve(async (req) => {
     if (req.method !== 'POST') throw new HttpError(405, 'Método não permitido');
     const { user, profile, admin: supabase } = await requireUser(req);
     await enforceRateLimit(req, 'pix', 10, 10 * 60 * 1000, user.id);
-    const { planoId, userInfo } = await req.json();
+    const { planoId, userInfo, requestId } = await req.json();
+    if (typeof requestId !== 'string' ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)) {
+      throw new HttpError(400, 'Identificador da tentativa de pagamento inválido');
+    }
     if (!planoId || typeof planoId !== 'string') throw new HttpError(400, 'Plano inválido');
 
     // Buscar dados do plano
@@ -36,8 +40,62 @@ Deno.serve(async (req) => {
       throw new HttpError(500, 'Serviço de pagamento indisponível');
     }
 
-    // Criar pagamento Pix
-    const idempotencyKey = crypto.randomUUID();
+    const documentType = userInfo?.tipoDocumento === 'CNPJ' ? 'CNPJ' : 'CPF';
+    const documentNumber = String(userInfo?.documento || userInfo?.cpf || '').replace(/\D/g, '');
+    if (!((documentType === 'CPF' && documentNumber.length === 11) ||
+          (documentType === 'CNPJ' && documentNumber.length === 14))) {
+      throw new HttpError(400, 'Documento CPF ou CNPJ inválido');
+    }
+
+    // Reserva persistente ANTES de contatar o provedor.
+    // A chave é única por intenção e deve ser reutilizada ao repetir a mesma operação.
+    const { error: reservationError } = await supabase.from('pix_payment_intents').insert({
+      id: requestId,
+      user_id: user.id,
+      plano_id: plano.id,
+      amount,
+      status: 'creating',
+    });
+
+    if (reservationError) {
+      if (reservationError.code !== '23505') {
+        console.error('Falha ao reservar pagamento:', reservationError.code);
+        throw new HttpError(503, 'Não foi possível iniciar o pagamento');
+      }
+      const { data: existing, error: lookupError } = await supabase
+        .from('pix_payment_intents')
+        .select('user_id, plano_id, amount, status, provider_response, updated_at')
+        .eq('id', requestId)
+        .single();
+      if (lookupError || !existing) throw new HttpError(503, 'Falha ao consultar tentativa anterior');
+      if (existing.user_id !== user.id || existing.plano_id !== plano.id || Number(existing.amount) !== amount) {
+        throw new HttpError(409, 'Identificador já usado em outra compra');
+      }
+      if (existing.status === 'created' && existing.provider_response) {
+        return jsonResponse(req, existing.provider_response);
+      }
+      if (existing.status !== 'creating') {
+        throw new HttpError(409, 'Esta tentativa falhou. Inicie uma nova tentativa.');
+      }
+      // Recupera tentativas interrompidas utilizando a MESMA chave no Mercado Pago.
+      // Somente uma invocação pode reclamar uma tentativa antiga, via UPDATE condicional.
+      const cutoff = new Date(Date.now() - 120_000).toISOString();
+      if (!existing.updated_at || existing.updated_at >= cutoff) {
+        throw new HttpError(409, 'Pagamento em processamento. Consulte novamente em instantes.');
+      }
+      const { data: reclaimed, error: reclaimError } = await supabase
+        .from('pix_payment_intents')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', requestId)
+        .eq('status', 'creating')
+        .lt('updated_at', cutoff)
+        .select('id')
+        .maybeSingle();
+      if (reclaimError || !reclaimed) {
+        throw new HttpError(409, 'Pagamento em processamento. Consulte novamente em instantes.');
+      }
+    }
+    const idempotencyKey = requestId;
     
     const paymentData = {
       description: `Assinatura do plano ${plano.nome}`,
@@ -48,13 +106,11 @@ Deno.serve(async (req) => {
         first_name: (profile?.nome || user.user_metadata?.nome || 'Cliente').split(' ')[0],
         last_name: (profile?.nome || user.user_metadata?.nome || 'Cliente').split(' ').slice(1).join(' ') || 'Cliente',
         identification: {
-          type: userInfo?.tipoDocumento === 'CNPJ' ? 'CNPJ' : 'CPF',
-          number: String(userInfo?.documento || userInfo?.cpf || '').replace(/\D/g, '')
+          type: documentType,
+          number: documentNumber
         }
       }
     };
-
-    if (!paymentData.payer.identification.number) throw new HttpError(400, 'Documento obrigatório');
 
     const mercadoPagoResponse = await fetch('https://api.mercadopago.com/v1/payments', {
       method: 'POST',
@@ -70,19 +126,41 @@ Deno.serve(async (req) => {
     
     if (!mercadoPagoResponse.ok) {
       console.error('Erro na API do Mercado Pago:', paymentResult?.message || mercadoPagoResponse.status);
-      throw new HttpError(502, 'Não foi possível criar o pagamento');
+      // Em respostas 5xx/429 o provedor pode ter aceitado a cobrança.
+      // Nunca liberar o identificador: a reconciliação reutiliza a mesma chave.
+      if (mercadoPagoResponse.status >= 400 &&
+          mercadoPagoResponse.status < 500 &&
+          mercadoPagoResponse.status !== 429) {
+        await supabase.from('pix_payment_intents')
+          .update({ status: 'failed', updated_at: new Date().toISOString() })
+          .eq('id', requestId)
+          .eq('status', 'creating');
+      }
+      throw new HttpError(502, 'Não foi possível confirmar a criação do pagamento');
     }
 
-    // Retornar dados do pagamento
-    return jsonResponse(req, {
-        id: paymentResult.id,
-        status: paymentResult.status,
-        qr_code: paymentResult.point_of_interaction?.transaction_data?.qr_code,
-        qr_code_base64: paymentResult.point_of_interaction?.transaction_data?.qr_code_base64,
-        ticket_url: paymentResult.point_of_interaction?.transaction_data?.ticket_url,
-        transaction_amount: paymentResult.transaction_amount,
-        description: paymentResult.description,
-      });
+    const responsePayload = {
+      id: paymentResult.id,
+      status: paymentResult.status,
+      qr_code: paymentResult.point_of_interaction?.transaction_data?.qr_code,
+      qr_code_base64: paymentResult.point_of_interaction?.transaction_data?.qr_code_base64,
+      ticket_url: paymentResult.point_of_interaction?.transaction_data?.ticket_url,
+      transaction_amount: paymentResult.transaction_amount,
+      description: paymentResult.description,
+    };
+    if (!paymentResult.id) throw new HttpError(502, 'Provedor retornou pagamento inválido');
+    const { error: persistError } = await supabase.from('pix_payment_intents').update({
+      status: 'created',
+      provider_payment_id: String(paymentResult.id),
+      provider_response: responsePayload,
+      updated_at: new Date().toISOString(),
+    }).eq('id', requestId).eq('status', 'creating');
+    if (persistError) {
+      // Não cria outra cobrança: a chave de idempotência foi preservada no banco.
+      console.error('Falha ao persistir pagamento:', persistError.code);
+      throw new HttpError(503, 'Pagamento criado; confirmação temporariamente indisponível');
+    }
+    return jsonResponse(req, responsePayload);
   } catch (error) {
     return errorResponse(req, error);
   }
