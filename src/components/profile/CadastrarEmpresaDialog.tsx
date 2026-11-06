@@ -122,27 +122,9 @@ export const CadastrarEmpresaDialog = ({
           }
         });
 
-        // Aguardar um pouco para o usuário ser criado no banco
-        if (authData.user && !authError) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          // Garantir que o perfil seja criado com tipo empresa
-          const { error: profileError } = await supabase
-            .from('usuarios')
-            .upsert({
-              id: authData.user.id,
-              nome: data.nome,
-              email: data.email,
-              tipo_conta: 'empresa',
-              telefone: data.telefone_usuario
-            }, {
-              onConflict: 'id'
-            });
-
-          if (profileError) {
-            console.error('Erro ao criar perfil:', profileError);
-          }
-        }
+        // O gatilho on_auth_user_created cria o perfil com tipo 'usuario'.
+        // Nunca tentar promovê-lo a 'empresa' via cliente: esse campo é
+        // gerenciado pelo servidor e protegido por políticas de segurança.
 
         if (authError) {
           console.error('Erro ao criar conta:', authError);
