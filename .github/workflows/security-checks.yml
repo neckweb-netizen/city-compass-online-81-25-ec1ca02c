@@ -21,6 +21,7 @@ jobs:
       - run: npm ci
       - run: node --test tests/security/upload-r2-signatures.test.mjs
       - run: node --test tests/security/security-event-sanitization.test.mjs
+      - run: node --test scripts/home-sections.test.mjs
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run build
