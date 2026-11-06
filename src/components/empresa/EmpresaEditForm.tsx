@@ -79,19 +79,23 @@ export const EmpresaEditForm = ({ empresa, open, onOpenChange }: EmpresaEditForm
   const isRadioCategory = categorias?.find(cat => cat.id === categoriaAtual)?.nome === 'Rádios';
 
   const onSubmit = async (data: EmpresaFormData) => {
-    updateEmpresa({
-      nome: data.nome,
-      descricao: data.descricao || null,
-      endereco: data.endereco || null,
-      telefone: data.telefone || null,
-      site: data.site || null,
-      link_radio: data.link_radio || null,
-      categoria_id: data.categoria_id,
-      imagem_capa_url: data.imagem_capa_url || null,
-      horario_funcionamento: horarios,
-    }, empresa.id);
-    
-    onOpenChange(false);
+    try {
+      await updateEmpresa({
+        nome: data.nome,
+        descricao: data.descricao || null,
+        endereco: data.endereco || null,
+        telefone: data.telefone || null,
+        site: data.site || null,
+        link_radio: data.link_radio || null,
+        categoria_id: data.categoria_id,
+        imagem_capa_url: data.imagem_capa_url || null,
+        horario_funcionamento: horarios,
+      }, empresa.id);
+      // Keep the dialog open if the database rejects the update.
+      onOpenChange(false);
+    } catch {
+      // useMinhaEmpresa already displays the error toast.
+    }
   };
 
   return (
