@@ -27,7 +27,7 @@ BEGIN
    RAISE EXCEPTION 'Funcoes de permissao admin foram abertas para anon';
  END IF;
  IF NOT (
-   position('search_path='''''' in pg_get_functiondef('public.buscar_enquete_ativa()'::regprocedure))>0
+   position('SET search_path TO ''''' in pg_get_functiondef('public.buscar_enquete_ativa()'::regprocedure))>0
  ) THEN
    RAISE EXCEPTION 'RPC de enquete sem search_path restrito';
  END IF;
