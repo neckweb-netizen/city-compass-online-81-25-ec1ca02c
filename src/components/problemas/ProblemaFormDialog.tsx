@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useProblemasCidade, useCategoriasProblema } from '@/hooks/useProblemasCidade';
 import { useCidadePadrao } from '@/hooks/useCidadePadrao';
 import { useForm } from 'react-hook-form';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 
