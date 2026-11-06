@@ -113,7 +113,11 @@ Deno.serve(async (req: Request) => {
     if (!googleApiKey) {
       return json({ status: "ERROR", error: "GOOGLE_PLACES_API_KEY não está configurada na Edge Function." }, 500);
     }
-    const { user, admin } = await requireUser(req, ["admin_geral", "admin_cidade"]);
+    const { user, profile, admin } = await requireUser(req, ["admin_geral", "admin_cidade"]);
+    // Este importador pesquisa exclusivamente Santo Antônio de Jesus.
+    if (profile?.tipo_conta === "admin_cidade" && profile.cidade_id !== SAJ_CITY_ID) {
+      throw new HttpError(403, "Administrador sem permissão para esta cidade");
+    }
 
     const body = (await req.json()) as RequestBody;
 
@@ -168,6 +172,7 @@ Deno.serve(async (req: Request) => {
       let placesQuery = admin
         .from("lugares_publicos")
         .select("id, nome, endereco, imagem_url")
+        .eq("cidade_id", SAJ_CITY_ID)
         .eq("ativo", true)
         .order("id", { ascending: true })
         .limit(batchSize);
@@ -226,6 +231,7 @@ Deno.serve(async (req: Request) => {
           const { error: updateError } = await admin
             .from("lugares_publicos")
             .update({ imagem_url: imageUrl })
+            .eq("cidade_id", SAJ_CITY_ID)
             .eq("id", place.id);
           if (updateError) throw updateError;
 
@@ -251,6 +257,7 @@ Deno.serve(async (req: Request) => {
       let companyQuery = admin
         .from("empresas")
         .select("id, nome, endereco, place_id")
+        .eq("cidade_id", SAJ_CITY_ID)
         .eq("ativo", true)
         .order("id", { ascending: true })
         .limit(batchSize);
@@ -319,7 +326,7 @@ Deno.serve(async (req: Request) => {
             horario_funcionamento: normalizeOpeningHours(details),
             localizacao: typeof lat === "number" && typeof lng === "number" ? `(${lng},${lat})` : null,
             ...(imagemCapaUrl ? { imagem_capa_url: imagemCapaUrl } : {}),
-          }).eq("id", company.id);
+          }).eq("id", company.id).eq("cidade_id", SAJ_CITY_ID);
 
           if (updateError) throw updateError;
           updated.push({ id: company.id, nome: company.nome, photo: Boolean(imagemCapaUrl) });
@@ -361,7 +368,7 @@ Deno.serve(async (req: Request) => {
 
       const { data: alreadyImported, error: duplicateCheckError } = await admin
         .from("empresas")
-        .select("id, nome")
+        .select("id, nome, cidade_id")
         .eq("place_id", placeId)
         .maybeSingle();
 
@@ -370,6 +377,9 @@ Deno.serve(async (req: Request) => {
         return json({ status: "ERROR", error: "Falha ao verificar se o local já foi importado." }, 500);
       }
 
+      if (alreadyImported && alreadyImported.cidade_id !== SAJ_CITY_ID) {
+        throw new HttpError(403, "Local já cadastrado em outra cidade");
+      }
       if (alreadyImported && alreadyImported.id !== empresaId) {
         return json({ status: "ERROR", error: `"${alreadyImported.nome}" já está cadastrado no Guia.` }, 409);
       }
@@ -457,12 +467,16 @@ Deno.serve(async (req: Request) => {
       if (empresaId) {
         const { data: existing, error: existingError } = await admin
           .from("empresas")
-          .select("id, nome")
+          .select("id, nome, cidade_id")
           .eq("id", empresaId)
           .maybeSingle();
 
         if (existingError || !existing) {
           return json({ status: "ERROR", error: "A empresa selecionada para atualização não existe." }, 404);
+        }
+
+        if (existing.cidade_id !== SAJ_CITY_ID) {
+          throw new HttpError(403, "Empresa fora da cidade autorizada");
         }
 
         const { data: empresaAtualizada, error: updateError } = await admin
@@ -477,6 +491,7 @@ Deno.serve(async (req: Request) => {
             ...(imagemCapaUrl ? { imagem_capa_url: imagemCapaUrl } : {}),
           })
           .eq("id", empresaId)
+          .eq("cidade_id", SAJ_CITY_ID)
           .select("id, nome, slug, endereco, place_id, imagem_capa_url")
           .single();
 
