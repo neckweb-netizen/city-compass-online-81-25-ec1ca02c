@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
       }
       const { data: existing, error: lookupError } = await supabase
         .from('pix_payment_intents')
-        .select('user_id, plano_id, amount, status, provider_response')
+        .select('user_id, plano_id, amount, status, provider_response, updated_at')
         .eq('id', requestId)
         .single();
       if (lookupError || !existing) throw new HttpError(503, 'Falha ao consultar tentativa anterior');
@@ -67,9 +67,26 @@ Deno.serve(async (req) => {
       if (existing.status === 'created' && existing.provider_response) {
         return jsonResponse(req, existing.provider_response);
       }
-      throw new HttpError(409, existing.status === 'creating'
-        ? 'Pagamento em processamento. Consulte novamente em instantes.'
-        : 'Esta tentativa falhou. Inicie uma nova tentativa.');
+      if (existing.status !== 'creating') {
+        throw new HttpError(409, 'Esta tentativa falhou. Inicie uma nova tentativa.');
+      }
+      // Recupera tentativas interrompidas utilizando a MESMA chave no Mercado Pago.
+      // Somente uma invocação pode reclamar uma tentativa antiga, via UPDATE condicional.
+      const cutoff = new Date(Date.now() - 120_000).toISOString();
+      if (!existing.updated_at || existing.updated_at >= cutoff) {
+        throw new HttpError(409, 'Pagamento em processamento. Consulte novamente em instantes.');
+      }
+      const { data: reclaimed, error: reclaimError } = await supabase
+        .from('pix_payment_intents')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', requestId)
+        .eq('status', 'creating')
+        .lt('updated_at', cutoff)
+        .select('id')
+        .maybeSingle();
+      if (reclaimError || !reclaimed) {
+        throw new HttpError(409, 'Pagamento em processamento. Consulte novamente em instantes.');
+      }
     }
     const idempotencyKey = requestId;
     
