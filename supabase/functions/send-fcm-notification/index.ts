@@ -48,18 +48,29 @@ function isCategoryEnabled(category: string, preference?: Preference): boolean {
   return preference.system_enabled;
 }
 
+function equalSecret(expected: string, received: string): boolean {
+  const a = new TextEncoder().encode(expected);
+  const b = new TextEncoder().encode(received);
+  let mismatch = a.length ^ b.length;
+  for (let index = 0; index < Math.max(a.length, b.length); index += 1) {
+    mismatch |= (a[index] ?? 0) ^ (b[index] ?? 0);
+  }
+  return mismatch === 0;
+}
+
 async function authorizeWorker(req: Request): Promise<void> {
   const authorization = req.headers.get("authorization");
-  if (authorization === `Bearer ${serviceRoleKey}`) return;
+  const bearer = authorization?.match(/^Bearer (.+)$/)?.[1] ?? "";
+  if (bearer && equalSecret(serviceRoleKey, bearer)) return;
 
   const provided = req.headers.get("x-notification-worker-key");
-  if (!provided) throw new HttpError(401, "Worker não autorizado");
+  if (!provided || provided.length > 512) throw new HttpError(401, "Worker não autorizado");
   const { data, error } = await admin
     .from("notification_internal_settings")
     .select("secret_value")
     .eq("setting_key", "worker_secret")
     .maybeSingle();
-  if (error || !data || data.secret_value !== provided) throw new HttpError(401, "Worker não autorizado");
+  if (error || !data?.secret_value || !equalSecret(data.secret_value, provided)) throw new HttpError(401, "Worker não autorizado");
 }
 
 async function getCampaignRecipients(campaign: Campaign): Promise<string[]> {
