@@ -61,7 +61,12 @@ const handler = async (req: Request): Promise<Response> => {
       `,
     });
 
-    return jsonResponse(req, { success: true, id: adminEmailResponse?.data?.id });
+    if (adminEmailResponse.error || !adminEmailResponse.data?.id) {
+      console.error('Contact email provider did not confirm message:', adminEmailResponse.error?.name ?? 'missing_message_id');
+      throw new HttpError(503, 'Não foi possível confirmar o envio da mensagem. Tente novamente.');
+    }
+
+    return jsonResponse(req, { success: true, id: adminEmailResponse.data.id });
   } catch (error) {
     return errorResponse(req, error);
   }
