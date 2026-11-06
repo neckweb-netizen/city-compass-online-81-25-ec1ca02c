@@ -266,7 +266,7 @@ export const PixPaymentModal = ({ isOpen, onClose, plano }: PixPaymentModalProps
 
               <div className="text-sm text-muted-foreground">
                 <p>Valor: <span className="font-semibold">{formatCurrency(paymentData.transaction_amount)}</span></p>
-                <p className="mt-2">O pagamento será processado automaticamente após a confirmação.</p>
+                <p className="mt-2">Guarde o comprovante. A ativação do plano depende da confirmação do pagamento.</p>
               </div>
 
               <Button variant="outline" onClick={handleClose} className="w-full">
