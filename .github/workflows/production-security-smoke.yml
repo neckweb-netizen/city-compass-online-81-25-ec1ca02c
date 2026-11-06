@@ -14,11 +14,10 @@ jobs:
     timeout-minutes: 8
     steps:
       - name: Public site answers over HTTPS
-        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
-          status=$(curl -L --silent --show-error --max-time 20 --output /dev/null --write-out '%{http_code}' https://sajtem.com/)
+          status=$(curl -L --silent --show-error --max-time 20 --output /dev/null --write-out '%{http_code}' https://sajtem.vercel.app/)
           echo "Website HTTP status: $status"
           test "$status" = "200"
       - name: Pix endpoint rejects anonymous POST
