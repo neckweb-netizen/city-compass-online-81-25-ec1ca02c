@@ -24,7 +24,7 @@ interface SocialMedia {
 }
 
 export const InfluencerEditForm = ({ empresa, open, onOpenChange }: InfluencerEditFormProps) => {
-  const { updateEmpresa, isUpdating } = useMinhaEmpresa();
+  const { updateEmpresaAsync, isUpdating } = useMinhaEmpresa();
   const { toast } = useToast();
   const [socialMedias, setSocialMedias] = useState<SocialMedia[]>([]);
 
@@ -113,7 +113,7 @@ export const InfluencerEditForm = ({ empresa, open, onOpenChange }: InfluencerEd
         site: Object.keys(socialMediaObject).length > 0 ? JSON.stringify(socialMediaObject) : null,
       };
 
-      updateEmpresa(updateData, empresa.id);
+      await updateEmpresaAsync(updateData, empresa.id);
       onOpenChange(false);
       toast({
         title: 'Perfil atualizado!',
