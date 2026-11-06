@@ -107,7 +107,7 @@ export const useMinhaEmpresa = () => {
       return;
     }
 
-    updateEmpresaMutation.mutate({ empresaId, dados });
+    return updateEmpresaMutation.mutateAsync({ empresaId, dados });
   };
 
   return {
