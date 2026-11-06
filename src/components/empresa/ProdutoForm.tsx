@@ -77,7 +77,7 @@ export const ProdutoForm = ({ empresaId, produto, onClose }: ProdutoFormProps) =
     formState: { errors },
     setValue,
     watch,
-  } = useForm<ProdutoInput>({
+  } = useForm<z.input<typeof produtoSchema>, unknown, z.output<typeof produtoSchema>>({
     resolver: zodResolver(produtoSchema),
     defaultValues: produto || {
       nome: '',
@@ -99,7 +99,7 @@ export const ProdutoForm = ({ empresaId, produto, onClose }: ProdutoFormProps) =
 
   const watchedValues = watch();
 
-  const onSubmit = async (data: ProdutoInput) => {
+  const onSubmit = async (data: z.output<typeof produtoSchema>) => {
     try {
       const produtoData = {
         ...data,
