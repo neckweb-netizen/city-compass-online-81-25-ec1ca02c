@@ -126,8 +126,17 @@ Deno.serve(async (req) => {
     
     if (!mercadoPagoResponse.ok) {
       console.error('Erro na API do Mercado Pago:', paymentResult?.message || mercadoPagoResponse.status);
-      await supabase.from('pix_payment_intents').update({ status: 'failed', updated_at: new Date().toISOString() }).eq('id', requestId);
-      throw new HttpError(502, 'Não foi possível criar o pagamento');
+      // Em respostas 5xx/429 o provedor pode ter aceitado a cobrança.
+      // Nunca liberar o identificador: a reconciliação reutiliza a mesma chave.
+      if (mercadoPagoResponse.status >= 400 &&
+          mercadoPagoResponse.status < 500 &&
+          mercadoPagoResponse.status !== 429) {
+        await supabase.from('pix_payment_intents')
+          .update({ status: 'failed', updated_at: new Date().toISOString() })
+          .eq('id', requestId)
+          .eq('status', 'creating');
+      }
+      throw new HttpError(502, 'Não foi possível confirmar a criação do pagamento');
     }
 
     const responsePayload = {
