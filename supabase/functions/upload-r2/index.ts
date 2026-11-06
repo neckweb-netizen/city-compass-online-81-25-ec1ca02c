@@ -51,6 +51,37 @@ function matchesImageSignature(bytes: Uint8Array, type: string): boolean {
   }
 }
 
+async function parseBoundedFormData(req: Request): Promise<FormData> {
+  const contentType = req.headers.get('content-type') ?? '';
+  if (!/^multipart\/form-data\s*;/i.test(contentType)) {
+    throw new HttpError(415, 'O envio deve usar multipart/form-data');
+  }
+  if (!req.body) throw new HttpError(400, 'Corpo do upload ausente');
+
+  // Enforce the limit while streaming, including chunked requests with no
+  // Content-Length. Never call Request.formData() on an unbounded body.
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > MAX_REQUEST_SIZE) {
+        await reader.cancel();
+        throw new HttpError(413, 'Requisição de upload muito grande');
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return new Response(new Blob(chunks), {
+    headers: { 'content-type': contentType },
+  }).formData();
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders(req) });
 
@@ -65,7 +96,7 @@ Deno.serve(async (req) => {
       throw new HttpError(413, 'Requisição de upload muito grande');
     }
 
-    const formData = await req.formData();
+    const formData = await parseBoundedFormData(req);
     const file = formData.get('file');
     const requestedFolder = formData.get('folder');
 
