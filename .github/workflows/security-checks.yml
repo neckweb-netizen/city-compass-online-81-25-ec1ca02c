@@ -19,6 +19,7 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
+      - run: npm ls zod re2js
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run build
