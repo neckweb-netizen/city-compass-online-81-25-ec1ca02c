@@ -36,6 +36,13 @@ BEGIN
       NEW.data_aprovacao := NULL;
       NEW.observacoes_admin := NULL;
     END IF;
+  ELSIF privileged AND NOT private.admin_mfa_verified(NULL, true) THEN
+    -- Administração municipal não pode transferir propriedade ou cidade.
+    IF NEW.usuario_id IS DISTINCT FROM OLD.usuario_id
+       OR NEW.cidade_id IS DISTINCT FROM OLD.cidade_id THEN
+      RAISE EXCEPTION 'Somente administrador geral pode transferir empresa'
+        USING ERRCODE = '42501';
+    END IF;
   ELSIF NOT privileged THEN
     NEW.usuario_id := OLD.usuario_id;
     NEW.cidade_id := OLD.cidade_id;
