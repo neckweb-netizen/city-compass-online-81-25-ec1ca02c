@@ -1,0 +1,53 @@
+name: Production security smoke tests
+
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/production-security-smoke.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  anonymous-access:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Public site answers over HTTPS
+        shell: bash
+        run: |
+          set -euo pipefail
+          status=$(curl -L --silent --show-error --max-time 20 --output /dev/null --write-out '%{http_code}' https://sajtem.com/)
+          echo "Website HTTP status: $status"
+          test "$status" = "200"
+      - name: Pix endpoint rejects anonymous POST
+        shell: bash
+        run: |
+          set -euo pipefail
+          status=$(curl --silent --show-error --max-time 20 --output /dev/null --write-out '%{http_code}' \
+            -X POST 'https://uyleozhwzngnvyddfvni.supabase.co/functions/v1/create-pix-payment' \
+            -H 'content-type: application/json' \
+            --data '{"planoId":"00000000-0000-4000-8000-000000000000","requestId":"11111111-1111-4111-8111-111111111111"}')
+          echo "Pix anonymous HTTP status: $status"
+          test "$status" = "401" || test "$status" = "403"
+      - name: Google Places admin rejects anonymous POST
+        shell: bash
+        run: |
+          set -euo pipefail
+          status=$(curl --silent --show-error --max-time 20 --output /dev/null --write-out '%{http_code}' \
+            -X POST 'https://uyleozhwzngnvyddfvni.supabase.co/functions/v1/google-places-admin' \
+            -H 'content-type: application/json' \
+            --data '{"action":"bulk-refresh"}')
+          echo "Google admin anonymous HTTP status: $status"
+          test "$status" = "401" || test "$status" = "403"
+      - name: FCM worker rejects anonymous POST
+        shell: bash
+        run: |
+          set -euo pipefail
+          status=$(curl --silent --show-error --max-time 20 --output /dev/null --write-out '%{http_code}' \
+            -X POST 'https://uyleozhwzngnvyddfvni.supabase.co/functions/v1/send-fcm-notification' \
+            -H 'content-type: application/json' \
+            --data '{"action":"process"}')
+          echo "FCM worker anonymous HTTP status: $status"
+          test "$status" = "401" || test "$status" = "403"
