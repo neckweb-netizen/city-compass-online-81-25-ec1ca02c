@@ -38,7 +38,7 @@ interface EmpresaEditFormProps {
 }
 
 export const EmpresaEditForm = ({ empresa, open, onOpenChange }: EmpresaEditFormProps) => {
-  const { updateEmpresa, isUpdating } = useMinhaEmpresa();
+  const { updateEmpresaAsync, isUpdating } = useMinhaEmpresa();
   const [selectedCategoria, setSelectedCategoria] = useState(empresa.categoria_id || '');
   const [horarios, setHorarios] = useState<HorarioFuncionamento>(empresa.horario_funcionamento || {});
   
@@ -80,7 +80,7 @@ export const EmpresaEditForm = ({ empresa, open, onOpenChange }: EmpresaEditForm
 
   const onSubmit = async (data: EmpresaFormData) => {
     try {
-      await updateEmpresa({
+      await updateEmpresaAsync({
         nome: data.nome,
         descricao: data.descricao || null,
         endereco: data.endereco || null,
