@@ -110,12 +110,18 @@ export const useMinhaEmpresa = () => {
     updateEmpresaMutation.mutate({ empresaId, dados });
   };
 
+  const updateEmpresaAsync = async (dados: any, empresaId = empresa?.id) => {
+    if (!empresaId) throw new Error('Empresa não encontrada');
+    return updateEmpresaMutation.mutateAsync({ empresaId, dados });
+  };
+
   return {
     empresa,
     empresas: empresas || [],
     isLoading,
     error,
     updateEmpresa,
+    updateEmpresaAsync,
     isUpdating: updateEmpresaMutation.isPending,
     podeEditar, // Expõe a função para verificar se pode editar
   };
