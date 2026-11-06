@@ -102,7 +102,7 @@ export const ProdutoForm = ({ empresaId, produto, onClose }: ProdutoFormProps) =
   const onSubmit = async (data: z.output<typeof produtoSchema>) => {
     try {
       const produtoData = {
-        ...data,
+        ...(data as ProdutoInput),
         tags: tags,
         empresa_id: empresaId,
       };
