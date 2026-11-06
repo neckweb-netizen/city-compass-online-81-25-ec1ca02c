@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,8 @@ export const PixPaymentModal = ({ isOpen, onClose, plano }: PixPaymentModalProps
   const [isLoading, setIsLoading] = useState(false);
   const [paymentData, setPaymentData] = useState<any>(null);
   const [copied, setCopied] = useState(false);
+  // Reutilizar a mesma intenção mesmo após falha de rede/repetição do clique.
+  const paymentRequestId = useRef<string | null>(null);
   const { toast } = useToast();
   const { profile } = useAuth();
 
@@ -52,11 +54,13 @@ export const PixPaymentModal = ({ isOpen, onClose, plano }: PixPaymentModalProps
       ? formatCPF(e.target.value) 
       : formatCNPJ(e.target.value);
     setDocumento(formatted);
+    paymentRequestId.current = null;
   };
 
   const handleTipoDocumentoChange = (value: 'CPF' | 'CNPJ') => {
     setTipoDocumento(value);
     setDocumento(''); // Limpa o campo ao mudar o tipo
+    paymentRequestId.current = null;
   };
 
   const createPixPayment = async () => {
@@ -84,11 +88,13 @@ export const PixPaymentModal = ({ isOpen, onClose, plano }: PixPaymentModalProps
     }
 
     setIsLoading(true);
+    paymentRequestId.current ??= crypto.randomUUID();
 
     try {
       const { data, error } = await supabase.functions.invoke('create-pix-payment', {
         body: {
           planoId: plano.id,
+          requestId: paymentRequestId.current,
           userInfo: {
             nome: profile?.nome || 'Usuário',
             email: profile?.email || '',
@@ -148,6 +154,7 @@ export const PixPaymentModal = ({ isOpen, onClose, plano }: PixPaymentModalProps
 
   const handleClose = () => {
     setPaymentData(null);
+    paymentRequestId.current = null;
     setDocumento('');
     setTipoDocumento('CPF');
     setCopied(false);
