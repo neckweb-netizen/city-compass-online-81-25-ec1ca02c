@@ -24,3 +24,43 @@ jobs:
       - run: npm run lint
       - run: npm run build
       - run: npm audit --audit-level=high --omit=dev
+
+  dependency-migration-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Try security dependency upgrades
+        run: |
+          npm pkg set overrides.re2js=2.8.7
+          npm install --save-exact zod@4.6.7 @hookform/resolvers@5.2.2
+          python3 - <<'PY'
+          from pathlib import Path
+          for p in Path('src').rglob('*'):
+              if p.suffix not in ('.ts', '.tsx'): continue
+              original = p.read_text()
+              updated = original.replace("from 'zod'", "from 'zod/v3'").replace('from "zod"', 'from "zod/v3"')
+              if updated != original: p.write_text(updated)
+          PY
+          npm run typecheck
+          npm run lint
+          npm run build
+          npm audit --audit-level=high --omit=dev
+      - name: Print verified manifests
+        if: success()
+        run: |
+          echo 'MANIFEST_START'
+          base64 -w0 package.json
+          echo
+          echo 'MANIFEST_END'
+          echo 'LOCKFILE_START'
+          base64 -w0 package-lock.json
+          echo
+          echo 'LOCKFILE_END'
+          echo 'IMPORT_PATHS_START'
+          git diff --name-only src
+          echo 'IMPORT_PATHS_END'
