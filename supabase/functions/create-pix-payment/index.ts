@@ -40,6 +40,13 @@ Deno.serve(async (req) => {
       throw new HttpError(500, 'Serviço de pagamento indisponível');
     }
 
+    const documentType = userInfo?.tipoDocumento === 'CNPJ' ? 'CNPJ' : 'CPF';
+    const documentNumber = String(userInfo?.documento || userInfo?.cpf || '').replace(/\D/g, '');
+    if (!((documentType === 'CPF' && documentNumber.length === 11) ||
+          (documentType === 'CNPJ' && documentNumber.length === 14))) {
+      throw new HttpError(400, 'Documento CPF ou CNPJ inválido');
+    }
+
     // Reserva persistente ANTES de contatar o provedor.
     // A chave é única por intenção e deve ser reutilizada ao repetir a mesma operação.
     const { error: reservationError } = await supabase.from('pix_payment_intents').insert({
@@ -99,13 +106,11 @@ Deno.serve(async (req) => {
         first_name: (profile?.nome || user.user_metadata?.nome || 'Cliente').split(' ')[0],
         last_name: (profile?.nome || user.user_metadata?.nome || 'Cliente').split(' ').slice(1).join(' ') || 'Cliente',
         identification: {
-          type: userInfo?.tipoDocumento === 'CNPJ' ? 'CNPJ' : 'CPF',
-          number: String(userInfo?.documento || userInfo?.cpf || '').replace(/\D/g, '')
+          type: documentType,
+          number: documentNumber
         }
       }
     };
-
-    if (!paymentData.payer.identification.number) throw new HttpError(400, 'Documento obrigatório');
 
     const mercadoPagoResponse = await fetch('https://api.mercadopago.com/v1/payments', {
       method: 'POST',
