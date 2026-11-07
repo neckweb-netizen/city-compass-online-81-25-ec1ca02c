@@ -98,7 +98,7 @@ export const FeaturedSection = ({
       <div className="flex space-x-3 overflow-x-auto pb-4 scrollbar-hide sm:space-x-4">
         {empresasDestaque
           .slice(0, 6)
-          .map((empresa) => {
+          .map((empresa, index) => {
             const imageUrl = getOptimizedImageUrl(
               empresa.imagem_capa_url,
               640,
@@ -119,7 +119,8 @@ export const FeaturedSection = ({
                         src={imageUrl}
                         alt={empresa.nome}
                         className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
-                        loading="lazy"
+                        loading={index === 0 ? 'eager' : 'lazy'}
+                        fetchPriority={index === 0 ? 'high' : undefined}
                         decoding="async"
                         width={640}
                         height={360}
