@@ -12,7 +12,7 @@ import { ComentariosList } from '@/components/problemas/ComentariosList';
 import { ComentarioForm } from '@/components/problemas/ComentarioForm';
 import { useAuth } from '@/hooks/useAuth';
 import { AuthDialog } from '@/components/auth/AuthDialog';
-import * as LucideIcons from 'lucide-react';
+import { getConfiguredIcon } from '@/lib/configuredIcons';
 
 const ProblemaDetalhes = () => {
   const { id } = useParams();
@@ -86,7 +86,7 @@ const ProblemaDetalhes = () => {
   };
 
   const IconeCategoria = problema.categoria?.icone
-    ? (LucideIcons as any)[problema.categoria.icone]
+    ? getConfiguredIcon(problema.categoria.icone)
     : null;
 
   return (
