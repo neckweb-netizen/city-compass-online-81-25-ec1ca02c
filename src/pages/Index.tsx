@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { lazy, Suspense, useState, useEffect } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { HomeContent } from '@/components/home/HomeContent';
-import { SearchContent } from '@/components/search/SearchContent';
-import { CategoriesContent } from '@/components/categories/CategoriesContent';
-import { CouponsContent } from '@/components/coupons/CouponsContent';
-import { ProfileContent } from '@/components/profile/ProfileContent';
+const SearchContent = lazy(() => import('@/components/search/SearchContent').then(m => ({ default: m.SearchContent })));
+const CategoriesContent = lazy(() => import('@/components/categories/CategoriesContent').then(m => ({ default: m.CategoriesContent })));
+const CouponsContent = lazy(() => import('@/components/coupons/CouponsContent').then(m => ({ default: m.CouponsContent })));
+const ProfileContent = lazy(() => import('@/components/profile/ProfileContent').then(m => ({ default: m.ProfileContent })));
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
@@ -473,7 +473,9 @@ const Index = () => {
 
   return (
     <div className="w-full max-w-none overflow-x-hidden">
-      {renderContent()}
+      <Suspense fallback={<div className="min-h-32 animate-pulse rounded-xl bg-muted/30" aria-label="Carregando seção" />}>
+        {renderContent()}
+      </Suspense>
     </div>
   );
 };
