@@ -194,7 +194,12 @@ const DeferredSection = ({
   }, [shouldRender]);
 
   return (
-    <div ref={containerRef}>
+    <div
+      ref={containerRef}
+      // Reserve the approximate card height before IntersectionObserver
+      // mounts the section, preventing a large page shift on mobile.
+      className={shouldRender ? undefined : 'min-h-[220px]'}
+    >
       {shouldRender ? render() : null}
     </div>
   );
@@ -202,7 +207,7 @@ const DeferredSection = ({
 
 const SectionFallback = () => (
   <div
-    className="min-h-20 w-full"
+    className="min-h-[220px] w-full animate-pulse rounded-2xl bg-muted/20"
     aria-hidden="true"
   />
 );
