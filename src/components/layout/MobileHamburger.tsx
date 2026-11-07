@@ -6,7 +6,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useMenuConfiguracoes } from '@/hooks/useMenuConfiguracoes';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import * as Icons from 'lucide-react';
+import { getConfiguredIcon } from '@/lib/configuredIcons';
 import { cn } from '@/lib/utils';
 import { Watermark } from '@/components/ui/watermark';
 import { useProducaoLocalDisponivel } from '@/hooks/useProducaoLocal';
@@ -242,9 +242,7 @@ export const MobileHamburger = () => {
           <ScrollArea className="flex-1">
             <div className="py-2">
               {menuItems.map(item => {
-                const IconComponent = Icons[item.icone as keyof typeof Icons] as React.ComponentType<{
-                  className?: string;
-                }>;
+                const IconComponent = getConfiguredIcon(item.icone);
                 return (
                   <Button 
                     key={item.id}
