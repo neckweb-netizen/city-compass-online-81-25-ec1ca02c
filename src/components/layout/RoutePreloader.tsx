@@ -1,54 +1,50 @@
 import { useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
 
-// Componente que precarrega rotas baseado na navegação do usuário
+// Fetch the actual lazy route module only when the visitor shows intent to
+// navigate. Prefetching /locais or /eventos as HTML wastes bandwidth in a SPA.
+const routeImports: Record<string, () => Promise<unknown>> = {
+  '/locais': () => import('../../pages/Locais'),
+  '/eventos': () => import('../../pages/Eventos'),
+  '/categorias': () => import('../../pages/Categorias'),
+  '/canal-informativo': () => import('../../pages/CanalInformativo'),
+};
+
+const started = new Set<string>();
+
+function shouldSaveData(): boolean {
+  const connection = (navigator as Navigator & {
+    connection?: { saveData?: boolean; effectiveType?: string };
+  }).connection;
+  return Boolean(connection?.saveData || ['slow-2g', '2g'].includes(connection?.effectiveType || ''));
+}
+
 export const RoutePreloader = () => {
-  const location = useLocation();
-
   useEffect(() => {
-    const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
-    if (connection?.saveData || ['slow-2g', '2g'].includes(connection?.effectiveType || '')) return;
+    if (shouldSaveData()) return;
 
-    // Preload routes based on current location
-    const preloadRoutes = () => {
-      const currentPath = location.pathname;
-      let routesToPreload: string[] = [];
+    const handleNavigationIntent = (event: Event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const anchor = target.closest('a[href]');
+      if (!(anchor instanceof HTMLAnchorElement)) return;
 
-      // Define routes to preload based on current location
-      switch (currentPath) {
-        case '/':
-          routesToPreload = ['/locais', '/eventos', '/categorias'];
-          break;
-        case '/locais':
-          routesToPreload = ['/categorias', '/eventos'];
-          break;
-        case '/eventos':
-          routesToPreload = ['/locais', '/canal-informativo'];
-          break;
-        case '/categorias':
-          routesToPreload = ['/locais'];
-          break;
-        default:
-          routesToPreload = ['/'];
-      }
-
-      // Preload each route
-      routesToPreload.forEach(route => {
-        if (document.head.querySelector(`link[data-route-prefetch="${route}"]`)) return;
-        const link = document.createElement('link');
-        link.rel = 'prefetch';
-        link.href = route;
-        link.dataset.routePrefetch = route;
-        document.head.appendChild(link);
-      });
+      // Do not load other origins, files or non-HTTP links.
+      if (anchor.origin !== window.location.origin) return;
+      const path = anchor.pathname.replace(/\/$/, '') || '/';
+      const importRoute = routeImports[path];
+      if (!importRoute || started.has(path)) return;
+      started.add(path);
+      // Navigating normally still works if speculative loading fails.
+      void importRoute().catch(() => { started.delete(path); });
     };
 
-    const timer = window.setTimeout(() => {
-      if ('requestIdleCallback' in window) window.requestIdleCallback(preloadRoutes, { timeout: 2500 });
-      else preloadRoutes();
-    }, 1500);
-    return () => window.clearTimeout(timer);
-  }, [location.pathname]);
+    document.addEventListener('pointerover', handleNavigationIntent, { passive: true });
+    document.addEventListener('focusin', handleNavigationIntent);
+    return () => {
+      document.removeEventListener('pointerover', handleNavigationIntent);
+      document.removeEventListener('focusin', handleNavigationIntent);
+    };
+  }, []);
 
-  return null; // This component doesn't render anything
+  return null;
 };
