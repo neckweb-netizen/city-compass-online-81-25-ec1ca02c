@@ -7,19 +7,25 @@ import {
   useState,
 } from 'react';
 
-import { StoriesSection } from './StoriesSection';
 import { SearchBar } from './SearchBar';
 import { BannerSection } from './BannerSection';
-import { CategoriesGrid } from './CategoriesGrid';
-import { HomeQuickActions } from './HomeQuickActions';
-import { DominoSpotlight } from './DominoSpotlight';
 import { AiAssistantHomeEntry } from './AiAssistantHomeEntry';
-import { LocalProductionHomeEntry } from './LocalProductionHomeEntry';
-import { ViverSajHomeEntry } from './ViverSajHomeEntry';
 
 import { useCidadePadrao } from '@/hooks/useCidadePadrao';
 import { useHomeSectionsOrder } from '@/hooks/useHomeSectionsOrder';
 import type { HomeSectionName } from '@/lib/homeSections';
+
+const StoriesSection = lazy(() => import('./StoriesSection').then(module => ({ default: module.StoriesSection })));
+
+const CategoriesGrid = lazy(() => import('./CategoriesGrid').then(module => ({ default: module.CategoriesGrid })));
+
+const HomeQuickActions = lazy(() => import('./HomeQuickActions').then(module => ({ default: module.HomeQuickActions })));
+
+const DominoSpotlight = lazy(() => import('./DominoSpotlight').then(module => ({ default: module.DominoSpotlight })));
+
+const LocalProductionHomeEntry = lazy(() => import('./LocalProductionHomeEntry').then(module => ({ default: module.LocalProductionHomeEntry })));
+
+const ViverSajHomeEntry = lazy(() => import('./ViverSajHomeEntry').then(module => ({ default: module.ViverSajHomeEntry })));
 
 const EnqueteSection = lazy(() =>
   import('./EnqueteSection').then((module) => ({
