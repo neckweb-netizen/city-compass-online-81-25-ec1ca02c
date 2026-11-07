@@ -27,4 +27,5 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run build
+      - run: node scripts/report-build-size.mjs
       - run: npm audit --audit-level=high --omit=dev
