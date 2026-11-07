@@ -271,7 +271,7 @@ const Index = () => {
                 A nossa equipa comercial continua a registar novas empresas localmente sem interrupções.
               </p>
               <Link
-                to="/contato"
+                to="/contact"
                 className="inline-flex items-center gap-1 text-xs font-bold text-purple-400 hover:text-purple-300 transition-colors group"
               >
                 Formulário de contato <ArrowRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
