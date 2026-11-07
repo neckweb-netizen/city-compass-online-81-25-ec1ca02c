@@ -178,10 +178,13 @@ async function processDelivery(delivery: Record<string, unknown>, notifications:
   const notification = notifications.get(String(delivery.notification_id));
   const device = devices.get(String(delivery.device_id));
   const now = new Date().toISOString();
-  if (!notification || !device || !device.enabled || device.revoked_at) {
+  // A pending delivery can outlive revocation or reassignment of a device.
+  // Never send one user's notification to a device currently owned by another.
+  if (!notification || !device || !device.enabled || device.revoked_at ||
+      device.user_id !== notification.user_id) {
     await admin.from("notification_deliveries").update({
       status: "skipped",
-      error_code: "DEVICE_UNAVAILABLE",
+      error_code: "DEVICE_UNAVAILABLE_OR_OWNER_MISMATCH",
       error_message: "Dispositivo indisponível",
       updated_at: now,
     }).eq("id", delivery.id);

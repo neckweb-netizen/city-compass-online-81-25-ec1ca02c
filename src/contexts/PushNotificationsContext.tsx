@@ -11,6 +11,7 @@ import {
   syncFirebasePushIfGranted,
 } from '@/lib/firebaseMessaging';
 import { navigateToSafeUrl } from '@/lib/safeNavigation';
+import { shouldShowNotificationToast } from '@/lib/notificationToastDedup';
 
 export interface NotificationPreferences {
   in_app_enabled: boolean;
@@ -133,6 +134,7 @@ export const PushNotificationsProvider = ({ children }: { children: ReactNode })
     if (!user?.id || !supported) return;
     let unsubscribe: (() => void) | undefined;
     subscribeToForegroundMessages((payload) => {
+      if (!shouldShowNotificationToast(payload.data?.notification_id)) return;
       const title = payload.notification?.title || payload.data?.title || 'Nova notificação';
       const description = payload.notification?.body || payload.data?.body;
       const actionUrl = payload.data?.action_url;

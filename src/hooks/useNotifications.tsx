@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { usePushNotifications } from '@/contexts/PushNotificationsContext';
 import { navigateToSafeUrl } from '@/lib/safeNavigation';
+import { shouldShowNotificationToast } from '@/lib/notificationToastDedup';
 
 export interface AppNotification {
   id: string;
@@ -87,6 +88,7 @@ export const useNotifications = () => {
         queryClient.invalidateQueries({ queryKey: ['notifications-unread-count', user.id] });
         if (payload.eventType === 'INSERT') {
           const item = payload.new as AppNotification;
+          if (!shouldShowNotificationToast(item.id)) return;
           toast.info(item.title, {
             description: item.message || undefined,
             duration: 6000,
