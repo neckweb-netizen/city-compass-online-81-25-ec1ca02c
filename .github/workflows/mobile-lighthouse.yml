@@ -1,0 +1,49 @@
+name: Mobile Lighthouse production audit
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/mobile-lighthouse.yml'
+      - 'scripts/report-lighthouse.mjs'
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '30 12 * * 1' # Monday 09:30 America/Bahia
+
+permissions:
+  contents: read
+
+jobs:
+  audit-mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: browser-actions/setup-chrome@v2
+        id: chrome
+      - name: Measure production page using Lighthouse mobile profile
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: |
+          mkdir -p lighthouse-reports
+          npx --yes lighthouse@12.8.2 https://sajtem.vercel.app/ \
+            --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage" \
+            --form-factor=mobile \
+            --throttling-method=simulate \
+            --output=json --output=html \
+            --output-path=./lighthouse-reports/mobile
+      - name: Print measurable mobile indicators
+        run: node scripts/report-lighthouse.mjs lighthouse-reports/mobile.report.json
+      - name: Preserve Lighthouse report for inspection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sajtem-lighthouse-mobile
+          path: lighthouse-reports/
+          if-no-files-found: warn
+          retention-days: 14
