@@ -258,17 +258,9 @@ const Index = () => {
             {maintenanceMessage} O nosso guia comercial está a receber uma atualização nos servidores para melhorar a velocidade das pesquisas comerciais da região.
           </p>
 
-          <div className="w-full max-w-md bg-purple-950/30 border border-purple-900/40 rounded-2xl p-4 mb-12 backdrop-blur-sm">
-            <div className="flex justify-between text-xs font-bold mb-2">
-              <span className="text-purple-400 flex items-center gap-1.5">
-                <Hammer className="h-3.5 w-3.5 animate-spin" /> Otimização do Banco de Dados
-              </span>
-              <span className="text-purple-300">85% Concluído</span>
-            </div>
-            <div className="w-full h-2.5 bg-[#171026] rounded-full overflow-hidden p-0.5 border border-purple-900/20">
-              <div className="h-full w-[85%] bg-gradient-to-r from-purple-600 to-indigo-500 rounded-full animate-pulse shadow-md shadow-purple-500/20" />
-            </div>
-          </div>
+          <p className="text-sm text-purple-200/80 mb-8">
+            Acompanhe as novidades quando o portal voltar a ficar disponível.
+          </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-2xl text-left">
             <div className="bg-[#150F22]/60 border border-purple-900/30 p-5 rounded-2xl backdrop-blur-sm hover:border-purple-800/40 transition-colors">
@@ -278,14 +270,12 @@ const Index = () => {
               <p className="text-xs text-gray-400 leading-relaxed mb-4">
                 A nossa equipa comercial continua a registar novas empresas localmente sem interrupções.
               </p>
-              <a 
-                href="https://wa.me/5575999999999" 
-                target="_blank" 
-                rel="noreferrer" 
+              <Link
+                to="/contato"
                 className="inline-flex items-center gap-1 text-xs font-bold text-purple-400 hover:text-purple-300 transition-colors group"
               >
-                Falar com o Suporte <ArrowRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
-              </a>
+                Formulário de contato <ArrowRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
+              </Link>
             </div>
 
             <div className="bg-[#150F22]/60 border border-purple-900/30 p-5 rounded-2xl backdrop-blur-sm hover:border-purple-800/40 transition-colors">
