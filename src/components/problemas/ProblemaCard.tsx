@@ -7,7 +7,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import * as LucideIcons from 'lucide-react';
+import { getConfiguredIcon } from '@/lib/configuredIcons';
 
 interface ProblemaCardProps {
   problema: ProblemaCidade;
@@ -55,7 +55,7 @@ export const ProblemaCard = ({ problema }: ProblemaCardProps) => {
   };
 
   const IconeCategoria = problema.categoria?.icone
-    ? (LucideIcons as any)[problema.categoria.icone]
+    ? getConfiguredIcon(problema.categoria.icone)
     : null;
 
   return (

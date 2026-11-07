@@ -5,7 +5,7 @@ import { useMenuConfiguracoes } from '@/hooks/useMenuConfiguracoes';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Watermark } from '@/components/ui/watermark';
-import * as Icons from 'lucide-react';
+import { getConfiguredIcon, ChevronLeft } from '@/lib/configuredIcons';
 import { useProducaoLocalDisponivel } from '@/hooks/useProducaoLocal';
 
 interface DesktopSidebarProps {
@@ -221,7 +221,7 @@ export const DesktopSidebar = ({
           "opacity-0 group-hover:opacity-100"
         )}
       >
-        <Icons.ChevronLeft className={cn("h-4 w-4 transition-transform duration-300", !isOpen && "rotate-180")} />
+        <ChevronLeft className={cn("h-4 w-4 transition-transform duration-300", !isOpen && "rotate-180")} />
       </Button>
       
       <div className="flex flex-col h-full">
@@ -245,10 +245,7 @@ export const DesktopSidebar = ({
         <ScrollArea className="flex-1">
           <div className="py-2">
             {menuItems.map(item => {
-              const IconComponent = Icons[item.icone as keyof typeof Icons] as React.ComponentType<{
-                className?: string;
-                setIsMenuOpen?: any;
-              }>;
+              const IconComponent = getConfiguredIcon(item.icone);
               return (
                 <Link 
                   key={item.id} 
