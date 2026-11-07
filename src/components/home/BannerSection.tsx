@@ -71,17 +71,6 @@ export const BannerSection = ({ secao = 'home' }: BannerSectionProps) => {
   useEffect(() => {
     if (!api || shuffledBanners.length <= 1) return;
 
-    // Preload first banner image for LCP optimization
-    if (shuffledBanners.length > 0) {
-      const firstBannerUrl = shuffledBanners[0].imagem_url;
-      const link = document.createElement('link');
-      link.rel = 'preload';
-      link.as = 'image';
-      link.href = firstBannerUrl;
-      link.fetchPriority = 'high';
-      document.head.appendChild(link);
-    }
-
     const interval = setInterval(() => {
       scrollToNext();
     }, 10000); // 10 segundos
@@ -149,7 +138,8 @@ export const BannerSection = ({ secao = 'home' }: BannerSectionProps) => {
                     alt="Banner publicitário"
                     className="w-full h-full object-cover transition-opacity duration-500"
                     {...(index === 0 ? {
-                      loading: "eager" as const
+                      loading: "eager" as const,
+                      fetchPriority: "high" as const
                     } : { 
                       loading: "lazy" as const 
                     })}
@@ -160,7 +150,7 @@ export const BannerSection = ({ secao = 'home' }: BannerSectionProps) => {
                     style={{ aspectRatio: '970/250' }}
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
-                      target.src = '/placeholder.svg';
+                      if (!target.src.endsWith('/placeholder.svg')) target.src = '/placeholder.svg';
                     }}
                   />
                 </div>
