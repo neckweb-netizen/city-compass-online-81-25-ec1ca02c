@@ -31,6 +31,16 @@ test('keeps an explicit service search within the requested content type', () =>
   assert.deepEqual(rankLocalItems('quero um serviço profissional', items).map(item => item.id), ['1']);
 });
 
+test('does not invent catalog matches when a named business is missing', () => {
+  const items = [
+    { id: '1', kind: 'company' as const, name: 'Mercado Central', description: 'Empresa de alimentos', address: null, url: '/locais/mercado' },
+    { id: '2', kind: 'company' as const, name: 'Oficina São José', description: 'Loja de peças', address: null, url: '/locais/oficina' },
+  ];
+  assert.deepEqual(rankLocalItems('Encontre a empresa Eluz', items), []);
+  assert.deepEqual(rankLocalItems('Encontre a empresa Mercado Central', items).map(item => item.id), ['1']);
+  assert.equal(rankLocalItems('Mostre empresas', items).length, 2);
+});
+
 test('opens the catalog only for an actual local-search request', () => {
   assert.equal(shouldSearchCatalog('Que horas são?'), false);
   assert.equal(shouldSearchCatalog('Qual horário?'), false);
