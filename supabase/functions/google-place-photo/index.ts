@@ -12,6 +12,12 @@ Deno.serve(async (req: Request) => {
     const url = new URL(req.url);
     const placeId = String(url.searchParams.get("place_id") || "").trim();
     if (!PLACE_ID_PATTERN.test(placeId)) throw new HttpError(400, "Local inválido");
+    // Only fixed, bounded sizes are accepted to avoid arbitrary image variants.
+    const widthParam = url.searchParams.get("w");
+    if (widthParam !== null && !["320", "480", "640", "1200"].includes(widthParam)) {
+      throw new HttpError(400, "Largura de imagem inválida");
+    }
+    const photoWidth = widthParam ?? "1200";
 
     await enforceRateLimit(req, "google-place-photo", 180, 60_000);
 
@@ -71,7 +77,7 @@ Deno.serve(async (req: Request) => {
     if (!photo?.photo_reference) throw new HttpError(404, "Foto não disponível");
 
     const photoParams = new URLSearchParams({
-      maxwidth: "1200",
+      maxwidth: photoWidth,
       photo_reference: photo.photo_reference,
       key: googleApiKey,
     });

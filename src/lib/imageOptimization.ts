@@ -22,6 +22,16 @@ export const getOptimizedImageUrl = (
   try {
     const parsedUrl = new URL(url);
 
+    // Our validated public Google Places photo proxy can return a smaller
+    // image for card thumbnails without changing the original stored URL.
+    if (parsedUrl.hostname.endsWith('.supabase.co') &&
+        parsedUrl.pathname.endsWith('/functions/v1/google-place-photo') &&
+        parsedUrl.searchParams.has('place_id')) {
+      const width = targetWidth <= 320 ? 320 : targetWidth <= 480 ? 480 : targetWidth <= 640 ? 640 : 1200;
+      parsedUrl.searchParams.set('w', String(width));
+      return parsedUrl.toString();
+    }
+
     if (!parsedUrl.hostname.endsWith('googleusercontent.com')) {
       return url;
     }
