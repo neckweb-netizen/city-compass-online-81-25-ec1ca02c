@@ -236,11 +236,8 @@ export const HomeContent = ({
 
   if (isLoading) {
     return (
-      <div className="relative min-h-screen bg-background" aria-busy="true">
-        {/* Keep the loading preview out of document flow: its placeholder
-            sections do not necessarily match the admin-configured order.
-            Replacing an in-flow preview moves visible content on mobile. */}
-        <div className="container absolute inset-x-0 top-0 mx-auto space-y-6 px-4 py-4 pb-20">
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto space-y-6 px-4 py-4 pb-20">
           <div className="animate-pulse space-y-6">
             <div className="mx-auto w-full max-w-7xl px-2 py-4 sm:px-4">
               <div className="aspect-[970/250] w-full rounded-lg bg-muted" />
