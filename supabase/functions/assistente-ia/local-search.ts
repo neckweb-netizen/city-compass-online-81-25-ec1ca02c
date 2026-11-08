@@ -158,6 +158,7 @@ export function rankLocalItems(query: string, items: LocalSearchItem[], limit = 
   const normalizedQuery = normalizeText(query);
   const tokens = queryTokens(query);
   const intents = detectIntents(query);
+  const namedBusiness = /\b(?:empresa|loja|estabelecimento)\s+(?:(?:de nome|chamada|denominada|a|o)\s+)?[a-z0-9]{3,}/.test(normalizedQuery);
   if (!tokens.length && !intents.length) return [];
   const ranked = items.map((item, index) => {
     const title = normalizeText(item.name);
@@ -174,7 +175,8 @@ export function rankLocalItems(query: string, items: LocalSearchItem[], limit = 
   // An explicit name or search term must match the catalog; an intent alone
   // cannot justify returning unrelated businesses as if they were results.
   const lexical = tokens.length
-    ? ranked.filter(entry => entry.lexicalScore > 0)
+    ? ranked.filter(entry => entry.lexicalScore > 0 && (!namedBusiness || (entry.item.kind === 'company' && tokens.some(token =>
+      normalizeText(entry.item.name).split(' ').some(word => word === token || word.startsWith(token))))))
     : ranked;
   const intended = intents.length && lexical.some(entry => intents.includes(entry.item.kind))
     ? lexical.filter(entry => intents.includes(entry.item.kind))
