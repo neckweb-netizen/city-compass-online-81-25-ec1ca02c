@@ -22,6 +22,7 @@ const STOPWORDS = new Set([
   'preciso', 'achar', 'encontrar', 'buscar', 'procuro', 'por', 'favor', 'tem', 'alguma', 'algum', 'que',
   'com', 'agora', 'aqui', 'me', 'mostre', 'onde', 'estou', 'para', 'cidade', 'santo', 'antonio', 'jesus',
   'qual', 'quais', 'uma', 'uns', 'umas', 'pode', 'voce', 'gostaria', 'saber', 'sobre',
+  'empresa', 'empresas', 'loja', 'lojas', 'local', 'locais', 'estabelecimento', 'estabelecimentos',
 ]);
 
 const SYNONYMS: Record<string, string[]> = {
@@ -48,7 +49,7 @@ const SYNONYMS: Record<string, string[]> = {
 };
 
 const INTENT_TERMS: Record<SearchKind, RegExp> = {
-  company: /\b(empresa|loja|local|estabelecimento|restaurante|pizzaria|barbearia|clinica)\b/,
+  company: /\b(empresas?|lojas?|locais?|estabelecimentos?|restaurantes?|pizzarias?|barbearias?|clinicas?)\b/,
   product: /\b(produto|comprar|vende|preco|valor|estoque)\b/,
   coupon: /\b(cupom|desconto|promocao|oferta|codigo)\b/,
   event: /\b(evento|show|festa|curso|palestra|oficina|agenda cultural)\b/,
@@ -170,7 +171,9 @@ export function rankLocalItems(query: string, items: LocalSearchItem[], limit = 
       ? Math.max(0, 10 - Math.min(item.distanceKm, 10)) : 0;
     return { item, index, score: phrase + terms + intent + nearby, lexicalScore: phrase + terms };
   }).filter(entry => entry.score > 0);
-  const lexical = ranked.some(entry => entry.lexicalScore > 0)
+  // An explicit name or search term must match the catalog; an intent alone
+  // cannot justify returning unrelated businesses as if they were results.
+  const lexical = tokens.length
     ? ranked.filter(entry => entry.lexicalScore > 0)
     : ranked;
   const intended = intents.length && lexical.some(entry => intents.includes(entry.item.kind))
