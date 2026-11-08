@@ -112,7 +112,7 @@ function resultSummary(matches: LocalSearchItem[]): string {
   return `Encontrei ${matches.length} opções de ${kinds.join(", ")}. Abra os detalhes ou me diga qual delas deseja conhecer melhor.`;
 }
 
-async function answerWithNvidia(db: ReturnType<typeof createClient>, visitorHash: string, question: string): Promise<string | null> {
+async function answerWithNvidia(db: ReturnType<typeof createClient>, visitorHash: string, question: string, officialAnswer?: string): Promise<string | null> {
   if (Deno.env.get('NVIDIA_FALLBACK_ENABLED') !== 'true') return null;
   const apiKey = Deno.env.get('NVIDIA_API_KEY') || '';
   const model = Deno.env.get('NVIDIA_MODEL') || '';
@@ -120,7 +120,7 @@ async function answerWithNvidia(db: ReturnType<typeof createClient>, visitorHash
   // Separate atomic quota: the visitor's normal request was already counted.
   const { data: allowed, error } = await db.rpc('ai_consume_model_quota', { p_visitor_hash: visitorHash });
   if (error || !allowed) return null;
-  return requestNvidiaFallback(question, apiKey, model);
+  return requestNvidiaFallback(question, apiKey, model, fetch, officialAnswer);
 }
 
 Deno.serve(async (req: Request) => {
@@ -286,9 +286,16 @@ Deno.serve(async (req: Request) => {
       } catch { /* Keep the regular fallback available when R2 is offline. */ }
     }
     if (siteAnswer) {
+      // Enrich factual site answers only; greetings, acknowledgements and
+      // dynamically calculated time remain deterministic and free of model cost.
+      const mayEnrich = Boolean(faqAnswer || directArticleId || siteAnswer.links.length > 0);
+      const enrichedText = mayEnrich
+        ? await answerWithNvidia(db, visitorHash, message, siteAnswer.text)
+        : null;
+      const answerText = enrichedText || siteAnswer.text;
       const { error: messagesError } = await db.from("ai_messages").insert([
         { session_id: sessionId, role: "user", content: message },
-        { session_id: sessionId, role: "assistant", content: siteAnswer.text },
+        { session_id: sessionId, role: "assistant", content: answerText },
       ]);
       if (messagesError) throw new HttpError(503, "Não foi possível guardar a conversa");
       const { error: contextError } = await db.from("ai_sessions")
@@ -296,7 +303,7 @@ Deno.serve(async (req: Request) => {
       if (contextError) throw new HttpError(503, "Não foi possível atualizar a conversa");
       const { error: eventError } = await db.from("ai_events").insert({ session_id: sessionId, event_type: "search" });
       if (eventError) throw new HttpError(503, "Não foi possível registrar a busca");
-      return jsonResponse(req, { sessionId, sessionToken, text: siteAnswer.text, results: [], links: siteAnswer.links });
+      return jsonResponse(req, { sessionId, sessionToken, text: answerText, results: [], links: siteAnswer.links });
     }
 
     if (!shouldSearchCatalog(message, priorResults.length > 0)) {
