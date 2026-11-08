@@ -176,7 +176,7 @@ export function AiAssistantControls() {
               <p className="text-xs text-muted-foreground">{field.hint}</p>
             </div>)}
           </div>
-          <p className="text-xs text-muted-foreground">O assistente prioriza respostas e buscas locais. Se a NVIDIA estiver configurada nos secrets do Supabase, poderá responder perguntas sem correspondência, sujeita ao limite diário de chamadas de modelo. Perguntas sem resposta continuam ajudando a ampliar a base.</p>
+          <p className="text-xs text-muted-foreground">O assistente prioriza respostas e buscas locais. A NVIDIA pode reformular respostas oficiais do site ou responder perguntas sem correspondência, respeitando o limite diário de chamadas. As informações cadastradas continuam sendo a fonte de verdade.</p>
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap"><Button className="w-full sm:w-auto" disabled={saving} onClick={() => void saveSettings()}>Salvar limites</Button><Button className="w-full sm:w-auto" variant="outline" disabled={testingKnowledge} onClick={() => void testKnowledge()}>{testingKnowledge ? 'Verificando...' : 'Testar base de conhecimento'}</Button></div>
           <div className="space-y-3 border-t pt-5">
             <h3 className="font-semibold">Hierarquia comercial dos planos</h3>
