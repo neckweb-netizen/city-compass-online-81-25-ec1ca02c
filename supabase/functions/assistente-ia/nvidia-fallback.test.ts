@@ -31,3 +31,26 @@ test('falls back safely when NVIDIA refuses or malforms a response', async () =>
   assert.equal(await requestNvidiaFallback('Oi?', 'test-key', 'meta/llama-3.1-8b-instruct', refused), null);
   assert.equal(await requestNvidiaFallback('Oi?', 'test-key', 'meta/llama-3.1-8b-instruct', malformed), null);
 });
+
+test('grounds site answers in one bounded official excerpt without conversation history', async () => {
+  const fakeFetch = (async (_url: string | URL | Request, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body));
+    assert.equal(body.max_tokens, 350);
+    assert.equal(body.messages.length, 2);
+    assert.match(body.messages[0].content, /única fonte de fatos/);
+    assert.match(body.messages[1].content, /PERGUNTA: Como funciona o Saj Tem/);
+    assert.match(body.messages[1].content, /RESPOSTA OFICIAL/);
+    assert.match(body.messages[1].content, /conecta pessoas e empresas/);
+    return new Response(JSON.stringify({ choices: [{ message: { content: 'O Saj Tem conecta pessoas e empresas da região.' } }] }), { status: 200 });
+  }) as typeof fetch;
+  const actual = await requestNvidiaFallback('Como funciona o Saj Tem?', 'test-key', 'meta/llama-3.1-8b-instruct', fakeFetch, 'O Saj Tem conecta pessoas e empresas.');
+  assert.match(actual || '', /conecta pessoas e empresas/);
+});
+
+test('does not send empty or oversized official site content to the model', async () => {
+  let calls = 0;
+  const fakeFetch = (async () => { calls++; throw new Error('unexpected'); }) as typeof fetch;
+  assert.equal(await requestNvidiaFallback('Pergunta', 'test-key', 'meta/llama-3.1-8b-instruct', fakeFetch, ' '), null);
+  assert.equal(await requestNvidiaFallback('Pergunta', 'test-key', 'meta/llama-3.1-8b-instruct', fakeFetch, 'x'.repeat(2401)), null);
+  assert.equal(calls, 0);
+});
