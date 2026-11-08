@@ -6,6 +6,7 @@ import { conversationalFallback, platformAnswer } from "./platform-answers.ts";
 import { findSiteFaq } from "./site-faq.ts";
 import { readKnowledge, saveKnowledgeArticle, type KnowledgeArticle } from "./knowledge-r2.ts";
 import { answerKnowledgeFollowUp, findKnowledgeArticle, isKnowledgeFollowUp } from "./knowledge-match.ts";
+import { requestNvidiaFallback } from "./nvidia-fallback.ts";
 import {
   detectIntents, formatPrice, isNearbyQuery, normalizeText, ordinalIndex, rankLocalItems, shouldSearchCatalog, TOOL_ITEMS,
   type LocalSearchItem, type SearchKind,
@@ -109,6 +110,17 @@ function resultSummary(matches: LocalSearchItem[]): string {
   if (matches.length === 1) return `Encontrei ${matches[0].name}, uma opção de ${labels[matches[0].kind]}. Confira os detalhes antes de entrar em contato.`;
   const kinds = [...new Set(matches.map(item => labels[item.kind]))];
   return `Encontrei ${matches.length} opções de ${kinds.join(", ")}. Abra os detalhes ou me diga qual delas deseja conhecer melhor.`;
+}
+
+async function answerWithNvidia(db: ReturnType<typeof createClient>, visitorHash: string, question: string): Promise<string | null> {
+  if (Deno.env.get('NVIDIA_FALLBACK_ENABLED') !== 'true') return null;
+  const apiKey = Deno.env.get('NVIDIA_API_KEY') || '';
+  const model = Deno.env.get('NVIDIA_MODEL') || '';
+  if (!apiKey || !model) return null;
+  // Separate atomic quota: the visitor's normal request was already counted.
+  const { data: allowed, error } = await db.rpc('ai_consume_model_quota', { p_visitor_hash: visitorHash });
+  if (error || !allowed) return null;
+  return requestNvidiaFallback(question, apiKey, model);
 }
 
 Deno.serve(async (req: Request) => {
@@ -254,9 +266,25 @@ Deno.serve(async (req: Request) => {
     }
 
     const faqAnswer = findSiteFaq(message);
-    const siteAnswer = faqAnswer
+    let siteAnswer = faqAnswer
       ? { text: faqAnswer.answer, links: [faqAnswer.link] }
       : platformAnswer(message);
+    let directArticleId: string | null = null;
+    // The knowledge base also has priority for general questions that do not
+    // look like catalogue searches. Do not route them to NVIDIA first.
+    if (!siteAnswer && !shouldSearchCatalog(message, priorResults.length > 0) && Deno.env.get('AI_R2_BUCKET')) {
+      try {
+        const articles = (await readKnowledge()).articles;
+        const found = findKnowledgeArticle(message, articles) ||
+          (priorArticleId && isKnowledgeFollowUp(message) ? articles.find(article => article.id === priorArticleId && article.active) : null);
+        if (found) {
+          const followUp = found.id === priorArticleId && isKnowledgeFollowUp(message);
+          directArticleId = found.id;
+          siteAnswer = { text: followUp ? answerKnowledgeFollowUp(message, found) : found.answer,
+            links: found.sourceUrl ? [{ label: 'Ver fonte', url: found.sourceUrl }] : [] };
+        }
+      } catch { /* Keep the regular fallback available when R2 is offline. */ }
+    }
     if (siteAnswer) {
       const { error: messagesError } = await db.from("ai_messages").insert([
         { session_id: sessionId, role: "user", content: message },
@@ -264,7 +292,7 @@ Deno.serve(async (req: Request) => {
       ]);
       if (messagesError) throw new HttpError(503, "Não foi possível guardar a conversa");
       const { error: contextError } = await db.from("ai_sessions")
-        .update({ context: { token_hash: await sha256(sessionToken), result_ids: [], article_id: null } }).eq("id", sessionId);
+        .update({ context: { token_hash: await sha256(sessionToken), result_ids: [], article_id: directArticleId } }).eq("id", sessionId);
       if (contextError) throw new HttpError(503, "Não foi possível atualizar a conversa");
       const { error: eventError } = await db.from("ai_events").insert({ session_id: sessionId, event_type: "search" });
       if (eventError) throw new HttpError(503, "Não foi possível registrar a busca");
@@ -272,7 +300,8 @@ Deno.serve(async (req: Request) => {
     }
 
     if (!shouldSearchCatalog(message, priorResults.length > 0)) {
-      const directAnswer = conversationalFallback();
+      const modelAnswer = await answerWithNvidia(db, visitorHash, message);
+      const directAnswer = modelAnswer ? { text: modelAnswer, links: [] } : conversationalFallback();
       const { error: messagesError } = await db.from("ai_messages").insert([
         { session_id: sessionId, role: "user", content: message },
         { session_id: sessionId, role: "assistant", content: directAnswer.text },
@@ -442,7 +471,7 @@ Deno.serve(async (req: Request) => {
     if (!responseText) {
       responseText = isNearbyQuery(message) && !location
         ? "Não consegui acessar sua localização. Permita a localização quando o navegador solicitar ou informe um bairro para eu pesquisar."
-        : "Não encontrei uma correspondência no catálogo atual. Tente informar outro nome, categoria, bairro ou tipo de conteúdo.";
+        : await answerWithNvidia(db, visitorHash, message) || "Não encontrei uma correspondência no catálogo atual. Tente informar outro nome, categoria, bairro ou tipo de conteúdo.";
     }
     const { error: messagesError } = await db.from("ai_messages").insert([
       { session_id: sessionId, role: "user", content: message },

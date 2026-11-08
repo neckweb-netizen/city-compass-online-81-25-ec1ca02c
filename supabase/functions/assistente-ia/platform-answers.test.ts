@@ -37,7 +37,7 @@ test('answers time and privacy questions directly', () => {
   assert.match(platformAnswer('Essa conversa é privada?')?.text || '', /não deve enviar/i);
   assert.match(platformAnswer('O Saj Tem é privatizado?')?.text || '', /não tenho essa informação confirmada/i);
   assert.match(platformAnswer('É privatizado?')?.text || '', /não tenho essa informação confirmada/i);
-  assert.match(platformAnswer('Você é uma IA?')?.text || '', /sem usar o Gemini/i);
+  assert.match(platformAnswer('Você é uma IA?')?.text || '', /NVIDIA/i);
 });
 
 test('keeps company opening-hours questions available to catalog search', () => {

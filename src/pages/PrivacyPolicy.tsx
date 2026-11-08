@@ -51,7 +51,7 @@ const sections: LegalSection[] = [
         <p>Não vendemos seus dados pessoais. Podemos compartilhá-los somente no limite necessário com:</p>
         <ul className={listClassName}>
           <li>provedores de hospedagem, banco de dados, autenticação, armazenamento, mapas, análise, comunicação e notificações;</li>
-          <li>provedor de inteligência artificial, somente com o texto necessário para interpretar uma pergunta complexa, sem enviar o catálogo completo de empresas;</li>
+          <li>NVIDIA, como possível provedor de inteligência artificial para perguntas sem resposta cadastrada, recebendo somente o texto da pergunta, sem enviar o catálogo completo de empresas ou o histórico da conversa;</li>
           <li>empresas com as quais você solicita contato, reserva, agendamento ou benefício;</li>
           <li>autoridades públicas ou terceiros, quando houver obrigação legal, ordem válida ou necessidade de proteger direitos e segurança.</li>
         </ul>
