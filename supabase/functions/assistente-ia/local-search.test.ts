@@ -36,10 +36,13 @@ test('does not invent catalog matches when a named business is missing', () => {
   const items = [
     { id: '1', kind: 'company' as const, name: 'Mercado Central', description: 'Empresa de alimentos', address: null, url: '/locais/mercado' },
     { id: '2', kind: 'company' as const, name: 'Oficina São José', description: 'Loja de peças', address: null, url: '/locais/oficina' },
+    { id: '3', kind: 'company' as const, name: 'ELUZ Assistência Técnica', description: null, address: null, url: '/locais/eluz' },
+    { id: '4', kind: 'company' as const, name: 'Belezura', description: 'Luz para cabelos', address: null, url: '/locais/belezura' },
   ];
-  assert.deepEqual(rankLocalItems('Encontre a empresa Eluz', items), []);
+  assert.deepEqual(rankLocalItems('Encontre a empresa Eluz', items).map(item => item.id), ['3']);
+  assert.deepEqual(rankLocalItems('Encontre a empresa Inexistente', items), []);
   assert.deepEqual(rankLocalItems('Encontre a empresa Mercado Central', items).map(item => item.id), ['1']);
-  assert.equal(rankLocalItems('Mostre empresas', items).length, 2);
+  assert.equal(rankLocalItems('Mostre empresas', items).length, 4);
 });
 
 test('opens the catalog only for an actual local-search request', () => {
