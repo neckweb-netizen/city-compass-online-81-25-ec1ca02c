@@ -87,7 +87,7 @@ export const PrivacyPolicy = () => {
     return () => { document.title = 'Saj Tem - Santo Antônio de Jesus'; };
   }, []);
 
-  return <LegalPageLayout eyebrow="Privacidade e proteção de dados" title="Política de Privacidade" description="Transparência sobre quais dados usamos, por que precisamos deles e como você pode exercer seus direitos no Saj Tem." icon={ShieldCheck} sections={sections} effectiveDate="16 de setembro de 2026" />;
+  return <LegalPageLayout eyebrow="Privacidade e proteção de dados" title="Política de Privacidade" description="Transparência sobre quais dados usamos, por que precisamos deles e como você pode exercer seus direitos no Saj Tem." icon={ShieldCheck} sections={sections} effectiveDate="7 de novembro de 2026" />;
 };
 
 export default PrivacyPolicy;
