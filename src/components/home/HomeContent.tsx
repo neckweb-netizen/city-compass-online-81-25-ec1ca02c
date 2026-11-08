@@ -143,12 +143,10 @@ interface HomeContentProps {
 
 interface DeferredSectionProps {
   render: () => ReactNode;
-  isBanner?: boolean;
 }
 
 const DeferredSection = ({
   render,
-  isBanner = false,
 }: DeferredSectionProps) => {
   const containerRef =
     useRef<HTMLDivElement | null>(null);
@@ -200,22 +198,14 @@ const DeferredSection = ({
       ref={containerRef}
       // Reserve the approximate card height before IntersectionObserver
       // mounts the section, preventing a large page shift on mobile.
-      className={!shouldRender && !isBanner ? 'min-h-[220px]' : undefined}
+      className={shouldRender ? undefined : 'min-h-[220px]'}
     >
-      {shouldRender ? render() : isBanner ? <BannerPlaceholder /> : null}
+      {shouldRender ? render() : null}
     </div>
   );
 };
 
-const BannerPlaceholder = () => (
-  <div className="mx-auto w-full max-w-7xl px-2 py-4 sm:px-4" aria-hidden="true">
-    <div className="aspect-[970/250] w-full rounded-lg bg-muted/20" />
-  </div>
-);
-
-const SectionFallback = ({ isBanner = false }: { isBanner?: boolean }) => isBanner ? (
-  <BannerPlaceholder />
-) : (
+const SectionFallback = () => (
   <div
     className="min-h-[220px] w-full animate-pulse rounded-2xl bg-muted/20"
     aria-hidden="true"
@@ -320,11 +310,9 @@ export const HomeContent = ({
               return null;
             }
 
-            const isBanner = section.section_name === 'banner' || section.section_name === 'stats_section';
-
             const renderSection = () => (
               <Suspense
-                fallback={<SectionFallback isBanner={isBanner} />}
+                fallback={<SectionFallback />}
               >
                 {Component(cidadePadrao?.id)}
               </Suspense>
@@ -352,7 +340,6 @@ export const HomeContent = ({
               <DeferredSection
                 key={section.id}
                 render={renderSection}
-                isBanner={isBanner}
               />
             );
           },
