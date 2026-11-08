@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { detectIntents, isNearbyQuery, ordinalIndex, rankLocalItems, shouldSearchCatalog, TOOL_ITEMS } from './local-search.ts';
+import { detectIntents, isNearbyQuery, ordinalIndex, queryTokens, rankLocalItems, shouldSearchCatalog, TOOL_ITEMS } from './local-search.ts';
 
 test('understands synonyms and small typing mistakes without a model', () => {
   const items = [
@@ -32,6 +32,7 @@ test('keeps an explicit service search within the requested content type', () =>
 });
 
 test('does not invent catalog matches when a named business is missing', () => {
+  assert.deepEqual(queryTokens('Encontre a empresa Eluz'), ['eluz']);
   const items = [
     { id: '1', kind: 'company' as const, name: 'Mercado Central', description: 'Empresa de alimentos', address: null, url: '/locais/mercado' },
     { id: '2', kind: 'company' as const, name: 'Oficina São José', description: 'Loja de peças', address: null, url: '/locais/oficina' },

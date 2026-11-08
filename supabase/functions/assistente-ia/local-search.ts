@@ -19,7 +19,7 @@ export type LocalSearchItem = {
 
 const STOPWORDS = new Set([
   'a', 'as', 'o', 'os', 'de', 'da', 'das', 'do', 'dos', 'em', 'na', 'no', 'um', 'uma', 'eu', 'quero',
-  'preciso', 'achar', 'encontrar', 'buscar', 'procuro', 'por', 'favor', 'tem', 'alguma', 'algum', 'que',
+  'preciso', 'achar', 'encontrar', 'encontre', 'encontra', 'buscar', 'procuro', 'por', 'favor', 'tem', 'alguma', 'algum', 'que',
   'com', 'agora', 'aqui', 'me', 'mostre', 'onde', 'estou', 'para', 'cidade', 'santo', 'antonio', 'jesus',
   'qual', 'quais', 'uma', 'uns', 'umas', 'pode', 'voce', 'gostaria', 'saber', 'sobre',
   'empresa', 'empresas', 'loja', 'lojas', 'local', 'locais', 'estabelecimento', 'estabelecimentos',
