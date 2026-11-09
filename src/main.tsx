@@ -37,6 +37,11 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js', { scope: '/' })
       .then((registration) => {
         registration.update().catch(() => undefined);
+        // Um PWA deixado aberto em segundo plano deve procurar novas versões
+        // ao voltar à tela, mesmo quando a pessoa não recarrega manualmente.
+        document.addEventListener('visibilitychange', () => {
+          if (!document.hidden) registration.update().catch(() => undefined);
+        });
         registration.addEventListener('updatefound', () => {
           const newWorker = registration.installing;
           if (newWorker) {
