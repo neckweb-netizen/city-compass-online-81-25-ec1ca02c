@@ -43,7 +43,9 @@ export async function requestNvidiaFallback(
     if (!response.ok) return null;
     const payload = await response.json();
     const content = payload?.choices?.[0]?.message?.content;
-    return typeof content === 'string' && content.trim() ? content.trim().slice(0, 1200) : null;
+    // Keep provider details in the privacy disclosure, not the public chat.
+    if (typeof content !== 'string' || /\b(?:nvidia|nemotron)\b/i.test(content)) return null;
+    return content.trim() ? content.trim().slice(0, 1200) : null;
   } catch {
     return null;
   } finally {
