@@ -7,7 +7,7 @@ import { findSiteFaq } from "./site-faq.ts";
 import { readKnowledge, saveKnowledgeArticle, type KnowledgeArticle } from "./knowledge-r2.ts";
 import { answerKnowledgeFollowUp, findKnowledgeArticle, isKnowledgeFollowUp } from "./knowledge-match.ts";
 import { requestNvidiaFallback } from "./nvidia-fallback.ts";
-import { boundedHistory, isConversationFollowUp, validSiteFact, type ConversationTurn } from "./conversation-context.ts";
+import { boundedHistory, isConversationFollowUp, siteFollowUpFallback, validSiteFact, type ConversationTurn } from "./conversation-context.ts";
 import {
   detectIntents, formatPrice, isNearbyQuery, normalizeText, ordinalIndex, rankLocalItems, shouldSearchCatalog, TOOL_ITEMS,
   type LocalSearchItem, type SearchKind,
@@ -295,11 +295,14 @@ Deno.serve(async (req: Request) => {
     if (siteAnswer) {
       // Enrich factual site answers only; greetings, acknowledgements and
       // dynamically calculated time remain deterministic and free of model cost.
-      const mayEnrich = Boolean(faqAnswer || directArticleId || priorSiteFact === siteAnswer || siteAnswer.links.length > 0);
+      const contextualSite = priorSiteFact === siteAnswer;
+      const mayEnrich = Boolean(faqAnswer || directArticleId || contextualSite || siteAnswer.links.length > 0);
       const enrichedText = mayEnrich
         ? await answerWithNvidia(db, visitorHash, message, siteAnswer.text)
         : null;
-      const answerText = enrichedText || siteAnswer.text;
+      const answerText = enrichedText && enrichedText.trim() !== siteAnswer.text.trim()
+        ? enrichedText
+        : contextualSite ? siteFollowUpFallback(siteAnswer.links) : siteAnswer.text;
       const { error: messagesError } = await db.from("ai_messages").insert([
         { session_id: sessionId, role: "user", content: message },
         { session_id: sessionId, role: "assistant", content: answerText },
