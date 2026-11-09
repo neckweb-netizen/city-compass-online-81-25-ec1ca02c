@@ -30,6 +30,8 @@ test('falls back safely when NVIDIA refuses or malforms a response', async () =>
   const malformed = (async () => new Response(JSON.stringify({ choices: [] }), { status: 200 })) as typeof fetch;
   assert.equal(await requestNvidiaFallback('Oi?', 'test-key', 'meta/llama-3.1-8b-instruct', refused), null);
   assert.equal(await requestNvidiaFallback('Oi?', 'test-key', 'meta/llama-3.1-8b-instruct', malformed), null);
+  const mentionsProvider = (async () => new Response(JSON.stringify({ choices: [{ message: { content: 'Sou a NVIDIA.' } }] }), { status: 200 })) as typeof fetch;
+  assert.equal(await requestNvidiaFallback('Quem é você?', 'test-key', 'meta/llama-3.1-8b-instruct', mentionsProvider), null);
 });
 
 test('grounds site answers in one bounded official excerpt without conversation history', async () => {
