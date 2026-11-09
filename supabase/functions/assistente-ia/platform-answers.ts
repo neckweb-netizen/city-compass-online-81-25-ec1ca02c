@@ -54,7 +54,7 @@ export function platformAnswer(message: string, now = new Date()): PlatformAnswe
   }
   if (/\b(quem e voce|voce e (?:uma )?ia|voce e robo|o que voce e)\b/.test(text)) {
     return {
-      text: "Sou o assistente virtual do Saj Tem. Primeiro consulto as respostas e informações cadastradas na plataforma. Quando não encontro uma resposta, posso recorrer a um modelo externo da NVIDIA, se estiver habilitado. Posso ajudar com buscas locais e dúvidas gerais.",
+      text: "Sou o assistente virtual do Saj Tem. Uso as informações cadastradas na plataforma para ajudar você a explorar empresas, produtos, serviços, eventos e ferramentas. Também posso conversar sobre dúvidas gerais. O que você gostaria de saber?",
       links: [],
     };
   }

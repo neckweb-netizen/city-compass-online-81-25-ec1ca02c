@@ -7,6 +7,7 @@ import { findSiteFaq } from "./site-faq.ts";
 import { readKnowledge, saveKnowledgeArticle, type KnowledgeArticle } from "./knowledge-r2.ts";
 import { answerKnowledgeFollowUp, findKnowledgeArticle, isKnowledgeFollowUp } from "./knowledge-match.ts";
 import { requestNvidiaFallback } from "./nvidia-fallback.ts";
+import { boundedHistory, isConversationFollowUp, validSiteFact, type ConversationTurn } from "./conversation-context.ts";
 import {
   detectIntents, formatPrice, isNearbyQuery, normalizeText, ordinalIndex, rankLocalItems, shouldSearchCatalog, TOOL_ITEMS,
   type LocalSearchItem, type SearchKind,
@@ -112,7 +113,7 @@ function resultSummary(matches: LocalSearchItem[]): string {
   return `Encontrei ${matches.length} opções de ${kinds.join(", ")}. Abra os detalhes ou me diga qual delas deseja conhecer melhor.`;
 }
 
-async function answerWithNvidia(db: ReturnType<typeof createClient>, visitorHash: string, question: string, officialAnswer?: string): Promise<string | null> {
+async function answerWithNvidia(db: ReturnType<typeof createClient>, visitorHash: string, question: string, officialAnswer?: string, history: ConversationTurn[] = []): Promise<string | null> {
   if (Deno.env.get('NVIDIA_FALLBACK_ENABLED') !== 'true') return null;
   const apiKey = Deno.env.get('NVIDIA_API_KEY') || '';
   const model = Deno.env.get('NVIDIA_MODEL') || '';
@@ -120,7 +121,7 @@ async function answerWithNvidia(db: ReturnType<typeof createClient>, visitorHash
   // Separate atomic quota: the visitor's normal request was already counted.
   const { data: allowed, error } = await db.rpc('ai_consume_model_quota', { p_visitor_hash: visitorHash });
   if (error || !allowed) return null;
-  return requestNvidiaFallback(question, apiKey, model, fetch, officialAnswer);
+  return requestNvidiaFallback(question, apiKey, model, fetch, officialAnswer, history);
 }
 
 Deno.serve(async (req: Request) => {
@@ -244,6 +245,7 @@ Deno.serve(async (req: Request) => {
     let sessionToken = "";
     let priorResults: LocalSearchItem[] = [];
     let priorArticleId = "";
+    let priorSiteFact: { text: string; links: { label: string; url: string }[] } | null = null;
     if (incomingId || incomingToken) {
       if (!UUID.test(incomingId) || incomingToken.length < 40 || incomingToken.length > 150) throw new HttpError(400, "Sessão inválida");
       const { data: session } = await db.from("ai_sessions").select("id,expires_at,context")
@@ -257,6 +259,7 @@ Deno.serve(async (req: Request) => {
         ? session.context.results.filter((item: unknown): item is LocalSearchItem => Boolean(item && typeof item === "object" && typeof (item as LocalSearchItem).id === "string" && typeof (item as LocalSearchItem).name === "string" && typeof (item as LocalSearchItem).url === "string")).slice(0, 5)
         : [];
       priorArticleId = typeof session.context?.article_id === "string" && UUID.test(session.context.article_id) ? session.context.article_id : "";
+      priorSiteFact = validSiteFact(session.context?.site_fact);
     } else {
       sessionToken = `${crypto.randomUUID()}${crypto.randomUUID()}`;
       const { data: session, error: sessionError } = await db.from("ai_sessions")
@@ -285,10 +288,14 @@ Deno.serve(async (req: Request) => {
         }
       } catch { /* Keep the regular fallback available when R2 is offline. */ }
     }
+    const followUp = isConversationFollowUp(message);
+    if (!siteAnswer && followUp && priorSiteFact && !shouldSearchCatalog(message, priorResults.length > 0)) {
+      siteAnswer = priorSiteFact;
+    }
     if (siteAnswer) {
       // Enrich factual site answers only; greetings, acknowledgements and
       // dynamically calculated time remain deterministic and free of model cost.
-      const mayEnrich = Boolean(faqAnswer || directArticleId || siteAnswer.links.length > 0);
+      const mayEnrich = Boolean(faqAnswer || directArticleId || priorSiteFact === siteAnswer || siteAnswer.links.length > 0);
       const enrichedText = mayEnrich
         ? await answerWithNvidia(db, visitorHash, message, siteAnswer.text)
         : null;
@@ -299,7 +306,8 @@ Deno.serve(async (req: Request) => {
       ]);
       if (messagesError) throw new HttpError(503, "Não foi possível guardar a conversa");
       const { error: contextError } = await db.from("ai_sessions")
-        .update({ context: { token_hash: await sha256(sessionToken), result_ids: [], article_id: directArticleId } }).eq("id", sessionId);
+        .update({ context: { token_hash: await sha256(sessionToken), result_ids: [], article_id: directArticleId,
+          site_fact: mayEnrich ? { text: siteAnswer.text.slice(0, 2000), links: siteAnswer.links.slice(0, 3) } : null } }).eq("id", sessionId);
       if (contextError) throw new HttpError(503, "Não foi possível atualizar a conversa");
       const { error: eventError } = await db.from("ai_events").insert({ session_id: sessionId, event_type: "search" });
       if (eventError) throw new HttpError(503, "Não foi possível registrar a busca");
@@ -307,7 +315,16 @@ Deno.serve(async (req: Request) => {
     }
 
     if (!shouldSearchCatalog(message, priorResults.length > 0)) {
-      const modelAnswer = await answerWithNvidia(db, visitorHash, message);
+      // Context is loaded only for a verified, existing session and a clear
+      // continuation. Filter personal details and cap the external payload.
+      let history: ConversationTurn[] = [];
+      if (followUp && incomingId) {
+        const { data: recent, error: recentError } = await db.from('ai_messages')
+          .select('role,content').eq('session_id', sessionId)
+          .order('created_at', { ascending: false }).limit(6);
+        if (!recentError && recent) history = boundedHistory((recent as ConversationTurn[]).reverse());
+      }
+      const modelAnswer = await answerWithNvidia(db, visitorHash, message, undefined, history);
       const directAnswer = modelAnswer ? { text: modelAnswer, links: [] } : conversationalFallback();
       const { error: messagesError } = await db.from("ai_messages").insert([
         { session_id: sessionId, role: "user", content: message },
