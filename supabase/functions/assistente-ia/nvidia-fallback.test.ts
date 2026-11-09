@@ -54,3 +54,21 @@ test('does not send empty or oversized official site content to the model', asyn
   assert.equal(await requestNvidiaFallback('Pergunta', 'test-key', 'meta/llama-3.1-8b-instruct', fakeFetch, 'x'.repeat(2401)), null);
   assert.equal(calls, 0);
 });
+
+test('uses a short verified-session history only when provided for a conversational follow-up', async () => {
+  const fakeFetch = (async (_url: string | URL | Request, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body));
+    assert.deepEqual(body.messages.slice(1), [
+      { role: 'user', content: 'Me explique energia solar' },
+      { role: 'assistant', content: 'Energia vinda do Sol' },
+      { role: 'user', content: 'E quais as vantagens?' },
+    ]);
+    assert.doesNotMatch(body.messages[0].content, /NVIDIA/);
+    return new Response(JSON.stringify({ choices: [{ message: { content: 'Uma vantagem é a fonte renovável.' } }] }), { status: 200 });
+  }) as typeof fetch;
+  const answer = await requestNvidiaFallback('E quais as vantagens?', 'test-key', 'meta/llama-3.1-8b-instruct', fakeFetch, undefined, [
+    { role: 'user', content: 'Me explique energia solar' },
+    { role: 'assistant', content: 'Energia vinda do Sol' },
+  ]);
+  assert.match(answer || '', /fonte renovável/);
+});
