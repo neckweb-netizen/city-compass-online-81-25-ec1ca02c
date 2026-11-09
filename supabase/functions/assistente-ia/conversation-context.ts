@@ -27,3 +27,12 @@ export function validSiteFact(value: unknown): { text: string; links: { label: s
       link.label.length <= 80 && link.url.startsWith('/') && !link.url.startsWith('//'))).slice(0, 3);
   return { text: fact.text, links };
 }
+
+export function siteFollowUpFallback(links: { label: string; url: string }[]): string {
+  const options = links.filter(link => link.url.startsWith('/') && !link.url.startsWith('//'))
+    .slice(0, 3).map(link => link.label);
+  if (options.length) {
+    return `Claro! Você pode começar pelas opções abaixo: ${options.join(' ou ')}. Qual delas você gostaria de conhecer melhor?`;
+  }
+  return 'Claro! Posso explicar uma parte de cada vez. Qual detalhe da resposta anterior você gostaria de entender melhor?';
+}
