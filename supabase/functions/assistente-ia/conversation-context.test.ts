@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { boundedHistory, isConversationFollowUp, validSiteFact } from './conversation-context.ts';
+import { boundedHistory, isConversationFollowUp, siteFollowUpFallback, validSiteFact } from './conversation-context.ts';
 
 test('recognizes brief continuations without hijacking a new subject', () => {
   assert.equal(isConversationFollowUp('E como faço isso?'), true);
@@ -26,4 +26,10 @@ test('rejects malformed or external site-context links', () => {
   assert.equal(validSiteFact({ text: '', links: [] }), null);
   assert.deepEqual(validSiteFact({ text: 'Informação oficial', links: [{ label: 'Abrir', url: '/locais' }, { label: 'Ruim', url: '//evil.test' }] }),
     { text: 'Informação oficial', links: [{ label: 'Abrir', url: '/locais' }] });
+});
+
+test('offers a grounded next step rather than repeating the same official answer', () => {
+  assert.match(siteFollowUpFallback([{ label: 'Explorar locais', url: '/locais' }]), /Explorar locais/);
+  assert.doesNotMatch(siteFollowUpFallback([{ label: 'Link externo', url: '//evil.test' }]), /Link externo/);
+  assert.match(siteFollowUpFallback([]), /qual detalhe/i);
 });
