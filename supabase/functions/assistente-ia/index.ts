@@ -328,7 +328,7 @@ Deno.serve(async (req: Request) => {
         if (!recentError && recent) history = boundedHistory((recent as ConversationTurn[]).reverse());
       }
       const modelAnswer = await answerWithNvidia(db, visitorHash, message, undefined, history);
-      const directAnswer = modelAnswer ? { text: modelAnswer, links: [] } : conversationalFallback();
+      const directAnswer = modelAnswer ? { text: modelAnswer, links: [] } : conversationalFallback(message);
       const { error: messagesError } = await db.from("ai_messages").insert([
         { session_id: sessionId, role: "user", content: message },
         { session_id: sessionId, role: "assistant", content: directAnswer.text },
