@@ -104,9 +104,21 @@ export function platformAnswer(message: string, now = new Date()): PlatformAnswe
   return null;
 }
 
-export function conversationalFallback(): PlatformAnswer {
+export function conversationalFallback(message = ''): PlatformAnswer {
+  const subject = normalized(message).replace(/[!?.,;:]+/g, ' ').replace(/\s+/g, ' ').trim();
+  // When the external model is unavailable, keep short messages useful and
+  // conversational. None of these choices implies a catalog search.
+  if (/^(?:produto|produtos)$/.test(subject)) return {
+    text: 'Você quer saber mais sobre algum produto ou está procurando onde comprar? Pode me dizer qual produto e o que gostaria de saber.', links: [],
+  };
+  if (/^(?:barbeiro|barbeiros|barbearia|cortar cabelo|corte de cabelo|cabeleireiro)$/.test(subject)) return {
+    text: 'Você quer dicas sobre corte de cabelo ou está procurando um barbeiro na região? Se quiser encontrar um profissional, posso fazer uma busca local quando você pedir.', links: [],
+  };
+  if (/^(?:agendar|agendamento|marcar horario|marcar|reservar)$/.test(subject)) return {
+    text: 'Claro! O que você gostaria de agendar: um serviço, uma consulta ou outra coisa? Se já tiver um estabelecimento em mente, diga o nome.', links: [],
+  };
   return {
-    text: "Ainda não entendi exatamente o que você quer saber. Pode explicar com outras palavras? Posso conversar sobre o Saj Tem ou, se você quiser uma busca local, diga o nome ou o tipo de empresa, produto, evento, vaga ou serviço.",
+    text: 'Pode me contar um pouco mais sobre o que você precisa? Posso explicar o assunto ou ajudar a encontrar algo no Saj Tem, se você preferir.',
     links: [],
   };
 }
