@@ -24,22 +24,23 @@ export const BottomNavigation = () => {
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 w-full max-w-full bg-background/95 backdrop-blur-md border-t border-border shadow-lg lg:hidden pb-[env(safe-area-inset-bottom)]" data-tour="bottom-navigation">
-      <div className="grid grid-cols-5 h-16 w-full items-center px-1 sm:px-2">
+    <nav aria-label="Navegação principal" className="fixed bottom-0 left-0 right-0 z-50 w-full max-w-full border-t border-primary/15 bg-background/95 shadow-[0_-8px_30px_-18px_hsl(var(--primary)/0.4)] backdrop-blur-xl lg:hidden pb-[env(safe-area-inset-bottom)]" data-tour="bottom-navigation">
+      <div className="grid grid-cols-5 h-[4.5rem] w-full items-center px-1 sm:px-2">
         {navItems.map((item) => {
           const IconComponent = item.icone;
           const ativo = isActive(item.rota);
 
           if (item.isAction) {
             return (
-              <div key={item.rota} className="flex justify-center -mt-4">
+              <div key={item.rota} className="flex justify-center -mt-5">
                 <Button
                   onClick={() => navigate(item.rota)}
+                  aria-label="Criar publicação"
                   data-tour="create-action"
                   data-account-tour="publish"
-                  className="w-12 h-12 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-xl flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
+                  className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/20 bg-gradient-to-br from-primary via-primary to-purple-700 text-primary-foreground shadow-[0_8px_24px_-6px_hsl(var(--primary)/0.8)] transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-[0_10px_26px_-6px_hsl(var(--primary)/0.8)] active:translate-y-0 motion-reduce:transform-none"
                 >
-                  <IconComponent className="w-6 h-6 stroke-[2.5]" />
+                  <IconComponent className="!h-6 !w-6 stroke-[2.2]" />
                 </Button>
               </div>
             );
@@ -49,20 +50,23 @@ export const BottomNavigation = () => {
             <Link
               key={item.rota}
               to={item.rota}
+              aria-current={ativo ? 'page' : undefined}
               data-tour={item.rota === '/ferramentas' ? 'tools-nav' : undefined}
               data-account-tour={item.rota === '/canal-informativo' ? 'channel' : item.rota === '/reclamacoes' ? 'community-voice' : undefined}
               className={cn(
-                "min-w-0 flex flex-col items-center justify-center gap-1 transition-colors py-1",
-                ativo ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground"
+                "group min-w-0 flex flex-col items-center justify-center gap-1 rounded-xl py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none",
+                ativo ? "text-primary font-bold" : "text-muted-foreground hover:text-primary"
               )}
             >
-              <IconComponent className={cn("w-5 h-5", ativo && "scale-110")} />
-              <span className="w-full truncate px-0.5 text-center text-[9px] min-[360px]:text-[10px] tracking-tight">{item.nome}</span>
+              <span className={cn("flex h-9 w-11 items-center justify-center rounded-xl transition-colors", ativo ? "bg-primary/15 ring-1 ring-primary/15" : "group-hover:bg-primary/10")}>
+                <IconComponent aria-hidden="true" className={cn("h-[21px] w-[21px] stroke-[1.9]", ativo && "stroke-[2.3]")} />
+              </span>
+              <span className="w-full truncate px-0.5 text-center text-[10px] font-medium tracking-tight">{item.nome}</span>
             </Link>
           );
         })}
       </div>
-    </div>
+    </nav>
   );
 };
 
