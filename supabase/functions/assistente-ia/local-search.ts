@@ -158,9 +158,12 @@ export function shouldSearchCatalog(query: string, hasPriorResults = false): boo
 }
 
 function tokenScore(token: string, words: string[]): number {
-  if (words.includes(token)) return 8;
-  if (words.some(word => word.startsWith(token) || token.startsWith(word))) return 5;
-  if (token.length >= 5 && words.some(word => word.length >= 5 && levenshteinAtMostOne(token, word))) return 3;
+  // Never match a meaningful search term against tiny filler words such as
+  // "a", "de", "do" or "para" via prefix matching.
+  const meaningfulWords = words.filter(word => word.length >= 4 && !STOPWORDS.has(word));
+  if (meaningfulWords.includes(token)) return 8;
+  if (token.length >= 4 && meaningfulWords.some(word => word.startsWith(token) || token.startsWith(word))) return 5;
+  if (token.length >= 5 && meaningfulWords.some(word => word.length >= 5 && levenshteinAtMostOne(token, word))) return 3;
   return 0;
 }
 
