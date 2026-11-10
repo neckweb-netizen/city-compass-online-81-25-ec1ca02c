@@ -3,6 +3,7 @@ import test from 'node:test';
 import { conversationalFallback, platformAnswer } from './platform-answers.ts';
 
 test('short subjects receive helpful prompts without invented businesses', () => {
+  assert.match(platformAnswer('Produto')?.text || '', /procurar um produto/i);
   assert.match(conversationalFallback('Produto').text, /qual produto/i);
   assert.match(conversationalFallback('Barbeiro').text, /dicas.*corte.*procurando/i);
   assert.match(conversationalFallback('Cortar cabelo').text, /barbeiro/i);
