@@ -395,7 +395,7 @@ Deno.serve(async (req: Request) => {
         address: company.endereco, url: `/locais/${encodeURIComponent(company.slug || company.id)}`,
         companyId: company.id, companyName: company.nome, phone: company.telefone,
         bookable: company.agendamentos_ativo === true,
-        keywords: [categoryNames.get(company.categoria_id || "") || "", "empresa", "local"],
+        keywords: [categoryNames.get(company.categoria_id || "") || ""],
         distanceKm: location && point ? distanceKm(location, point) : null,
       };
     });
