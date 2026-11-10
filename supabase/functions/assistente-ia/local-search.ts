@@ -136,15 +136,15 @@ export function shouldSearchCatalog(query: string, hasPriorResults = false): boo
   if (hasPriorResults && (/\b(primeir[ao]|segund[ao]|terceir[ao]|quart[ao]|quint[ao]|mais barato|mais barata|mais perto|onde fica|endereco|telefone|whatsapp|quanto custa|qual o preco|agendar|marcar)\b/.test(normalized))) {
     return true;
   }
-  if (detectIntents(normalized).length > 0) return true;
-  if (/\b(onde (?:comprar|encontrar|fica)|quero (?:comprar|encontrar|achar)|estou procurando|procuro|buscar|busque|mostre|perto de mim|proximo de mim)\b/.test(normalized)) return true;
+  // Product names, subjects and isolated words are conversational by default.
+  // Route only deliberate local searches to the catalog; keyword/intent alone
+  // must never turn a general question into unsolicited business listings.
+  if (/\b(perto de mim|proximo de mim|proxima de mim|aqui perto|na minha cidade|em santo antonio de jesus)\b/.test(normalized)) return true;
+  if (/\b(onde (?:comprar|encontrar|fica|vende)|(?:quero|preciso) (?:comprar|encontrar|achar)|estou procurando|procuro|buscar|busque|encontre|mostre|liste|indique|recomende)\b/.test(normalized)) return true;
+  if (/\b(?:tem|ha|existe|existem)\s+(?:algum(?:a|s|as)?\s+)?(?:empresa|loja|restaurante|pizzaria|barbearia|clinica|estabelecimento|profissional|prestador|vaga|cupom|promocao)\b/.test(normalized)) return true;
   if (/\b(horario|endereco|telefone|whatsapp)\s+(?:de|da|do|dos|das)\s+\S+/.test(normalized)) return true;
-
-  // A short noun/name such as "pizza", "dentista" or "Natulab" is a useful
-  // catalog query. Question-like and conversational sentences are not.
-  const words = normalized.split(" ");
-  const questionLike = /^(quem|o que|que|qual|quais|como|quando|porque|por que|sera|e|eh|isso|voce|essa|esta|a conversa|meus dados)\b/.test(normalized);
-  return words.length <= 4 && !questionLike && !/[?]/.test(query) && words.some(word => word.length >= 4);
+  if (/^(?:consulta|consultar|abrir|acessar|usar)\s+(?:a\s+|o\s+)?(?:fipe|tabela fipe|calculadora|gerador|ferramenta)\b/.test(normalized)) return true;
+  return false;
 }
 
 function tokenScore(token: string, words: string[]): number {
