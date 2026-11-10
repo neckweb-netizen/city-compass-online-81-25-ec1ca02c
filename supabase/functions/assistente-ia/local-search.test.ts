@@ -87,3 +87,12 @@ test('a specific category excludes unrelated companies and content types', () =>
   assert.deepEqual(rankLocalItems('Barbeiro', items).map(item => item.id), ['beauty']);
   assert.deepEqual(rankLocalItems('Cortar cabelo', items).map(item => item.id), ['beauty']);
 });
+
+test('real registered companies from other categories never appear for technical assistance', () => {
+  const items = [
+    { id: 'eluz', kind: 'company' as const, name: 'ELUZ Assistência Técnica', description: 'Estabelecimento importado do Google Maps para o Guia SAJ Tem.', address: null, url: '/locais/eluz', keywords: ['Comércio'] },
+    { id: 'natulab', kind: 'company' as const, name: 'Natulab Laboratório S.A', description: 'Distribuidora de Produtos Farmacêuticos', address: null, url: '/locais/natulab', keywords: ['Saúde'] },
+    { id: 'passo', kind: 'company' as const, name: 'Passo a Passo', description: null, address: null, url: '/locais/passo', keywords: ['Comércio'] },
+  ];
+  assert.deepEqual(rankLocalItems('Assistência técnica', items).map(item => item.id), ['eluz']);
+});
