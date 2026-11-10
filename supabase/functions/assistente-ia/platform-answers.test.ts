@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { platformAnswer } from './platform-answers.ts';
+import { conversationalFallback, platformAnswer } from './platform-answers.ts';
+
+test('short subjects receive helpful prompts without invented businesses', () => {
+  assert.match(conversationalFallback('Produto').text, /qual produto/i);
+  assert.match(conversationalFallback('Barbeiro').text, /dicas.*corte.*procurando/i);
+  assert.match(conversationalFallback('Cortar cabelo').text, /barbeiro/i);
+  assert.match(conversationalFallback('Agendar').text, /gostaria de agendar/i);
+  assert.doesNotMatch(conversationalFallback('Produto').text, /Ainda não entendi exatamente/i);
+});
 
 test('answers the three observed voice transcripts without a company catalog', () => {
   assert.match(platformAnswer('Qual é o programa aí')?.text || '', /Você quer saber/);
