@@ -121,7 +121,7 @@ export const FloatingActionButton = () => {
                 }}
               >
                 {/* Label com título */}
-                <div className="bg-gray-900/90 text-white px-3 py-2 rounded-lg text-sm whitespace-nowrap shadow-lg">
+                <div className="rounded-xl border border-primary/20 bg-background/95 px-3 py-2 text-sm text-foreground shadow-lg backdrop-blur-md whitespace-nowrap">
                   <div className="font-semibold">{option.title}</div>
                   <div className="text-xs opacity-80">{option.label}</div>
                 </div>
@@ -129,7 +129,7 @@ export const FloatingActionButton = () => {
                 {/* Botão da opção */}
                 <Button
                   size="icon"
-                  className="w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-700 shadow-lg transition-all duration-200 hover:scale-110 flex-shrink-0"
+                  className="h-12 w-12 flex-shrink-0 rounded-2xl bg-primary shadow-[0_6px_18px_-7px_hsl(var(--primary)/0.75)] hover:bg-primary/90 motion-safe:hover:scale-105"
                   onClick={option.action}
                   title={option.title}
                 >
@@ -144,8 +144,8 @@ export const FloatingActionButton = () => {
         <Button
           size="icon"
           className={cn(
-            "w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 shadow-xl transition-all duration-200 hover:scale-105 flex-shrink-0",
-            isOpen && "rotate-45 bg-red-600 hover:bg-red-700"
+            "h-14 w-14 flex-shrink-0 rounded-2xl border border-white/20 bg-gradient-to-br from-primary to-purple-700 shadow-[0_8px_24px_-6px_hsl(var(--primary)/0.8)] transition-[transform,box-shadow] motion-safe:hover:-translate-y-0.5",
+            isOpen && "bg-none bg-primary"
           )}
           onClick={() => setIsOpen(!isOpen)}
           title={isOpen ? "Fechar menu" : "Menu de ações"}
