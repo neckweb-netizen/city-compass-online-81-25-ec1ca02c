@@ -55,7 +55,7 @@ test('opens the catalog only for an actual local-search request', () => {
   assert.equal(shouldSearchCatalog('Onde comprar pizza?'), true);
   assert.equal(shouldSearchCatalog('dentista perto de mim'), true);
   assert.equal(shouldSearchCatalog('Consulta FIPE'), true);
-  assert.equal(shouldSearchCatalog('Natulab'), false);
+  assert.equal(shouldSearchCatalog('Natulab'), true);
   assert.equal(shouldSearchCatalog('Qual o horário da Natulab?'), true);
   assert.equal(shouldSearchCatalog('onde fica a segunda opção?', true), true);
   assert.equal(shouldSearchCatalog('Saj Tem WhatsApp?'), false);
@@ -74,6 +74,17 @@ test('opens the catalog only for an actual local-search request', () => {
   assert.equal(shouldSearchCatalog('Barbeiro'), true);
   assert.equal(shouldSearchCatalog('Cortar cabelo'), true);
   assert.equal(shouldSearchCatalog('Agendar'), false);
+  assert.equal(shouldSearchCatalog('Eluz'), true);
+  assert.equal(shouldSearchCatalog('produto'), false);
+});
+
+test('a short company name resolves to matching registered businesses only', () => {
+  const companies = [
+    { id: 'a', kind: 'company' as const, name: 'Eluz - Materiais Elétricos', description: 'Estabelecimento importado do Google Maps', address: null, url: '/locais/a', keywords: ['Comércio'] },
+    { id: 'b', kind: 'company' as const, name: 'ELUZ Assistência Técnica', description: 'Estabelecimento importado do Google Maps', address: null, url: '/locais/b', keywords: ['Comércio'] },
+    { id: 'c', kind: 'company' as const, name: 'Natulab Laboratório', description: 'Distribuidora de produtos farmacêuticos', address: null, url: '/locais/c', keywords: ['Saúde'] },
+  ];
+  assert.deepEqual(rankLocalItems('Eluz', companies).map(item => item.id), ['a', 'b']);
 });
 
 test('a specific category excludes unrelated companies and content types', () => {
