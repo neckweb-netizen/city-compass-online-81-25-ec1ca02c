@@ -129,7 +129,7 @@ export const FloatingActionButton = () => {
                 {/* Botão da opção */}
                 <Button
                   size="icon"
-                  className="h-12 w-12 flex-shrink-0 rounded-2xl bg-primary shadow-[0_6px_18px_-7px_hsl(var(--primary)/0.75)] hover:bg-primary/90 motion-safe:hover:scale-105"
+                  className="h-12 w-12 flex-shrink-0 rounded-full bg-primary shadow-[0_6px_18px_-7px_hsl(var(--primary)/0.75)] hover:bg-primary/90 motion-safe:hover:scale-105"
                   onClick={option.action}
                   title={option.title}
                 >
@@ -144,8 +144,8 @@ export const FloatingActionButton = () => {
         <Button
           size="icon"
           className={cn(
-            "h-14 w-14 flex-shrink-0 rounded-2xl border border-white/20 bg-gradient-to-br from-primary to-purple-700 shadow-[0_8px_24px_-6px_hsl(var(--primary)/0.8)] transition-[transform,box-shadow] motion-safe:hover:-translate-y-0.5",
-            isOpen && "bg-none bg-primary"
+            "h-14 w-14 flex-shrink-0 rounded-full border-[3px] border-background bg-primary shadow-[0_7px_22px_-5px_hsl(var(--primary)/0.65)] ring-1 ring-primary/20 transition-[transform,box-shadow] motion-safe:hover:-translate-y-0.5",
+            isOpen && "bg-primary"
           )}
           onClick={() => setIsOpen(!isOpen)}
           title={isOpen ? "Fechar menu" : "Menu de ações"}
