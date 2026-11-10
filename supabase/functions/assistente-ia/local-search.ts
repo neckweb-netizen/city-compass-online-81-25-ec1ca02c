@@ -26,6 +26,13 @@ const STOPWORDS = new Set([
 ]);
 
 const SYNONYMS: Record<string, string[]> = {
+  barbeiro: ['barbearia', 'cabelo', 'cabeleireiro'],
+  barbearia: ['barbeiro', 'cabeleireiro'],
+  assistencia: ['reparo', 'conserto', 'manutencao'],
+  tecnico: ['tecnica', 'reparo'],
+  tecnica: ['tecnico', 'reparo'],
+  cortar: ['corte', 'cabelo', 'barbearia'],
+  corte: ['cabelo', 'barbearia'],
   emprego: ['vaga', 'trabalho', 'oportunidade'],
   empregos: ['vaga', 'trabalho', 'oportunidade'],
   trabalho: ['vaga', 'emprego', 'oportunidade'],
@@ -144,6 +151,9 @@ export function shouldSearchCatalog(query: string, hasPriorResults = false): boo
   if (/\b(?:tem|ha|existe|existem)\s+(?:algum(?:a|s|as)?\s+)?(?:empresa|loja|restaurante|pizzaria|barbearia|clinica|estabelecimento|profissional|prestador|vaga|cupom|promocao)\b/.test(normalized)) return true;
   if (/\b(horario|endereco|telefone|whatsapp)\s+(?:de|da|do|dos|das)\s+\S+/.test(normalized)) return true;
   if (/^(?:consulta|consultar|abrir|acessar|usar)\s+(?:a\s+|o\s+)?(?:fipe|tabela fipe|calculadora|gerador|ferramenta)\b/.test(normalized)) return true;
+  // Specific category/service names are useful local searches, while generic
+  // subjects such as "produto" and "serviço" remain conversational.
+  if (/^(?:assistencia tecnica|barbeiro|barbearia|dentista|cortar cabelo|corte de cabelo|oficina mecanica|pizzaria|farmacia|eletricista|encanador|cabeleireiro)$/.test(normalized)) return true;
   return false;
 }
 
@@ -159,10 +169,11 @@ export function rankLocalItems(query: string, items: LocalSearchItem[], limit = 
   const tokens = queryTokens(query);
   const intents = detectIntents(query);
   const namedBusiness = /\b(?:empresa|loja|estabelecimento)\s+(?:(?:de nome|chamada|denominada|a|o)\s+)?[a-z0-9]{3,}/.test(normalizedQuery);
+  const specificCategory = /\b(assistencia tecnica|barbeiro|barbearia|dentista|cortar cabelo|corte de cabelo|oficina mecanica|pizzaria|farmacia|eletricista|encanador|cabeleireiro)\b/.test(normalizedQuery);
   if (!tokens.length && !intents.length) return [];
   const ranked = items.map((item, index) => {
     const title = normalizeText(item.name);
-    const description = normalizeText([item.description, item.address, item.companyName, ...(item.keywords || [])].filter(Boolean).join(' '));
+    const description = normalizeText([item.description, item.companyName, ...(item.keywords || [])].filter(Boolean).join(' '));
     const titleWords = title.split(' ');
     const descriptionWords = description.split(' ');
     const phrase = normalizedQuery.length >= 4 && title.includes(normalizedQuery) ? 30 : 0;
@@ -178,9 +189,14 @@ export function rankLocalItems(query: string, items: LocalSearchItem[], limit = 
     ? ranked.filter(entry => entry.lexicalScore > 0 && (!namedBusiness || (entry.item.kind === 'company' && tokens.some(token =>
       normalizeText(entry.item.name).split(' ').some(word => word === token || word.startsWith(token))))))
     : ranked;
-  const intended = intents.length && lexical.some(entry => intents.includes(entry.item.kind))
-    ? lexical.filter(entry => intents.includes(entry.item.kind))
+  // A named service/category must not be diluted by unrelated product,
+  // coupon or event matches that happen to share a generic word.
+  const relevant = specificCategory
+    ? lexical.filter(entry => entry.item.kind === 'company' || entry.item.kind === 'service' || entry.item.kind === 'booking')
     : lexical;
+  const intended = intents.length && relevant.some(entry => intents.includes(entry.item.kind))
+    ? relevant.filter(entry => intents.includes(entry.item.kind))
+    : relevant;
   return intended
     .sort((a, b) => b.score - a.score || (a.item.distanceKm ?? 9999) - (b.item.distanceKm ?? 9999) || a.index - b.index)
     .slice(0, Math.max(1, Math.min(limit, 10))).map(entry => entry.item);
