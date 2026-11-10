@@ -32,6 +32,9 @@ export function platformAnswer(message: string, now = new Date()): PlatformAnswe
       links: [{ label: "Publicar o que procuro", url: "/viver-saj?area=desejos" }],
     };
   }
+  if (/^produtos?[!?. ]*$/.test(text)) {
+    return { text: 'Você quer procurar um produto anunciado no Saj Tem ou tirar uma dúvida sobre algum produto? Diga o nome ou o que precisa.', links: [] };
+  }
   const asksCurrentTime = /\b(que horas sao|qual(?: e)? a hora|hora agora|horario agora)\b/.test(text);
   if (asksCurrentTime) {
     return { text: `Agora são ${currentBahiaTime(now)}, no horário de Santo Antônio de Jesus (Bahia).`, links: [] };
