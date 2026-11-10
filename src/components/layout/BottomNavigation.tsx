@@ -32,16 +32,18 @@ export const BottomNavigation = () => {
 
           if (item.isAction) {
             return (
-              <div key={item.rota} className="flex justify-center -mt-5">
+              <div key={item.rota} className="relative -mt-5 flex items-center justify-center">
+                <div className="flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-full border-[5px] border-background bg-background shadow-[0_-3px_18px_-8px_hsl(var(--primary)/0.35)]">
                 <Button
                   onClick={() => navigate(item.rota)}
                   aria-label="Criar publicação"
                   data-tour="create-action"
                   data-account-tour="publish"
-                  className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/20 bg-gradient-to-br from-primary via-primary to-purple-700 text-primary-foreground shadow-[0_8px_24px_-6px_hsl(var(--primary)/0.8)] transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-[0_10px_26px_-6px_hsl(var(--primary)/0.8)] active:translate-y-0 motion-reduce:transform-none"
+                  className="flex h-[3.875rem] w-[3.875rem] shrink-0 items-center justify-center rounded-full border border-primary-foreground/25 bg-primary text-primary-foreground shadow-[0_5px_17px_-4px_hsl(var(--primary)/0.65)] ring-1 ring-primary/15 transition-[transform,box-shadow,background-color] hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_7px_22px_-4px_hsl(var(--primary)/0.7)] active:translate-y-0 motion-reduce:transform-none"
                 >
                   <IconComponent className="!h-6 !w-6 stroke-[2.2]" />
                 </Button>
+                </div>
               </div>
             );
           }
