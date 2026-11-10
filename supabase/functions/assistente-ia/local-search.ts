@@ -154,6 +154,10 @@ export function shouldSearchCatalog(query: string, hasPriorResults = false): boo
   // Specific category/service names are useful local searches, while generic
   // subjects such as "produto" and "serviço" remain conversational.
   if (/^(?:assistencia tecnica|barbeiro|barbearia|dentista|cortar cabelo|corte de cabelo|oficina mecanica|pizzaria|farmacia|eletricista|encanador|cabeleireiro)$/.test(normalized)) return true;
+  // A single specific name (e.g. "Eluz") may identify a real registered
+  // business. Let the catalog verify it instead of asking the model to guess.
+  // Generic subjects and conversational replies should not trigger searches.
+  if (/^[a-z]{4,30}$/.test(normalized) && !/^(produto|produtos|servico|servicos|empresa|empresas|loja|lojas|agendar|agendamento|ajuda|obrigado|obrigada|valeu|tchau|isso|esse|essa|como|qual|quais|porque|quando|hoje|amanha|ontem|melhor|preco|valor|site|plataforma|aplicativo|tempo|clima)$/.test(normalized)) return true;
   return false;
 }
 
