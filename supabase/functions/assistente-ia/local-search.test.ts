@@ -70,4 +70,20 @@ test('opens the catalog only for an actual local-search request', () => {
   assert.equal(shouldSearchCatalog('Mostre lojas de roupas'), true);
   assert.equal(shouldSearchCatalog('Tem alguma barbearia?'), true);
   assert.equal(shouldSearchCatalog('Onde encontro um produto perto de mim?'), true);
+  assert.equal(shouldSearchCatalog('Assistência técnica'), true);
+  assert.equal(shouldSearchCatalog('Barbeiro'), true);
+  assert.equal(shouldSearchCatalog('Cortar cabelo'), true);
+  assert.equal(shouldSearchCatalog('Agendar'), false);
+});
+
+test('a specific category excludes unrelated companies and content types', () => {
+  const items = [
+    { id: 'tech', kind: 'company' as const, name: 'Reparo Celular', description: 'Conserto de celulares', address: null, url: '/locais/tech', keywords: ['Assistência Técnica'] },
+    { id: 'food', kind: 'company' as const, name: 'Restaurante Central', description: 'Refeições e lanches', address: null, url: '/locais/food', keywords: ['Restaurantes'] },
+    { id: 'event', kind: 'event' as const, name: 'Feira de tecnologia', description: 'Assistência técnica no evento', address: null, url: '/eventos/event' },
+    { id: 'beauty', kind: 'company' as const, name: 'Barbearia Bahia', description: 'Corte masculino', address: null, url: '/locais/beauty', keywords: ['Barbearias'] },
+  ];
+  assert.deepEqual(rankLocalItems('Assistência técnica', items).map(item => item.id), ['tech']);
+  assert.deepEqual(rankLocalItems('Barbeiro', items).map(item => item.id), ['beauty']);
+  assert.deepEqual(rankLocalItems('Cortar cabelo', items).map(item => item.id), ['beauty']);
 });
