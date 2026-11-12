@@ -337,7 +337,11 @@ const Index = () => {
               <Card 
                 key={item.id}
                 onClick={() => navigate(item.rota)}
-                className="border border-border/60 hover:border-primary/50 shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer group rounded-2xl overflow-hidden bg-muted/40 flex flex-col justify-between"
+                role="link"
+                tabIndex={0}
+                aria-label={`Abrir ferramenta ${item.titulo}`}
+                onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); navigate(item.rota); } }}
+                className="border border-border/60 hover:border-primary/50 shadow-sm hover:shadow-lg transition-[box-shadow,border-color,transform] duration-200 cursor-pointer group rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary overflow-hidden bg-muted/40 flex flex-col justify-between"
               >
                 <CardContent className="p-5 space-y-4 flex flex-col justify-between h-full">
                   <div className="space-y-3">
