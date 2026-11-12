@@ -504,7 +504,7 @@ export const ControleFinanceiro = () => {
                   else toast.error('Não foi possível sincronizar agora. Seus dados continuam salvos neste aparelho.');
                 });
               }}
-              className="shrink-0 rounded-xl bg-blue-600 font-extrabold text-white hover:bg-blue-700"
+              className="shrink-0 rounded-xl bg-primary font-extrabold text-primary-foreground hover:bg-primary/90"
             >
               {syncing ? 'Sincronizando...' : 'Salvar na minha conta'}
             </Button>
@@ -780,7 +780,7 @@ export const ControleFinanceiro = () => {
                 onClick={() => openNewEntry({ type: 'receita' })}
                 className="group rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-emerald-900/60 dark:bg-emerald-950/30"
               >
-                <ArrowUpCircle className="h-7 w-7 text-emerald-600 transition-transform group-hover:scale-110 dark:text-emerald-400" />
+                <ArrowUpCircle className="h-7 w-7 text-emerald-600 transition-transform group-motion-safe:hover:scale-[1.03] dark:text-emerald-400" />
                 <p className="mt-3 text-sm font-black text-emerald-950 dark:text-emerald-100">Adicionar receita</p>
                 <p className="mt-1 text-[11px] leading-relaxed text-emerald-700 dark:text-emerald-300">Salário, vendas, freelance ou qualquer entrada.</p>
               </button>
@@ -789,7 +789,7 @@ export const ControleFinanceiro = () => {
                 onClick={() => openNewEntry({ type: 'despesa' })}
                 className="group rounded-2xl border border-rose-200 bg-rose-50 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-rose-900/60 dark:bg-rose-950/30"
               >
-                <ArrowDownCircle className="h-7 w-7 text-rose-600 transition-transform group-hover:scale-110 dark:text-rose-400" />
+                <ArrowDownCircle className="h-7 w-7 text-rose-600 transition-transform group-motion-safe:hover:scale-[1.03] dark:text-rose-400" />
                 <p className="mt-3 text-sm font-black text-rose-950 dark:text-rose-100">Adicionar despesa</p>
                 <p className="mt-1 text-[11px] leading-relaxed text-rose-700 dark:text-rose-300">Conta, compra, dívida ou gasto do dia a dia.</p>
               </button>
