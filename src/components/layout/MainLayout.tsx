@@ -31,7 +31,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
           <div className={cn("flex-1 flex flex-col min-w-0 w-full transition-all duration-300", sidebarOpen ? "lg:ml-64" : "lg:ml-16")}>
             <Header sidebarOpen={sidebarOpen} />
             
-            <main className="flex-1 pb-16 lg:pb-24 overflow-x-hidden w-full">
+            <main className="flex-1 pb-28 lg:pb-12 overflow-x-hidden w-full">
               {children || <Outlet />}
               <Watermark />
             </main>
