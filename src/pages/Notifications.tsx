@@ -84,7 +84,7 @@ export default function NotificationsPage() {
                     <div className="h-10 w-10 shrink-0 rounded-xl bg-primary/10 flex items-center justify-center overflow-hidden">
                       {item.icon_url ? <img src={item.icon_url} alt="" className="h-full w-full object-cover" /> : <Icon className="h-5 w-5 text-primary" />}
                     </div>
-                    <button className="min-w-0 flex-1 text-left" onClick={() => openNotification(item)}>
+                    <button className="min-w-0 flex-1 rounded-xl p-1.5 text-left transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30" onClick={() => openNotification(item)}>
                       <div className="flex items-start gap-2">
                         <h2 className={cn('font-semibold leading-tight flex-1', !item.read && 'text-primary')}>{item.title}</h2>
                         {!item.read && <span className="mt-1 h-2 w-2 rounded-full bg-primary shrink-0" />}
