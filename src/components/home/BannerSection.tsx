@@ -25,6 +25,19 @@ interface Banner {
   atualizado_em: string;
 }
 
+// Compartilhada com a página inicial para antecipar a busca do banner LCP.
+export async function loadBanners(secao: NonNullable<BannerSectionProps['secao']>): Promise<Banner[]> {
+  const { data, error } = await supabase
+    .from('banners_publicitarios')
+    .select('id, titulo, imagem_url, link_url, ativo, ordem, secao, criado_em, atualizado_em')
+    .eq('ativo', true)
+    .eq('secao', secao === 'locais' ? 'empresas' : secao)
+    .order('ordem', { ascending: true })
+    .limit(10);
+  if (error) throw error;
+  return data as Banner[];
+}
+
 // Função para embaralhar array usando algoritmo Fisher-Yates
 const shuffleArray = (array: Banner[]) => {
   const shuffled = [...array];
@@ -39,18 +52,7 @@ export const BannerSection = ({ secao = 'home' }: BannerSectionProps) => {
   const navigate = useNavigate();
   const { data: banners, isLoading } = useQuery({
     queryKey: ['banners-publicitarios', secao],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('banners_publicitarios')
-        .select('id, titulo, imagem_url, link_url, ativo, ordem, secao, criado_em, atualizado_em')
-        .eq('ativo', true)
-        .eq('secao', secao === 'locais' ? 'empresas' : secao)
-        .order('ordem', { ascending: true })
-        .limit(10);
-
-      if (error) throw error;
-      return data as Banner[];
-    },
+    queryFn: () => loadBanners(secao),
   });
 
   // Embaralha os banners a cada renderização para rotação aleatória
