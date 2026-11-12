@@ -53,12 +53,13 @@ export const BannerSection = ({ secao = 'home' }: BannerSectionProps) => {
   const { data: banners, isLoading } = useQuery({
     queryKey: ['banners-publicitarios', secao],
     queryFn: () => loadBanners(secao),
+    staleTime: 2 * 60 * 1000,
   });
 
   // Embaralha os banners a cada renderização para rotação aleatória
   const shuffledBanners = useMemo(() => {
     if (!banners || banners.length === 0) return [];
-    return shuffleArray(banners);
+    return banners;
   }, [banners]);
 
   // Auto-rotation logic
