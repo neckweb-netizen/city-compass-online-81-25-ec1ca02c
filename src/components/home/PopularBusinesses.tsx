@@ -16,16 +16,16 @@ export const PopularBusinesses = () => {
     return (
       <section className="py-8">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Locais em Destaque</h2>
+          <h2 className="text-2xl font-bold text-foreground">Locais em Destaque</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="animate-pulse">
-              <div className="bg-gray-200 h-48 rounded-t-lg"></div>
+              <div className="bg-muted h-48 rounded-t-lg"></div>
               <div className="p-4 space-y-3">
-                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                <div className="h-3 bg-gray-200 rounded w-full"></div>
+                <div className="h-4 bg-muted rounded w-3/4"></div>
+                <div className="h-3 bg-muted rounded w-1/2"></div>
+                <div className="h-3 bg-muted rounded w-full"></div>
               </div>
             </div>
           ))}
@@ -45,7 +45,7 @@ export const PopularBusinesses = () => {
           <h2 className="text-xl sm:text-2xl font-bold">Locais em Destaque</h2>
           <p className="text-muted-foreground mt-1 text-sm sm:text-base">Os melhores locais da região</p>
         </div>
-        <Button variant="outline" className="hidden md:flex">
+        <Button variant="outline" className="hidden md:flex" onClick={() => navigate("/locais")}>
           Ver todas
           <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
@@ -71,7 +71,7 @@ export const PopularBusinesses = () => {
       </div>
       
       <div className="flex justify-center mt-4 sm:mt-6 md:hidden">
-        <Button variant="outline" className="w-full">
+        <Button variant="outline" className="w-full" onClick={() => navigate("/locais")}>
           Ver todos os locais
           <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
