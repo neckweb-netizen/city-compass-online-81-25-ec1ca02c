@@ -48,13 +48,13 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
             <button
               key={empresa.id}
               onClick={() => onSuggestionClick('empresa', empresa)}
-              className="w-full text-left p-2 hover:bg-muted rounded flex items-center gap-3 transition-colors"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             >
               {empresa.imagem_capa_url && (
                 <img 
                   src={empresa.imagem_capa_url} 
                   alt={empresa.nome}
-                  className="h-8 w-8 rounded object-cover"
+                  className="h-9 w-9 rounded-lg object-cover"
                 />
               )}
               <div className="flex-1 min-w-0">
@@ -77,7 +77,7 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
             <button
               key={categoria.id}
               onClick={() => onSuggestionClick('categoria', categoria)}
-              className="w-full text-left p-2 hover:bg-muted rounded flex items-center gap-3 transition-colors"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             >
               {categoria.icone_url && (
                 <span className="text-lg">{categoria.icone_url}</span>
@@ -99,7 +99,7 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
             <button
               key={cidade.id}
               onClick={() => onSuggestionClick('cidade', cidade)}
-              className="w-full text-left p-2 hover:bg-muted rounded flex items-center gap-3 transition-colors"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             >
               <MapPin className="h-4 w-4 text-muted-foreground" />
               <span className="font-medium text-sm">{cidade.nome}, {cidade.estado}</span>
