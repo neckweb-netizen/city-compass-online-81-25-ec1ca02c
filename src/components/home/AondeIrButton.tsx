@@ -87,7 +87,7 @@ export const AondeIrButton = () => {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button 
-          className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+          className="min-h-12 w-full rounded-2xl border border-primary/15 bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
         >
           <MapPin className="w-4 h-4 mr-2" />
           Aonde ir?
@@ -105,7 +105,7 @@ export const AondeIrButton = () => {
           {isLoading ? (
             <div className="space-y-3">
               {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="border rounded-lg p-4">
+                <div key={i} className="rounded-2xl border border-border/60 p-4">
                   <Skeleton className="h-4 w-2/3 mb-2" />
                   <Skeleton className="h-3 w-full mb-1" />
                   <Skeleton className="h-3 w-3/4" />
@@ -117,7 +117,7 @@ export const AondeIrButton = () => {
               {lugares.map((lugar) => (
                 <div 
                   key={lugar.id} 
-                  className={`border rounded-lg p-4 hover:shadow-md transition-shadow ${
+                  className={`rounded-2xl border p-4 transition-[box-shadow,border-color] hover:shadow-md ${
                     lugar.destaque ? 'border-primary/30 bg-primary/5' : 'border-border'
                   }`}
                 >
