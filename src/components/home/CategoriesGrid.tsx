@@ -128,7 +128,11 @@ export const CategoriesGrid = () => {
             {categoriasVisiveis.map((categoria) => (
               <Card 
                 key={categoria.id}
-                className="min-w-20 sm:min-w-24 flex-shrink-0 cursor-pointer rounded-2xl border border-primary/10 bg-card/85 shadow-sm transition-[border-color,box-shadow,transform] duration-200 hover:border-primary/30 hover:shadow-md motion-safe:hover:-translate-y-0.5 focus-within:ring-2 focus-within:ring-primary/30"
+                className="min-w-20 sm:min-w-24 flex-shrink-0 cursor-pointer rounded-2xl border border-primary/10 bg-card/85 shadow-sm transition-[border-color,box-shadow,transform] duration-200 hover:border-primary/30 hover:shadow-md motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                role="link"
+                tabIndex={0}
+                aria-label={`Abrir categoria ${categoria.nome}`}
+                onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); handleCategoriaClick(categoria.slug); } }}
                 onClick={() => handleCategoriaClick(categoria.slug)}
               >
                 <CardContent className="p-2 sm:p-3 text-center space-y-1 sm:space-y-2">

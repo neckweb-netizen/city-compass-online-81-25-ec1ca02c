@@ -48,6 +48,15 @@ export const Header = ({ sidebarOpen = true }: HeaderProps) => {
     }
   }, [location.search]);
 
+  useEffect(() => {
+    const openLogin = () => {
+      setAuthDialogDefaultTab('login');
+      setAuthDialogOpen(true);
+    };
+    window.addEventListener('sajtem:open-auth', openLogin);
+    return () => window.removeEventListener('sajtem:open-auth', openLogin);
+  }, []);
+
   const handleSignOut = async () => {
     await signOut();
   };

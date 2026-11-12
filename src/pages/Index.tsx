@@ -212,11 +212,18 @@ const Index = () => {
   }, [tabFromUrl]);
 
   if (loadingConfig) {
+    // Mantém a geometria da home enquanto verificamos o modo manutenção,
+    // em vez de trocar uma tela escura centralizada por cards de larguras diferentes.
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0F0A19] text-white">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
-          <p className="text-xs text-purple-400/80 font-medium tracking-widest uppercase">Sincronizando Ecossistema</p>
+      <div className="min-h-screen bg-background" aria-busy="true" aria-label="Carregando o Saj Tem">
+        <div className="container mx-auto space-y-6 px-4 py-4 pb-28">
+          <div className="min-h-[168px] animate-pulse rounded-2xl border border-primary/10 bg-muted/30 sm:min-h-[112px]" />
+          <div className="space-y-4 animate-pulse">
+            <div className="aspect-[970/250] w-full rounded-2xl bg-muted/35" />
+            <div className="h-44 w-full rounded-2xl bg-muted/30" />
+            <div className="h-44 w-full rounded-2xl bg-muted/30" />
+          </div>
+          <span className="sr-only">Verificando a disponibilidade do portal.</span>
         </div>
       </div>
     );
@@ -330,7 +337,11 @@ const Index = () => {
               <Card 
                 key={item.id}
                 onClick={() => navigate(item.rota)}
-                className="border border-border/60 hover:border-primary/50 shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer group rounded-2xl overflow-hidden bg-muted/40 flex flex-col justify-between"
+                role="link"
+                tabIndex={0}
+                aria-label={`Abrir ferramenta ${item.titulo}`}
+                onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); navigate(item.rota); } }}
+                className="border border-border/60 hover:border-primary/50 shadow-sm hover:shadow-lg transition-[box-shadow,border-color,transform] duration-200 cursor-pointer group rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary overflow-hidden bg-muted/40 flex flex-col justify-between"
               >
                 <CardContent className="p-5 space-y-4 flex flex-col justify-between h-full">
                   <div className="space-y-3">

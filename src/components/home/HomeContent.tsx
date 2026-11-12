@@ -183,7 +183,7 @@ const DeferredSection = ({
         }
       },
       {
-        rootMargin: '700px 0px',
+        rootMargin: '240px 0px',
         threshold: 0.01,
       },
     );
@@ -237,7 +237,8 @@ export const HomeContent = ({
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="container mx-auto space-y-6 px-4 py-4 pb-20">
+        <div className="container mx-auto space-y-6 px-4 py-4 pb-28">
+          <AiAssistantHomeEntry />
           <div className="animate-pulse space-y-6">
             <div className="mx-auto w-full max-w-7xl px-2 py-4 sm:px-4">
               <div className="aspect-[970/250] w-full rounded-lg bg-muted" />
@@ -280,7 +281,7 @@ export const HomeContent = ({
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto space-y-6 px-4 py-4 pb-20">
+      <div className="container mx-auto space-y-6 px-4 py-4 pb-28">
         <AiAssistantHomeEntry />
         {activeSections.map(
           (section, index) => {
@@ -323,7 +324,7 @@ export const HomeContent = ({
              * imediatamente.
              *
              * O restante só começa a carregar quando chega
-             * a aproximadamente 700px da viewport.
+             * a aproximadamente 240px da viewport.
              *
              * Isso reduz JS, imagens e requisições na
              * primeira renderização mobile.

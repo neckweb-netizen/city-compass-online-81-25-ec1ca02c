@@ -95,7 +95,7 @@ export const FloatingActionButton = () => {
 
   return (
     <>
-      <div className="fixed bottom-20 right-2 z-40 lg:bottom-8 lg:right-4">
+      <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+6.25rem)] right-3 z-40 lg:bottom-8 lg:right-4">
         {/* Backdrop para fechar o menu */}
         {isOpen && (
           <div

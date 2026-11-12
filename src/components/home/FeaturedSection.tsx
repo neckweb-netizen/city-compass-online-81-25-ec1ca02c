@@ -107,7 +107,11 @@ export const FeaturedSection = ({
             return (
               <NeonCard
                 key={empresa.id}
-                className="min-w-64 cursor-pointer rounded-2xl bg-muted/40 shadow-lg transition-all duration-300 hover:scale-[1.02] hover:shadow-xl sm:min-w-72 lg:min-w-80"
+                className="min-w-64 cursor-pointer rounded-2xl bg-muted/40 shadow-lg transition-[box-shadow,border-color,transform] duration-200 hover:shadow-xl motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:min-w-72 lg:min-w-80"
+                role="link"
+                tabIndex={0}
+                aria-label={`Ver detalhes de ${empresa.nome}`}
+                onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); handleEmpresaClick(empresa.id); } }}
                 onClick={() =>
                   handleEmpresaClick(empresa.id)
                 }
