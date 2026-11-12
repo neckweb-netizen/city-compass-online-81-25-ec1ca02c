@@ -229,7 +229,7 @@ export const InfluencerEditForm = ({ empresa, open, onOpenChange }: InfluencerEd
                     <select
                       value={social.platform}
                       onChange={(e) => updateSocialMedia(index, 'platform', e.target.value)}
-                      className="w-full px-3 py-2 border border-input rounded-md bg-background"
+                      className="w-full rounded-xl border border-input bg-background px-3 py-2 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                     >
                       <option value="">Selecione...</option>
                       {platformOptions.map(platform => (
