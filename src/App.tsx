@@ -112,9 +112,11 @@ const AdminEntreNos = lazy(() => import("./pages/admin/AdminEntreNos"));
 const AdminProducaoLocal = lazy(() => import("./pages/admin/AdminProducaoLocal"));
 const AdminViverSaj = lazy(() => import("./pages/admin/AdminViverSaj"));
 
-import { MainLayout } from "./components/layout/MainLayout";
 import { PublicLayout } from "./components/layout/PublicLayout";
-import { AdminLayout } from "./components/admin/AdminLayout";
+
+// Não carregar os painéis de empresa/admin para visitantes da home.
+const MainLayout = lazy(() => import("./components/layout/MainLayout").then(m => ({ default: m.MainLayout })));
+const AdminLayout = lazy(() => import("./components/admin/AdminLayout").then(m => ({ default: m.AdminLayout })));
 import { RoutePreloader } from "./components/layout/RoutePreloader";
 
 // GARANTE QUE TODA NOVA ROTA ABRA NO TOPO DA PÁGINA
