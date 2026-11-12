@@ -209,7 +209,7 @@ export const EmpresaLocation = ({ empresa }: EmpresaLocationProps) => {
                         <Button 
                           onClick={() => handleGetDirections(endereco.endereco)}
                           size="sm" 
-                          className="bg-blue-600 hover:bg-blue-700"
+                          className="bg-primary hover:bg-primary/90"
                         >
                           <Navigation className="h-3 w-3 mr-1" />
                           Ir até lá
@@ -237,7 +237,7 @@ export const EmpresaLocation = ({ empresa }: EmpresaLocationProps) => {
                         <Button 
                           onClick={() => handleGetDirections(empresa.endereco)}
                           size="sm" 
-                          className="bg-blue-600 hover:bg-blue-700"
+                          className="bg-primary hover:bg-primary/90"
                         >
                           <Navigation className="h-3 w-3 mr-1" />
                           Ir até lá

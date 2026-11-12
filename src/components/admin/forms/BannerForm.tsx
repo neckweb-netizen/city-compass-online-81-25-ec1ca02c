@@ -239,7 +239,7 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
                 
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">ou envie uma imagem do dispositivo:</span>
-                  <label className="cursor-pointer inline-flex items-center gap-1 text-xs bg-secondary hover:bg-secondary/80 px-3 py-1.5 rounded-md font-medium">
+                  <label className="cursor-pointer inline-flex items-center gap-1 text-xs bg-secondary hover:bg-secondary/80 px-3 py-2 rounded-xl font-semibold shadow-sm transition-colors focus-within:ring-2 focus-within:ring-primary/40">
                     {uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
                     Upload Vídeo
                     <input

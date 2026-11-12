@@ -196,7 +196,9 @@ export const AuthDialog = ({ open, onOpenChange, defaultTab = 'login' }: AuthDia
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                    aria-pressed={showPassword}
+                    className="absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                   >
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
@@ -211,8 +213,9 @@ export const AuthDialog = ({ open, onOpenChange, defaultTab = 'login' }: AuthDia
             {/* Alternador entre Login e Cadastro */}
             <div className="text-center space-y-3">
               <button
+                type="button"
                 onClick={toggleMode}
-                className="text-primary hover:underline"
+                className="rounded-lg px-2 py-1 font-semibold text-primary hover:bg-primary/10 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                 data-tutorial="create-account"
               >
                 {isLogin 
@@ -224,8 +227,9 @@ export const AuthDialog = ({ open, onOpenChange, defaultTab = 'login' }: AuthDia
               {isLogin && (
                 <div>
                   <button
+                    type="button"
                     onClick={handlePasswordReset}
-                    className="text-sm text-muted-foreground hover:text-primary hover:underline"
+                    className="rounded-lg px-2 py-1 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                     disabled={loading}
                   >
                     Esqueceu sua senha?

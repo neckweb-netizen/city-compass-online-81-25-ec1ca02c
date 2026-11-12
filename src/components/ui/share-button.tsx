@@ -66,12 +66,12 @@ export const ShareButton = ({
   };
   return <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant={variant} size={size} className={`group relative overflow-hidden transition-all duration-300 hover:scale-105 ${className}`} disabled={isLoading}>
+        <Button variant={variant} size={size} className={`group relative overflow-hidden transition-[box-shadow,background-color] duration-200 motion-safe:hover:shadow-md ${className}`} disabled={isLoading}>
           <div className="flex items-center gap-2">
             <Share2 className="h-4 w-4 transition-transform group-hover:rotate-12" />
             <span className="font-medium">Compartilhar</span>
           </div>
-          {isLoading && <div className="absolute inset-0 bg-primary/20 animate-pulse rounded-md" />}
+          {isLoading && <div className="absolute inset-0 bg-primary/20 animate-pulse rounded-xl" />}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">

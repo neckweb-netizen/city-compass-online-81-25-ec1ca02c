@@ -162,7 +162,7 @@ export const CalculadoraOrcamento = () => {
 
               <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
                 <Label className="text-xs font-semibold text-muted-foreground block">Total Horas/Mês</Label>
-                <div className="h-10 px-3 bg-muted/40 border rounded-md flex items-center font-bold text-sm text-foreground">
+                <div className="h-10 px-3 bg-muted/40 border rounded-xl flex items-center font-bold text-sm text-foreground">
                   {totalHorasMes} horas
                 </div>
               </div>

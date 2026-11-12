@@ -155,7 +155,7 @@ export const EmpresaAdminsSection = () => {
             <div className="flex items-end">
               <Button 
                 onClick={handleAtribuirAdmin}
-                className="w-full bg-blue-600 hover:bg-blue-700"
+                className="w-full bg-primary hover:bg-primary/90"
                 disabled={!selectedUsuario || !selectedEmpresa}
               >
                 <UserPlus className="w-4 h-4 mr-2" />

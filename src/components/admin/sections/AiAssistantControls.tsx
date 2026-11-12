@@ -205,7 +205,7 @@ export function AiAssistantControls() {
                   setGrantUntil('');
                 }
               }}
-              className="flex h-10 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm"
+              className="flex h-10 w-full min-w-0 rounded-xl border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             >
               <option value="">Selecione uma empresa</option>
               {companies.map(company => <option value={company.id} key={company.id}>{company.nome}</option>)}

@@ -230,7 +230,7 @@ export function AiAssistantChat() {
         {!turns.length && <p className="rounded-xl bg-muted p-3 text-sm">Olá! Pode conversar comigo normalmente. Eu respondo perguntas sobre o Saj Tem e só mostro empresas quando você pedir uma busca local.</p>}
         {turns.map(turn => <div key={turn.id} className={turn.role === 'user' ? 'ml-8 rounded-xl bg-primary p-3 text-sm text-primary-foreground' : 'mr-4 rounded-xl bg-muted p-3 text-sm'}>
           <p className="whitespace-pre-wrap break-words">{turn.text}</p>
-          {turn.role === 'user' && !busy && <button type="button" className="mt-2 inline-flex items-center gap-1 text-xs underline underline-offset-2" onClick={() => { setInput(turn.text); setEditingTurnId(turn.id); setError(''); }}><Pencil className="h-3 w-3" /> Editar e reenviar</button>}
+          {turn.role === 'user' && !busy && <button type="button" className="mt-2 inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-primary underline-offset-2 hover:bg-primary/10 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40" onClick={() => { setInput(turn.text); setEditingTurnId(turn.id); setError(''); }}><Pencil className="h-3 w-3" /> Editar e reenviar</button>}
           {turn.results?.map(result => <div key={result.id} className="mt-2 rounded-lg border bg-card p-3 text-card-foreground">
             <div className="flex items-start justify-between gap-2">
               <p className="font-semibold">{result.name}</p>
