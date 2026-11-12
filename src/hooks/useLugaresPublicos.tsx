@@ -19,9 +19,10 @@ export interface LugarPublico {
   atualizado_em: string;
 }
 
-export const useLugaresPublicos = (cidadeId?: string) => {
+export const useLugaresPublicos = (cidadeId?: string, enabled = true) => {
   return useQuery({
     queryKey: ['lugares-publicos', cidadeId],
+    enabled,
     queryFn: async () => {
       let query = supabase
         .from('lugares_publicos')
