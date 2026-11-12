@@ -122,7 +122,7 @@ export const StoriesSection = () => {
                   <Avatar className="w-full h-full border-2 border-background">
                     <AvatarImage 
                       src={groupedStory.empresa_imagem || '/placeholder.svg'} 
-                      alt={groupedStory.empresa_nome}
+                      alt=""
                       className="object-cover"
                       loading="lazy"
                       decoding="async"
