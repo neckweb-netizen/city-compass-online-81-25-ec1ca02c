@@ -196,7 +196,7 @@ export const AdminEstatisticas = () => {
         <button
           onClick={carregarEstatisticas}
           disabled={loading || refreshing}
-          className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium transition-colors border rounded-md bg-background text-foreground hover:bg-accent/50 disabled:opacity-50 self-start sm:self-center"
+          className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium transition-colors border border-border/70 rounded-xl bg-background text-foreground shadow-sm hover:border-primary/30 hover:bg-primary/5 disabled:opacity-50 self-start sm:self-center"
         >
           <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
           {refreshing ? "Sincronizando..." : "Atualizar Painel"}
