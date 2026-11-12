@@ -1,6 +1,8 @@
 import { lazy, Suspense, useState, useEffect } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { HomeContent } from '@/components/home/HomeContent';
+import { loadBanners } from '@/components/home/BannerSection';
+import { useQuery } from '@tanstack/react-query';
 import { useCidadePadrao } from '@/hooks/useCidadePadrao';
 import { useHomeSectionsOrder } from '@/hooks/useHomeSectionsOrder';
 const SearchContent = lazy(() => import('@/components/search/SearchContent').then(m => ({ default: m.SearchContent })));
@@ -93,6 +95,11 @@ const Index = () => {
   // Nenhuma posição ou visibilidade das seções é alterada aqui.
   useHomeSectionsOrder();
   useCidadePadrao();
+  useQuery({
+    queryKey: ['banners-publicitarios', 'home'],
+    queryFn: () => loadBanners('home'),
+    staleTime: 2 * 60 * 1000,
+  });
 
   // Estados de controle para o Modo Manutenção
   const [isMaintenance, setIsMaintenance] = useState(false);
