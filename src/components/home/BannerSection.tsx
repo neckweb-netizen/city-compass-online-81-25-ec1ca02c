@@ -129,13 +129,17 @@ export const BannerSection = ({ secao = 'home' }: BannerSectionProps) => {
           {shuffledBanners.map((banner, index) => (
             <CarouselItem key={banner.id} className="pl-2 basis-full">
               <Card 
-                className={`overflow-hidden border-0 shadow-md w-full transition-all duration-500 ${banner.link_url ? 'cursor-pointer hover:scale-[1.02] transition-transform duration-300' : ''}`}
+                className={`overflow-hidden border-0 shadow-md w-full transition-all duration-500 ${banner.link_url ? 'cursor-pointer hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition-shadow duration-200' : ''}`}
                 onClick={() => handleBannerClick(banner)}
+                role={banner.link_url ? "link" : undefined}
+                tabIndex={banner.link_url ? 0 : undefined}
+                aria-label={banner.link_url ? `Abrir banner: ${banner.titulo}` : undefined}
+                onKeyDown={(event) => { if (banner.link_url && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); handleBannerClick(banner); } }}
               >
                 <div className="relative w-full aspect-[970/250]">
                   <img
                     src={banner.imagem_url}
-                    alt="Banner publicitário"
+                    alt={banner.titulo || "Banner publicitário"}
                     className="w-full h-full object-cover transition-opacity duration-500"
                     {...(index === 0 ? {
                       loading: "eager" as const,
