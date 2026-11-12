@@ -100,14 +100,14 @@ export const AnuncieGratis = () => {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
             <button 
               onClick={abrirPopupCadastro}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl shadow-md shadow-primary/20 transition-all hover:-translate-y-0.5 group"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-2xl shadow-md shadow-primary/20 transition-all hover:-translate-y-0.5 group"
             >
               Cadastrar Minha Empresa Grátis
               <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
             </button>
             <a 
               href="#conhecer-planos" 
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-muted hover:bg-muted/80 font-semibold rounded-xl border transition-all"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-muted hover:bg-muted/80 font-semibold rounded-2xl border transition-all"
             >
               Ver Planos de Destaque
             </a>
@@ -274,7 +274,7 @@ export const AnuncieGratis = () => {
           <div className="pt-2">
             <button 
               onClick={abrirPopupCadastro}
-              className="inline-flex items-center gap-2 px-8 py-4 bg-foreground text-background font-bold rounded-xl hover:bg-foreground/90 transition-all shadow-md"
+              className="inline-flex items-center gap-2 px-8 py-4 bg-foreground text-background font-bold rounded-2xl hover:bg-foreground/90 transition-all shadow-md"
             >
               Criar Meu Cadastro Comercial Agora
             </button>
