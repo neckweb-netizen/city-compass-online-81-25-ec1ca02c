@@ -167,7 +167,7 @@ export const AgendamentosEmpresa: React.FC<AgendamentosEmpresaProps> = ({ empres
                   )}
 
                   {agendamento.status === 'confirmado' && (
-                    <div className="flex flex-wrap gap-2"><Button size="sm" onClick={() => atualizarStatus({ id: agendamento.id, status: 'concluido' })} className="bg-blue-600 hover:bg-blue-700"><CheckCircle2 className="mr-1 h-4 w-4"/>Marcar como concluído</Button><Button size="sm" variant="outline" onClick={()=>abrirWhatsApp(agendamento.telefone_cliente,agendamento.nome_cliente,dataValida)}><MessageCircle className="mr-1 h-4 w-4"/>WhatsApp</Button></div>
+                    <div className="flex flex-wrap gap-2"><Button size="sm" onClick={() => atualizarStatus({ id: agendamento.id, status: 'concluido' })} className="bg-primary hover:bg-primary/90"><CheckCircle2 className="mr-1 h-4 w-4"/>Marcar como concluído</Button><Button size="sm" variant="outline" onClick={()=>abrirWhatsApp(agendamento.telefone_cliente,agendamento.nome_cliente,dataValida)}><MessageCircle className="mr-1 h-4 w-4"/>WhatsApp</Button></div>
                   )}
                 </div>
               );
