@@ -207,7 +207,7 @@ export const ChameAquiButton = () => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm hover:from-emerald-700 hover:to-teal-700">
+        <Button className="min-h-12 w-full rounded-2xl border border-primary/15 bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/85">
           <PhoneCall className="mr-2 h-4 w-4" />
           Chame aqui
         </Button>

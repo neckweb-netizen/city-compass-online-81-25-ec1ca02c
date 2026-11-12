@@ -105,7 +105,7 @@ export const CategoriesGrid = () => {
           <Button
             variant="outline"
             size="icon"
-            className="absolute left-1 sm:left-2 top-1/2 -translate-y-1/2 z-10 bg-background/90 backdrop-blur-sm shadow-lg border-2 hover:bg-primary hover:text-primary-foreground transition-all duration-200"
+            aria-label="Rolar categorias para a esquerda" className="absolute left-1 sm:left-2 top-1/2 -translate-y-1/2 z-10 rounded-full border border-primary/20 bg-background/95 shadow-md backdrop-blur-sm hover:bg-primary hover:text-primary-foreground"
             onClick={scrollLeft}
           >
             <ChevronLeft className="w-4 h-4" />
@@ -114,7 +114,7 @@ export const CategoriesGrid = () => {
           <Button
             variant="outline"
             size="icon"
-            className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 z-10 bg-background/90 backdrop-blur-sm shadow-lg border-2 hover:bg-primary hover:text-primary-foreground transition-all duration-200"
+            aria-label="Rolar categorias para a direita" className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 z-10 rounded-full border border-primary/20 bg-background/95 shadow-md backdrop-blur-sm hover:bg-primary hover:text-primary-foreground"
             onClick={scrollRight}
           >
             <ChevronRight className="w-4 h-4" />
@@ -128,15 +128,15 @@ export const CategoriesGrid = () => {
             {categoriasVisiveis.map((categoria) => (
               <Card 
                 key={categoria.id}
-                className="min-w-20 sm:min-w-24 flex-shrink-0 hover:shadow-lg transition-all duration-300 cursor-pointer border border-border/40 bg-muted/40 hover:scale-105"
+                className="min-w-20 sm:min-w-24 flex-shrink-0 cursor-pointer rounded-2xl border border-primary/10 bg-card/85 shadow-sm transition-[border-color,box-shadow,transform] duration-200 hover:border-primary/30 hover:shadow-md motion-safe:hover:-translate-y-0.5 focus-within:ring-2 focus-within:ring-primary/30"
                 onClick={() => handleCategoriaClick(categoria.slug)}
               >
                 <CardContent className="p-2 sm:p-3 text-center space-y-1 sm:space-y-2">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 mx-auto bg-primary/20 rounded-full flex items-center justify-center relative">
+                  <div className="relative mx-auto flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/10 bg-primary/10 sm:h-12 sm:w-12">
                     {renderIcon(categoria)}
                     <span className="fallback-icon text-xl sm:text-2xl hidden">🏷️</span>
                   </div>
-                  <p className="text-xs font-medium leading-tight line-clamp-2">{categoria.nome}</p>
+                  <p className="line-clamp-2 text-xs font-semibold leading-tight text-card-foreground">{categoria.nome}</p>
                 </CardContent>
               </Card>
             ))}
