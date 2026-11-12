@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useRef, useState } from 'react';
+import { FormEvent, PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react';
 import { Bot, Loader2, Mic, Pencil, Send, Volume2, VolumeX, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -35,6 +35,45 @@ type Recognition = {
   abort: () => void;
 };
 
+
+// The assistant stays clear of the bottom navigation on phones, even after dragging.
+const POSITION_KEY = 'sajtem:ai-button-position:v1';
+const BUTTON_SIZE = 56;
+type Point = { x: number; y: number };
+
+function constrainPosition(point: Point): Point {
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  const minTop = Math.min(76, Math.max(12, height - BUTTON_SIZE - 12));
+  const maxTop = Math.max(minTop, height - BUTTON_SIZE - (width < 1024 ? 112 : 20));
+  return {
+    x: Math.max(12, Math.min(point.x, Math.max(12, width - BUTTON_SIZE - 12))),
+    y: Math.max(minTop, Math.min(point.y, maxTop)),
+  };
+}
+
+function initialPosition(): Point {
+  if (typeof window === 'undefined') return { x: 20, y: 100 };
+  const fallback = {
+    x: window.innerWidth - BUTTON_SIZE - 16,
+    y: window.innerHeight - BUTTON_SIZE - (window.innerWidth < 1024 ? 124 : 24),
+  };
+  try {
+    const raw = window.localStorage.getItem(POSITION_KEY);
+    if (raw) {
+      const saved: unknown = JSON.parse(raw);
+      if (
+        saved && typeof saved === 'object' && 'x' in saved && 'y' in saved &&
+        typeof saved.x === 'number' && Number.isFinite(saved.x) &&
+        typeof saved.y === 'number' && Number.isFinite(saved.y)
+      ) return constrainPosition(saved as Point);
+    }
+  } catch {
+    // Privacy settings may block storage. Dragging still works for this visit.
+  }
+  return constrainPosition(fallback);
+}
+
 export function AiAssistantChat() {
   const [available, setAvailable] = useState(false);
   const [open, setOpen] = useState(false);
@@ -50,6 +89,103 @@ export function AiAssistantChat() {
   const turnId = useRef(0);
   const busyRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [position, setPosition] = useState<Point>(initialPosition);
+  const positionRef = useRef(position);
+  const dragRef = useRef<{
+    pointerId: number; startX: number; startY: number; from: Point; moved: boolean;
+  } | null>(null);
+  const ignoreClickRef = useRef(false);
+  const [viewport, setViewport] = useState(() => ({
+    width: typeof window === 'undefined' ? 390 : window.innerWidth,
+    height: typeof window === 'undefined' ? 800 : window.innerHeight,
+  }));
+
+  function updatePosition(next: Point, save = false) {
+    const clamped = constrainPosition(next);
+    positionRef.current = clamped;
+    setPosition(clamped);
+    if (save) {
+      try { window.localStorage.setItem(POSITION_KEY, JSON.stringify(clamped)); } catch {
+        // Keep the chosen position for this session if storage is unavailable.
+      }
+    }
+  }
+
+  useEffect(() => {
+    const resize = () => {
+      setViewport({ width: window.innerWidth, height: window.innerHeight });
+      const clamped = constrainPosition(positionRef.current);
+      positionRef.current = clamped;
+      setPosition(clamped);
+    };
+    window.addEventListener('resize', resize);
+    window.visualViewport?.addEventListener('resize', resize);
+    return () => {
+      window.removeEventListener('resize', resize);
+      window.visualViewport?.removeEventListener('resize', resize);
+    };
+  }, []);
+
+  function startDrag(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      from: positionRef.current,
+      moved: false,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function moveDrag(event: ReactPointerEvent<HTMLButtonElement>) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const dx = event.clientX - drag.startX;
+    const dy = event.clientY - drag.startY;
+    if (Math.hypot(dx, dy) > 6) drag.moved = true;
+    if (drag.moved) updatePosition({ x: drag.from.x + dx, y: drag.from.y + dy });
+  }
+
+  function finishDrag(event: ReactPointerEvent<HTMLButtonElement>) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    dragRef.current = null;
+    if (drag.moved) {
+      ignoreClickRef.current = true;
+      updatePosition(positionRef.current, true);
+    }
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  }
+
+  function moveWithKeyboard(event: React.KeyboardEvent<HTMLButtonElement>) {
+    const offsets: Record<string, Point> = {
+      ArrowLeft: { x: -24, y: 0 }, ArrowRight: { x: 24, y: 0 },
+      ArrowUp: { x: 0, y: -24 }, ArrowDown: { x: 0, y: 24 },
+    };
+    const offset = offsets[event.key];
+    if (!offset) return;
+    event.preventDefault();
+    updatePosition({ x: positionRef.current.x + offset.x, y: positionRef.current.y + offset.y }, true);
+  }
+
+  // Keep the chat wholly inside the viewport and near the draggable launcher.
+  const panelWidth = Math.min(420, Math.max(240, viewport.width - 24));
+  const panelHeight = Math.min(540, Math.max(180, Math.floor(viewport.height * 0.65)));
+  const panelLeft = Math.min(
+    Math.max(12, position.x + BUTTON_SIZE - panelWidth),
+    Math.max(12, viewport.width - panelWidth - 12),
+  );
+  const above = position.y - panelHeight - 12;
+  const below = position.y + BUTTON_SIZE + 12;
+  const panelTop = above >= 12
+    ? above
+    : below + panelHeight <= viewport.height - 12
+      ? below
+      : Math.max(12, Math.min(position.y - panelHeight - 12, viewport.height - panelHeight - 12));
+
 
   useEffect(() => {
     let active = true;
@@ -216,8 +352,12 @@ export function AiAssistantChat() {
   }
 
   if (!available) return null;
-  return <div className="fixed bottom-24 right-3 z-[70] sm:right-6 lg:bottom-6" aria-label="Assistente do Saj Tem">
-    {open && <section className="mb-3 flex h-[min(70dvh,540px)] w-[min(calc(100vw-24px),420px)] flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-2xl" aria-label="Conversa com o assistente">
+  return <div aria-label="Assistente do Saj Tem">
+    {open && <section
+      style={{ position: 'fixed', left: panelLeft, top: panelTop, width: panelWidth, height: panelHeight }}
+      className="z-[71] flex max-h-[calc(100dvh-24px)] flex-col overflow-hidden rounded-2xl border border-primary/15 bg-card text-card-foreground shadow-2xl"
+      aria-label="Conversa com o assistente"
+    >
       <header className="flex items-center gap-2 border-b p-3">
         <Bot className="h-5 w-5 text-primary" aria-hidden="true" />
         <div className="min-w-0 flex-1"><h2 className="font-semibold">Assistente Saj Tem</h2><p className="text-xs text-muted-foreground">Converse ou faça uma busca local</p></div>
@@ -255,6 +395,25 @@ export function AiAssistantChat() {
       </form>
       <p className="px-3 pb-2 text-[11px] text-muted-foreground">Não envie dados sensíveis. Confirme informações importantes antes de tomar decisões.</p>
     </section>}
-    <Button className="ml-auto flex rounded-full px-5 shadow-lg" onClick={() => open ? closeChat() : setOpen(true)} aria-expanded={open} aria-label={open ? 'Fechar assistente de IA' : 'Abrir assistente de IA'}><Bot className="mr-2 h-5 w-5" /> Pergunte ao Saj Tem</Button>
+    <Button
+      type="button"
+      size="icon"
+      style={{ position: 'fixed', left: position.x, top: position.y, touchAction: 'none' }}
+      className="z-[72] h-14 w-14 cursor-grab select-none rounded-full border-[3px] border-background bg-primary p-0 text-primary-foreground shadow-[0_8px_24px_-6px_hsl(var(--primary)/0.55)] ring-1 ring-primary/25 active:cursor-grabbing focus-visible:ring-2 focus-visible:ring-primary"
+      onPointerDown={startDrag}
+      onPointerMove={moveDrag}
+      onPointerUp={finishDrag}
+      onPointerCancel={finishDrag}
+      onKeyDown={moveWithKeyboard}
+      onClick={() => {
+        if (ignoreClickRef.current) { ignoreClickRef.current = false; return; }
+        if (open) closeChat(); else setOpen(true);
+      }}
+      aria-expanded={open}
+      aria-label={open ? 'Fechar assistente de IA. Arraste para mover o botão.' : 'Abrir assistente de IA. Arraste para mover o botão.'}
+      title="Arraste para mover • Toque para conversar"
+    >
+      {open ? <X className="h-6 w-6" aria-hidden="true" /> : <Bot className="h-6 w-6" aria-hidden="true" />}
+    </Button>
   </div>;
 }
