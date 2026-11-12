@@ -123,8 +123,8 @@ export const FeaturedSection = ({
                         src={imageUrl}
                         alt={empresa.nome}
                         className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
-                        loading={index === 0 ? 'eager' : 'lazy'}
-                        fetchPriority={index === 0 ? 'high' : undefined}
+                        loading="lazy"
+                        fetchPriority="low"
                         decoding="async"
                         width={640}
                         height={360}
