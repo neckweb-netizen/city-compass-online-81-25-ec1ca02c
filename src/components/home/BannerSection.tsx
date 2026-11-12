@@ -59,7 +59,7 @@ export const BannerSection = ({ secao = 'home' }: BannerSectionProps) => {
   // Embaralha os banners a cada renderização para rotação aleatória
   const shuffledBanners = useMemo(() => {
     if (!banners || banners.length === 0) return [];
-    return banners;
+    return shuffleArray(banners);
   }, [banners]);
 
   // Auto-rotation logic
