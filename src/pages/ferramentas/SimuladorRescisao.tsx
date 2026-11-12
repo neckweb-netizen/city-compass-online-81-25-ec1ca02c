@@ -479,7 +479,7 @@ export const SimuladorRescisao = () => {
                     <div className="space-y-1.5">
                       <Label className="text-xs font-semibold">Aviso Prévio</Label>
                       {motivoRescisao === 'com_justa_causa' ? (
-                        <div className="flex h-10 items-center rounded-md border border-input bg-muted/40 px-3 text-sm text-muted-foreground">
+                        <div className="flex h-10 items-center rounded-xl border border-input bg-muted/40 px-3 text-sm text-muted-foreground">
                           Não se aplica à justa causa
                         </div>
                       ) : (
