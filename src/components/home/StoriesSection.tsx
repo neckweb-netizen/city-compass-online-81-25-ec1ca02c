@@ -1,10 +1,10 @@
 
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { NeonCard } from '@/components/ui/neon-card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useEmpresaStories } from '@/hooks/useEmpresaStories';
-import { StoryViewer } from './StoryViewer';
+const StoryViewer = lazy(() => import('./StoryViewer').then(module => ({ default: module.StoryViewer })));
 
 interface Story {
   id: string;
@@ -144,13 +144,17 @@ export const StoriesSection = () => {
         </div>
       </NeonCard>
 
-      <StoryViewer
-        stories={stories}
-        currentIndex={selectedStoryIndex}
-        onClose={closeStory}
-        onNext={nextStory}
-        onPrev={prevStory}
-      />
+      {selectedStoryIndex !== null && (
+        <Suspense fallback={null}>
+          <StoryViewer
+            stories={stories}
+            currentIndex={selectedStoryIndex}
+            onClose={closeStory}
+            onNext={nextStory}
+            onPrev={prevStory}
+          />
+        </Suspense>
+      )}
     </>
   );
 };

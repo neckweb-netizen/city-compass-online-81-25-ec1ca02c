@@ -52,7 +52,7 @@ interface EnqueteForm {
 }
 
 export const EnquetesSection = () => {
-  const { enquetes, enqueteAtiva, isLoadingAll, criarEnquete, atualizarEnquete, excluirEnquete } = useEnquetes();
+  const { enquetes, enqueteAtiva, isLoadingAll, criarEnquete, atualizarEnquete, excluirEnquete } = useEnquetes(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEnquete, setEditingEnquete] = useState<string | null>(null);
   const [form, setForm] = useState<EnqueteForm>({

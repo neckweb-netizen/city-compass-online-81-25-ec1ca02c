@@ -329,7 +329,7 @@ export const HomeContent = ({
              * Isso reduz JS, imagens e requisições na
              * primeira renderização mobile.
              */
-            if (index < 4) {
+            if (index < 4 || section.section_name === 'banner') {
               return (
                 <div key={section.id}>
                   {renderSection()}

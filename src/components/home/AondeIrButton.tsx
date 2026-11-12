@@ -63,7 +63,7 @@ const LugarImage = ({ src, nome }: { src?: string | null; nome: string }) => {
 export const AondeIrButton = () => {
   const [open, setOpen] = useState(false);
   const { data: cidade } = useCidadePadrao();
-  const { data: lugares, isLoading } = useLugaresPublicos(cidade?.id);
+  const { data: lugares, isLoading } = useLugaresPublicos(cidade?.id, open && Boolean(cidade?.id));
 
   const handleNavigateToPlace = (endereco: string) => {
     // Codificar endereço para URL
