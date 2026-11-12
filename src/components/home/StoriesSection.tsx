@@ -110,7 +110,11 @@ export const StoriesSection = () => {
           {groupedStories.map((groupedStory) => (
             <div
               key={groupedStory.empresa_id}
-              className="flex-shrink-0 cursor-pointer"
+              className="flex-shrink-0 cursor-pointer rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              role="button"
+              tabIndex={0}
+              aria-label={`Ver stories de ${groupedStory.empresa_nome}`}
+              onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openStory(groupedStory); } }}
               onClick={() => openStory(groupedStory)}
             >
               <div className="relative">
