@@ -140,13 +140,16 @@ html {
 }
 
 /* Instant visual feedback for buttons and links */
-button, a, [role="button"] {
-  transition: transform 0.1s ease-out;
-  will-change: transform;
+/* Feedback leve sem encolher todos os links, cards e controles do site. */
+button, [role="button"] {
+  -webkit-tap-highlight-color: transparent;
 }
 
-button:active, a:active, [role="button"]:active {
-  transform: scale(0.95);
+@media (prefers-reduced-motion: no-preference) {
+  button:not(:disabled):active,
+  [role="button"]:active {
+    filter: brightness(0.98);
+  }
 }
 
 /* Optimize rendering */
@@ -518,5 +521,29 @@ button:active, a:active, [role="button"]:active {
   .content-fade {
     mask-image: linear-gradient(to bottom, black 0%, black 90%, transparent 100%);
     -webkit-mask-image: linear-gradient(to bottom, black 0%, black 90%, transparent 100%);
+  }
+}
+
+
+/* Modernização visual: as seções e cards da home permanecem na ordem atual. */
+@layer components {
+  .home-showcase-card {
+    border-radius: 1.5rem;
+    border-color: hsl(var(--primary) / 0.13);
+    box-shadow:
+      0 14px 36px -28px hsl(var(--primary) / 0.28),
+      0 1px 3px hsl(var(--foreground) / 0.035);
+  }
+
+  .home-showcase-card :is(button, a):focus-visible {
+    outline: 2px solid hsl(var(--primary));
+    outline-offset: 3px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-showcase-card,
+  .home-showcase-card * {
+    scroll-behavior: auto !important;
   }
 }
