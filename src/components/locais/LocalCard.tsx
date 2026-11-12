@@ -105,6 +105,9 @@ export const LocalCard = ({
               alt={empresa.nome}
               className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
               onClick={onClick}
+              role={onClick ? "link" : undefined}
+              tabIndex={onClick ? 0 : undefined}
+              onKeyDown={(event) => { if (onClick && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); onClick(); } }}
               loading="lazy"
               decoding="async"
               width={640}
@@ -116,8 +119,12 @@ export const LocalCard = ({
           </div>
         ) : (
           <div
-            className="flex h-48 w-full items-center justify-center bg-gradient-to-br from-muted/50 to-muted"
+            className="flex h-48 w-full items-center justify-center bg-gradient-to-br from-muted/50 to-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             onClick={onClick}
+            role={onClick ? "link" : undefined}
+            tabIndex={onClick ? 0 : undefined}
+            aria-label={onClick ? `Ver detalhes de ${empresa.nome}` : undefined}
+            onKeyDown={(event) => { if (onClick && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); onClick(); } }}
           >
             <div className="text-center">
               <Camera className="mx-auto mb-2 h-12 w-12 text-muted-foreground" />
@@ -186,8 +193,12 @@ export const LocalCard = ({
       </div>
 
       <CardContent
-        className="p-4"
+        className="p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         onClick={onClick}
+        role={onClick ? "link" : undefined}
+        tabIndex={onClick ? 0 : undefined}
+        aria-label={onClick ? `Ver detalhes de ${empresa.nome}` : undefined}
+        onKeyDown={(event) => { if (onClick && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); onClick(); } }}
       >
         <div className="space-y-3">
           <div>
