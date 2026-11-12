@@ -29,7 +29,7 @@ interface EnqueteAtiva {
   }>;
 }
 
-export const useEnquetes = () => {
+export const useEnquetes = (includeAdminList = false) => {
   const queryClient = useQueryClient();
 
   // Buscar enquete ativa para exibir na home
@@ -45,6 +45,7 @@ export const useEnquetes = () => {
   // Buscar todas as enquetes (admin)
   const { data: enquetes, isLoading: isLoadingAll } = useQuery({
     queryKey: ['enquetes'],
+    enabled: includeAdminList,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('enquetes')
