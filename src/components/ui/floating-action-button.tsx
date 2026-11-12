@@ -105,7 +105,7 @@ export const FloatingActionButton = () => {
         )}
 
         {/* Opções do menu */}
-        <div className={cn(
+        <div id="floating-action-options" aria-hidden={!isOpen} className={cn(
           "flex flex-col-reverse gap-3 mb-3 transition-all duration-300 ease-in-out",
           isOpen ? "opacity-100 scale-100" : "opacity-0 scale-95 pointer-events-none"
         )}>
@@ -129,6 +129,7 @@ export const FloatingActionButton = () => {
                 {/* Botão da opção */}
                 <Button
                   size="icon"
+                  tabIndex={isOpen ? 0 : -1}
                   className="h-12 w-12 flex-shrink-0 rounded-full bg-primary shadow-[0_6px_18px_-7px_hsl(var(--primary)/0.75)] hover:bg-primary/90 motion-safe:hover:scale-105"
                   onClick={option.action}
                   title={option.title}
@@ -148,6 +149,9 @@ export const FloatingActionButton = () => {
             isOpen && "bg-primary"
           )}
           onClick={() => setIsOpen(!isOpen)}
+          aria-expanded={isOpen}
+          aria-controls="floating-action-options"
+          aria-label={isOpen ? "Fechar menu de ações" : "Abrir menu de ações"}
           title={isOpen ? "Fechar menu" : "Menu de ações"}
         >
           {isOpen ? (
