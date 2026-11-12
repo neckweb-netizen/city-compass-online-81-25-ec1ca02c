@@ -26,7 +26,7 @@ export function GoogleMapsAttribution({ imageUrl, className }: GoogleMapsAttribu
       aria-label="Ver fonte da imagem no Google Maps"
       onClick={(event) => event.stopPropagation()}
       className={cn(
-        'absolute bottom-1 left-1 z-20 rounded bg-black/70 px-1.5 py-0.5 font-sans text-xs font-normal tracking-normal text-white shadow-sm',
+        'absolute bottom-1 left-1 z-20 inline-flex min-h-11 items-center rounded-lg bg-black/75 px-3 py-1 font-sans text-xs font-medium tracking-normal text-white shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white',
         className,
       )}
     >
