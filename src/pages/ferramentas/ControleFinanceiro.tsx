@@ -483,7 +483,7 @@ export const ControleFinanceiro = () => {
                 <p className="mt-1 text-xs leading-relaxed text-amber-800 dark:text-amber-200">Sem login, os lançamentos ficam apenas neste aparelho. Com login, eles ficam protegidos no Supabase e aparecem em outros dispositivos.</p>
               </div>
             </div>
-            <Button onClick={() => navigate('/login')} className="shrink-0 rounded-xl bg-amber-600 font-extrabold text-white hover:bg-amber-700">Entrar para sincronizar</Button>
+            <Button onClick={() => window.dispatchEvent(new Event('sajtem:open-auth'))} className="shrink-0 rounded-xl bg-amber-600 font-extrabold text-white hover:bg-amber-700">Entrar para sincronizar</Button>
           </div>
         )}
 
