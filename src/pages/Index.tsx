@@ -1,6 +1,8 @@
 import { lazy, Suspense, useState, useEffect } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { HomeContent } from '@/components/home/HomeContent';
+import { useCidadePadrao } from '@/hooks/useCidadePadrao';
+import { useHomeSectionsOrder } from '@/hooks/useHomeSectionsOrder';
 const SearchContent = lazy(() => import('@/components/search/SearchContent').then(m => ({ default: m.SearchContent })));
 const CategoriesContent = lazy(() => import('@/components/categories/CategoriesContent').then(m => ({ default: m.CategoriesContent })));
 const CouponsContent = lazy(() => import('@/components/coupons/CouponsContent').then(m => ({ default: m.CouponsContent })));
@@ -85,6 +87,12 @@ const Index = () => {
   const [searchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab') || 'home';
   const [activeTab, setActiveTab] = useState(tabFromUrl);
+
+  // Começa a consultar as seções e a cidade em paralelo à verificação de
+  // manutenção. O React Query reutiliza os dados quando HomeContent montar.
+  // Nenhuma posição ou visibilidade das seções é alterada aqui.
+  useHomeSectionsOrder();
+  useCidadePadrao();
 
   // Estados de controle para o Modo Manutenção
   const [isMaintenance, setIsMaintenance] = useState(false);
