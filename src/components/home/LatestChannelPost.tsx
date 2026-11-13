@@ -141,6 +141,11 @@ export const LatestChannelPost = () => {
                   <img 
                     src={latestPost.url_midia} 
                     alt={latestPost.titulo}
+                    loading="lazy"
+                    decoding="async"
+                    width={960}
+                    height={540}
+                    sizes="(max-width: 640px) 100vw, 640px"
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       e.currentTarget.style.display = 'none';
