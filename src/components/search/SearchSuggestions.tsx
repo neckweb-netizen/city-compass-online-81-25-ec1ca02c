@@ -1,3 +1,4 @@
+import { getOptimizedImageUrl, getOptimizedImageSrcSet } from '@/lib/imageOptimization';
 
 import React from 'react';
 import { Search, Building, Tag, MapPin } from 'lucide-react';
@@ -52,7 +53,12 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
             >
               {empresa.imagem_capa_url && (
                 <img 
-                  src={empresa.imagem_capa_url} 
+                  src={getOptimizedImageUrl(empresa.imagem_capa_url, 320)}
+                  srcSet={getOptimizedImageSrcSet(empresa.imagem_capa_url)}
+                  loading="lazy"
+                  decoding="async"
+                  width={36}
+                  height={36} 
                   alt={empresa.nome}
                   className="h-9 w-9 rounded-lg object-cover"
                 />
