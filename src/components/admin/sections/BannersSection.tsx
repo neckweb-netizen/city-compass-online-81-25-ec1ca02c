@@ -1,9 +1,12 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
+import { downloadLegacyBannerBackup, isLegacyBanner, migrateLegacyBanners, type BannerMigrationResult } from '@/lib/legacy-banner-migration';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Edit, Trash2, ExternalLink, Image as ImageIcon, AlertCircle, Copy, Code, Video } from 'lucide-react';
+import { Plus, Edit, Trash2, ExternalLink, Image as ImageIcon, AlertCircle, Copy, Code, Video, ImageDown, Loader2 } from 'lucide-react';
 import { useAdminBanners, Banner } from '@/hooks/useAdminBanners';
 import { BannerForm } from '../forms/BannerForm';
 import {
@@ -34,12 +37,46 @@ const secaoOptions = [
 
 export const BannersSection = () => {
   const [selectedSecao, setSelectedSecao] = useState('all');
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [optimizing, setOptimizing] = useState(false);
+  const [optimizationProgress, setOptimizationProgress] = useState({ done: 0, total: 0 });
+  const [optimizationResult, setOptimizationResult] = useState<BannerMigrationResult | null>(null);
   const { banners = [], isLoading, error, createBanner, updateBanner, deleteBanner, duplicateBanner } = useAdminBanners(selectedSecao);
   const [showForm, setShowForm] = useState(false);
   const [editingBanner, setEditingBanner] = useState<Banner | undefined>();
   const [duplicatingBanner, setDuplicatingBanner] = useState<Banner | null>(null);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [targetSecao, setTargetSecao] = useState<string>('home');
+  const legacyBanners = banners.filter(isLegacyBanner);
+
+  const optimizeLegacyImages = async () => {
+    if (optimizing || legacyBanners.length === 0) return;
+    // Must happen synchronously within the confirmation click for downloads to work.
+    downloadLegacyBannerBackup(legacyBanners);
+    setOptimizing(true);
+    setOptimizationResult(null);
+    setOptimizationProgress({ done: 0, total: legacyBanners.length });
+    try {
+      const result = await migrateLegacyBanners(legacyBanners, (done, total) => {
+        setOptimizationProgress({ done, total });
+      });
+      setOptimizationResult(result);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['admin-banners'] }),
+        queryClient.invalidateQueries({ queryKey: ['banners-publicitarios'] }),
+      ]);
+      toast({
+        title: result.errors.length ? 'Otimização concluída com avisos' : 'Otimização concluída',
+        description: `${result.updated} banner(s) atualizado(s); ${result.skipped} não precisavam de conversão.`,
+        variant: result.errors.length ? 'destructive' : 'default',
+      });
+    } catch (error) {
+      toast({ title: 'Falha na otimização', description: error instanceof Error ? error.message : 'Tente novamente.', variant: 'destructive' });
+    } finally {
+      setOptimizing(false);
+    }
+  };
 
   const handleSubmit = async (data: any) => {
     try {
@@ -108,7 +145,7 @@ export const BannersSection = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-wrap justify-between items-center gap-3">
         <div>
           <h2 className="text-2xl font-bold text-foreground">Banners Publicitários</h2>
           <p className="text-muted-foreground">
@@ -118,12 +155,48 @@ export const BannersSection = () => {
             Suporta Imagens, Vídeos e Códigos HTML / AdSense
           </p>
         </div>
-        <Button onClick={() => setShowForm(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Novo Banner
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" disabled={optimizing || isLoading || legacyBanners.length === 0}>
+                {optimizing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ImageDown className="mr-2 h-4 w-4" />}
+                Otimizar PNGs antigos ({legacyBanners.length})
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Converter imagens antigas para WebP?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  O sistema baixará primeiro um backup das URLs originais, converterá cada PNG no navegador,
+                  enviará versões WebP separadas e trocará somente as URLs que forem verificadas.
+                  Os arquivos PNG originais não serão apagados. É necessário acesso administrativo com MFA.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={() => { void optimizeLegacyImages(); }}>Baixar backup e otimizar</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Button onClick={() => setShowForm(true)} disabled={optimizing}>
+            <Plus className="w-4 h-4 mr-2" />
+            Novo Banner
+          </Button>
+        </div>
       </div>
 
+      {optimizing && <p role="status" aria-live="polite" className="rounded-xl bg-muted p-3 text-sm">Convertendo banners: {optimizationProgress.done} de {optimizationProgress.total}. Não feche esta página até concluir.</p>}
+      {optimizationResult && (
+        <Alert variant={optimizationResult.errors.length ? 'destructive' : 'default'}>
+          <ImageDown className="h-4 w-4" />
+          <AlertDescription>
+            {optimizationResult.updated} atualizado(s), {optimizationResult.skipped} não convertido(s).
+            Economia estimada: {Math.round(optimizationResult.savedBytes / 1024)} KB.
+            {optimizationResult.errors.map((item, index) => <p key={index} className="mt-1">{item}</p>)}
+            <p className="mt-2">O backup das URLs PNG foi baixado no início. Para restaurar, edite o banner e cole a URL original.</p>
+          </AlertDescription>
+        </Alert>
+      )}
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
@@ -212,7 +285,7 @@ export const BannersSection = () => {
                         variant="outline"
                         size="icon"
                         onClick={() => handleDuplicate(banner)}
-                        disabled={updateBanner.isPending || deleteBanner.isPending || duplicateBanner.isPending}
+                        disabled={optimizing || updateBanner.isPending || deleteBanner.isPending || duplicateBanner.isPending}
                         title="Duplicar banner"
                       >
                         <Copy className="w-4 h-4" />
@@ -221,7 +294,7 @@ export const BannersSection = () => {
                         variant="outline"
                         size="icon"
                         onClick={() => handleEdit(banner)}
-                        disabled={updateBanner.isPending || deleteBanner.isPending || duplicateBanner.isPending}
+                        disabled={optimizing || updateBanner.isPending || deleteBanner.isPending || duplicateBanner.isPending}
                       >
                         <Edit className="w-4 h-4" />
                       </Button>
@@ -230,7 +303,7 @@ export const BannersSection = () => {
                           <Button 
                             variant="outline" 
                             size="icon"
-                            disabled={updateBanner.isPending || deleteBanner.isPending || duplicateBanner.isPending}
+                            disabled={optimizing || updateBanner.isPending || deleteBanner.isPending || duplicateBanner.isPending}
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
