@@ -1,7 +1,7 @@
 import React from 'react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Menu } from 'lucide-react';
+import { Menu, CircleHelp } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useMenuConfiguracoes } from '@/hooks/useMenuConfiguracoes';
@@ -270,6 +270,20 @@ export const MobileHamburger = () => {
                   </Button>
                 );
               })}
+              {location.pathname === '/' && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-12 w-full justify-start gap-3 rounded-none px-4 font-semibold text-primary"
+                  onClick={() => {
+                    setOpen(false);
+                    window.setTimeout(() => window.dispatchEvent(new Event('sajtem:start-visitor-tour')), 180);
+                  }}
+                >
+                  <CircleHelp className="h-5 w-5 shrink-0" aria-hidden="true" />
+                  Como usar o Saj Tem
+                </Button>
+              )}
             </div>
           </ScrollArea>
           
