@@ -27,6 +27,9 @@
     <!-- Manifest -->
     <link rel="manifest" href="/manifest.json" />
 
+    <!-- Start the public hero image request before React's data queries resolve. -->
+    <script async src="/early-banner-preload.js"></script>
+
     <!-- Performance optimizations -->
     <link rel="preconnect" href="https://uyleozhwzngnvyddfvni.supabase.co" crossorigin>
     <link rel="dns-prefetch" href="https://uyleozhwzngnvyddfvni.supabase.co">

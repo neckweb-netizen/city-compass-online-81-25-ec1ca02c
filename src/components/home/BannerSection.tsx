@@ -25,8 +25,32 @@ interface Banner {
   atualizado_em: string;
 }
 
+declare global {
+  interface Window {
+    __sajtemBannerBootstrap?: Promise<unknown>;
+  }
+}
+
+let initialBannerBootstrapUsed = false;
+
 // Compartilhada com a página inicial para antecipar a busca do banner LCP.
 export async function loadBanners(secao: NonNullable<BannerSectionProps['secao']>): Promise<Banner[]> {
+  if (secao === 'home' && typeof window !== 'undefined' &&
+      !initialBannerBootstrapUsed && window.__sajtemBannerBootstrap) {
+    initialBannerBootstrapUsed = true;
+    // Never hold the page hostage to a failed or stalled early request.
+    const early = await Promise.race<unknown>([
+      window.__sajtemBannerBootstrap,
+      new Promise(resolve => window.setTimeout(() => resolve(null), 1500)),
+    ]);
+    if (Array.isArray(early) && early.every(row =>
+      row && typeof row.id === 'string' && typeof row.imagem_url === 'string' &&
+      typeof row.titulo === 'string'
+    )) {
+      return early as Banner[];
+    }
+  }
+
   const { data, error } = await supabase
     .from('banners_publicitarios')
     .select('id, titulo, imagem_url, link_url, ativo, ordem, secao, criado_em, atualizado_em')
@@ -59,7 +83,9 @@ export const BannerSection = ({ secao = 'home' }: BannerSectionProps) => {
   // Embaralha os banners a cada renderização para rotação aleatória
   const shuffledBanners = useMemo(() => {
     if (!banners || banners.length === 0) return [];
-    return shuffleArray(banners);
+    // The first banner is stable so the HTML preload matches the LCP image.
+    // The remaining banners are still shuffled and the carousel still rotates.
+    return [banners[0], ...shuffleArray(banners.slice(1))];
   }, [banners]);
 
   // Auto-rotation logic
