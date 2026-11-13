@@ -18,7 +18,14 @@ const format = x => (x / 1024).toFixed(1);
 console.log('=== Saj Tem build: transfer estimates (gzip, excluding network headers) ===');
 console.log('JS and CSS assets:', sizes.length);
 console.log('Referenced from index.html:', initial.map(x => x.name).join(', '));
-console.log('Initial entry assets gzip:', format(initial.reduce((sum, x) => sum + x.gzip, 0)), 'KiB');
+const initialKib = initial.reduce((sum, asset) => sum + asset.gzip, 0) / 1024;
+console.log('Initial entry assets gzip:', initialKib.toFixed(1), 'KiB');
+const MAX_INITIAL_KIB = 320;
+console.log('Initial bundle performance budget:', MAX_INITIAL_KIB, 'KiB');
+if (initialKib > MAX_INITIAL_KIB) {
+  console.error(`Performance regression: initial assets ${initialKib.toFixed(1)} KiB exceed ${MAX_INITIAL_KIB} KiB budget.`);
+  process.exitCode = 1;
+}
 console.log('All JS/CSS gzip across every route:', format(sizes.reduce((sum, x) => sum + x.gzip, 0)), 'KiB');
 console.log('Top 12 gzip assets:');
 for (const row of sizes.slice(0, 12)) console.log(row.name, format(row.gzip), 'KiB gzip');
