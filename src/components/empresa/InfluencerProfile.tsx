@@ -1,3 +1,4 @@
+import { getOptimizedImageUrl, getOptimizedImageSrcSet } from '@/lib/imageOptimization';
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -53,7 +54,13 @@ export const InfluencerProfile = ({
           <div className="flex flex-col md:flex-row items-start gap-6">
             {empresa.imagem_capa_url && (
               <img
-                src={empresa.imagem_capa_url}
+                src={getOptimizedImageUrl(empresa.imagem_capa_url, 320)}
+                srcSet={getOptimizedImageSrcSet(empresa.imagem_capa_url)}
+                sizes="128px"
+                width={128}
+                height={128}
+                loading="lazy"
+                decoding="async"
                 alt={empresa.nome}
                 className="w-32 h-32 rounded-full object-cover mx-auto md:mx-0"
               />

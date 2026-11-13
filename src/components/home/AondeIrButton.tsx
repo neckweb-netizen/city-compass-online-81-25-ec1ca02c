@@ -11,7 +11,7 @@ import {
 import { useLugaresPublicos } from '@/hooks/useLugaresPublicos';
 import { useCidadePadrao } from '@/hooks/useCidadePadrao';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getOptimizedImageUrl } from '@/lib/imageOptimization';
+import { getOptimizedImageUrl, getOptimizedImageSrcSet } from '@/lib/imageOptimization';
 
 const tipoLabels: Record<string, string> = {
   'praca': 'Praça',
@@ -47,6 +47,7 @@ const LugarImage = ({ src, nome }: { src?: string | null; nome: string }) => {
     <div className="h-28 w-full shrink-0 overflow-hidden rounded-xl bg-muted sm:h-24 sm:w-28">
       <img
         src={optimizedImageUrl}
+        srcSet={getOptimizedImageSrcSet(src)}
         alt={nome}
         className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
         loading="lazy"

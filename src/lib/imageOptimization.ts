@@ -62,3 +62,26 @@ export const getOptimizedImageUrl = (
     return url;
   }
 };
+
+
+/**
+ * Responsive source candidates only for providers whose image service is
+ * explicitly known to resize. Never invent URLs or transform arbitrary
+ * Supabase/R2 objects that may not support resizing.
+ */
+export const getOptimizedImageSrcSet = (
+  url?: string | null,
+  widths: readonly number[] = [320, 480, 640, 960],
+): string | undefined => {
+  if (!url) return undefined;
+  const candidates = widths
+    .filter((width) => Number.isFinite(width) && width > 0)
+    .map((width) => ({
+      width,
+      optimized: getOptimizedImageUrl(url, width),
+    }))
+    .filter(({ optimized }) => optimized !== url);
+
+  if (!candidates.length) return undefined;
+  return candidates.map(({ width, optimized }) => `${optimized} ${width}w`).join(', ');
+};

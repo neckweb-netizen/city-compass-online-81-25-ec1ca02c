@@ -5,7 +5,7 @@ import { useEmpresasDestaque } from '@/hooks/useEmpresas';
 import { Star, MapPin } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useNavigate } from 'react-router-dom';
-import { getOptimizedImageUrl } from '@/lib/imageOptimization';
+import { getOptimizedImageUrl, getOptimizedImageSrcSet } from '@/lib/imageOptimization';
 import { GoogleMapsAttribution } from '@/components/ui/google-maps-attribution';
 
 interface FeaturedSectionProps {
@@ -121,6 +121,7 @@ export const FeaturedSection = ({
                     {imageUrl ? (
                       <img
                         src={imageUrl}
+                        srcSet={getOptimizedImageSrcSet(empresa.imagem_capa_url)}
                         alt={empresa.nome}
                         className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
                         loading="lazy"
