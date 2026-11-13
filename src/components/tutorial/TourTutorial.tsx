@@ -247,9 +247,10 @@ export const TourTutorial = ({ mode = 'visitor', initialStart = false }: TourTut
 
   useEffect(() => {
     if (authLoading) return;
-    const isEligible = mode === 'visitor'
-      ? !userId && location.pathname === '/'
-      : Boolean(userId && hasProfile);
+    // The first visit should render as a complete interactive page, not be
+    // covered by an automatic modal. Visitor tour remains available on demand.
+    if (mode === 'visitor') return;
+    const isEligible = Boolean(userId && hasProfile);
     if (!isEligible || localStorage.getItem(storageKey)) return;
     // Let the real page and its banner finish painting before showing
     // a modal over the first visit. The tutorial remains available in the menu.
