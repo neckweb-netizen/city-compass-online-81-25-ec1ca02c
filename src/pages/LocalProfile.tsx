@@ -1,3 +1,4 @@
+import { getOptimizedImageUrl, getOptimizedImageSrcSet } from '@/lib/imageOptimization';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -195,7 +196,7 @@ const EmpresaProfile = () => {
       <main className="flex-1">
         <div className="relative h-64 md:h-80 bg-gradient-to-br from-violet-100 via-purple-100 to-indigo-100 dark:from-violet-950/50 dark:via-purple-950/40 dark:to-indigo-950/50">
           {empresa.imagem_capa_url ? (
-            <img src={empresa.imagem_capa_url} alt={empresa.nome} className="w-full h-full object-cover" />
+            <img src={getOptimizedImageUrl(empresa.imagem_capa_url, 1200)} srcSet={getOptimizedImageSrcSet(empresa.imagem_capa_url)} sizes="(max-width: 640px) 100vw, 1200px" loading="eager" fetchPriority="high" decoding="async" width={1200} height={640} alt={empresa.nome} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
               <Camera className="h-16 w-16 text-violet-600/50 dark:text-violet-300/50" />
