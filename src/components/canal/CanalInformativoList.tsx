@@ -416,6 +416,11 @@ const CanalInformativoItemComponent = ({ item }: { item: CanalInformativoItem })
                 <img 
                   src={item.url_midia} 
                   alt={item.titulo}
+                  loading="lazy"
+                  decoding="async"
+                  width={960}
+                  height={540}
+                  sizes="(max-width: 640px) 100vw, 720px"
                   className="w-full h-64 object-cover"
                   onError={(e) => console.error('Erro ao carregar imagem:', e)}
                 />
