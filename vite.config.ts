@@ -19,7 +19,9 @@ export default defineConfig(() => ({
       output: {
         manualChunks(moduleId) {
           if (moduleId.includes('@supabase')) return 'supabase';
-          if (moduleId.includes('@radix-ui')) return 'ui';
+          // Do not force every Radix primitive into one 93KB initial chunk.
+          // Let the bundler split popovers, dialogs and admin-only widgets
+          // according to the routes/components that actually use them.
           if (moduleId.includes('@tanstack/react-query')) return 'query';
           if (moduleId.includes('node_modules/react')) return 'vendor';
           return undefined;
