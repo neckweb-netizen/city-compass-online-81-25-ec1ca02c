@@ -1,0 +1,40 @@
+name: Generate optimized legacy banners
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/optimize-existing-banners.py'
+      - '.github/workflows/optimize-existing-banners.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build-optimized-images:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install deterministic image encoder
+        run: python -m pip install Pillow==11.3.0
+      - name: Convert current public banner PNGs to quality-checked WebP
+        run: python scripts/optimize-existing-banners.py
+      - name: Commit immutable outputs to the feature branch
+        env:
+          BRANCH: ${{ github.head_ref }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/lib/optimizedLegacyBanners.ts public/optimized-banners/
+          if ! git diff --cached --quiet; then
+            git commit -m 'perf(images): add generated responsive WebP copies of public banners'
+            git push origin "HEAD:${BRANCH}"
+          fi
