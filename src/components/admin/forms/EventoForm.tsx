@@ -492,7 +492,7 @@ export const EventoForm = ({ onSuccess, empresaId }: EventoFormProps) => {
                 <div className="space-y-4">
                   {field.value ? (
                     <div className="relative w-full h-48 rounded-lg overflow-hidden border">
-                      <img src={field.value} alt="Banner do Evento" className="w-full h-full object-cover" />
+                      <img src={field.value} alt="Banner do Evento" className="w-full h-full object-cover" loading="lazy" decoding="async" width={1280} height={720} />
                       <Button
                         type="button"
                         variant="destructive"
