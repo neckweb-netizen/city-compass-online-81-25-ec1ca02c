@@ -251,7 +251,9 @@ export const TourTutorial = ({ mode = 'visitor', initialStart = false }: TourTut
       ? !userId && location.pathname === '/'
       : Boolean(userId && hasProfile);
     if (!isEligible || localStorage.getItem(storageKey)) return;
-    const timer = window.setTimeout(openTour, mode === 'account' ? 1100 : 1400);
+    // Let the real page and its banner finish painting before showing
+    // a modal over the first visit. The tutorial remains available in the menu.
+    const timer = window.setTimeout(openTour, mode === 'account' ? 2400 : 6500);
     return () => window.clearTimeout(timer);
   }, [authLoading, hasProfile, location.pathname, mode, openTour, storageKey, userId]);
 
