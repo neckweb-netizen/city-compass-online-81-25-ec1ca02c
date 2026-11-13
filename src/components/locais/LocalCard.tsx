@@ -7,7 +7,7 @@ import { ShareButton } from '@/components/ui/share-button';
 import { useFavoritos } from '@/hooks/useFavoritos';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { getOptimizedImageUrl } from '@/lib/imageOptimization';
+import { getOptimizedImageUrl, getOptimizedImageSrcSet } from '@/lib/imageOptimization';
 import { GoogleMapsAttribution } from '@/components/ui/google-maps-attribution';
 import {
   Star,
@@ -102,6 +102,7 @@ export const LocalCard = ({
           <div className="relative flex h-48 w-full items-center justify-center bg-gradient-to-br from-muted/50 to-muted">
             <img
               src={optimizedImageUrl}
+              srcSet={getOptimizedImageSrcSet(empresa.imagem_capa_url)}
               alt={empresa.nome}
               className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
               onClick={onClick}
