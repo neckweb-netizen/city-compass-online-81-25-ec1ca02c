@@ -74,9 +74,9 @@ function initialPosition(): Point {
   return constrainPosition(fallback);
 }
 
-export function AiAssistantChat() {
+export function AiAssistantChat({ initialOpen = false }: { initialOpen?: boolean }) {
   const [available, setAvailable] = useState(false);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initialOpen);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [listening, setListening] = useState(false);
