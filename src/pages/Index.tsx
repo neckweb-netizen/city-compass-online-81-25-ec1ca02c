@@ -89,6 +89,22 @@ const Index = ({ maintenanceLoading = false }: { maintenanceLoading?: boolean })
   const [searchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab') || 'home';
   const [activeTab, setActiveTab] = useState(tabFromUrl);
+  const [secondaryHomeReady, setSecondaryHomeReady] = useState(false);
+
+  useEffect(() => {
+    if (activeTab !== 'home' || secondaryHomeReady) return;
+    // The tools/achados cards are far below the opening sections. Wait until
+    // the primary content has priority, unless the visitor scrolls or taps.
+    const activate = () => setSecondaryHomeReady(true);
+    const timer = window.setTimeout(activate, 3800);
+    window.addEventListener('scroll', activate, { once: true, passive: true });
+    window.addEventListener('pointerdown', activate, { once: true, passive: true });
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('scroll', activate);
+      window.removeEventListener('pointerdown', activate);
+    };
+  }, [activeTab, secondaryHomeReady]);
 
   // Começa a consultar as seções e a cidade em paralelo à verificação de
   // manutenção. O React Query reutiliza os dados quando HomeContent montar.
@@ -99,6 +115,7 @@ const Index = ({ maintenanceLoading = false }: { maintenanceLoading?: boolean })
     queryKey: ['banners-publicitarios', 'home'],
     queryFn: () => loadBanners('home'),
     staleTime: 2 * 60 * 1000,
+    enabled: activeTab === 'home',
   });
 
   // Estado para armazenar os itens recentes de achados e perdidos
@@ -118,7 +135,7 @@ const Index = ({ maintenanceLoading = false }: { maintenanceLoading?: boolean })
   // Carrega os últimos 3 itens de achados e perdidos aprovados
   useEffect(() => {
     const buscarUltimosAchados = async () => {
-      if (activeTab !== 'home' || maintenanceLoading) return;
+      if (activeTab !== 'home' || maintenanceLoading || !secondaryHomeReady) return;
       try {
         setLoadingAchados(true);
         const { data, error } = await supabase
@@ -139,11 +156,11 @@ const Index = ({ maintenanceLoading = false }: { maintenanceLoading?: boolean })
     };
 
     buscarUltimosAchados();
-  }, [activeTab, maintenanceLoading]);
+  }, [activeTab, maintenanceLoading, secondaryHomeReady]);
 
   useEffect(() => {
     const buscarVisualizacoesFerramentas = async () => {
-      if (activeTab !== 'home' || maintenanceLoading) return;
+      if (activeTab !== 'home' || maintenanceLoading || !secondaryHomeReady) return;
 
       const ids = FERRAMENTAS_DESTAQUE.map((ferramenta) => ferramenta.id);
       const { data, error } = await supabase
@@ -165,7 +182,7 @@ const Index = ({ maintenanceLoading = false }: { maintenanceLoading?: boolean })
     };
 
     void buscarVisualizacoesFerramentas();
-  }, [activeTab, maintenanceLoading]);
+  }, [activeTab, maintenanceLoading, secondaryHomeReady]);
 
   useEffect(() => {
     setActiveTab(tabFromUrl);
