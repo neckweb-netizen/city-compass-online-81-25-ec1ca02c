@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { lazy, Suspense, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Bell, BellRing, Building2, Check, Moon, Search, ShieldCheck, Sun } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { AuthDialog } from '@/components/auth/AuthDialog';
+const AuthDialog = lazy(() => import('@/components/auth/AuthDialog').then((module) => ({ default: module.AuthDialog })));
 import { useTheme } from '@/components/ui/theme-provider';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -375,11 +375,15 @@ export const Header = ({ sidebarOpen = true }: HeaderProps) => {
           </div>
         </div>
 
-        <AuthDialog 
-          open={authDialogOpen} 
-          onOpenChange={setAuthDialogOpen}
-          defaultTab={authDialogDefaultTab}
-        />
+        {authDialogOpen && (
+          <Suspense fallback={null}>
+            <AuthDialog
+              open={authDialogOpen}
+              onOpenChange={setAuthDialogOpen}
+              defaultTab={authDialogDefaultTab}
+            />
+          </Suspense>
+        )}
       </header>
     </div>
     <div aria-hidden="true" className="h-[57px] shrink-0 lg:h-[73px]" />
