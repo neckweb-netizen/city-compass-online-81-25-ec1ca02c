@@ -178,11 +178,24 @@ const App = () => {
   useEffect(() => {
     const verificarManutencao = async () => {
       try {
-        const { data, error } = await supabase
+        // Uma única consulta com limite: não prender a primeira renderização
+        // indefinidamente quando o banco ou a rede estão indisponíveis.
+        let timeoutId: number | undefined;
+        const timeout = new Promise<never>((_, reject) => {
+          timeoutId = window.setTimeout(() => reject(new Error('Timeout da configuração')), 3500);
+        });
+        const request = supabase
           .from("configuracoes_sistema" as any)
           .select("manutencao, mensagem_manutencao")
           .limit(1)
           .maybeSingle();
+        let response: Awaited<typeof request>;
+        try {
+          response = await Promise.race([request, timeout]);
+        } finally {
+          if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+        }
+        const { data, error } = response;
 
         if (error) throw error;
 
@@ -338,7 +351,7 @@ const App = () => {
             <Suspense fallback={<LoadingFallback />}>
               <Routes>
               <Route path="/" element={<PublicLayout />}>
-                <Route index element={<Index />} />
+                <Route index element={<Index maintenanceLoading={loadingConfig} />} />
                 <Route path="achados-e-perdidos" element={<AchadosPerdidos />} />
                 <Route path="profile" element={<Profile />} />
                 <Route path="configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
