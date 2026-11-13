@@ -181,10 +181,11 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
           {tipoMidia === 'imagem' && (
             <div>
               <Label>Imagem do banner *</Label>
+              <p className="mt-1 text-xs text-muted-foreground">Recomendado: proporção 970 × 250 (ou 1940 × 500). Imagens novas são reduzidas automaticamente para WebP quando isso economiza espaço.</p>
               <div className="mt-2">
                 {imagemUrl ? (
                   <div className="relative w-full h-48 rounded-lg overflow-hidden border">
-                    <img src={imagemUrl} alt="Banner" className="w-full h-full object-cover" />
+                    <img src={imagemUrl} alt="Banner" className="w-full h-full object-cover" loading="lazy" decoding="async" width={970} height={250} />
                     <Button
                       type="button"
                       variant="destructive"
@@ -209,7 +210,7 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
                     </div>
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
                       className="hidden"
                       disabled={uploading}
                       onChange={handleFileUpload}
