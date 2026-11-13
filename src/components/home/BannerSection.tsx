@@ -3,6 +3,7 @@ import React, { useMemo, useEffect, useCallback, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { optimizedBannerByUrl } from '@/lib/optimizedLegacyBanners';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { Card } from '@/components/ui/card';
 import { NeonCard } from '@/components/ui/neon-card';
@@ -141,7 +142,8 @@ export const BannerSection = ({ secao = 'home' }: BannerSectionProps) => {
               >
                 <div className="relative w-full aspect-[970/250]">
                   <img
-                    src={banner.imagem_url}
+                    src={optimizedBannerByUrl[banner.imagem_url]?.src ?? banner.imagem_url}
+                    srcSet={optimizedBannerByUrl[banner.imagem_url]?.srcSet}
                     alt={banner.titulo || "Banner publicitário"}
                     className="w-full h-full object-cover transition-opacity duration-500"
                     {...(index === 0 ? {
@@ -156,7 +158,14 @@ export const BannerSection = ({ secao = 'home' }: BannerSectionProps) => {
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 970px"
                     style={{ aspectRatio: '970/250' }}
                     onError={(e) => {
-                      const target = e.target as HTMLImageElement;
+                      const target = e.currentTarget;
+                      // If a generated WebP is missing, automatically restore the
+                      // original public PNG instead of showing a broken banner.
+                      if (optimizedBannerByUrl[banner.imagem_url] && target.src !== banner.imagem_url) {
+                        target.srcset = '';
+                        target.src = banner.imagem_url;
+                        return;
+                      }
                       if (!target.src.endsWith('/placeholder.svg')) target.src = '/placeholder.svg';
                     }}
                   />

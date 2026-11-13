@@ -10,14 +10,21 @@ export function AiAssistantHomeEntry() {
 
   useEffect(() => {
     let active = true;
-    void supabase.functions.invoke('assistente-ia', { body: { action: 'status' } })
-      .then(({ data, error }) => {
-        if (active) setAvailable(!error && data?.enabled === true);
-      })
-      .catch(() => {
-        if (active) setAvailable(false);
-      });
-    return () => { active = false; };
+    // Avoid competing with the initial banner and maintenance requests.
+    // The search action is immediately usable while IA availability resolves.
+    const timer = window.setTimeout(() => {
+      void supabase.functions.invoke('assistente-ia', { body: { action: 'status' } })
+        .then(({ data, error }) => {
+          if (active) setAvailable(!error && data?.enabled === true);
+        })
+        .catch(() => {
+          if (active) setAvailable(false);
+        });
+    }, 2500);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
   }, []);
 
   // O espaço permanece estável enquanto a disponibilidade da IA é consultada.

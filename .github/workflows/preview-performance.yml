@@ -1,0 +1,63 @@
+name: Frontend mobile preview audit
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'index.html'
+      - 'vite.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'scripts/report-lighthouse.mjs'
+      - '.github/workflows/preview-performance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preview-lighthouse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - run: node scripts/report-build-size.mjs
+      - uses: browser-actions/setup-chrome@v2
+        id: chrome
+      - name: Measure built preview on mobile emulation
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: |
+          set -e
+          mkdir -p lighthouse-preview
+          npm run preview -- --host 127.0.0.1 --port 4173 >/tmp/sajtem-preview.log 2>&1 &
+          PREVIEW_PID=$!
+          trap 'kill "$PREVIEW_PID" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:4173/ >/dev/null; then break; fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:4173/ >/dev/null
+          npx --yes lighthouse@12.8.2 http://127.0.0.1:4173/ \
+            --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage" \
+            --form-factor=mobile \
+            --throttling-method=simulate \
+            --output=json --output=html \
+            --output-path=./lighthouse-preview/mobile
+          node scripts/report-lighthouse.mjs lighthouse-preview/mobile.report.json
+      - name: Keep report for comparison with production
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sajtem-lighthouse-preview
+          path: lighthouse-preview/
+          if-no-files-found: warn
+          retention-days: 14

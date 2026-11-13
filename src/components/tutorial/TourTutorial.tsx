@@ -55,6 +55,7 @@ interface TooltipPosition {
 
 interface TourTutorialProps {
   mode?: 'visitor' | 'account';
+  initialStart?: boolean;
 }
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
@@ -188,7 +189,7 @@ const findVisibleTarget = (selector?: string) => {
   return Array.from(document.querySelectorAll(selector)).find(isVisibleElement) ?? null;
 };
 
-export const TourTutorial = ({ mode = 'visitor' }: TourTutorialProps) => {
+export const TourTutorial = ({ mode = 'visitor', initialStart = false }: TourTutorialProps) => {
   const location = useLocation();
   const { user, profile, loading: authLoading } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
@@ -230,6 +231,13 @@ export const TourTutorial = ({ mode = 'visitor' }: TourTutorialProps) => {
     setIsOpen(true);
   }, [location.pathname, mode, userId]);
 
+  const initialStartConsumed = useRef(false);
+  useEffect(() => {
+    if (!initialStart || mode !== 'visitor' || initialStartConsumed.current) return;
+    initialStartConsumed.current = true;
+    openTour();
+  }, [initialStart, mode, openTour]);
+
   useEffect(() => {
     if (mode !== 'visitor') return;
     const handleManualStart = () => openTour();
@@ -243,7 +251,9 @@ export const TourTutorial = ({ mode = 'visitor' }: TourTutorialProps) => {
       ? !userId && location.pathname === '/'
       : Boolean(userId && hasProfile);
     if (!isEligible || localStorage.getItem(storageKey)) return;
-    const timer = window.setTimeout(openTour, mode === 'account' ? 1100 : 1400);
+    // Let the real page and its banner finish painting before showing
+    // a modal over the first visit. The tutorial remains available in the menu.
+    const timer = window.setTimeout(openTour, mode === 'account' ? 2400 : 6500);
     return () => window.clearTimeout(timer);
   }, [authLoading, hasProfile, location.pathname, mode, openTour, storageKey, userId]);
 

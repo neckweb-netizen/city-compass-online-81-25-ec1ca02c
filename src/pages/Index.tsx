@@ -84,11 +84,27 @@ const FERRAMENTAS_DESTAQUE = [
   },
 ];
 
-const Index = () => {
+const Index = ({ maintenanceLoading = false }: { maintenanceLoading?: boolean }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab') || 'home';
   const [activeTab, setActiveTab] = useState(tabFromUrl);
+  const [secondaryHomeReady, setSecondaryHomeReady] = useState(false);
+
+  useEffect(() => {
+    if (activeTab !== 'home' || secondaryHomeReady) return;
+    // The tools/achados cards are far below the opening sections. Wait until
+    // the primary content has priority, unless the visitor scrolls or taps.
+    const activate = () => setSecondaryHomeReady(true);
+    const timer = window.setTimeout(activate, 3800);
+    window.addEventListener('scroll', activate, { once: true, passive: true });
+    window.addEventListener('pointerdown', activate, { once: true, passive: true });
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('scroll', activate);
+      window.removeEventListener('pointerdown', activate);
+    };
+  }, [activeTab, secondaryHomeReady]);
 
   // Começa a consultar as seções e a cidade em paralelo à verificação de
   // manutenção. O React Query reutiliza os dados quando HomeContent montar.
@@ -99,12 +115,8 @@ const Index = () => {
     queryKey: ['banners-publicitarios', 'home'],
     queryFn: () => loadBanners('home'),
     staleTime: 2 * 60 * 1000,
+    enabled: activeTab === 'home',
   });
-
-  // Estados de controle para o Modo Manutenção
-  const [isMaintenance, setIsMaintenance] = useState(false);
-  const [maintenanceMessage, setMaintenanceMessage] = useState('');
-  const [loadingConfig, setLoadingConfig] = useState(true);
 
   // Estado para armazenar os itens recentes de achados e perdidos
   const [itensAchados, setItensAchados] = useState<ItemAchadoPerdido[]>([]);
@@ -117,63 +129,13 @@ const Index = () => {
     return (visualizacoesFerramentas[b.id] ?? 0) - (visualizacoesFerramentas[a.id] ?? 0);
   });
 
-  // Carrega e monitora o status de manutenção do banco de dados
-  useEffect(() => {
-    const verificarManutencao = async () => {
-      try {
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Timeout Supabase')), 3000)
-        );
-
-        const fetchPromise = supabase
-          .from('configuracoes_sistema' as any)
-          .select('manutencao, mensagem_manutencao')
-          .limit(1)
-          .maybeSingle();
-
-        const { data, error }: any = await Promise.race([fetchPromise, timeoutPromise]).catch(() => ({ data: null, error: null }));
-
-        if (error) throw error;
-
-        if (data) {
-          setIsMaintenance(data.manutencao ?? false);
-          setMaintenanceMessage(data.mensagem_manutencao ?? 'O portal está passando por atualizações e voltará em breve.');
-        } else {
-          setIsMaintenance(false);
-        }
-      } catch (error) {
-        console.error('Erro ao buscar status de manutenção:', error);
-        setIsMaintenance(false);
-      } finally {
-        setLoadingConfig(false);
-      }
-    };
-
-    verificarManutencao();
-
-    const channel = supabase
-      .channel('schema-db-changes-index')
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'configuracoes_sistema' },
-        (payload) => {
-          if (payload && payload.new) {
-            setIsMaintenance(payload.new.manutencao ?? false);
-            setMaintenanceMessage(payload.new.mensagem_manutencao ?? 'O portal está passando por atualizações.');
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+  // A manutenção é checada uma única vez pelo App, antes da home.
+  // Evita segunda requisição ao Supabase e segunda inscrição Realtime.
 
   // Carrega os últimos 3 itens de achados e perdidos aprovados
   useEffect(() => {
     const buscarUltimosAchados = async () => {
-      if (activeTab !== 'home' || isMaintenance) return;
+      if (activeTab !== 'home' || maintenanceLoading || !secondaryHomeReady) return;
       try {
         setLoadingAchados(true);
         const { data, error } = await supabase
@@ -194,11 +156,11 @@ const Index = () => {
     };
 
     buscarUltimosAchados();
-  }, [activeTab, isMaintenance]);
+  }, [activeTab, maintenanceLoading, secondaryHomeReady]);
 
   useEffect(() => {
     const buscarVisualizacoesFerramentas = async () => {
-      if (activeTab !== 'home' || isMaintenance) return;
+      if (activeTab !== 'home' || maintenanceLoading || !secondaryHomeReady) return;
 
       const ids = FERRAMENTAS_DESTAQUE.map((ferramenta) => ferramenta.id);
       const { data, error } = await supabase
@@ -220,13 +182,13 @@ const Index = () => {
     };
 
     void buscarVisualizacoesFerramentas();
-  }, [activeTab, isMaintenance]);
+  }, [activeTab, maintenanceLoading, secondaryHomeReady]);
 
   useEffect(() => {
     setActiveTab(tabFromUrl);
   }, [tabFromUrl]);
 
-  if (loadingConfig) {
+  if (maintenanceLoading) {
     // Mantém a geometria da home enquanto verificamos o modo manutenção,
     // em vez de trocar uma tela escura centralizada por cards de larguras diferentes.
     return (
@@ -250,81 +212,6 @@ const Index = () => {
     );
   }
 
-  if (isMaintenance) {
-    return (
-      <div className="min-h-screen flex flex-col justify-between bg-[#0F0A19] text-white relative overflow-hidden font-sans">
-        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-900/20 rounded-full blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-900/20 rounded-full blur-[120px] pointer-events-none" />
-
-        <header className="w-full max-w-7xl mx-auto px-6 py-6 flex items-center justify-between relative z-10">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 bg-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-600/30">
-              <Globe className="h-5 w-5 text-white" />
-            </div>
-            <span className="text-xl font-black tracking-tight bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
-              SAJ <span className="text-purple-500">TEM</span>
-            </span>
-          </div>
-          
-          <div className="flex items-center gap-2 text-xs bg-purple-950/40 border border-purple-900/60 px-3 py-1.5 rounded-full text-purple-300 font-medium backdrop-blur-sm">
-            <MapPin className="h-3.5 w-3.5 text-purple-400" />
-            Santo Antônio de Jesus • BA
-          </div>
-        </header>
-
-        <main className="w-full max-w-4xl mx-auto px-6 py-12 flex flex-col items-center justify-center flex-grow relative z-10 text-center">
-          <div className="inline-flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 px-4 py-2 rounded-full text-amber-400 text-xs font-semibold uppercase tracking-wider mb-8 animate-pulse">
-            <Clock className="h-3.5 w-3.5" />
-            Melhorias Estruturais em Andamento
-          </div>
-
-          <h1 className="text-4xl sm:text-6xl font-black tracking-tight max-w-2xl leading-[1.1] mb-6">
-            Estamos a preparar algo <span className="bg-gradient-to-r from-purple-400 via-purple-500 to-indigo-400 bg-clip-text text-transparent">incrível</span> para si.
-          </h1>
-          
-          <p className="text-gray-400 text-base sm:text-lg max-w-xl leading-relaxed mb-10">
-            {maintenanceMessage} O nosso guia comercial está a receber uma atualização nos servidores para melhorar a velocidade das pesquisas comerciais da região.
-          </p>
-
-          <p className="text-sm text-purple-200/80 mb-8">
-            Acompanhe as novidades quando o portal voltar a ficar disponível.
-          </p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-2xl text-left">
-            <div className="bg-[#150F22]/60 border border-purple-900/30 p-5 rounded-2xl backdrop-blur-sm hover:border-purple-800/40 transition-colors">
-              <h3 className="font-bold text-sm text-white mb-1 flex items-center gap-2">
-                <MessageSquare className="h-4 w-4 text-purple-400" /> Precisa de anunciar hoje?
-              </h3>
-              <p className="text-xs text-gray-400 leading-relaxed mb-4">
-                A nossa equipa comercial continua a registar novas empresas localmente sem interrupções.
-              </p>
-              <Link
-                to="/contact"
-                className="inline-flex items-center gap-1 text-xs font-bold text-purple-400 hover:text-purple-300 transition-colors group"
-              >
-                Formulário de contato <ArrowRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
-              </Link>
-            </div>
-
-            <div className="bg-[#150F22]/60 border border-purple-900/30 p-5 rounded-2xl backdrop-blur-sm hover:border-purple-800/40 transition-colors">
-              <h3 className="font-bold text-sm text-white mb-1 flex items-center gap-2">
-                <Mail className="h-4 w-4 text-purple-400" /> Contacto Institucional
-              </h3>
-              <p className="text-xs text-gray-400 leading-relaxed mb-4">
-                Para dúvidas, parcerias administrativas ou suporte a portais institucionais locais.
-              </p>
-              <span className="text-xs font-semibold text-gray-300 block">
-                suporte.sajtem@gmail.com
-              </span>
-            </div>
-          </div>
-        </main>
-
-      </div>
-    );
-  }
-
-  // COMPONENTES DAS SEÇÕES
   const ComponenteFerramentas = (
     <section key="secao-ferramentas" className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 my-6">
       <div className="home-showcase-card home-showcase-card--lilac bg-card border border-primary/15 rounded-3xl p-6 sm:p-8">

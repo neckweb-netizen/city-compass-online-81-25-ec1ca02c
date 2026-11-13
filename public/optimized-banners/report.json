@@ -1,0 +1,61 @@
+[
+  {
+    "source": "1783384982527_10miiwnlz.png",
+    "originalBytes": 271136,
+    "originalDimensions": [
+      970,
+      250
+    ],
+    "variants": [
+      {
+        "width": 970,
+        "bytes": 48838
+      }
+    ]
+  },
+  {
+    "source": "1783385181302_6ypdg1pgq.png",
+    "originalBytes": 242600,
+    "originalDimensions": [
+      970,
+      250
+    ],
+    "variants": [
+      {
+        "width": 480,
+        "bytes": 10348
+      },
+      {
+        "width": 970,
+        "bytes": 25934
+      }
+    ]
+  },
+  {
+    "source": "1753202959016_wgrkv0cot.png",
+    "originalBytes": 143898,
+    "originalDimensions": [
+      970,
+      250
+    ],
+    "variants": []
+  },
+  {
+    "source": "1783385194675_v98njb78l.png",
+    "originalBytes": 242600,
+    "originalDimensions": [
+      970,
+      250
+    ],
+    "variants": [
+      {
+        "width": 480,
+        "bytes": 10348
+      },
+      {
+        "width": 970,
+        "bytes": 25934
+      }
+    ]
+  }
+]
