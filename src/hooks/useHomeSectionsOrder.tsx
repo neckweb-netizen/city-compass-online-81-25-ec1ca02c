@@ -9,12 +9,16 @@ export type { HomeSection } from '@/lib/homeSections';
 export const useHomeSectionsOrder = (mode: 'public' | 'admin' = 'public') => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const queryKey = ['home-sections-order', mode, user?.id ?? 'anonymous'];
+  // Public order is identical for guests and signed-in users. Reuse its cache
+  // instead of fetching a second time when auth finishes initializing.
+  const queryKey = mode === 'public'
+    ? ['home-sections-order', 'public']
+    : ['home-sections-order', 'admin', user?.id ?? 'anonymous'];
   const query = useQuery({
     queryKey,
-    staleTime: 0,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
+    staleTime: mode === 'public' ? 60_000 : 0,
+    refetchOnMount: mode === 'public' ? true : 'always',
+    refetchOnWindowFocus: mode === 'admin',
     refetchInterval: mode === 'public' ? 60_000 : false,
     queryFn: async () => {
       let request = supabase.from('home_sections_order').select('*');

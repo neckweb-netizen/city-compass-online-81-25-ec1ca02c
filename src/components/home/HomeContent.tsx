@@ -205,12 +205,26 @@ const DeferredSection = ({
   );
 };
 
-const SectionFallback = () => (
-  <div
-    className="min-h-[220px] w-full animate-pulse rounded-2xl bg-muted/20"
-    aria-hidden="true"
-  />
-);
+// Match the height of each section while its lazy bundle is downloading.
+// A generic 220px placeholder caused visible jumps when Stories (~110px),
+// Search (~80px), and empty Enquetes (0px) resolved on narrow screens.
+const SectionFallback = ({ sectionName }: { sectionName: string }) => {
+  if (sectionName === 'enquetes') return null;
+
+  if (sectionName === 'banner') {
+    return <div className="w-full px-2 py-4 sm:px-4" aria-hidden="true">
+      <div className="aspect-[970/250] w-full animate-pulse rounded-2xl bg-muted/20" />
+    </div>;
+  }
+
+  const height =
+    sectionName === 'stories' ? 'min-h-[112px]' :
+    sectionName === 'search' ? 'min-h-[82px]' :
+    sectionName === 'aonde_ir' ? 'min-h-[52px]' :
+    'min-h-[220px]';
+
+  return <div className={`w-full animate-pulse rounded-2xl bg-muted/20 ${height}`} aria-hidden="true" />;
+};
 
 export const HomeContent = ({
   extraSections,
@@ -313,7 +327,7 @@ export const HomeContent = ({
 
             const renderSection = () => (
               <Suspense
-                fallback={<SectionFallback />}
+                fallback={<SectionFallback sectionName={section.section_name} />}
               >
                 {Component(cidadePadrao?.id)}
               </Suspense>

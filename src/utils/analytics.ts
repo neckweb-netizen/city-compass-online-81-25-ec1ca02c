@@ -1,59 +1,68 @@
 declare global {
   interface Window {
-    dataLayer: any[];
-    gtag: (...args: any[]) => void;
+    dataLayer: unknown[];
+    gtag: (...args: unknown[]) => void;
   }
 }
 
-// Inicializa a tag nativa do Google Analytics injetando o script no Head
+const TRACKING_ID = 'G-F7DPYTC96C';
+let initialized = false;
+let scheduled = false;
+
+/**
+ * Preserve the analytics event queue immediately, but don't compete with the
+ * home hero image for network/CPU until after the initial page load.
+ */
 export const initGA = () => {
-  if (document.getElementById('google-analytics-script')) return;
+  if (initialized || typeof window === 'undefined') return;
+  initialized = true;
 
-  const trackingId = "G-F7DPYTC96C";
-
-  // Cria o elemento script da biblioteca gtag.js do Google
-  const scriptAsync = document.createElement('script');
-  scriptAsync.id = 'google-analytics-script';
-  scriptAsync.async = true;
-  scriptAsync.src = `https://www.googletagmanager.com/gtag/js?id=${trackingId}`;
-  document.head.appendChild(scriptAsync);
-
-  // Inicializa o array de dados global
   window.dataLayer = window.dataLayer || [];
-  window.gtag = function gtag() {
-    window.dataLayer.push(arguments);
+  window.gtag = (...args: unknown[]) => { window.dataLayer.push(args); };
+  window.gtag('js', new Date());
+  window.gtag('config', TRACKING_ID, { send_page_view: false });
+
+  const loadScript = () => {
+    if (document.getElementById('google-analytics-script')) return;
+    const script = document.createElement('script');
+    script.id = 'google-analytics-script';
+    script.async = true;
+    script.src = `https://www.googletagmanager.com/gtag/js?id=${TRACKING_ID}`;
+    document.head.appendChild(script);
   };
 
-  window.gtag('js', new Date());
-  
-  // Envia a configuração inicial desativando o pageview padrão automático para não duplicar
-  window.gtag('config', trackingId, {
-    send_page_view: false 
-  });
+  const schedule = () => {
+    if (scheduled) return;
+    scheduled = true;
+    // Delay network competition with the banner, not event collection.
+    window.setTimeout(loadScript, 5500);
+  };
+
+  if (document.readyState === 'complete') schedule();
+  else window.addEventListener('load', schedule, { once: true });
+
+  // If someone interacts before the deferred load, start analytics then.
+  window.addEventListener('pointerdown', loadScript, { once: true, passive: true });
+  window.addEventListener('keydown', loadScript, { once: true });
 };
 
-// Captura detalhadamente as rotas, a URL completa e o título atualizado da página
+// Queue page views even when the remote analytics script hasn't loaded yet.
 export const logPageView = (path: string) => {
-  if (window.gtag) {
-    // Aguarda um milissegundo para garantir que o componente React já renderizou o novo <title>
-    setTimeout(() => {
-      window.gtag('config', 'G-F7DPYTC96C', {
-        page_path: path,
-        page_title: document.title || 'Página Sem Título',
-        page_location: window.location.href
-      });
-      console.log(`[Google Analytics] PageView completo registrado: ${path} - Título: ${document.title}`);
-    }, 100);
-  }
+  initGA();
+  window.setTimeout(() => {
+    window.gtag('config', TRACKING_ID, {
+      page_path: path,
+      page_title: document.title || 'Saj Tem',
+      page_location: window.location.href,
+    });
+  }, 100);
 };
 
-// Função opcional para disparar eventos manuais (Cliques em botões, PWA, etc)
 export const logEvent = (action: string, category: string, label?: string, value?: number) => {
-  if (window.gtag) {
-    window.gtag('event', action, {
-      event_category: category,
-      event_label: label,
-      value: value,
-    });
-  }
+  initGA();
+  window.gtag('event', action, {
+    event_category: category,
+    event_label: label,
+    value,
+  });
 };

@@ -233,10 +233,16 @@ const Index = () => {
       <div className="min-h-screen bg-background" aria-busy="true" aria-label="Carregando o Saj Tem">
         <div className="container mx-auto space-y-6 px-4 py-4 pb-28">
           <div className="min-h-[168px] animate-pulse rounded-2xl border border-primary/10 bg-muted/30 sm:min-h-[112px]" />
-          <div className="space-y-4 animate-pulse">
-            <div className="aspect-[970/250] w-full rounded-2xl bg-muted/35" />
-            <div className="h-44 w-full rounded-2xl bg-muted/30" />
-            <div className="h-44 w-full rounded-2xl bg-muted/30" />
+          {/* Preserve the measured geometry of the first home sections while
+              the maintenance setting loads. Section data/order remains dynamic. */}
+          <div className="space-y-6 animate-pulse" aria-hidden="true">
+            <div className="mx-2 h-[112px] rounded-2xl bg-muted/25" />
+            <div className="mx-2 h-[64px] rounded-2xl bg-muted/20" />
+            <div className="mx-2 h-[82px] rounded-2xl bg-muted/25" />
+            <div className="mx-2 h-[52px] rounded-2xl bg-muted/20" />
+            <div className="px-2 py-4 sm:px-4">
+              <div className="aspect-[970/250] w-full rounded-2xl bg-muted/25" />
+            </div>
           </div>
           <span className="sr-only">Verificando a disponibilidade do portal.</span>
         </div>
