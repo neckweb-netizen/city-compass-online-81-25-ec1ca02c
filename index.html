@@ -31,6 +31,14 @@
     <link rel="preconnect" href="https://uyleozhwzngnvyddfvni.supabase.co" crossorigin>
     <link rel="dns-prefetch" href="https://uyleozhwzngnvyddfvni.supabase.co">
     
+    <!-- Both small current home banners are preloaded because the carousel
+         intentionally randomizes its first slide. URL changes fall back safely. -->
+    <link rel="preload" as="image" href="/optimized-banners/7617890a275b5999-970.webp" fetchpriority="high" />
+    <link rel="preload" as="image" href="/optimized-banners/a00633f437c78671-970.webp"
+          imagesrcset="/optimized-banners/a00633f437c78671-480.webp 480w, /optimized-banners/a00633f437c78671-970.webp 970w"
+          imagesizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 970px"
+          fetchpriority="high" />
+
     <!-- Critical inline CSS for first paint -->
     <style>
       /* Critical styles for initial render - prevents FOUC */
