@@ -24,6 +24,7 @@ jobs:
       - run: node --test scripts/home-sections.test.mjs
       - run: node --test scripts/frontend-ux.test.mjs
       - run: node --test scripts/critical-path.test.mjs
+      - run: node --test scripts/optimized-images.test.mjs
       - run: node --test tests/security/push-notification-dedup.test.mjs
       - run: node --test tests/security/push-notification-links.test.mjs
       - run: npm run typecheck
