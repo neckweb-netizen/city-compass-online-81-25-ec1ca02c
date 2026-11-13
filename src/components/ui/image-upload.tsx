@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { prepareImageForUpload, type ImageUploadProfile } from '@/lib/image-upload-optimization';
+import { getOptimizedImageUrl, getOptimizedImageSrcSet } from '@/lib/imageOptimization';
 import { useToast } from '@/hooks/use-toast';
 import { Upload, X, Image as ImageIcon, Link } from 'lucide-react';
 
@@ -122,12 +123,9 @@ export const ImageUpload = ({
       if (isGoogleUrl) {
         console.warn('⚠️ ImageUpload: URL do Google detectada, limpando parâmetros');
         // Para URLs do Google, limpar parâmetros que podem causar problemas
-        let cleanUrl = url.href;
-        if (url.hostname.includes('googleusercontent.com')) {
-          // Remover parâmetros de tamanho específicos do Google Photos/Maps
-          cleanUrl = url.href.split('=')[0];
-          console.log('🔄 URL do Google limpa:', cleanUrl);
-        }
+        // Keep Google image sizing parameters. Removing them used to request
+        // full-size originals, increasing transfer on mobile.
+        const cleanUrl = getOptimizedImageUrl(url.href, 1200);
         
         onChange(cleanUrl);
         setUrlInput('');
@@ -200,7 +198,9 @@ export const ImageUpload = ({
       {value ? (
         <div className="relative">
           <img
-            src={value}
+            src={getOptimizedImageUrl(value, 640)}
+            srcSet={getOptimizedImageSrcSet(value)}
+            sizes="(max-width: 640px) 100vw, 640px"
             alt="Preview"
             className="w-full h-40 object-cover rounded-lg border"
             loading="lazy"
