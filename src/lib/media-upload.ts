@@ -1,33 +1,17 @@
 import { supabase } from '@/integrations/supabase/client';
-import imageCompression from 'browser-image-compression';
+import { prepareImageForUpload, type ImageUploadProfile } from '@/lib/image-upload-optimization';
 
-async function otimizarImagem(file: File): Promise<File> {
-  if (!file.type.startsWith('image/')) {
-    return file;
-  }
-
-  const options = {
-    maxSizeMB: 2,
-    maxWidthOrHeight: 1920,
-    useWebWorker: true,
-    fileType: 'image/webp',
-  };
-
-  try {
-    const compressedBlob = await imageCompression(file, options);
-    return new File([compressedBlob], file.name.replace(/\.[^/.]+$/, '') + '.webp', {
-      type: 'image/webp',
-    });
-  } catch (error) {
-    console.warn('[UPLOAD] Erro na otimização, enviando arquivo original:', error);
-    return file;
-  }
+function getImageProfile(folder: string): ImageUploadProfile {
+  if (/\/icons?(\/|$)/.test(folder)) return 'icon';
+  if (folder === 'banners' || folder.includes('/banners')) return 'banner';
+  if (folder === 'eventos' || /capas?|cover/i.test(folder)) return 'cover';
+  return 'general';
 }
 
 export async function uploadMedia(file: File, subpasta: string = 'imagens/geral'): Promise<string> {
   console.log('[UPLOAD] Iniciando envio...');
   try {
-    const arquivoPronto = await otimizarImagem(file);
+    const arquivoPronto = await prepareImageForUpload(file, getImageProfile(subpasta), 5);
     console.log('[UPLOAD] Arquivo preparado:', {
       nome: arquivoPronto.name,
       tamanhoKB: (arquivoPronto.size / 1024).toFixed(2),
