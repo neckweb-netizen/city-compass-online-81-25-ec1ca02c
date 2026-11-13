@@ -3,6 +3,7 @@ import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
+import { prepareImageForUpload, type ImageUploadProfile } from '@/lib/image-upload-optimization';
 import { useToast } from '@/hooks/use-toast';
 import { Upload, X, Image as ImageIcon, Link } from 'lucide-react';
 
@@ -37,9 +38,15 @@ export const ImageUpload = ({
     try {
       setUploading(true);
 
-      // Validar tamanho do arquivo
-      if (file.size > maxSize * 1024 * 1024) {
-        throw new Error(`Arquivo muito grande. Máximo ${maxSize}MB`);
+      // Optimize before validating the storage limit. Larger phone photos can
+      // still be uploaded when they compress below the bucket's size limit.
+      const profile: ImageUploadProfile =
+        /icon|icone/i.test(folder) ? 'icon' :
+        /banner/i.test(folder) ? 'banner' :
+        /capa|cover/i.test(folder) ? 'cover' : 'general';
+      const prepared = await prepareImageForUpload(file, profile, maxSize);
+      if (prepared.size > maxSize * 1024 * 1024) {
+        throw new Error(`Imagem excede o limite de ${maxSize} MB após otimização.`);
       }
 
       // Gerar nome único para o arquivo
@@ -48,7 +55,7 @@ export const ImageUpload = ({
         throw new Error('Faça login novamente antes de enviar arquivos.');
       }
 
-      const fileExt = file.name.split('.').pop();
+      const fileExt = prepared.name.split('.').pop();
       const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
       const filePath = folder
         ? `${user.id}/${folder}/${fileName}`
@@ -57,7 +64,7 @@ export const ImageUpload = ({
       // Upload para o Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from(bucket)
-        .upload(filePath, file);
+        .upload(filePath, prepared, { contentType: prepared.type, cacheControl: '31536000', upsert: false });
 
       if (uploadError) throw uploadError;
 
@@ -70,6 +77,9 @@ export const ImageUpload = ({
       
       toast({
         title: 'Imagem enviada com sucesso!',
+        description: prepared.size < file.size
+          ? `Otimizada: ${Math.round(file.size / 1024)} KB → ${Math.round(prepared.size / 1024)} KB.`
+          : undefined,
       });
     } catch (error) {
       console.error('Erro ao fazer upload:', error);
@@ -86,8 +96,10 @@ export const ImageUpload = ({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      uploadImage(file);
+      void uploadImage(file);
     }
+    // Permit selecting the same image again if the user retries.
+    e.target.value = '';
   };
 
   const handleUrlSubmit = () => {
@@ -191,6 +203,10 @@ export const ImageUpload = ({
             src={value}
             alt="Preview"
             className="w-full h-40 object-cover rounded-lg border"
+            loading="lazy"
+            decoding="async"
+            width={640}
+            height={320}
             onLoad={() => {
               console.log('✅ Imagem carregada com sucesso:', value);
             }}
