@@ -208,7 +208,7 @@ const DeferredSection = ({
 // Match the height of each section while its lazy bundle is downloading.
 // A generic 220px placeholder caused visible jumps when Stories (~110px),
 // Search (~80px), and empty Enquetes (0px) resolved on narrow screens.
-const SectionFallback = ({ sectionName }: { sectionName: HomeSectionName }) => {
+const SectionFallback = ({ sectionName }: { sectionName: string }) => {
   if (sectionName === 'enquetes') return null;
 
   if (sectionName === 'banner') {
