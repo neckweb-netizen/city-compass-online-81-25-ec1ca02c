@@ -16,10 +16,10 @@ export const useHomeSectionsOrder = (mode: 'public' | 'admin' = 'public') => {
     : ['home-sections-order', 'admin', user?.id ?? 'anonymous'];
   const query = useQuery({
     queryKey,
-    staleTime: mode === 'public' ? 60_000 : 0,
-    refetchOnMount: mode === 'public' ? true : 'always',
-    refetchOnWindowFocus: mode === 'admin',
-    refetchInterval: mode === 'public' ? 60_000 : false,
+    staleTime: mode === 'public' ? 5 * 60_000 : 0,
+    refetchOnMount: mode === 'public' ? false : 'always',
+    refetchOnWindowFocus: true,
+    refetchInterval: false,
     queryFn: async () => {
       let request = supabase.from('home_sections_order').select('*');
       if (mode === 'public') request = request.eq('ativo', true);
