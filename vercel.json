@@ -75,6 +75,10 @@
   ],
   "rewrites": [
     {
+      "source": "/api/public-catalog",
+      "destination": "/api/public-catalog"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

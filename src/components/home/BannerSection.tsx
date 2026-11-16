@@ -2,7 +2,6 @@
 import React, { useMemo, useEffect, useCallback, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import { optimizedBannerByUrl } from '@/lib/optimizedLegacyBanners';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { Card } from '@/components/ui/card';
@@ -28,15 +27,9 @@ interface Banner {
 
 // Compartilhada com a página inicial para antecipar a busca do banner LCP.
 export async function loadBanners(secao: NonNullable<BannerSectionProps['secao']>): Promise<Banner[]> {
-  const { data, error } = await supabase
-    .from('banners_publicitarios')
-    .select('id, titulo, imagem_url, link_url, ativo, ordem, secao, criado_em, atualizado_em')
-    .eq('ativo', true)
-    .eq('secao', secao === 'locais' ? 'empresas' : secao)
-    .order('ordem', { ascending: true })
-    .limit(10);
-  if (error) throw error;
-  return data as Banner[];
+  const response = await fetch('/api/public-catalog?resource=banners&section=' + encodeURIComponent(secao));
+  if (!response.ok) throw new Error('Falha ao consultar banners públicos');
+  return await response.json() as Banner[];
 }
 
 // Função para embaralhar array usando algoritmo Fisher-Yates
