@@ -187,7 +187,11 @@ const App = () => {
     const POLL_MS = 10 * 60 * 1000;
 
     const verificarManutencao = async (force = false) => {
-      if (!active || inFlight || document.hidden || !navigator.onLine) return;
+      if (!active || inFlight) return;
+      if (document.hidden || !navigator.onLine) {
+        setLoadingConfig(false);
+        return;
+      }
       const now = Date.now();
       if (!force && now - lastCheckedAt < MIN_FOCUS_REFRESH_MS) return;
       inFlight = true;
