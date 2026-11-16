@@ -19,9 +19,11 @@ export const useSearchSuggestions = (searchTerm: string, maxResults: number = 5)
     cidades: []
   });
 
-  const { data: empresas } = useEmpresas();
-  const { data: categorias } = useCategorias();
-  const { data: cidades } = useCidades();
+  // Nenhum catálogo é buscado só porque o campo de busca está montado.
+  const shouldFetch = searchTerm.trim().length >= 2;
+  const { data: empresas } = useEmpresas(undefined, undefined, shouldFetch);
+  const { data: categorias } = useCategorias(undefined, shouldFetch);
+  const { data: cidades } = useCidades(shouldFetch);
 
   const filteredSuggestions = useMemo(() => {
     if (!searchTerm || searchTerm.length < 2) {
