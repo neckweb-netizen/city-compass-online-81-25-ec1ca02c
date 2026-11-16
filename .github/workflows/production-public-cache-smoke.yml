@@ -1,0 +1,32 @@
+name: Shared public CDN cache production smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'api/public-catalog.js'
+      - 'src/hooks/useHomeSectionsOrder.tsx'
+      - 'src/components/home/BannerSection.tsx'
+      - 'vercel.json'
+      - 'scripts/public-catalog-smoke.mjs'
+      - '.github/workflows/production-public-cache-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-cache-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Wait for Vercel production deployment and check JSON endpoint
+        env:
+          SAJTEM_BASE_URL: https://sajtem.vercel.app
+          SAJTEM_SMOKE_ATTEMPTS: '24'
+          SAJTEM_SMOKE_DELAY_MS: '12000'
+        run: node scripts/public-catalog-smoke.mjs
