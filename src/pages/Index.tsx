@@ -114,7 +114,7 @@ const Index = ({ maintenanceLoading = false }: { maintenanceLoading?: boolean })
   useQuery({
     queryKey: ['banners-publicitarios', 'home'],
     queryFn: () => loadBanners('home'),
-    staleTime: 2 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
     enabled: activeTab === 'home',
   });
 

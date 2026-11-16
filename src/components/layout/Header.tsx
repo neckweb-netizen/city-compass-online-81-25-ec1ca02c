@@ -29,6 +29,7 @@ export const Header = ({ sidebarOpen = true }: HeaderProps) => {
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [authDialogDefaultTab, setAuthDialogDefaultTab] = useState<'login' | 'register'>('login');
   const [searchTerm, setSearchTerm] = useState('');
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { 
@@ -37,7 +38,7 @@ export const Header = ({ sidebarOpen = true }: HeaderProps) => {
     loading: loadingNotifications, 
     markAsRead, 
     markAllAsRead 
-  } = useNotifications();
+  } = useNotifications({ detailsEnabled: notificationsOpen });
 
   // Monitora a URL para abrir o Modal automaticamente na aba correta
   useEffect(() => {
@@ -221,7 +222,7 @@ export const Header = ({ sidebarOpen = true }: HeaderProps) => {
               
               {/* Notifications - Only for logged users */}
               {user && (
-                <DropdownMenu>
+                <DropdownMenu open={notificationsOpen} onOpenChange={setNotificationsOpen}>
                   <DropdownMenuTrigger asChild>
                      <Button variant="ghost" size="sm" className="h-10 w-10 lg:h-12 lg:w-12 rounded-full p-0 relative hover:bg-accent flex-shrink-0" data-account-tour="notifications">
                        {totalUnread > 0 ? (

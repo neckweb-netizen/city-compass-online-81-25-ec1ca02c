@@ -176,11 +176,28 @@ const App = () => {
   }, []);
 
   useEffect(() => {
-    const verificarManutencao = async () => {
+    // O modo de manutenção não precisa de uma conexão WebSocket por visitante.
+    // Uma consulta leve ao iniciar e revisões espaçadas em abas visíveis evitam
+    // milhares de conexões Realtime abertas sem necessidade.
+    let active = true;
+    let inFlight = false;
+    let lastCheckedAt = 0;
+    let pollTimer: number | undefined;
+    const MIN_FOCUS_REFRESH_MS = 2 * 60 * 1000;
+    const POLL_MS = 10 * 60 * 1000;
+
+    const verificarManutencao = async (force = false) => {
+      if (!active || inFlight) return;
+      if (document.hidden || !navigator.onLine) {
+        setLoadingConfig(false);
+        return;
+      }
+      const now = Date.now();
+      if (!force && now - lastCheckedAt < MIN_FOCUS_REFRESH_MS) return;
+      inFlight = true;
+      lastCheckedAt = now;
+      let timeoutId: number | undefined;
       try {
-        // Uma única consulta com limite: não prender a primeira renderização
-        // indefinidamente quando o banco ou a rede estão indisponíveis.
-        let timeoutId: number | undefined;
         const timeout = new Promise<never>((_, reject) => {
           timeoutId = window.setTimeout(() => reject(new Error('Timeout da configuração')), 3500);
         });
@@ -189,45 +206,44 @@ const App = () => {
           .select("manutencao, mensagem_manutencao")
           .limit(1)
           .maybeSingle();
-        let response: Awaited<typeof request>;
-        try {
-          response = await Promise.race([request, timeout]);
-        } finally {
-          if (timeoutId !== undefined) window.clearTimeout(timeoutId);
-        }
-        const { data, error } = response;
-
+        const { data, error } = await Promise.race([request, timeout]);
         if (error) throw error;
-
-        if (data) {
+        if (active && data) {
           setIsMaintenance(data.manutencao ?? false);
-          setMaintenanceMessage(data.mensagem_manutencao ?? "O portal está passando por updates e voltará em breve.");
+          setMaintenanceMessage(data.mensagem_manutencao ?? "O portal está passando por atualizações.");
         }
       } catch (error) {
-        console.error("Erro ao sincronizar chaves de manutenção no App:", error);
+        // A home permanece acessível quando o serviço de configuração oscila.
+        console.error("Erro ao consultar manutenção no App:", error);
       } finally {
-        setLoadingConfig(false);
+        if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+        inFlight = false;
+        if (active) setLoadingConfig(false);
       }
     };
 
-    verificarManutencao();
+    const refreshWhenVisible = () => {
+      if (!document.hidden) void verificarManutencao();
+    };
+    const schedulePoll = () => {
+      pollTimer = window.setTimeout(() => {
+        if (!document.hidden) void verificarManutencao(true);
+        if (active) schedulePoll();
+      }, POLL_MS + Math.floor(Math.random() * 60_000));
+    };
 
-    const channel = supabase
-      .channel("schema-db-maintenance-app")
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "configuracoes_sistema" },
-        (payload) => {
-          if (payload && payload.new) {
-            setIsMaintenance(payload.new.manutencao ?? false);
-            setMaintenanceMessage(payload.new.mensagem_manutencao ?? "O portal está passando por atualizações.");
-          }
-        }
-      )
-      .subscribe();
+    void verificarManutencao(true);
+    schedulePoll();
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    window.addEventListener('focus', refreshWhenVisible);
+    window.addEventListener('online', refreshWhenVisible);
 
     return () => {
-      supabase.removeChannel(channel);
+      active = false;
+      if (pollTimer !== undefined) window.clearTimeout(pollTimer);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+      window.removeEventListener('focus', refreshWhenVisible);
+      window.removeEventListener('online', refreshWhenVisible);
     };
   }, []);
 

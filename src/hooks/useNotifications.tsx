@@ -33,7 +33,7 @@ const notificationColumns = [
   'created_at', 'updated_at',
 ].join(',');
 
-export const useNotifications = () => {
+export const useNotifications = ({ detailsEnabled = true }: { detailsEnabled?: boolean } = {}) => {
   const { user } = useAuth();
   const { preferences, preferencesReady } = usePushNotifications();
   const queryClient = useQueryClient();
@@ -55,8 +55,8 @@ export const useNotifications = () => {
       if (error) throw error;
       return (data || []) as AppNotification[];
     },
-    enabled: Boolean(user?.id && inAppEnabled),
-    staleTime: 30_000,
+    enabled: Boolean(user?.id && inAppEnabled && detailsEnabled),
+    staleTime: 60_000,
   });
 
   const unreadCountQuery = useQuery({
@@ -74,11 +74,11 @@ export const useNotifications = () => {
       return count || 0;
     },
     enabled: Boolean(user?.id && inAppEnabled),
-    staleTime: 15_000,
+    staleTime: 60_000,
   });
 
   useEffect(() => {
-    if (!user?.id || !inAppEnabled) return;
+    if (!user?.id || !inAppEnabled || !detailsEnabled) return;
     const channel = supabase
       .channel(`notifications-${user.id}`)
       .on('postgres_changes', {
@@ -100,7 +100,7 @@ export const useNotifications = () => {
       })
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
-  }, [inAppEnabled, queryClient, queryKey, user?.id]);
+  }, [detailsEnabled, inAppEnabled, queryClient, queryKey, user?.id]);
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey });
@@ -147,12 +147,12 @@ export const useNotifications = () => {
     onError: () => toast.error('Não foi possível arquivar a notificação.'),
   });
 
-  const notifications = inAppEnabled ? notificationsQuery.data || [] : [];
+  const notifications = inAppEnabled && detailsEnabled ? notificationsQuery.data || [] : [];
   return {
     notifications,
     unreadNotifications: notifications.filter(item => !item.read),
     totalUnread: inAppEnabled ? unreadCountQuery.data || 0 : 0,
-    loading: !preferencesReady || (inAppEnabled && (notificationsQuery.isLoading || unreadCountQuery.isLoading)),
+    loading: !preferencesReady || (inAppEnabled && ((detailsEnabled && notificationsQuery.isLoading) || unreadCountQuery.isLoading)),
     error: notificationsQuery.error || unreadCountQuery.error,
     markAsRead: markAsReadMutation.mutate,
     markAllAsRead: markAllAsReadMutation.mutate,
