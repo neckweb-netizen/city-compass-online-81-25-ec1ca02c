@@ -1,6 +1,6 @@
 // Public, anonymous-only CDN cache. Never accept visitor auth headers or cookies.
 const SUPABASE_ORIGIN = 'https://uyleozhwzngnvyddfvni.supabase.co';
-const PUBLIC_ANON_KEY = process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV5bGVvemh3em5nbnZ5ZGRmdm5pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI3NTAwOTcsImV4cCI6MjA2ODMyNjA5N30.fLmjDxluOc6KSRas2i157D5KmaXcJTmkuzeyFZ2SM4w";
+const PUBLIC_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV5bGVvemh3em5nbnZ5ZGRmdm5pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI3NTAwOTcsImV4cCI6MjA2ODMyNjA5N30.fLmjDxluOc6KSRas2i157D5KmaXcJTmkuzeyFZ2SM4w";
 
 const SECTIONS = new Set(['home', 'locais', 'eventos', 'categorias', 'busca']);
 
