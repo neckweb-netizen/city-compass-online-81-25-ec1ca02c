@@ -2,10 +2,11 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-// The Firebase SDK is intentionally loaded only for authenticated users.
-const loadFirebaseMessaging = () => import('@/lib/firebaseMessaging');
 import { navigateToSafeUrl } from '@/lib/safeNavigation';
 import { shouldShowNotificationToast } from '@/lib/notificationToastDedup';
+
+// The Firebase SDK is intentionally loaded only for authenticated users.
+const loadFirebaseMessaging = () => import('@/lib/firebaseMessaging');
 
 export interface NotificationPreferences {
   in_app_enabled: boolean;
