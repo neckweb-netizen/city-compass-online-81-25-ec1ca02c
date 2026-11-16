@@ -21,11 +21,20 @@ export const useHomeSectionsOrder = (mode: 'public' | 'admin' = 'public') => {
     refetchOnWindowFocus: true,
     refetchInterval: false,
     queryFn: async () => {
-      let request = supabase.from('home_sections_order').select('*');
-      if (mode === 'public') request = request.eq('ativo', true);
-      const { data, error } = await request.order('ordem', { ascending: true }).order('section_name', { ascending: true });
+      if (mode === 'public') {
+        // One anonymous response shared by all visitors through the Vercel CDN.
+        const response = await fetch('/api/public-catalog?resource=home-sections');
+        if (!response.ok) throw new Error('Falha ao consultar seções públicas');
+        const data = await response.json() as HomeSection[];
+        return getPublicHomeSections(data);
+      }
+      // Admin visibility must stay user-scoped and never touch the public CDN.
+      const { data, error } = await supabase.from('home_sections_order')
+        .select('*')
+        .order('ordem', { ascending: true })
+        .order('section_name', { ascending: true });
       if (error) throw error;
-      return mode === 'admin' ? getAdminHomeSections(data) : getPublicHomeSections(data);
+      return getAdminHomeSections(data);
     },
   });
 
