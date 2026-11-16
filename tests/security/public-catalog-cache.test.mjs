@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import handler from '../api/public-catalog.js';
+import handler from '../../api/public-catalog.js';
 
 function response() {
   return {
