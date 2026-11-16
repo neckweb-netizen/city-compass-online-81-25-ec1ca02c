@@ -33,3 +33,9 @@ jobs:
       - run: npm run build
       - run: node scripts/report-build-size.mjs
       - run: npm audit --audit-level=high --omit=dev
+      - name: Verify production public catalog responds with anonymous JSON
+        env:
+          SAJTEM_BASE_URL: https://sajtem.vercel.app
+          SAJTEM_SMOKE_ATTEMPTS: '3'
+          SAJTEM_SMOKE_DELAY_MS: '5000'
+        run: node scripts/public-catalog-smoke.mjs
