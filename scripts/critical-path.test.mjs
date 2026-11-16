@@ -8,10 +8,10 @@ test('a manutenção usa uma consulta espaçada sem WebSocket global no App', ()
   const app = source('src/App.tsx');
   const home = source('src/pages/Index.tsx');
   assert.equal((app.match(/\.from\("configuracoes_sistema"/g) ?? []).length, 1);
-  assert.doesNotMatch(app, /schema-db-maintenance-app|\\.channel\\(/);
+  assert.doesNotMatch(app, /schema-db-maintenance-app|\.channel\(/);
   assert.match(app, /POLL_MS = 10 \* 60 \* 1000/);
   assert.match(app, /visibilitychange/);
-  assert.match(app, /navigator\\.onLine/);
+  assert.match(app, /navigator\.onLine/);
   assert.doesNotMatch(home, /schema-db-changes-index|setIsMaintenance|verificarManutencao/);
   assert.match(app, /<Index maintenanceLoading=\{loadingConfig\}/);
 });
@@ -58,14 +58,14 @@ test('notificações completas só carregam quando o sino é aberto', () => {
   const header = source('src/components/layout/Header.tsx');
   const hook = source('src/hooks/useNotifications.tsx');
   assert.match(header, /detailsEnabled: notificationsOpen/);
-  assert.match(header, /onOpenChange=\\{setNotificationsOpen\\}/);
-  assert.match(hook, /enabled: Boolean\\(user\\?\\.id && inAppEnabled && detailsEnabled\\)/);
-  assert.match(hook, /if \\(!user\\?\\.id \\|\\| !inAppEnabled \\|\\| !detailsEnabled\\) return/);
+  assert.match(header, /onOpenChange=\{setNotificationsOpen\}/);
+  assert.match(hook, /enabled: Boolean\(user\?\.id && inAppEnabled && detailsEnabled\)/);
+  assert.match(hook, /if \(!user\?\.id \|\| !inAppEnabled \|\| !detailsEnabled\) return/);
 });
 
 test('seções públicas da home não ficam repetindo consultas por minuto', () => {
   const sections = source('src/hooks/useHomeSectionsOrder.tsx');
   assert.match(sections, /refetchInterval: false/);
-  assert.match(sections, /5 \\* 60_000/);
+  assert.match(sections, /5 \* 60_000/);
   assert.match(sections, /refetchOnWindowFocus: true/);
 });
