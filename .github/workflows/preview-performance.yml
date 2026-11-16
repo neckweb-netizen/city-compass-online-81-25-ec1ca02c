@@ -49,6 +49,9 @@ jobs:
             sleep 1
           done
           curl --fail --silent http://127.0.0.1:4173/ >/dev/null
+          # Vite preview uses CI-only public catalog fixtures; reject SPA HTML masquerading as JSON.
+          curl --fail --silent 'http://127.0.0.1:4173/api/public-catalog?resource=home-sections' \
+            | node -e "let text='';process.stdin.on('data',c=>text+=c).on('end',()=>{const data=JSON.parse(text);if(!Array.isArray(data)||!data.length)process.exit(1)})"
           npx --yes lighthouse@12.8.2 http://127.0.0.1:4173/ \
             --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage" \
             --form-factor=mobile \
