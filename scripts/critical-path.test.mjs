@@ -4,11 +4,14 @@ import { test } from 'node:test';
 
 const source = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
-test('a manutenção tem uma consulta e um canal, ambos no App', () => {
+test('a manutenção usa uma consulta espaçada sem WebSocket global no App', () => {
   const app = source('src/App.tsx');
   const home = source('src/pages/Index.tsx');
   assert.equal((app.match(/\.from\("configuracoes_sistema"/g) ?? []).length, 1);
-  assert.equal((app.match(/schema-db-maintenance-app/g) ?? []).length, 1);
+  assert.doesNotMatch(app, /schema-db-maintenance-app|\\.channel\\(/);
+  assert.match(app, /POLL_MS = 10 \* 60 \* 1000/);
+  assert.match(app, /visibilitychange/);
+  assert.match(app, /navigator\\.onLine/);
   assert.doesNotMatch(home, /schema-db-changes-index|setIsMaintenance|verificarManutencao/);
   assert.match(app, /<Index maintenanceLoading=\{loadingConfig\}/);
 });
@@ -48,4 +51,21 @@ test('botão de IA continua móvel e botão de publicar continua circular', () =
   assert.match(assistant, /onPointerMove=\{moveDrag\}/);
   assert.match(assistant, /POSITION_KEY/);
   assert.match(nav, /h-\[3\.75rem\] w-\[3\.75rem\] rounded-full/);
+});
+
+
+test('notificações completas só carregam quando o sino é aberto', () => {
+  const header = source('src/components/layout/Header.tsx');
+  const hook = source('src/hooks/useNotifications.tsx');
+  assert.match(header, /detailsEnabled: notificationsOpen/);
+  assert.match(header, /onOpenChange=\\{setNotificationsOpen\\}/);
+  assert.match(hook, /enabled: Boolean\\(user\\?\\.id && inAppEnabled && detailsEnabled\\)/);
+  assert.match(hook, /if \\(!user\\?\\.id \\|\\| !inAppEnabled \\|\\| !detailsEnabled\\) return/);
+});
+
+test('seções públicas da home não ficam repetindo consultas por minuto', () => {
+  const sections = source('src/hooks/useHomeSectionsOrder.tsx');
+  assert.match(sections, /refetchInterval: false/);
+  assert.match(sections, /5 \\* 60_000/);
+  assert.match(sections, /refetchOnWindowFocus: true/);
 });
