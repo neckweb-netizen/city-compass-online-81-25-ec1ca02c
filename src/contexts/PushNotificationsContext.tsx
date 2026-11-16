@@ -2,14 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import {
-  disableFirebasePush,
-  enableFirebasePush,
-  getStoredFirebaseFid,
-  isFirebasePushSupported,
-  subscribeToForegroundMessages,
-  syncFirebasePushIfGranted,
-} from '@/lib/firebaseMessaging';
+// The Firebase SDK is intentionally loaded only for authenticated users.
+const loadFirebaseMessaging = () => import('@/lib/firebaseMessaging');
 import { navigateToSafeUrl } from '@/lib/safeNavigation';
 import { shouldShowNotificationToast } from '@/lib/notificationToastDedup';
 
@@ -60,8 +54,14 @@ export const PushNotificationsProvider = ({ children }: { children: ReactNode })
   const [preferences, setPreferences] = useState(defaultPreferences);
 
   useEffect(() => {
+    if (!user?.id) {
+      setSupported(false);
+      setPermission('default');
+      setSupportReady(false);
+      return;
+    }
     let active = true;
-    isFirebasePushSupported().then((value) => {
+    loadFirebaseMessaging().then(({ isFirebasePushSupported }) => isFirebasePushSupported()).then((value) => {
       if (!active) return;
       setSupported(value);
       setPermission(value ? Notification.permission : 'unsupported');
@@ -74,7 +74,7 @@ export const PushNotificationsProvider = ({ children }: { children: ReactNode })
       }
     });
     return () => { active = false; };
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     if (!user?.id) {
@@ -103,7 +103,7 @@ export const PushNotificationsProvider = ({ children }: { children: ReactNode })
   useEffect(() => {
     if (!user?.id || !supported || Notification.permission !== 'granted' || !preferences.push_enabled) return;
     let active = true;
-    syncFirebasePushIfGranted()
+    loadFirebaseMessaging().then(({ syncFirebasePushIfGranted }) => syncFirebasePushIfGranted())
       .then((fid) => { if (active) setEnabled(Boolean(fid)); })
       .catch((syncError) => {
         if (active) setError(syncError instanceof Error ? syncError.message : 'Falha ao sincronizar notificações.');
@@ -132,8 +132,9 @@ export const PushNotificationsProvider = ({ children }: { children: ReactNode })
 
   useEffect(() => {
     if (!user?.id || !supported) return;
+    let active = true;
     let unsubscribe: (() => void) | undefined;
-    subscribeToForegroundMessages((payload) => {
+    loadFirebaseMessaging().then(({ subscribeToForegroundMessages }) => subscribeToForegroundMessages((payload) => {
       if (!shouldShowNotificationToast(payload.data?.notification_id)) return;
       const title = payload.notification?.title || payload.data?.title || 'Nova notificação';
       const description = payload.notification?.body || payload.data?.body;
@@ -143,8 +144,11 @@ export const PushNotificationsProvider = ({ children }: { children: ReactNode })
         duration: 7000,
         ...(actionUrl ? { action: { label: 'Abrir', onClick: () => navigateToSafeUrl(actionUrl) } } : {}),
       });
-    }).then((cleanup) => { unsubscribe = cleanup; }).catch(() => undefined);
-    return () => unsubscribe?.();
+    })).then((cleanup) => {
+      if (active) unsubscribe = cleanup;
+      else cleanup();
+    }).catch(() => undefined);
+    return () => { active = false; unsubscribe?.(); };
   }, [user?.id, supported]);
 
   const savePreferences = useCallback(async (values: Partial<NotificationPreferences>) => {
@@ -162,6 +166,7 @@ export const PushNotificationsProvider = ({ children }: { children: ReactNode })
     setLoading(true);
     setError(null);
     try {
+      const { enableFirebasePush } = await loadFirebaseMessaging();
       await enableFirebasePush();
       await savePreferences({ push_enabled: true });
       setPermission(Notification.permission);
@@ -181,6 +186,7 @@ export const PushNotificationsProvider = ({ children }: { children: ReactNode })
     setLoading(true);
     setError(null);
     try {
+      const { getStoredFirebaseFid, disableFirebasePush } = await loadFirebaseMessaging();
       if (getStoredFirebaseFid()) await disableFirebasePush();
       await savePreferences({ push_enabled: false });
       setEnabled(false);
