@@ -69,3 +69,11 @@ test('seções públicas da home não ficam repetindo consultas por minuto', () 
   assert.match(sections, /5 \* 60_000/);
   assert.match(sections, /refetchOnWindowFocus: true/);
 });
+
+
+test('Firebase é carregado por demanda para usuários autenticados', () => {
+  const provider = source('src/contexts/PushNotificationsContext.tsx');
+  assert.match(provider, /import\('@\/lib\/firebaseMessaging'\)/);
+  assert.doesNotMatch(provider, /from ['"]@\/lib\/firebaseMessaging['"]/);
+  assert.match(provider, /if \(!user\?\.id\) \{/);
+});
