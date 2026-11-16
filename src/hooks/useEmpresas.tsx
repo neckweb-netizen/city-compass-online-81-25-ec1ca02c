@@ -1,9 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-export const useEmpresas = (cidadeId?: string, categoriaId?: string) => {
+export const useEmpresas = (cidadeId?: string, categoriaId?: string, enabled = true) => {
   return useQuery({
     queryKey: ['empresas', cidadeId, categoriaId],
+    enabled,
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       let query = supabase
         .from('empresas')
@@ -64,6 +66,7 @@ export const useEmpresasDestaque = (cidadeId: string) => {
       return data;
     },
     enabled: !!cidadeId,
+    staleTime: 5 * 60_000,
   });
 };
 
