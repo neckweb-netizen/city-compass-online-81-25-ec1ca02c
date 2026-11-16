@@ -10,6 +10,7 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - 'scripts/report-lighthouse.mjs'
+      - 'scripts/report-lighthouse.test.mjs'
       - '.github/workflows/preview-performance.yml'
   workflow_dispatch:
 
@@ -28,6 +29,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
+      - run: npm run lint
+      - run: node --test scripts/report-lighthouse.test.mjs
       - run: npm run build
       - run: node scripts/report-build-size.mjs
       - uses: browser-actions/setup-chrome@v2
@@ -52,7 +55,7 @@ jobs:
             --throttling-method=simulate \
             --output=json --output=html \
             --output-path=./lighthouse-preview/mobile
-          node scripts/report-lighthouse.mjs lighthouse-preview/mobile.report.json
+          node scripts/report-lighthouse.mjs lighthouse-preview/mobile.report.json --enforce-budget
       - name: Keep report for comparison with production
         if: always()
         uses: actions/upload-artifact@v4
