@@ -2,9 +2,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-export const useCategorias = (tipo?: 'empresa' | 'evento' | 'servico') => {
+export const useCategorias = (tipo?: 'empresa' | 'evento' | 'servico', enabled = true) => {
   return useQuery({
     queryKey: ['categorias', tipo],
+    enabled,
+    staleTime: 15 * 60_000,
     queryFn: async () => {
       let query = supabase
         .from('categorias')
