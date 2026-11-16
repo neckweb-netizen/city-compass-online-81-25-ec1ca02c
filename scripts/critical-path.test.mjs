@@ -77,3 +77,26 @@ test('Firebase é carregado por demanda para usuários autenticados', () => {
   assert.doesNotMatch(provider, /from ['"]@\/lib\/firebaseMessaging['"]/);
   assert.match(provider, /if \(!user\?\.id\) \{/);
 });
+
+test('a leitura da cidade padrão não executa INSERT e só faz fallback se não encontrada', () => {
+  const sourceCode = source('src/hooks/useCidadePadrao.tsx');
+  assert.doesNotMatch(sourceCode, /\.insert\(/);
+  assert.match(sourceCode, /if \(error\) throw error/);
+  assert.match(sourceCode, /if \(cidade\) return cidade/);
+  assert.match(sourceCode, /\.eq\('slug', 'santo-antonio-de-jesus'\)/);
+});
+
+test('a busca só consulta os catálogos depois de 2 caracteres', () => {
+  const suggestions = source('src/hooks/useSearchSuggestions.tsx');
+  const empresas = source('src/hooks/useEmpresas.tsx');
+  const categorias = source('src/hooks/useCategorias.tsx');
+  const cidades = source('src/hooks/useCidades.tsx');
+  assert.match(suggestions, /searchTerm\.trim\(\)\.length >= 2/);
+  assert.match(suggestions, /useEmpresas\(undefined, undefined, shouldFetch\)/);
+  assert.match(suggestions, /useCategorias\(undefined, shouldFetch\)/);
+  assert.match(suggestions, /useCidades\(shouldFetch\)/);
+  for (const query of [empresas, categorias, cidades]) {
+    assert.match(query, /enabled,/);
+    assert.match(query, /staleTime:/);
+  }
+});
