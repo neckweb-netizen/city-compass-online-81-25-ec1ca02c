@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod/v3';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { createCompanySlug } from '@/lib/companySlug';
 import { useToast } from '@/hooks/use-toast';
 import { useCategorias } from '@/hooks/useCategorias';
 import { useCidadePadrao } from '@/hooks/useCidadePadrao';
@@ -31,7 +32,6 @@ const empresaSchema = z.object({
 
 type EmpresaFormData = z.infer<typeof empresaSchema>;
 
-// Função para gerar slug a partir do nome
 const generateSlug = (nome: string): string => {
   return nome
     .toLowerCase()
@@ -86,26 +86,8 @@ const CadastroLocal = () => {
         return;
       }
 
-      // Gerar slug único
-      const baseSlug = generateSlug(data.nome);
-      let slug = baseSlug;
-      let counter = 1;
-
-      // Verificar se o slug já existe e gerar um único
-      while (true) {
-        const { data: existingEmpresa } = await supabase
-          .from('empresas')
-          .select('id')
-          .eq('slug', slug)
-          .single();
-
-        if (!existingEmpresa) {
-          break; // Slug é único
-        }
-
-        slug = `${baseSlug}-${counter}`;
-        counter++;
-      }
+      // Slug único sem consultas extras que podem falhar sob RLS.
+      const slug = createCompanySlug(data.nome);
 
       const { error } = await supabase
         .from('empresas')
