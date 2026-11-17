@@ -37,6 +37,7 @@ jobs:
       - run: node --test scripts/rls-final-nonpayment.test.mjs
       - run: node --test scripts/fk-company-review-comments.test.mjs
       - run: node --test scripts/fk-events-autonomos.test.mjs
+      - run: node --test scripts/fk-user-interactions.test.mjs
       - run: node --test scripts/optimized-images.test.mjs
       - run: node --test tests/security/push-notification-dedup.test.mjs
       - run: node --test tests/security/push-notification-links.test.mjs
