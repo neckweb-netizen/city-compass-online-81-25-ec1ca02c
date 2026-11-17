@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod/v3';
 import { supabase } from '@/integrations/supabase/client';
+import { createCompanySlug } from '@/lib/companySlug';
 import { useToast } from '@/hooks/use-toast';
 import { useCategorias } from '@/hooks/useCategorias';
 import { useCidadePadrao } from '@/hooks/useCidadePadrao';
@@ -48,7 +49,6 @@ interface CadastrarEmpresaDialogProps {
   buttonText?: string;
 }
 
-// Função para gerar slug a partir do nome
 const generateSlug = (nome: string): string => {
   return nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Remove acentos
   .replace(/[^a-z0-9\s-]/g, '') // Remove caracteres especiais
@@ -176,25 +176,8 @@ export const CadastrarEmpresaDialog = ({
         }
       }
 
-      // 3. Gerar slug único para a empresa
-      const baseSlug = generateSlug(empresaData.nome);
-      let slug = baseSlug;
-      let counter = 1;
-
-      // Verificar se o slug já existe e gerar um único
-      while (true) {
-        const { data: existingEmpresa } = await supabase
-          .from('empresas')
-          .select('id')
-          .eq('slug', slug)
-          .single();
-        
-        if (!existingEmpresa) {
-          break; // Slug é único
-        }
-        slug = `${baseSlug}-${counter}`;
-        counter++;
-      }
+      // Slug único sem consultas extras que podem falhar sob RLS.
+      const slug = createCompanySlug(empresaData.nome);
 
       // 4. Criar empresa associada ao usuário
       const { error: empresaError } = await supabase.from('empresas').insert({
