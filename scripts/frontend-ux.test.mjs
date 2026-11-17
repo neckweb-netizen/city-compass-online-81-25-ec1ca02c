@@ -68,5 +68,7 @@ test('landing comercial apresenta vantagens, FAQs e CTA funcional para login e c
   assert.match(file, /navigate\('\/anuncie-gratis\?auth=signup&mode=register'\)/);
   assert.ok((file.match(/onClick=\{iniciarCadastro\}/g) ?? []).length >= 3);
   assert.match(header, /searchParams.get\('auth'\) === 'signup'/);
+  assert.ok(file.includes("new Event('sajtem:open-business-signup')"));
+  assert.ok(header.includes("addEventListener('sajtem:open-business-signup', openBusinessSignup)"));
   assert.match(file, /aria-expanded=\{perguntaAberta === index\}/);
 });
