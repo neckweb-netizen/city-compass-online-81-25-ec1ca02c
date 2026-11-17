@@ -8,14 +8,10 @@ export const useCidades = (enabled = true) => {
     enabled,
     staleTime: 15 * 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('cidades')
-        .select('*')
-        .eq('ativo', true)
-        .order('nome');
-      
-      if (error) throw error;
-      return data;
+      const response = await fetch('/api/public-catalog?resource=cities');
+      if (!response.ok) throw new Error('Não foi possível carregar as cidades.');
+      return await response.json() as import('@/integrations/supabase/types').Tables<'cidades'>[];
+
     },
   });
 };

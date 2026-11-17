@@ -27,6 +27,8 @@ const publicCatalogPreviewFixture = {
           id: 'preview-' + name, section_name: name, display_name: name,
           ordem: index + 1, ativo: true,
         }));
+      } else if (resource === 'categories' || resource === 'cities') {
+        result = [];
       } else if (resource === 'banners') {
         result = params.get('section') === 'home'
           ? [{ id: 'preview-banner', titulo: 'SAJ TEM', imagem_url: '/Logo.png',

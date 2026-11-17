@@ -8,6 +8,14 @@ function resolveQuery(query = {}) {
   if (query.resource === 'home-sections') {
     return 'home_sections_order?select=*&ativo=eq.true&order=ordem.asc,section_name.asc';
   }
+  if (query.resource === 'categories') {
+    const type = query.type;
+    if (type !== undefined && !['empresa', 'evento', 'servico'].includes(type)) return null;
+    return 'categorias?select=*&ativo=eq.true' + (type ? '&tipo=eq.' + type : '') + '&order=nome.asc';
+  }
+  if (query.resource === 'cities') {
+    return 'cidades?select=*&ativo=eq.true&order=nome.asc';
+  }
   if (query.resource === 'banners') {
     const section = query.section;
     if (typeof section !== 'string' || !SECTIONS.has(section)) return null;
