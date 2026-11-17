@@ -1,6 +1,5 @@
 
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 
 export const useCategorias = (tipo?: 'empresa' | 'evento' | 'servico', enabled = true) => {
   return useQuery({
@@ -8,20 +7,11 @@ export const useCategorias = (tipo?: 'empresa' | 'evento' | 'servico', enabled =
     enabled,
     staleTime: 15 * 60_000,
     queryFn: async () => {
-      let query = supabase
-        .from('categorias')
-        .select('*')
-        .eq('ativo', true)
-        .order('nome');
-      
-      if (tipo) {
-        query = query.eq('tipo', tipo);
-      }
+      const url = '/api/public-catalog?resource=categories' + (tipo ? '&type=' + encodeURIComponent(tipo) : '');
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Não foi possível carregar as categorias.');
+      return await response.json() as { id: string; nome: string; tipo: string; ativo: boolean; [key: string]: any }[];
 
-      const { data, error } = await query;
-      
-      if (error) throw error;
-      return data;
     },
   });
 };
