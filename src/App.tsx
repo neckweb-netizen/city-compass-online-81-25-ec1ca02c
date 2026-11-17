@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, useSearchParams } from "react-router-dom";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { PWAInstallPrompt } from "@/components/pwa/PWAInstallPrompt";
 import { SecurityHeaders } from "@/components/security/SecurityHeaders";
@@ -73,6 +73,14 @@ const CalculadoraCombustivel = lazy(() => import("./pages/ferramentas/Calculador
 const ComparadorPrecos = lazy(() => import("./pages/ferramentas/ComparadorPrecos"));
 const CardapioDigital = lazy(() => import("./pages/ferramentas/CardapioDigital"));
 const CardapioPublico = lazy(() => import("./pages/CardapioPublico"));
+
+// Creating/managing a raffle requires login. An explicitly shared raffle link
+// remains public for buyers; server RLS/RPC must enforce actual data permissions.
+const GeradorRifaAccess = () => {
+  const [searchParams] = useSearchParams();
+  if (searchParams.get('id')) return <GeradorRifa />;
+  return <ProtectedRoute><GeradorRifa /></ProtectedRoute>;
+};
 
 // Admin pages com resolução resiliente do AdminBanners
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
@@ -418,15 +426,15 @@ const App = () => {
 
                 {/* CATÁLOGOS E FERRAMENTAS PÚBLICAS */}
                 <Route path="ferramentas" element={<FerramentasCatalogInternal />} />
-                <Route path="ferramentas/gerador-rifa" element={<GeradorRifa />} />
+                <Route path="ferramentas/gerador-rifa" element={<GeradorRifaAccess />} />
                 <Route path="ferramentas/ciclo-menstrual" element={<CicloMenstrual />} />
                 <Route path="ferramentas/controle-financeiro" element={<ControleFinanceiro />} />
-                <Route path="ferramentas/acompanhamento-gestacional" element={<AcompanhamentoGestacional />} />
-                <Route path="ferramentas/medicamentos" element={<MedicamentosLembretes />} />
-                <Route path="ferramentas/meu-veiculo" element={<MeuVeiculo />} />
+                <Route path="ferramentas/acompanhamento-gestacional" element={<ProtectedRoute><AcompanhamentoGestacional /></ProtectedRoute>} />
+                <Route path="ferramentas/medicamentos" element={<ProtectedRoute><MedicamentosLembretes /></ProtectedRoute>} />
+                <Route path="ferramentas/meu-veiculo" element={<ProtectedRoute><MeuVeiculo /></ProtectedRoute>} />
                 <Route path="ferramentas/calculadora-combustivel" element={<CalculadoraCombustivel />} />
                 <Route path="ferramentas/comparador-precos" element={<ComparadorPrecos />} />
-                <Route path="ferramentas/cardapio-digital" element={<CardapioDigital />} />
+                <Route path="ferramentas/cardapio-digital" element={<ProtectedRoute><CardapioDigital /></ProtectedRoute>} />
                 <Route path="cardapio/:slug" element={<CardapioPublico />} />
 
                 {/* FERRAMENTAS PROTEGIDAS */}
