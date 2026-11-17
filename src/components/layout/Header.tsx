@@ -54,8 +54,16 @@ export const Header = ({ sidebarOpen = true }: HeaderProps) => {
       setAuthDialogDefaultTab('login');
       setAuthDialogOpen(true);
     };
+    const openBusinessSignup = () => {
+      setAuthDialogDefaultTab('register');
+      setAuthDialogOpen(true);
+    };
     window.addEventListener('sajtem:open-auth', openLogin);
-    return () => window.removeEventListener('sajtem:open-auth', openLogin);
+    window.addEventListener('sajtem:open-business-signup', openBusinessSignup);
+    return () => {
+      window.removeEventListener('sajtem:open-auth', openLogin);
+      window.removeEventListener('sajtem:open-business-signup', openBusinessSignup);
+    };
   }, []);
 
   const handleSignOut = async () => {
