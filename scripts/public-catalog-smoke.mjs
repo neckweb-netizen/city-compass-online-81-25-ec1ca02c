@@ -6,9 +6,14 @@ const waitMs = Number(process.env.SAJTEM_SMOKE_DELAY_MS || '10000');
 const urls = [
   '/api/public-catalog?resource=home-sections',
   '/api/public-catalog?resource=banners&section=home',
-  '/api/public-catalog?resource=categories',
-  '/api/public-catalog?resource=cities',
+
 ];
+
+// Existing production is checked by PR workflows. New resources are only
+// checked after main has deployed them to avoid false pre-release failures.
+if (process.env.SAJTEM_SMOKE_EXTENDED === 'true') {
+  urls.push('/api/public-catalog?resource=categories', '/api/public-catalog?resource=cities');
+}
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
