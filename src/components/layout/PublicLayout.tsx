@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useEffect, useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Header } from './Header';
 import { BottomNavigation } from './BottomNavigation';
 import { SecurityHeaders } from '@/components/security/SecurityHeaders';
@@ -20,6 +20,8 @@ const AiAssistantChat = lazy(() =>
 );
 
 export const PublicLayout: React.FC = () => {
+  const { pathname } = useLocation();
+  const isBusinessLanding = pathname === '/anuncie-gratis';
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [desktop, setDesktop] = useState(() => window.matchMedia('(min-width: 1024px)').matches);
   const [tourReady, setTourReady] = useState(false);
@@ -62,14 +64,14 @@ export const PublicLayout: React.FC = () => {
       <SecurityHeaders />
       <RateLimitWrapper maxRequests={200} windowMs={60000}>
         <div className="min-h-screen bg-background flex w-full">
-          {tourReady && (
+          {!isBusinessLanding && tourReady && (
             <Suspense fallback={null}>
               <TourTutorial initialStart={tourRequested} />
               <TourTutorial mode="account" />
             </Suspense>
           )}
 
-          {desktop && (
+          {!isBusinessLanding && desktop && (
             <div className="fixed left-0 top-0 z-30 hidden h-full lg:block">
               <Suspense fallback={null}>
                 <DesktopSidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
@@ -77,17 +79,17 @@ export const PublicLayout: React.FC = () => {
             </div>
           )}
 
-          <div className={cn("flex-1 flex flex-col min-w-0 w-full transition-all duration-300", sidebarOpen ? "lg:ml-64" : "lg:ml-16")}>
+          <div className={cn("flex-1 flex flex-col min-w-0 w-full transition-all duration-300", !isBusinessLanding && (sidebarOpen ? "lg:ml-64" : "lg:ml-16"))}>
             <Header sidebarOpen={sidebarOpen} />
-            <main className="flex-1 pb-28 lg:pb-12 overflow-x-hidden w-full">
+            <main className={cn("flex-1 overflow-x-hidden w-full", isBusinessLanding ? "pb-0" : "pb-28 lg:pb-12")}>
               <Outlet />
               <Watermark />
             </main>
-            <BottomNavigation />
+            {!isBusinessLanding && <BottomNavigation />}
           </div>
         </div>
 
-        {assistantReady && (
+        {!isBusinessLanding && assistantReady && (
           <Suspense fallback={null}>
             <AiAssistantChat initialOpen={assistantRequested} />
           </Suspense>
