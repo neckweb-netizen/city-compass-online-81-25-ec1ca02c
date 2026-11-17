@@ -31,12 +31,12 @@ const beneficios = [
   },
   {
     icon: Megaphone, title: 'Dê visibilidade às campanhas',
-    text: 'Consulte as opções comerciais de anúncios e espaços de divulgação disponíveis para o seu negócio.',
+    text: 'Amplie sua presença com espaços de anúncios e campanhas opcionais de divulgação.',
     color: 'text-pink-600 bg-pink-50 dark:bg-pink-500/10',
   },
   {
     icon: TicketPercent, title: 'Promova suas oportunidades',
-    text: 'Conheça os recursos de divulgação de ofertas e ações promocionais, conforme o plano contratado.',
+    text: 'Explore recursos extras para divulgar ofertas e promoções, caso queira contratar mais visibilidade.',
     color: 'text-cyan-600 bg-cyan-50 dark:bg-cyan-500/10',
   },
 ];
@@ -44,25 +44,25 @@ const beneficios = [
 const passos = [
   { numero: '01', titulo: 'Cadastre seu negócio', texto: 'Comece informando os dados essenciais da empresa no nosso fluxo de cadastro.' },
   { numero: '02', titulo: 'Prepare sua presença digital', texto: 'Organize a apresentação, a categoria e os canais de contato do estabelecimento.' },
-  { numero: '03', titulo: 'Escolha sua divulgação', texto: 'Conheça as condições comerciais e os recursos disponíveis para contratação.' },
-  { numero: '04', titulo: 'Aproxime-se de novos clientes', texto: 'Após a aprovação e a ativação dos recursos contratados, sua empresa pode ser descoberta no portal.' },
+  { numero: '03', titulo: 'Comece a aparecer no guia', texto: 'Com o cadastro aprovado, sua empresa pode aparecer nas buscas e categorias do portal.' },
+  { numero: '04', titulo: 'Cresça no seu ritmo', texto: 'Se quiser mais visibilidade, conheça as opções pagas de destaque e divulgação.' },
 ];
 
 const diferenciais = [
   { icon: Store, text: 'Perfil comercial para apresentar sua marca' },
   { icon: Compass, text: 'Descoberta por área de interesse e categoria' },
   { icon: MousePointerClick, text: 'Caminhos simples para entrar em contato' },
-  { icon: BadgeCheck, text: 'Possibilidade de recursos de destaque conforme plano' },
+  { icon: BadgeCheck, text: 'Destaques opcionais para quem quer ir além' },
   { icon: Globe2, text: 'Presença digital complementar às redes sociais' },
   { icon: HeartHandshake, text: 'Foco no comércio e nos serviços da região' },
 ];
 
 const perguntas = [
-  { q: 'O cadastro e a divulgação são gratuitos?', a: 'Não apresentamos a divulgação comercial como gratuita. As condições, os valores e os recursos disponíveis dependem da oferta e do plano contratado. Confira as informações comerciais antes de confirmar a contratação.' },
-  { q: 'Minha empresa aparece imediatamente?', a: 'O cadastro pode passar por análise e aprovação. A publicação e os recursos de destaque dependem das condições e da ativação do serviço contratado.' },
+  { q: 'Preciso pagar para cadastrar minha empresa?', a: 'Não. O cadastro e a presença básica da empresa no guia são gratuitos, sujeitos à aprovação. Planos pagos são opcionais e oferecem benefícios extras, como possibilidades de destaque e divulgação.' },
+  { q: 'Minha empresa aparece imediatamente?', a: 'O cadastro passa por análise e aprovação. Depois de aprovado, o perfil básico pode aparecer no guia sem a necessidade de contratar um plano. Destaques e recursos extras são opcionais.' },
   { q: 'Preciso ter um site para participar?', a: 'Não. Um perfil comercial no guia pode complementar sua presença digital e ajudar a apresentar seu negócio aos visitantes.' },
   { q: 'Posso divulgar serviços além de lojas?', a: 'Sim. O portal reúne negócios locais de diferentes segmentos. Escolha a categoria adequada durante o cadastro, conforme a disponibilidade.' },
-  { q: 'O SAJ TEM garante vendas ou posição fixa na busca?', a: 'Não. Visibilidade, contatos e vendas dependem de diversos fatores. Recursos de destaque, quando oferecidos, seguem as condições específicas do plano contratado.' },
+  { q: 'O SAJ TEM garante vendas ou posição fixa na busca?', a: 'Não. O guia ajuda seu negócio a ser encontrado, mas resultados dependem de diversos fatores. Recursos adicionais de destaque seguem as condições da oferta escolhida.' },
 ];
 
 export const AnuncieGratis = () => {
@@ -96,8 +96,8 @@ export const AnuncieGratis = () => {
               Seu negócio merece <span className="bg-gradient-to-r from-sky-300 via-violet-300 to-fuchsia-300 bg-clip-text text-transparent">ser descoberto.</span>
             </h1>
             <p className="max-w-xl text-base leading-relaxed text-slate-300 sm:text-lg">
-              Transforme a presença da sua empresa na região. Apresente o que você oferece,
-              facilite o contato com interessados e descubra novas oportunidades de divulgação no SAJ TEM.
+              Comece com um cadastro gratuito para dar visibilidade à sua empresa na região. Apresente o que você oferece,
+              facilite o contato com interessados e, se desejar, conheça recursos extras de divulgação no SAJ TEM.
             </p>
             <div className="flex flex-col gap-3 sm:flex-row">
               <button type="button" onClick={iniciarCadastro}
@@ -111,7 +111,7 @@ export const AnuncieGratis = () => {
             <div className="flex flex-wrap gap-x-5 gap-y-3 text-xs font-medium text-slate-300 sm:text-sm">
               <span className="inline-flex items-center gap-2"><Check className="h-4 w-4 text-emerald-400" /> Foco em negócios locais</span>
               <span className="inline-flex items-center gap-2"><Check className="h-4 w-4 text-emerald-400" /> Experiência adaptada ao celular</span>
-              <span className="inline-flex items-center gap-2"><Check className="h-4 w-4 text-emerald-400" /> Planos e soluções comerciais</span>
+              <span className="inline-flex items-center gap-2"><Check className="h-4 w-4 text-emerald-400" /> Cadastro básico gratuito</span>
             </div>
           </div>
 
@@ -167,7 +167,7 @@ export const AnuncieGratis = () => {
               </article>
             ))}
           </div>
-          <p className="mt-6 text-xs text-muted-foreground">Os recursos disponíveis e seus limites variam conforme o serviço ou plano contratado.</p>
+          <p className="mt-6 text-xs text-muted-foreground">O cadastro e a presença básica são gratuitos. Benefícios adicionais de divulgação podem ser contratados separadamente.</p>
         </div>
       </section>
 
@@ -228,19 +228,19 @@ export const AnuncieGratis = () => {
         <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1fr_.9fr] lg:items-center">
           <div>
             <span className="text-xs font-extrabold uppercase tracking-[.18em] text-sky-300">Soluções de divulgação</span>
-            <h2 className="mt-4 text-3xl font-black leading-tight sm:text-4xl">Sua empresa tem objetivos. <span className="text-violet-300">Sua divulgação também deve ter.</span></h2>
-            <p className="mt-5 max-w-xl leading-7 text-slate-300">Conheça as possibilidades de exposição no guia, apresentação comercial e ações de destaque, de acordo com a disponibilidade e as condições de cada plano.</p>
+            <h2 className="mt-4 text-3xl font-black leading-tight sm:text-4xl">Comece gratuitamente. <span className="text-violet-300">Destaque sua empresa quando quiser.</span></h2>
+            <p className="mt-5 max-w-xl leading-7 text-slate-300">Sua empresa pode começar gratuitamente no guia. Se quiser ampliar a divulgação, conheça as opções de destaque e campanhas disponíveis, com contratação opcional.</p>
             <div className="mt-7 flex flex-wrap gap-2 text-xs font-bold text-violet-100">
               {['Perfil comercial', 'Destaques', 'Banners', 'Campanhas', 'Promoções'].map(item => <span key={item} className="rounded-full border border-white/15 bg-white/10 px-3 py-2">{item}</span>)}
             </div>
             <button type="button" onClick={iniciarCadastro} className="mt-9 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-extrabold text-indigo-900 transition-colors hover:bg-violet-100">Conhecer a proposta para meu negócio <ArrowRight className="h-4 w-4" /></button>
           </div>
           <div className="rounded-[2rem] border border-white/15 bg-white/10 p-6 backdrop-blur-sm sm:p-8">
-            <div className="flex items-center gap-3"><ShieldCheck className="h-7 w-7 text-emerald-300" /><h3 className="text-xl font-extrabold">Comunicação transparente</h3></div>
+            <div className="flex items-center gap-3"><ShieldCheck className="h-7 w-7 text-emerald-300" /><h3 className="text-xl font-extrabold">Comece grátis. Evolua quando quiser.</h3></div>
             <div className="mt-7 space-y-5">
               {[
-                ['Planos comerciais', 'Os serviços de divulgação são oferecidos mediante contratação.'],
-                ['Benefícios conforme a oferta', 'Acesso, posicionamento e recursos extras dependem das condições vigentes.'],
+                ['Comece gratuitamente', 'O cadastro e o perfil básico não exigem a contratação de um plano.'],
+                ['Pague só se quiser extras', 'Destaques, banners e outras ações de divulgação são opcionais e seguem as condições da oferta.'],
                 ['Sem promessas irreais', 'Não prometemos número de visualizações, clientes ou vendas.'],
               ].map(([titulo, descricao]) => <div key={titulo} className="flex gap-3"><Check className="mt-1 h-5 w-5 shrink-0 text-emerald-300" /><div><p className="font-bold">{titulo}</p><p className="mt-1 text-sm leading-6 text-slate-300">{descricao}</p></div></div>)}
             </div>
@@ -250,7 +250,7 @@ export const AnuncieGratis = () => {
 
       <section className="px-5 py-20 sm:px-8 lg:py-24">
         <div className="mx-auto max-w-4xl">
-          <div className="text-center"><span className="inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-[.18em] text-violet-600 dark:text-violet-400"><CircleHelp className="h-4 w-4" /> Tire suas dúvidas</span><h2 className="mt-4 text-3xl font-black sm:text-4xl">Perguntas frequentes</h2><p className="mt-3 text-muted-foreground">Informações claras antes de cadastrar sua empresa.</p></div>
+          <div className="text-center"><span className="inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-[.18em] text-violet-600 dark:text-violet-400"><CircleHelp className="h-4 w-4" /> Tire suas dúvidas</span><h2 className="mt-4 text-3xl font-black sm:text-4xl">Perguntas frequentes</h2><p className="mt-3 text-muted-foreground">Saiba o que é gratuito e quando vale a pena escolher benefícios extras.</p></div>
           <div className="mt-10 space-y-3">
             {perguntas.map(({ q, a }, index) => (
               <div key={q} className="overflow-hidden rounded-2xl border border-border bg-card">
@@ -270,17 +270,14 @@ export const AnuncieGratis = () => {
           <div className="relative mx-auto max-w-3xl">
             <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-extrabold"><Sparkles className="h-4 w-4" /> É hora de apresentar sua empresa</span>
             <h2 className="mt-6 text-3xl font-black leading-tight tracking-tight sm:text-5xl">Mais presença para sua marca começa com uma decisão.</h2>
-            <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-violet-100">Dê o primeiro passo para fazer parte do guia de negócios SAJ TEM e conheça nossas soluções comerciais.</p>
+            <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-violet-100">Cadastre sua empresa gratuitamente, apresente seu negócio e descubra recursos extras para ampliar sua visibilidade quando quiser.</p>
             <button type="button" onClick={iniciarCadastro} className="mt-8 inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl bg-white px-7 py-4 text-sm font-extrabold text-indigo-900 shadow-lg transition-transform hover:-translate-y-0.5 sm:w-auto">Cadastrar meu negócio <ArrowRight className="h-5 w-5" /></button>
-            <p className="mt-5 text-xs text-violet-100">Serviço comercial pago. Consulte condições e valores antes da contratação.</p>
+            <p className="mt-5 text-xs text-violet-100">Cadastro básico gratuito. Os recursos premium são opcionais e podem ter custos.</p>
           </div>
         </div>
       </section>
 
-      {/* Mobile-only conversion CTA, without blocking the bottom navigation. */}
-      <div className="pointer-events-none fixed inset-x-0 bottom-20 z-40 px-4 pb-2 lg:hidden">
-        <button type="button" onClick={iniciarCadastro} className="pointer-events-auto flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-violet-600 px-5 py-3 text-sm font-extrabold text-white shadow-[0_12px_40px_rgba(59,30,145,.35)] hover:bg-violet-700">Cadastrar meu negócio <ArrowRight className="h-4 w-4" /></button>
-      </div>
+
     </div>
   );
 };
