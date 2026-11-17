@@ -27,6 +27,7 @@ jobs:
       - name: Wait for Vercel production deployment and check JSON endpoint
         env:
           SAJTEM_BASE_URL: https://sajtem.vercel.app
+          SAJTEM_SMOKE_EXTENDED: 'true'
           SAJTEM_SMOKE_ATTEMPTS: '24'
           SAJTEM_SMOKE_DELAY_MS: '12000'
         run: node scripts/public-catalog-smoke.mjs
