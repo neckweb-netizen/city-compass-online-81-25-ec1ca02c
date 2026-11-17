@@ -43,18 +43,18 @@ test('a navegação central continua circular e preserva as cinco rotas', () => 
   }
 });
 
-test('landing comercial não promete gratuidade, estatísticas artificiais ou resultados garantidos', () => {
+test('landing comercial divulga cadastro básico grátis e não usa números artificiais', () => {
   const file = source('src/pages/AnuncieGratis.tsx');
   for (const misleading of [
     'totalUsuarios', 'totalVisualizacoes', 'totalCliques',
-    'carregarMetricasPublicas', 'R$ 0,00', '100% Gratuito',
-    'Grátis', 'gratuito para empresas', 'vender até 3x',
+    'carregarMetricasPublicas', 'vender até 3x',
     '+ 150', '+ 1200', '+ 340',
   ]) {
     assert.ok(!file.toLowerCase().includes(misleading.toLowerCase()), 'Texto enganoso: ' + misleading);
   }
-  assert.match(file, /Serviço comercial pago/);
-  assert.match(file, /condições e valores antes da contratação/);
+  assert.match(file, /O cadastro e a presença básica são gratuitos/);
+  assert.match(file, /Os recursos premium são opcionais/);
+  assert.match(file, /O cadastro e o perfil básico não exigem a contratação de um plano/);
   assert.match(file, /Sem promessas irreais/);
 });
 
@@ -71,4 +71,17 @@ test('landing comercial apresenta vantagens, FAQs e CTA funcional para login e c
   assert.ok(file.includes("new Event('sajtem:open-business-signup')"));
   assert.ok(header.includes("addEventListener('sajtem:open-business-signup', openBusinessSignup)"));
   assert.match(file, /aria-expanded=\{perguntaAberta === index\}/);
+});
+
+
+test('landing não possui barra fixa e esconde menu, navegação e assistente de IA apenas nessa rota', () => {
+  const landing = source('src/pages/AnuncieGratis.tsx');
+  const layout = source('src/components/layout/PublicLayout.tsx');
+  assert.doesNotMatch(landing, /pointer-events-none fixed inset-x-0 bottom-20/);
+  assert.match(layout, /pathname === '\/anuncie-gratis'/);
+  assert.match(layout, /!isBusinessLanding && desktop/);
+  assert.match(layout, /!isBusinessLanding && <BottomNavigation \/>/);
+  assert.match(layout, /!isBusinessLanding && assistantReady/);
+  assert.match(layout, /!isBusinessLanding && tourReady/);
+  assert.match(layout, /isBusinessLanding \? "pb-0"/);
 });
