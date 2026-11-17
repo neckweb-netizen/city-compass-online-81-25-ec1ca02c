@@ -6,6 +6,8 @@ const waitMs = Number(process.env.SAJTEM_SMOKE_DELAY_MS || '10000');
 const urls = [
   '/api/public-catalog?resource=home-sections',
   '/api/public-catalog?resource=banners&section=home',
+  '/api/public-catalog?resource=categories',
+  '/api/public-catalog?resource=cities',
 ];
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -29,6 +31,8 @@ async function check() {
     if (suffix.includes('banners') && !data.every(row => row.ativo === true && row.secao === 'home')) {
       throw new Error(url.pathname + ': invalid public banners payload');
     }
+    if (suffix.includes('categories') && !data.every(row => row.ativo === true && typeof row.nome === 'string')) throw new Error('Invalid public categories');
+    if (suffix.includes('cities') && !data.every(row => row.ativo === true && typeof row.nome === 'string')) throw new Error('Invalid public cities');
     console.log('PASS', url.pathname, 'rows=' + data.length, 'x-vercel-cache=' + (response.headers.get('x-vercel-cache') || 'n/d'));
   }
 }
