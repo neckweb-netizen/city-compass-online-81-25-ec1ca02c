@@ -75,3 +75,26 @@ test('upstream failure is never cached and never exposes upstream error', async 
   assert.equal(res.headers['Vercel-CDN-Cache-Control'], undefined);
   assert.equal(JSON.stringify(res.body).includes('401'), false);
 });
+
+test('categories reject arbitrary types and cities do not accept user filters', async (t) => {
+  const rejected = response();
+  await handler({ method: 'GET', query: { resource: 'categories', type: 'admin' } }, rejected);
+  assert.equal(rejected.statusCode, 400);
+  const previous = globalThis.fetch;
+  const urls = [];
+  globalThis.fetch = async (url) => {
+    urls.push(String(url));
+    return { ok: true, json: async () => [] };
+  };
+  t.after(() => { globalThis.fetch = previous; });
+  const cat = response();
+  await handler({ method: 'GET', query: { resource: 'categories', type: 'servico', secret: 'private' } }, cat);
+  assert.equal(cat.statusCode, 200);
+  assert.match(urls[0], /categorias\\?select=\\*&ativo=eq\\.true&tipo=eq\\.servico&order=nome\\.asc/);
+  assert.doesNotMatch(urls[0], /secret|private/);
+  const city = response();
+  await handler({ method: 'GET', query: { resource: 'cities', auth: 'user-session' } }, city);
+  assert.equal(city.statusCode, 200);
+  assert.match(urls[1], /cidades\\?select=\\*&ativo=eq\\.true&order=nome\\.asc/);
+  assert.doesNotMatch(urls[1], /session/);
+});
