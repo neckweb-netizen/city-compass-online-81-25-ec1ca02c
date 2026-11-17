@@ -31,6 +31,7 @@ jobs:
       - run: node --test scripts/rls-admin-initplans.test.mjs
       - run: node --test scripts/rls-admin-company-role.test.mjs
       - run: node --test scripts/rls-owner-moderation.test.mjs
+      - run: node --test scripts/rls-favorites-votes-follows.test.mjs
       - run: node --test scripts/optimized-images.test.mjs
       - run: node --test tests/security/push-notification-dedup.test.mjs
       - run: node --test tests/security/push-notification-links.test.mjs
