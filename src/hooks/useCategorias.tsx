@@ -10,7 +10,7 @@ export const useCategorias = (tipo?: 'empresa' | 'evento' | 'servico', enabled =
       const url = '/api/public-catalog?resource=categories' + (tipo ? '&type=' + encodeURIComponent(tipo) : '');
       const response = await fetch(url);
       if (!response.ok) throw new Error('Não foi possível carregar as categorias.');
-      return await response.json() as { id: string; nome: string; tipo: string; ativo: boolean; [key: string]: any }[];
+      return await response.json() as import('@/integrations/supabase/types').Tables<'categorias'>[];
 
     },
   });
