@@ -112,3 +112,21 @@ test('admin pending counters use one Realtime channel with debounced updates', (
   assert.match(admin, /removeChannel\(channel\)/);
   assert.doesNotMatch(admin, /rt-admin-locais|rt-admin-voz|rt-admin-producao-local/);
 });
+
+test('ferramentas com sincronização ou plano exigem login antes de carregar página', () => {
+  const app = source('src/App.tsx');
+  for (const name of [
+    'acompanhamento-gestacional',
+    'medicamentos',
+    'meu-veiculo',
+    'cardapio-digital',
+    'gestao-cobrancas',
+    'consulta-fipe',
+  ]) {
+    assert.ok(app.includes('path="ferramentas/' + name + '" element={<ProtectedRoute>'), 'Login obrigatório em ' + name);
+  }
+  assert.ok(app.includes('path="ferramentas/gerador-rifa" element={<GeradorRifaAccess />}'));
+  assert.ok(app.includes("if (searchParams.get('id')) return <GeradorRifa />"));
+  assert.ok(app.includes('return <ProtectedRoute><GeradorRifa /></ProtectedRoute>'));
+  assert.ok(app.includes('path="cardapio/:slug" element={<CardapioPublico />}'));
+});
