@@ -100,3 +100,15 @@ test('a busca só consulta os catálogos depois de 2 caracteres', () => {
     assert.match(query, /staleTime:/);
   }
 });
+
+test('admin pending counters use one Realtime channel with debounced updates', () => {
+  const admin = source('src/components/admin/AdminSidebar.tsx');
+  assert.equal((admin.match(/\.channel\('rt-admin-pending-counters'\)/g) ?? []).length, 1);
+  for (const table of ['empresas', 'problemas_cidade', 'achados_perdidos', 'entre_nos_postagens', 'entre_nos_denuncias', 'produtores_locais', 'pedidos_locais']) {
+    assert.match(admin, new RegExp("table: '" + table + "'"));
+  }
+  assert.match(admin, /\}, 700\)/);
+  assert.match(admin, /visibilitychange/);
+  assert.match(admin, /removeChannel\(channel\)/);
+  assert.doesNotMatch(admin, /rt-admin-locais|rt-admin-voz|rt-admin-producao-local/);
+});
