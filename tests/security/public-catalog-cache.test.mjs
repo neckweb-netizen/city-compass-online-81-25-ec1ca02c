@@ -90,11 +90,11 @@ test('categories reject arbitrary types and cities do not accept user filters', 
   const cat = response();
   await handler({ method: 'GET', query: { resource: 'categories', type: 'servico', secret: 'private' } }, cat);
   assert.equal(cat.statusCode, 200);
-  assert.match(urls[0], /categorias\\?select=\\*&ativo=eq\\.true&tipo=eq\\.servico&order=nome\\.asc/);
+  assert.match(urls[0], /categorias\?select=\*&ativo=eq\.true&tipo=eq\.servico&order=nome\.asc/);
   assert.doesNotMatch(urls[0], /secret|private/);
   const city = response();
   await handler({ method: 'GET', query: { resource: 'cities', auth: 'user-session' } }, city);
   assert.equal(city.statusCode, 200);
-  assert.match(urls[1], /cidades\\?select=\\*&ativo=eq\\.true&order=nome\\.asc/);
+  assert.match(urls[1], /cidades\?select=\*&ativo=eq\.true&order=nome\.asc/);
   assert.doesNotMatch(urls[1], /session/);
 });
