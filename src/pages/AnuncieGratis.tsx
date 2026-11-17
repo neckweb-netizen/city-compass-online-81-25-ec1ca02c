@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  ArrowRight, ArrowUpRight, BadgeCheck, BellRing, Building2, Check, ChevronDown,
-  CircleHelp, Compass, Eye, Gift, Globe2, HeartHandshake, MapPin, Megaphone,
+  ArrowRight, ArrowUpRight, BadgeCheck, Building2, Check, ChevronDown,
+  CircleHelp, Compass, Eye, Globe2, HeartHandshake, MapPin, Megaphone,
   MessageCircle, MousePointerClick, Search, ShieldCheck, Smartphone, Sparkles,
-  Star, Store, Target, TicketPercent, TrendingUp, Users, WandSparkles,
+  Star, Store, Target, TicketPercent, TrendingUp, WandSparkles,
 } from 'lucide-react';
 
 const beneficios = [
@@ -159,7 +159,7 @@ export const AnuncieGratis = () => {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {beneficios.map(({ icon: Icon, title, text, color }) => (
               <article key={title} className="group rounded-[1.6rem] border border-border bg-card p-7 shadow-sm transition-all hover:-translate-y-1 hover:border-violet-500/30 hover:shadow-xl hover:shadow-violet-500/5">
-                <div className={`mb-6 grid h-13 w-13 place-items-center rounded-2xl p-3 ${color}`}><Icon className="h-7 w-7" /></div>
+                <div className={`mb-6 grid h-14 w-14 place-items-center rounded-2xl p-3 ${color}`}><Icon className="h-7 w-7" /></div>
                 <h3 className="text-lg font-extrabold">{title}</h3>
                 <p className="mt-3 text-sm leading-7 text-muted-foreground">{text}</p>
               </article>
