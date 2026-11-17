@@ -41,3 +41,5 @@ jobs:
           SAJTEM_SMOKE_ATTEMPTS: '3'
           SAJTEM_SMOKE_DELAY_MS: '5000'
         run: node scripts/public-catalog-smoke.mjs
+      - name: Tiny public read-only baseline (12 requests max)
+        run: node scripts/public-read-load-smoke.mjs --allow-small-smoke --allow-production
