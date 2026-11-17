@@ -77,6 +77,8 @@ export const AnuncieGratis = () => {
     }
     // Existing header integration opens the business-registration dialog.
     navigate('/anuncie-gratis?auth=signup&mode=register');
+    // A second click must reopen the dialog even when the URL is unchanged.
+    window.dispatchEvent(new Event('sajtem:open-business-signup'));
   };
 
   return (
