@@ -94,41 +94,40 @@ export const AdminSidebar = ({ activeSection, onSectionChange }: AdminSidebarPro
   };
 
   useEffect(() => {
-    buscarContagensPendentes();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let active = true;
+    // Multiple database changes during the same action need one count refresh.
+    const scheduleRefresh = () => {
+      if (!active || document.hidden) return;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (active) void buscarContagensPendentes();
+      }, 700);
+    };
 
-    // Cria canais de tempo real para atualizar as notificações na hora que algo mudar no banco
-    const canalLocais = supabase
-      .channel('rt-admin-locais')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'empresas' }, () => buscarContagensPendentes())
+    void buscarContagensPendentes();
+    // A single admin-only socket, not six separate subscriptions.
+    const channel = supabase.channel('rt-admin-pending-counters')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'empresas' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'problemas_cidade' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'achados_perdidos' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'entre_nos_postagens' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'entre_nos_denuncias' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'produtores_locais' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos_locais' }, scheduleRefresh)
       .subscribe();
 
-    const canalVoz = supabase
-      .channel('rt-admin-voz')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'problemas_cidade' }, () => buscarContagensPendentes())
-      .subscribe();
-
-    const canalAchados = supabase
-      .channel('rt-admin-achados')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'achados_perdidos' }, () => buscarContagensPendentes())
-      .subscribe();
-    const canalEntreNos = supabase.channel('rt-admin-entre-nos')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'entre_nos_postagens' }, () => buscarContagensPendentes())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'entre_nos_denuncias' }, () => buscarContagensPendentes())
-      .subscribe();
-    const canalProducao = supabase.channel('rt-admin-producao-local')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'produtores_locais' }, () => buscarContagensPendentes())
-      .subscribe();
-    const canalViverSaj = supabase.channel('rt-admin-viver-saj')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos_locais' }, () => buscarContagensPendentes())
-      .subscribe();
+    // Revalidate once on return to the admin interface rather than querying in a hidden tab.
+    const onVisibilityChange = () => {
+      if (!document.hidden) scheduleRefresh();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
 
     return () => {
-      supabase.removeChannel(canalLocais);
-      supabase.removeChannel(canalVoz);
-      supabase.removeChannel(canalAchados);
-      supabase.removeChannel(canalEntreNos);
-      supabase.removeChannel(canalProducao);
-      supabase.removeChannel(canalViverSaj);
+      active = false;
+      if (timer) clearTimeout(timer);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      void supabase.removeChannel(channel);
     };
   }, []);
 
