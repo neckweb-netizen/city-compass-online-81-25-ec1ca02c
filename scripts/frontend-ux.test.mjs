@@ -42,3 +42,31 @@ test('a navegação central continua circular e preserva as cinco rotas', () => 
     assert.ok(nav.includes(`rota: ${route}`), `rota ausente: ${route}`);
   }
 });
+
+test('landing comercial não promete gratuidade, estatísticas artificiais ou resultados garantidos', () => {
+  const file = source('src/pages/AnuncieGratis.tsx');
+  for (const misleading of [
+    'totalUsuarios', 'totalVisualizacoes', 'totalCliques',
+    'carregarMetricasPublicas', 'R$ 0,00', '100% Gratuito',
+    'Grátis', 'gratuito para empresas', 'vender até 3x',
+    '+ 150', '+ 1200', '+ 340',
+  ]) {
+    assert.ok(!file.toLowerCase().includes(misleading.toLowerCase()), 'Texto enganoso: ' + misleading);
+  }
+  assert.match(file, /Serviço comercial pago/);
+  assert.match(file, /condições e valores antes da contratação/);
+  assert.match(file, /Sem promessas irreais/);
+});
+
+test('landing comercial apresenta vantagens, FAQs e CTA funcional para login e cadastro', () => {
+  const file = source('src/pages/AnuncieGratis.tsx');
+  const header = source('src/components/layout/Header.tsx');
+  assert.match(file, /const beneficios = \[/);
+  assert.match(file, /const perguntas = \[/);
+  assert.match(file, /if \(user\) \{/);
+  assert.match(file, /navigate\('\/cadastro-local'\)/);
+  assert.match(file, /navigate\('\/anuncie-gratis\?auth=signup&mode=register'\)/);
+  assert.ok((file.match(/onClick=\{iniciarCadastro\}/g) ?? []).length >= 3);
+  assert.match(header, /searchParams.get\('auth'\) === 'signup'/);
+  assert.match(file, /aria-expanded=\{perguntaAberta === index\}/);
+});
