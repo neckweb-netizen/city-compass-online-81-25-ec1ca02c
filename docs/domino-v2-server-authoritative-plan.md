@@ -13,6 +13,7 @@
 - **Registro de vitória/empate em protótipo**: vitória exige mão vazia; empate exige dois passes válidos e ausência de peças jogáveis nas duas mãos. As RPCs antigas são bloqueadas apenas nas partidas v2.
 - **Limpeza automática de estado v2 em protótipo**: ao sair um jogador ou a sala voltar a `aguardando`, o gatilho elimina a distribuição antiga e as mãos por cascata.
 - **Compatibilidade com jogadas legadas**: o gatilho `SECURITY INVOKER` consulta um auxiliar `SECURITY DEFINER` que revela apenas se a sala possui uma partida v2, sem abrir leitura das mãos privadas.
+- **Ativação controlada por sala no staging**: uma allowlist em `private.domino_v2_salas_habilitadas`, sem permissões diretas de escrita a usuários comuns, impede que qualquer participante ative a V2 em uma sala legada. A autorização é inserida exclusivamente por administrador confiável do staging.
 
 ## Não está entregue e bloqueia o uso real
 1. **RPC de jogada criada em protótipo** (`domino_v2_jogar`): confere posse, valida turno/encaixe e remove a peça atomicamente da mão privada; também existe uma proteção do gatilho para salas v2. **Ainda exige execução de testes em staging e revisão da compatibilidade dos gatilhos.** O cliente atual ainda atualiza `domino_salas` diretamente.
@@ -28,6 +29,8 @@
 - Confirmar que um usuário A não consegue visualizar a mão de B ou modificar as tabelas privadas via API.
 - Confirmar que visitante e usuário C (não participante) não conseguem executar as RPCs com sucesso.
 - Confirmar que partida terminada, incompleta ou já iniciada não aceita distribuição.
+- Confirmar que qualquer sala sem autorização explícita em `private.domino_v2_salas_habilitadas` rejeita inicialização, mesmo quando a solicitação vem de um participante legítimo.
+- Confirmar que um jogador não consegue inserir sua sala na allowlist via API nem reativar uma partida legada.
 - Jogar uma mão completa com `domino_v2_jogar`, testar duplicatas, peças fora da mão, jogada fora da vez, passe inválido e partida encerrada.
 - Exercitar `domino_v2_passar`: negar passe havendo peça compatível; permitir passe sem peças jogáveis; negar `tempo` até implementação de relógio no servidor.
 - Verificar `domino_v2_registrar_resultado` com duas contas: vitória só com mão vazia, empate só com ambas sem peças jogáveis, contagem e pontuação registradas **uma única vez**.
@@ -39,7 +42,7 @@
 - **Bloqueio crítico:** testes estáticos de migrations não verificam compilação e execução das rotinas PostgreSQL; é obrigatória execução transacional em staging.
 
 ## Plano de lançamento
-1. **Não mesclar esta PR** antes da revisão e validação isolada; criar branch Supabase de teste se o plano permitir, ou usar projeto de staging.
+1. **Não mesclar esta PR** antes da revisão e validação isolada. A criação da branch Supabase foi tentada em 18/11/2026; a plataforma exigiu confirmação prévia de custo. Nenhuma branch de testes foi criada nem qualquer despesa autorizada. É preciso autorização explícita do proprietário para o custo informado antes de prosseguir, ou usar um projeto de staging já existente.
 2. Implantar migrations no staging, executar testes automáticos de integração com dois usuários e comparar permissões.
 3. Revisar e testar as RPCs de jogada/passe/finalização já prototipadas; implementar controle de tempo pelo servidor e atualizar a interface atrás de feature flag desativada por padrão.
 4. Executar testes de segurança e regressão no staging; somente depois planejar ativação gradual e rollback.
