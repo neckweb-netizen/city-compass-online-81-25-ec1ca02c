@@ -7,7 +7,10 @@ CREATE SCHEMA private;
 CREATE TABLE auth.users (id uuid PRIMARY KEY);
 CREATE OR REPLACE FUNCTION auth.uid()
 RETURNS uuid LANGUAGE sql STABLE SET search_path = ''
-AS $$ SELECT NULLIF(current_setting('request.jwt.claim.sub', true),'')::uuid $$;
+AS $ SELECT COALESCE(
+  NULLIF(current_setting('request.jwt.claim.sub', true),'')::uuid,
+  (NULLIF(current_setting('request.jwt.claims', true),'')::jsonb ->> 'sub')::uuid
+) $;
 
 CREATE TABLE public.domino_salas (
   id uuid PRIMARY KEY,
