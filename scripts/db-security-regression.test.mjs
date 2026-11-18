@@ -93,3 +93,10 @@ test('automatic domino queue locks the selected player as well as the room', () 
   assert.match(sql, /regexp_matches\(v_before,v_pattern,'g'\)/);
   assert.match(sql, /EXECUTE v_after/);
 });
+
+test('automatic domino queue assigns the initial turn when a match starts', () => {
+  const sql = migration('20261118114406_set_initial_turn_in_domino_auto_matchmaking.sql');
+  assert.match(sql, /vez_usuario_id = CASE WHEN v_j2 IS NOT NULL THEN v_j2 ELSE null END/);
+  assert.match(sql, /vez_usuario_id = v_j1/);
+  assert.match(sql, /EXECUTE v_new/);
+});
