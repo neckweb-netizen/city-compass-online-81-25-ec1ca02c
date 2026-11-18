@@ -23,6 +23,14 @@
 5. Adaptação do frontend: substituir a distribuição determinística e `localStorage` pela RPC; tratar reconexão e saída/abandono de partida.
 6. Estratégia para substituição das partidas existentes sem interferir em usuários ativos.
 
+## Frontend em feature flag (protótipo)
+- A integração experimental foi adicionada a `src/lib/dominoV2Client.ts` e `src/components/domino/DominoTabuleiro.tsx`.
+- **Desligado por padrão:** `VITE_DOMINO_V2_ENABLED` precisa ser exatamente `true` **e** a sala precisa aparecer em `VITE_DOMINO_V2_ALLOWED_ROOM_IDS` (lista de UUIDs separada por vírgula). A allowlist privada do banco também precisa autorizar a sala. Sem essas condições, o jogo legado permanece o padrão.
+- Quando habilitado, as peças são carregadas por RPC; o navegador não as salva no `localStorage`, as jogadas/passes são enviados ao servidor e as mensagens de tabuleiro via broadcast são ignoradas.
+- Erros da V2 não causam fallback silencioso ao jogo legado. O cronômetro de 30 segundos não força passe, porque o servidor ainda não valida tempo.
+- **Não configurar as variáveis V2 no ambiente de produção.** As RPCs e seu fluxo ainda precisam de validação com Supabase Auth, Realtime, reconexão e duas contas simultâneas.
+- O teste `scripts/domino-v2-frontend.test.mjs` verifica apenas os caminhos do código, não substitui teste de interface real.
+
 ## Testes obrigatórios em projeto Supabase isolado
 - Iniciar sessão com dois usuários reais de teste. Um deles distribui 14 peças, sete para cada um; a redistribuição é idempotente.
 - Confirmar que duas transações concorrentes de inicialização não criam mais que 14 peças nem duas distribuições.
