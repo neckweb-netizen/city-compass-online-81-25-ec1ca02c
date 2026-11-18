@@ -1,7 +1,7 @@
 \set ON_ERROR_STOP on
 \echo '=== Domino V2: staging-only SQL integration ==='
 
--- All migration SQL is executed in a disposable PostgreSQL service.
+-- Attach the same anti-cheat BEFORE UPDATE trigger used in production.\n-- This fixture checks that private v2 isolation does not break legacy moves.\nCREATE TRIGGER guard_domino_sala_update_trigger\nBEFORE UPDATE ON public.domino_salas\nFOR EACH ROW EXECUTE FUNCTION private.guard_domino_sala_update();\n\n-- All migration SQL is executed in a disposable PostgreSQL service.
 -- Never run this test against the live Supabase database.
 DO $test$
 BEGIN
@@ -97,6 +97,13 @@ BEGIN
   EXCEPTION WHEN invalid_parameter_value THEN NULL;
   END;
   SELECT pedra INTO v_tile FROM public.domino_v2_minha_mao('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'::uuid) LIMIT 1;
+  BEGIN
+    UPDATE public.domino_salas SET historico_jogadas = jsonb_build_array(
+      jsonb_build_object('valorOriginal', v_tile, 'ladoEsquerdo', 0, 'ladoDireito', 0))
+    WHERE id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    RAISE EXCEPTION 'FAIL: direct v2 board UPDATE bypassed RPC';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
   v_result := public.domino_v2_jogar('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'::uuid,v_tile,'esquerda');
   IF (v_result->>'pecas_restantes')::integer <> 6 THEN
     RAISE EXCEPTION 'FAIL: tile not consumed';
@@ -111,6 +118,21 @@ BEGIN
     RAISE EXCEPTION 'FAIL: replay accepted';
   EXCEPTION WHEN insufficient_privilege THEN NULL;
   END;
+END
+$test$;
+
+-- Legacy game without private v2 state must remain writable by its player.
+SET request.jwt.claim.sub = '11111111-1111-4111-8111-111111111111';
+DO $test$
+DECLARE v_history jsonb;
+BEGIN
+  v_history := jsonb_build_array(jsonb_build_object(
+    'valorOriginal','0-0','ladoEsquerdo',0,'ladoDireito',0));
+  UPDATE public.domino_salas
+  SET historico_jogadas = v_history,
+      mesa_ponta_esquerda = 0,
+      mesa_ponta_direita = 0
+  WHERE id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 END
 $test$;
 
