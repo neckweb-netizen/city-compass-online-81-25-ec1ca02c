@@ -11,6 +11,8 @@
 - **RPC de jogada em protótipo** com posse da peça, turno, encaixe e exclusão atômica da mão.
 - **RPC de passe em protótipo**: só permite `sem_peca` quando nenhuma peça encaixa; o passe por tempo está deliberadamente bloqueado.
 - **Registro de vitória/empate em protótipo**: vitória exige mão vazia; empate exige dois passes válidos e ausência de peças jogáveis nas duas mãos. As RPCs antigas são bloqueadas apenas nas partidas v2.
+- **Limpeza automática de estado v2 em protótipo**: ao sair um jogador ou a sala voltar a `aguardando`, o gatilho elimina a distribuição antiga e as mãos por cascata.
+- **Compatibilidade com jogadas legadas**: o gatilho `SECURITY INVOKER` consulta um auxiliar `SECURITY DEFINER` que revela apenas se a sala possui uma partida v2, sem abrir leitura das mãos privadas.
 
 ## Não está entregue e bloqueia o uso real
 1. **RPC de jogada criada em protótipo** (`domino_v2_jogar`): confere posse, valida turno/encaixe e remove a peça atomicamente da mão privada; também existe uma proteção do gatilho para salas v2. **Ainda exige execução de testes em staging e revisão da compatibilidade dos gatilhos.** O cliente atual ainda atualiza `domino_salas` diretamente.
@@ -31,6 +33,10 @@
 - Verificar `domino_v2_registrar_resultado` com duas contas: vitória só com mão vazia, empate só com ambas sem peças jogáveis, contagem e pontuação registradas **uma única vez**.
 - Validar que os gatilhos antigos não efetuam pontuação dupla em jogos v2 e continuam funcionando nos jogos antigos.
 - Confirmar que alterações de fila, saída de sala, atualização Realtime e pontuação continuam consistentes.
+- Confirmar que a saída de um jogador remove a distribuição privada por cascata e permite iniciar nova partida na mesma sala, sem herdar peças antigas.
+- Confirmar que jogadores legados podem continuar atualizando o tabuleiro mesmo sem acesso direto a `private.domino_v2_partidas` e que o auxiliar de existência não revela a mão de ninguém.
+- Verificar em staging a ordem dos gatilhos de sala (`guard_domino_sala_update`, `preparar_nova_partida_domino`, limpeza v2, empate), a ausência de deadlocks e os privilégios efetivos de `authenticated`.
+- **Bloqueio crítico:** testes estáticos de migrations não verificam compilação e execução das rotinas PostgreSQL; é obrigatória execução transacional em staging.
 
 ## Plano de lançamento
 1. **Não mesclar esta PR** antes da revisão e validação isolada; criar branch Supabase de teste se o plano permitir, ou usar projeto de staging.
