@@ -470,6 +470,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       }
     } catch (err) {
       console.error(err);
+      setAlertaTemporario({ visivel: true, mensagem: 'Não foi possível passar a vez.' });
       await carregarDadosPartida();
     } finally {
       processandoJogadaLocal.current = false;
@@ -490,9 +491,18 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       try {
         // In V2, the server is the sole authority for tiles, turn and endpoints.
         // Do not broadcast or persist optimistic client-generated moves.
-        await jogarDominoV2(salaId, pedra, ladoEscolha);
+        const resultado = await jogarDominoV2(salaId, pedra, ladoEscolha);
         setMinhasPedras(await obterMaoDominoV2(salaId));
         await carregarDadosPartida();
+        if (resultado.pecas_restantes === 0) {
+          tocarEfeitoSonoro('vitoria');
+          setModalNotificacao({
+            visivel: true,
+            titulo: 'Vitória! +3 pontos',
+            message: 'Sua última peça foi validada e a vitória registrada pelo servidor.',
+            tipo: 'fim',
+          });
+        }
       } catch (error) {
         console.error('Jogada segura recusada:', error);
         setAlertaTemporario({ visivel: true, mensagem: 'Jogada não autorizada. Atualize a partida.' });
@@ -1403,7 +1413,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         <div className="absolute bottom-1 bg-[#090610]/95 border border-purple-900/40 px-2.5 py-0.5 rounded-full text-[8px] sm:text-[10px] font-bold tracking-wide">
           {meuTurno ? (
             <span className="text-green-400 animate-pulse flex items-center gap-1">
-              <Timer className="w-2.5 h-2.5" /> {tempoRestante}s - SUA VEZ!
+              <Timer className="w-2.5 h-2.5" /> {v2Enabled ? 'SUA VEZ — MODO SEGURO' : `${tempoRestante}s - SUA VEZ!`}
             </span>
           ) : (
             <span className="text-gray-400">Aguardando {adversarioNome}...</span>
