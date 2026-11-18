@@ -10,7 +10,7 @@
 - Rechamadas da inicialização não redistribuem peças.
 
 ## Não está entregue e bloqueia o uso real
-1. RPC de jogada que exige posse da peça, valida turno/encaixe e remove a peça atomicamente da mão privada. O cliente atual ainda atualiza `domino_salas` diretamente.
+1. **RPC de jogada criada em protótipo** (`domino_v2_jogar`): confere posse, valida turno/encaixe e remove a peça atomicamente da mão privada; também existe uma proteção do gatilho para salas v2. **Ainda exige execução de testes em staging e revisão da compatibilidade dos gatilhos.** O cliente atual ainda atualiza `domino_salas` diretamente.
 2. Lógica autoritativa de passe: `sem_peca` deve ser rejeitado caso qualquer peça da mão encaixe. O modo `tempo` precisa de controle de tempo verificável pelo servidor.
 3. Vitória por **mão vazia**, não apenas por sete jogadas. Empate deve ser comprovado pelo servidor, não somente por duas declarações do cliente.
 4. Bloqueio da mutação direta de `domino_salas` depois da migração do cliente, incluindo controle de transição de status.
