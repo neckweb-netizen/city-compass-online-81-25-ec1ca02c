@@ -1,7 +1,13 @@
 \set ON_ERROR_STOP on
 \echo '=== Domino V2: staging-only SQL integration ==='
 
--- Attach the same anti-cheat BEFORE UPDATE trigger used in production.\n-- This fixture checks that private v2 isolation does not break legacy moves.\nCREATE TRIGGER guard_domino_sala_update_trigger\nBEFORE UPDATE ON public.domino_salas\nFOR EACH ROW EXECUTE FUNCTION private.guard_domino_sala_update();\n\n-- All migration SQL is executed in a disposable PostgreSQL service.
+-- Attach the same anti-cheat BEFORE UPDATE trigger used in production.
+-- This fixture checks that private v2 isolation does not break legacy moves.
+CREATE TRIGGER guard_domino_sala_update_trigger
+BEFORE UPDATE ON public.domino_salas
+FOR EACH ROW EXECUTE FUNCTION private.guard_domino_sala_update();
+
+-- All migration SQL is executed in a disposable PostgreSQL service.
 -- Never run this test against the live Supabase database.
 DO $test$
 BEGIN
