@@ -35,6 +35,7 @@ jobs:
       - run: node --test scripts/rls-product-gamification.test.mjs
       - run: node --test scripts/rls-civic-moderation-audit.test.mjs
       - run: node --test scripts/rls-final-nonpayment.test.mjs
+      - run: node --test scripts/db-security-regression.test.mjs
       - run: node --test scripts/fk-company-review-comments.test.mjs
       - run: node --test scripts/fk-events-autonomos.test.mjs
       - run: node --test scripts/fk-user-interactions.test.mjs
