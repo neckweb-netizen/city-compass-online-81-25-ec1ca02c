@@ -199,3 +199,13 @@ test('room reset clears v2 hands through cascade without changing completed scor
   assert.match(sql, /NEW\.status = 'aguardando'/);
   assert.doesNotMatch(sql, /DELETE FROM public\.domino_estatisticas/);
 });
+
+test('v2 hand distribution requires a server-owned staging allowlist', () => {
+  const sql = migration('20261118160500_domino_v2_explicit_staging_room_allowlist.sql');
+  assert.match(sql, /CREATE TABLE private\.domino_v2_salas_habilitadas/);
+  assert.match(sql, /ALTER TABLE private\.domino_v2_salas_habilitadas ENABLE ROW LEVEL SECURITY/);
+  assert.match(sql, /REVOKE ALL ON TABLE private\.domino_v2_salas_habilitadas/);
+  assert.match(sql, /SELECT 1 FROM private\.domino_v2_salas_habilitadas/);
+  assert.match(sql, /Esta sala não está habilitada para dominó v2/);
+  assert.doesNotMatch(sql, /GRANT (INSERT|UPDATE|DELETE) ON TABLE private\.domino_v2_salas_habilitadas TO authenticated/);
+});
