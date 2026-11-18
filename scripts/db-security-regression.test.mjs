@@ -50,3 +50,10 @@ test('redundant review/statistics triggers were removed without dropping their r
   assert.doesNotMatch(sql, /DROP TRIGGER IF EXISTS trigger_avaliacoes_estatisticas/i);
   assert.doesNotMatch(sql, /DROP TRIGGER IF EXISTS trigger_estatisticas_refresh_populares/i);
 });
+
+test('appointment phone normalization safely strips formatted non-digits', () => {
+  const sql = migration('20261118030137_fix_appointment_phone_normalization.sql');
+  assert.ok(sql.includes("v_new text := chr(39) || '[^0-9]' || chr(39)"));
+  assert.ok(sql.includes("v_original := pg_get_functiondef('public.validar_agendamento_antes_insert()'::regprocedure)"));
+  assert.match(sql, /EXECUTE v_updated/);
+});
