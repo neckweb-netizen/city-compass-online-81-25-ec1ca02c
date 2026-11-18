@@ -96,8 +96,8 @@ SELECT
   (SELECT vez_usuario_id='$other' FROM public.domino_salas WHERE id='$room')::text;
 SQL
 )"
-if [[ "$actual" != '13|1|6|t' ]]; then
-  echo "FAIL: expected 13|1|6|t (remaining tiles|board tiles|player hand|next turn), received [$actual]" >&2
+if [[ "$actual" != '13|1|6|true' ]]; then
+  echo "FAIL: expected 13|1|6|true (remaining tiles|board tiles|player hand|next turn), received [$actual]" >&2
   echo "First move response: $(cat "$tmp/move-one")" >&2
   echo "Second move rejection: $(cat "$tmp/move-two.err")" >&2
   exit 1
