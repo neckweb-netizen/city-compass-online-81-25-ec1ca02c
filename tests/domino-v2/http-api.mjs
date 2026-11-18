@@ -71,5 +71,7 @@ successful(after,'Hand after playing');
 assert.equal(after.data.length,6);
 assert.ok(!after.data.some(x=>x.pedra===a[0]),'Played piece must be removed');
 rejected(await rpc('domino_v2_jogar',{...request,p_pedra:a[0],p_lado:'esquerda'},userA),'Replaying tile');
-rejected(await rpc('domino_v2_passar',{...request,p_motivo:'tempo'},userB),'Untrusted timeout');
+const timeout = await rpc('domino_v2_passar',{...request,p_motivo:'tempo'},userB);
+assert.equal(timeout.status,400,'Untrusted timeout should return validation error 400');
+assert.equal(timeout.data?.code,'22023');
 console.log('PASS: HTTP JWT role isolation, both hands, anti-cheat move validation and replay rejection.');
