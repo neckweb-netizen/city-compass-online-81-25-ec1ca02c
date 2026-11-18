@@ -57,3 +57,14 @@ test('appointment phone normalization safely strips formatted non-digits', () =>
   assert.ok(sql.includes("v_original := pg_get_functiondef('public.validar_agendamento_antes_insert()'::regprocedure)"));
   assert.match(sql, /EXECUTE v_updated/);
 });
+
+test('loyalty idempotency replay stays bound to card and transaction details', () => {
+  const sql = migration('20261118093041_guard_loyalty_transaction_idempotency_identity.sql');
+  for (const condition of [
+    'v_existing.card_id IS DISTINCT FROM v_card.id',
+    'v_existing.tipo IS DISTINCT FROM p_tipo',
+    'v_existing.quantidade IS DISTINCT FROM p_quantidade',
+    'v_existing.reward_id IS DISTINCT FROM p_reward_id',
+  ]) assert.ok(sql.includes(condition), condition);
+  assert.match(sql, /RAISE EXCEPTION 'Esta chave de solicitação já foi usada em outra operação'/);
+});
