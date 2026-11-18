@@ -59,3 +59,6 @@ jobs:
           done
       - name: Test unauthenticated calls, authorized hands and move atomicity
         run: psql -X -v ON_ERROR_STOP=1 -f tests/domino-v2/integration.sql
+
+      - name: Test concurrent dealing and same-tile replay in separate sessions
+        run: bash tests/domino-v2/concurrency.sh
