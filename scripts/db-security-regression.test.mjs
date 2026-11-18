@@ -109,3 +109,14 @@ test('domino server rejects forged tile faces and missing endpoints', () => {
   assert.ok(sql.includes('least(v_a,v_b) is distinct from'));
   assert.ok(sql.includes('greatest(v_a,v_b) is distinct from'));
 });
+
+test('internal domino triggers retain restricted function search paths', () => {
+  const sql = migration('20261118121330_harden_domino_internal_trigger_search_paths.sql');
+  for (const name of [
+    'processar_fila_domino()',
+    'preparar_nova_partida_domino()',
+    'registrar_empate_domino_ao_trancar()',
+  ]) {
+    assert.ok(sql.includes(`ALTER FUNCTION public.${name} SET search_path = '';`), name);
+  }
+});
