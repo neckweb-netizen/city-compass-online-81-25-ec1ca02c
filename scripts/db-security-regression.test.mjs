@@ -120,3 +120,28 @@ test('internal domino triggers retain restricted function search paths', () => {
     assert.ok(sql.includes(`ALTER FUNCTION public.${name} SET search_path = '';`), name);
   }
 });
+
+test('domino v2 prototype keeps player hands private and cannot redraw', () => {
+  const sql = migration('20261118141500_domino_v2_private_server_hands_prototype.sql');
+  assert.match(sql, /CREATE TABLE private\.domino_v2_partidas/);
+  assert.match(sql, /CREATE TABLE private\.domino_v2_maos/);
+  assert.match(sql, /REVOKE ALL ON TABLE private\.domino_v2_partidas, private\.domino_v2_maos/);
+  assert.match(sql, /ENABLE ROW LEVEL SECURITY/g);
+  assert.match(sql, /FOR UPDATE/);
+  assert.match(sql, /IF EXISTS \(SELECT 1 FROM private\.domino_v2_partidas WHERE sala_id = p_sala_id\)/);
+  assert.match(sql, /ORDER BY gen_random_uuid\(\)/);
+  assert.match(sql, /WHERE a\.n <= b\.n/);
+  assert.match(sql, /WHERE pos <= 14/);
+  assert.match(sql, /v_uid IN \(p\.jogador_1_id,p\.jogador_2_id\)/);
+  assert.match(sql, /m\.jogador_id=v_uid/);
+  assert.match(sql, /REVOKE ALL ON FUNCTION public\.domino_v2_minha_mao\(uuid\) FROM PUBLIC, anon/);
+});
+
+test('double-six deck contains exactly 28 distinct unordered pieces', () => {
+  const deck = [];
+  for (let a = 0; a <= 6; a++) {
+    for (let b = a; b <= 6; b++) deck.push(`${a}-${b}`);
+  }
+  assert.equal(deck.length, 28);
+  assert.equal(new Set(deck).size, 28);
+});
