@@ -100,3 +100,12 @@ test('automatic domino queue assigns the initial turn when a match starts', () =
   assert.match(sql, /vez_usuario_id = v_j1/);
   assert.match(sql, /EXECUTE v_new/);
 });
+
+test('domino server rejects forged tile faces and missing endpoints', () => {
+  const sql = migration('20261118120600_validate_domino_tile_faces_and_endpoints.sql');
+  assert.ok(sql.includes('v_a is null or v_b is null'));
+  assert.ok(sql.includes('new.mesa_ponta_esquerda is null'));
+  assert.ok(sql.includes('new.mesa_ponta_direita is null'));
+  assert.ok(sql.includes('least(v_a,v_b) is distinct from'));
+  assert.ok(sql.includes('greatest(v_a,v_b) is distinct from'));
+});
