@@ -913,6 +913,8 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         }
       )
       .on('broadcast', { event: 'jogada_realizada' }, (payload) => {
+        // V2 receives the authoritative board via postgres_changes only.
+        if (v2Enabled) return;
         const { mesa, pontaE, pontaD, vezId } = payload.payload;
         if (mesa) setMesaPedras(mesa);
         if (pontaE !== undefined) setPontaEsquerda(pontaE);
