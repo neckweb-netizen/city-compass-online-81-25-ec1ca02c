@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, RefreshCw, Trophy, User, Maximize2, Minimize2, ShieldAlert, Award, MessageSquare, Timer, Move, ExternalLink } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { getSafeNavigationUrl } from '@/lib/safeNavigation';
+import { isDominoV2EnabledForRoom, iniciarMaoDominoV2, obterMaoDominoV2, jogarDominoV2, passarDominoV2 } from '@/lib/dominoV2Client';
 
 interface DominoTabuleiroProps {
   usuarioId: string;
@@ -217,6 +218,9 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
   const areaMesaRef = useRef<HTMLDivElement>(null);
   const canalRef = useRef<any>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const v2Enabled = isDominoV2EnabledForRoom(salaId);
+  const [v2Ready, setV2Ready] = useState(false);
+  const v2LoadingRef = useRef(false);
 
   const [isFullscreen, setIsFullscreen] = useState(true);
   const [jogador1Id, setJogador1Id] = useState<string | null>(null);
@@ -332,6 +336,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   const atualizarMinhasPedras = (novasPedras: string[]) => {
     setMinhasPedras(novasPedras);
+    if (v2Enabled) return; // V2 hands must never be saved in browser storage.
     try {
       localStorage.setItem(keyStoragePedras, JSON.stringify(novasPedras));
     } catch (e) {
@@ -413,7 +418,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   // PASSE INSTANTÂNEO
   const passarVez = async (motivo: 'sem_peca' | 'tempo' = 'sem_peca') => {
-    if (processandoJogadaLocal.current) return;
+    if (processandoJogadaLocal.current || (v2Enabled && (!v2Ready || motivo === 'tempo'))) return;
     processandoJogadaLocal.current = true;
 
     if (timerRef.current) {
@@ -425,13 +430,17 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     tocarEfeitoSonoro('passar');
 
     try {
-      const { data, error } = await (supabase as any).rpc('passar_vez_domino', {
-        p_sala_id: salaId,
-        p_motivo: motivo,
-      });
-      if (error) throw error;
-
-      const resultado = data?.[0];
+      let resultado: any;
+      if (v2Enabled) {
+        resultado = await passarDominoV2(salaId);
+      } else {
+        const { data, error } = await (supabase as any).rpc('passar_vez_domino', {
+          p_sala_id: salaId,
+          p_motivo: motivo,
+        });
+        if (error) throw error;
+        resultado = data?.[0];
+      }
       const novaContagemPassadas = resultado?.nova_contagem_passadas ?? passadasCount + 1;
       const jogoTrancado = resultado?.jogo_trancado === true;
       const passeEm = resultado?.passe_em as string | undefined;
@@ -461,6 +470,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
       }
     } catch (err) {
       console.error(err);
+      setAlertaTemporario({ visivel: true, mensagem: 'Não foi possível passar a vez.' });
       await carregarDadosPartida();
     } finally {
       processandoJogadaLocal.current = false;
@@ -469,13 +479,39 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   // EXECUÇÃO RIGOROSA DA JOGADA
   const executarJogadaNaPonta = async (pedra: string, ladoEscolha: 'esquerda' | 'direita') => {
-    if (!meuTurno || processandoJogadaLocal.current || !isFullscreen) return;
+    if (!meuTurno || processandoJogadaLocal.current || !isFullscreen || (v2Enabled && !v2Ready)) return;
     processandoJogadaLocal.current = true;
     setPedraArrastando(null);
     setTouchPosicao(null);
     setSobreDropZone(null);
 
     tocarEfeitoSonoro('jogar');
+
+    if (v2Enabled) {
+      try {
+        // In V2, the server is the sole authority for tiles, turn and endpoints.
+        // Do not broadcast or persist optimistic client-generated moves.
+        const resultado = await jogarDominoV2(salaId, pedra, ladoEscolha);
+        setMinhasPedras(await obterMaoDominoV2(salaId));
+        await carregarDadosPartida();
+        if (resultado.pecas_restantes === 0) {
+          tocarEfeitoSonoro('vitoria');
+          setModalNotificacao({
+            visivel: true,
+            titulo: 'Vitória! +3 pontos',
+            message: 'Sua última peça foi validada e a vitória registrada pelo servidor.',
+            tipo: 'fim',
+          });
+        }
+      } catch (error) {
+        console.error('Jogada segura recusada:', error);
+        setAlertaTemporario({ visivel: true, mensagem: 'Jogada não autorizada. Atualize a partida.' });
+        await carregarDadosPartida();
+      } finally {
+        processandoJogadaLocal.current = false;
+      }
+      return;
+    }
 
     const [ladoA, ladoB] = pedra.split('-').map(Number);
     let novaMesa = [...mesaPedras];
@@ -637,7 +673,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   // EMBARALHAMENTO SEGURO DE 7 PEDRAS INICIAIS
   const inicializarPedrasCompartilhadas = useCallback((userId: string, j1: string | null, j2: string | null, mesaVazia: boolean) => {
-    if (pedrasInicializadas.current || !j1 || !j2) return;
+    if (v2Enabled || pedrasInicializadas.current || !j1 || !j2) return;
 
     if (mesaVazia) {
       try { localStorage.removeItem(keyStoragePedras); } catch (e) {}
@@ -695,7 +731,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     }
 
     atualizarMinhasPedras(pedrasIniciais);
-  }, [salaId, keyStoragePedras]);
+  }, [salaId, keyStoragePedras, v2Enabled]);
 
   const carregarDadosPartida = useCallback(async () => {
     try {
@@ -738,7 +774,26 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
           : [];
 
         setMesaPedras(jogadasProcessadas);
-        inicializarPedrasCompartilhadas(usuarioId, data.jogador_1_id, data.jogador_2_id, jogadasProcessadas.length === 0);
+        if (v2Enabled && data.jogador_1_id && data.jogador_2_id && !v2LoadingRef.current) {
+          v2LoadingRef.current = true;
+          try {
+            // Backend allowlist blocks conversion of ordinary legacy rooms.
+            const mao = pedrasInicializadas.current
+              ? await obterMaoDominoV2(salaId)
+              : await iniciarMaoDominoV2(salaId);
+            setMinhasPedras(mao);
+            pedrasInicializadas.current = true;
+            setV2Ready(true);
+          } catch (error) {
+            console.error('Não foi possível inicializar o Dominó V2:', error);
+            setV2Ready(false); // Fail closed: never fall back to legacy local hands.
+            setAlertaTemporario({ visivel: true, mensagem: 'Dominó V2 indisponível nesta sala.' });
+          } finally {
+            v2LoadingRef.current = false;
+          }
+        } else if (!v2Enabled) {
+          inicializarPedrasCompartilhadas(usuarioId, data.jogador_1_id, data.jogador_2_id, jogadasProcessadas.length === 0);
+        }
 
         if (!data.vez_usuario_id && data.jogador_1_id && data.jogador_2_id) {
           setVezUsuarioId(data.jogador_1_id);
@@ -747,7 +802,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     } catch (err) {
       console.error('Erro em carregarDadosPartida:', err);
     }
-  }, [salaId, usuarioId, inicializarPedrasCompartilhadas]);
+  }, [salaId, usuarioId, inicializarPedrasCompartilhadas, v2Enabled]);
 
   // CANAL REALTIME + BROADCAST ESTÁVEL
   useEffect(() => {
@@ -788,7 +843,13 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
                 })
               : [];
 
-            if (newData.jogador_1_id && newData.jogador_2_id && !pedrasInicializadas.current) {
+            if (v2Enabled && v2Ready) {
+              void obterMaoDominoV2(salaId).then(setMinhasPedras).catch(error => {
+                console.error('Falha ao sincronizar mão V2:', error);
+                setV2Ready(false);
+              });
+            }
+            if (!v2Enabled && newData.jogador_1_id && newData.jogador_2_id && !pedrasInicializadas.current) {
               inicializarPedrasCompartilhadas(usuarioId, newData.jogador_1_id, newData.jogador_2_id, jogadasProcessadas.length === 0);
             }
 
@@ -852,6 +913,8 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         }
       )
       .on('broadcast', { event: 'jogada_realizada' }, (payload) => {
+        // V2 receives the authoritative board via postgres_changes only.
+        if (v2Enabled) return;
         const { mesa, pontaE, pontaD, vezId } = payload.payload;
         if (mesa) setMesaPedras(mesa);
         if (pontaE !== undefined) setPontaEsquerda(pontaE);
@@ -878,14 +941,14 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
     return () => {
       supabase.removeChannel(canalJogo);
     };
-  }, [salaId, usuarioId, carregarDadosPartida, inicializarPedrasCompartilhadas, jogador1Id, jogador2Id, nomeJ1, nomeJ2]);
+  }, [salaId, usuarioId, carregarDadosPartida, inicializarPedrasCompartilhadas, jogador1Id, jogador2Id, nomeJ1, nomeJ2, v2Enabled, v2Ready]);
 
-  const meuTurno = vezUsuarioId === usuarioId;
+  const meuTurno = vezUsuarioId === usuarioId && (!v2Enabled || v2Ready);
   const adversarioNome = usuarioId === jogador1Id ? nomeJ2 : nomeJ1;
 
   // CRONÔMETRO
   useEffect(() => {
-    if (!meuTurno || !isFullscreen) {
+    if (!meuTurno || !isFullscreen || v2Enabled) {
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
@@ -914,7 +977,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         timerRef.current = null;
       }
     };
-  }, [meuTurno, vezUsuarioId, isFullscreen]);
+  }, [meuTurno, vezUsuarioId, isFullscreen, v2Enabled]);
 
   useEffect(() => {
     if (alertaTemporario && alertaTemporario.visivel) {
@@ -948,6 +1011,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
 
   // VITÓRIA
   useEffect(() => {
+    if (v2Enabled) return; // The V2 server concludes and scores victories atomically.
     if (
       minhasPedras.length !== 0
       || mesaPedras.length === 0
@@ -1351,7 +1415,7 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
         <div className="absolute bottom-1 bg-[#090610]/95 border border-purple-900/40 px-2.5 py-0.5 rounded-full text-[8px] sm:text-[10px] font-bold tracking-wide">
           {meuTurno ? (
             <span className="text-green-400 animate-pulse flex items-center gap-1">
-              <Timer className="w-2.5 h-2.5" /> {tempoRestante}s - SUA VEZ!
+              <Timer className="w-2.5 h-2.5" /> {v2Enabled ? 'SUA VEZ — MODO SEGURO' : `${tempoRestante}s - SUA VEZ!`}
             </span>
           ) : (
             <span className="text-gray-400">Aguardando {adversarioNome}...</span>
