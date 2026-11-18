@@ -88,11 +88,18 @@ if ! grep -Eq 'Partida encerrada ou fora da vez|Esta peça não pertence à sua 
   exit 1
 fi
 
-psql -X -qAt -v ON_ERROR_STOP=1 <<SQL | grep -qx '13|1|6|t'
+actual="$(psql -X -qAt -v ON_ERROR_STOP=1 <<SQL
 SELECT
   (SELECT count(*) FROM private.domino_v2_maos WHERE sala_id='$room')::text || '|' ||
   (SELECT jsonb_array_length(historico_jogadas) FROM public.domino_salas WHERE id='$room')::text || '|' ||
   (SELECT count(*) FROM private.domino_v2_maos WHERE sala_id='$room' AND jogador_id='$player')::text || '|' ||
   (SELECT vez_usuario_id='$other' FROM public.domino_salas WHERE id='$room')::text;
 SQL
+)"
+if [[ "$actual" != '13|1|6|t' ]]; then
+  echo "FAIL: expected 13|1|6|t (remaining tiles|board tiles|player hand|next turn), received [$actual]" >&2
+  echo "First move response: $(cat "$tmp/move-one")" >&2
+  echo "Second move rejection: $(cat "$tmp/move-two.err")" >&2
+  exit 1
+fi
 echo "PASS: two concurrent hand initiations yielded 14 unique tiles; concurrent replay made exactly one move."
