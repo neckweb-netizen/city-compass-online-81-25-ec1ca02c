@@ -182,3 +182,20 @@ test('domino v2 match results require an empty winner hand or blocked hands', ()
   assert.match(sql, /IF EXISTS \([\s\S]*?private\.domino_v2_partidas WHERE sala_id=NEW\.id/);
   assert.match(sql, /REVOKE ALL ON FUNCTION private\.domino_v2_registrar_resultado/);
 });
+
+test('legacy domino move trigger can check v2 presence without private table SELECT', () => {
+  const sql = migration('20261118154500_domino_v2_legacy_trigger_private_access_fix.sql');
+  assert.match(sql, /CREATE OR REPLACE FUNCTION private\.domino_v2_partida_existe/);
+  assert.match(sql, /SECURITY DEFINER/);
+  assert.match(sql, /GRANT EXECUTE ON FUNCTION private\.domino_v2_partida_existe\(uuid\)/);
+  assert.match(sql, /IF private\.domino_v2_partida_existe\(old\.id\) THEN/);
+  assert.doesNotMatch(sql, /GRANT SELECT ON private\.domino_v2_partidas/);
+});
+
+test('room reset clears v2 hands through cascade without changing completed scores', () => {
+  const sql = migration('20261118153000_domino_v2_cleanup_on_room_reset_prototype.sql');
+  assert.match(sql, /AFTER UPDATE OF jogador_1_id, jogador_2_id, status/);
+  assert.match(sql, /DELETE FROM private\.domino_v2_partidas/);
+  assert.match(sql, /NEW\.status = 'aguardando'/);
+  assert.doesNotMatch(sql, /DELETE FROM public\.domino_estatisticas/);
+});
