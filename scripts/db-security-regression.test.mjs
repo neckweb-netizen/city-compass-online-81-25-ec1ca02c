@@ -145,3 +145,17 @@ test('double-six deck contains exactly 28 distinct unordered pieces', () => {
   assert.equal(deck.length, 28);
   assert.equal(new Set(deck).size, 28);
 });
+
+test('domino v2 move RPC verifies tile ownership and serializes board changes', () => {
+  const sql = migration('20261118143000_domino_v2_authoritative_moves_prototype.sql');
+  assert.match(sql, /CREATE OR REPLACE FUNCTION public\.domino_v2_jogar/);
+  assert.match(sql, /WHERE id = p_sala_id\s+FOR UPDATE/);
+  assert.match(sql, /private\.domino_v2_maos[\s\S]*jogador_id = v_uid AND pedra = v_pedra/);
+  assert.match(sql, /DELETE FROM private\.domino_v2_maos/);
+  assert.match(sql, /GET DIAGNOSTICS v_removidas = ROW_COUNT/);
+  assert.match(sql, /v_removidas <> 1/);
+  assert.match(sql, /p_lado NOT IN \('esquerda', 'direita'\)/);
+  assert.match(sql, /CREATE OR REPLACE FUNCTION private\.guard_domino_sala_update/);
+  assert.match(sql, /Use a operação de jogada segura do servidor/);
+  assert.match(sql, /REVOKE ALL ON FUNCTION public\.domino_v2_jogar\(uuid,text,text\) FROM PUBLIC, anon/);
+});
