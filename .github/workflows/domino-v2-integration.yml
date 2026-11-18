@@ -1,0 +1,64 @@
+name: Domino V2 isolated PostgreSQL integration
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/*domino_v2*'
+      - 'tests/domino-v2/**'
+      - '.github/workflows/domino-v2-integration.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-v2:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: testing-only
+          POSTGRES_DB: domino_v2_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d domino_v2_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGDATABASE: domino_v2_ci
+      PGUSER: postgres
+      PGPASSWORD: testing-only
+      PGOPTIONS: '-c statement_timeout=20000'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Create disposable Supabase-compatible fixture
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/domino-v2/fixture.sql
+      - name: Apply Domino V2 prototype migrations in order
+        run: |
+          set -euo pipefail
+          for migration in \
+            supabase/migrations/20261118141500_domino_v2_private_server_hands_prototype.sql \
+            supabase/migrations/20261118143000_domino_v2_authoritative_moves_prototype.sql \
+            supabase/migrations/20261118151000_domino_v2_verified_pass_and_results_prototype.sql \
+            supabase/migrations/20261118153000_domino_v2_cleanup_on_room_reset_prototype.sql \
+            supabase/migrations/20261118154500_domino_v2_legacy_trigger_private_access_fix.sql \
+            supabase/migrations/20261118160500_domino_v2_explicit_staging_room_allowlist.sql
+          do
+            echo "Applying $migration to disposable PostgreSQL"
+            psql -X -v ON_ERROR_STOP=1 --single-transaction -f "$migration"
+          done
+      - name: Test unauthenticated calls, authorized hands and move atomicity
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/domino-v2/integration.sql
+
+      - name: Test concurrent dealing and same-tile replay in separate sessions
+        run: bash tests/domino-v2/concurrency.sh
