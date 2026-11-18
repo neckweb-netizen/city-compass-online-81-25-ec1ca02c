@@ -63,5 +63,42 @@ jobs:
       - name: Test ownership, winner scoring and private-hand cleanup
         run: psql -X -v ON_ERROR_STOP=1 -f tests/domino-v2/win-and-reset.sql
 
+      - name: Test JWT-authenticated HTTP RPC through disposable PostgREST
+        env:
+          PGRST_JWT_SECRET: "domino-v2-test-only-shared-secret-2026-no-real-tokens"
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 <<'SQL'
+          INSERT INTO public.domino_salas
+            (id,numero_sala,status,jogador_1_id,jogador_2_id,vez_usuario_id)
+          VALUES ('ffffffff-ffff-4fff-8fff-ffffffffffff',6,'jogando',
+            '11111111-1111-4111-8111-111111111111',
+            '22222222-2222-4222-8222-222222222222',
+            '11111111-1111-4111-8111-111111111111');
+          INSERT INTO private.domino_v2_salas_habilitadas(sala_id)
+          VALUES ('ffffffff-ffff-4fff-8fff-ffffffffffff');
+          SQL
+          docker run -d --name domino-v2-postgrest --network host \
+            -e PGRST_DB_URI="postgres://postgres:testing-only@127.0.0.1:5432/domino_v2_ci" \
+            -e PGRST_DB_SCHEMAS=public \
+            -e PGRST_DB_ANON_ROLE=anon \
+            -e PGRST_JWT_SECRET="$PGRST_JWT_SECRET" \
+            -e PGRST_SERVER_PORT=3001 \
+            postgrest/postgrest:v12.2.8
+          trap 'docker logs domino-v2-postgrest || true; docker rm -f domino-v2-postgrest >/dev/null || true' EXIT
+          ready=false
+          for attempt in $(seq 1 45); do
+            if curl --fail --silent http://127.0.0.1:3001/ -o /dev/null; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" != true ]; then
+            echo "Disposable PostgREST was not ready" >&2
+            exit 1
+          fi
+          node tests/domino-v2/http-api.mjs
+
       - name: Test concurrent dealing and same-tile replay in separate sessions
         run: bash tests/domino-v2/concurrency.sh
