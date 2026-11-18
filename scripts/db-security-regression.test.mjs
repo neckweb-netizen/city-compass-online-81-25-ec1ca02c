@@ -209,3 +209,26 @@ test('v2 hand distribution requires a server-owned staging allowlist', () => {
   assert.match(sql, /Esta sala não está habilitada para dominó v2/);
   assert.doesNotMatch(sql, /GRANT (INSERT|UPDATE|DELETE) ON TABLE private\.domino_v2_salas_habilitadas TO authenticated/);
 });
+
+test('v2 migration patches match exactly one source function anchor', () => {
+  const deal = migration('20261118141500_domino_v2_private_server_hands_prototype.sql');
+  const move = migration('20261118143000_domino_v2_authoritative_moves_prototype.sql');
+  const requireOnce = (source, anchor, label) => {
+    assert.equal(source.split(anchor).length - 1, 1, label);
+  };
+  requireOnce(
+    deal,
+    '  IF EXISTS (SELECT 1 FROM private.domino_v2_partidas WHERE sala_id = p_sala_id) THEN',
+    'server hand dealing allowlist injection'
+  );
+  requireOnce(
+    move,
+    '  IF EXISTS (\\n    SELECT 1 FROM private.domino_v2_partidas\\n    WHERE sala_id=old.id\\n  ) THEN'.replaceAll('\\n', '\n'),
+    'legacy v2 guard privilege patch'
+  );
+  requireOnce(
+    move,
+    '  -- The caller cannot self-report victory.',
+    'v2 auto-result patch'
+  );
+});
