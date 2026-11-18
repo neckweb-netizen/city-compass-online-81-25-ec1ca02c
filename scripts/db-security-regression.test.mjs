@@ -79,3 +79,10 @@ test('review and statistics privileged routines use restricted search paths', ()
     assert.ok(sql.includes(`ALTER FUNCTION public.${name} SET search_path = '';`), name);
   }
 });
+
+test('automatic domino matchmaking only selects and locks waiting rooms', () => {
+  const sql = migration('20261118105507_guard_domino_auto_queue_waiting_and_lock.sql');
+  assert.match(sql, /'WHERE status = ' \|\| chr\(39\) \|\| 'aguardando'/i);
+  assert.match(sql, /FOR UPDATE SKIP LOCKED/);
+  assert.match(sql, /EXECUTE v_new/);
+});
