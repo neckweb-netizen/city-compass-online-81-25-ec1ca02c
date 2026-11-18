@@ -68,3 +68,14 @@ test('loyalty idempotency replay stays bound to card and transaction details', (
   ]) assert.ok(sql.includes(condition), condition);
   assert.match(sql, /RAISE EXCEPTION 'Esta chave de solicitação já foi usada em outra operação'/);
 });
+
+test('review and statistics privileged routines use restricted search paths', () => {
+  const sql = migration('20261118094522_harden_review_stats_privileged_search_paths.sql');
+  for (const name of [
+    'atualizar_estatisticas_empresa(uuid)',
+    'trigger_atualizar_estatisticas()',
+    'trigger_refresh_populares()',
+  ]) {
+    assert.ok(sql.includes(`ALTER FUNCTION public.${name} SET search_path = '';`), name);
+  }
+});
