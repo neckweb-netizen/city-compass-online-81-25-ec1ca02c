@@ -86,3 +86,10 @@ test('automatic domino matchmaking only selects and locks waiting rooms', () => 
   assert.match(sql, /FOR UPDATE SKIP LOCKED/);
   assert.match(sql, /EXECUTE v_new/);
 });
+
+test('automatic domino queue locks the selected player as well as the room', () => {
+  const sql = migration('20261118111154_lock_domino_queued_player_during_matchmaking.sql');
+  assert.match(sql, /ORDER BY entrou_em ASC LIMIT 1 FOR UPDATE SKIP LOCKED/);
+  assert.match(sql, /regexp_matches\(v_before,v_pattern,'g'\)/);
+  assert.match(sql, /EXECUTE v_after/);
+});
