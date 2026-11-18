@@ -159,3 +159,26 @@ test('domino v2 move RPC verifies tile ownership and serializes board changes', 
   assert.match(sql, /Use a operação de jogada segura do servidor/);
   assert.match(sql, /REVOKE ALL ON FUNCTION public\.domino_v2_jogar\(uuid,text,text\) FROM PUBLIC, anon/);
 });
+
+test('domino v2 refuses a pass when the player can move and rejects unverifiable timeouts', () => {
+  const sql = migration('20261118151000_domino_v2_verified_pass_and_results_prototype.sql');
+  assert.match(sql, /CREATE OR REPLACE FUNCTION public\.domino_v2_passar/);
+  assert.match(sql, /p_motivo IS DISTINCT FROM 'sem_peca'/);
+  assert.match(sql, /Existe uma peça jogável na sua mão/);
+  assert.match(sql, /private\.domino_v2_maos m/);
+  assert.match(sql, /WHERE id=p_sala_id FOR UPDATE/);
+  assert.match(sql, /SELECT \* INTO v_sala FROM public\.domino_salas/);
+});
+
+test('domino v2 match results require an empty winner hand or blocked hands', () => {
+  const sql = migration('20261118151000_domino_v2_verified_pass_and_results_prototype.sql');
+  assert.match(sql, /CREATE OR REPLACE FUNCTION private\.domino_v2_registrar_resultado/);
+  assert.match(sql, /Vitória não comprovada pela mão do jogador/);
+  assert.match(sql, /Empate não comprovado pelo servidor/);
+  assert.match(sql, /v_sala\.ultima_jogada_usuario_id IS DISTINCT FROM p_vencedor/);
+  assert.match(sql, /v_restantes = 0/);
+  assert.match(sql, /Resultados v2 são controlados pelo servidor/);
+  assert.match(sql, /Use o passe seguro do dominó v2/);
+  assert.match(sql, /IF EXISTS \([\s\S]*?private\.domino_v2_partidas WHERE sala_id=NEW\.id/);
+  assert.match(sql, /REVOKE ALL ON FUNCTION private\.domino_v2_registrar_resultado/);
+});
