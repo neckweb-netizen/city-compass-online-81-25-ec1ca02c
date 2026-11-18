@@ -8,12 +8,15 @@
 - Embaralhamento de 28 peças canônicas (0-0 a 6-6) via `gen_random_uuid()` sem semente derivada de `sala_id`. Distribui sete peças para cada participante em uma única transação.
 - Nova RPC que retorna **apenas a mão do solicitante**, após confirmar participação atual e original.
 - Rechamadas da inicialização não redistribuem peças.
+- **RPC de jogada em protótipo** com posse da peça, turno, encaixe e exclusão atômica da mão.
+- **RPC de passe em protótipo**: só permite `sem_peca` quando nenhuma peça encaixa; o passe por tempo está deliberadamente bloqueado.
+- **Registro de vitória/empate em protótipo**: vitória exige mão vazia; empate exige dois passes válidos e ausência de peças jogáveis nas duas mãos. As RPCs antigas são bloqueadas apenas nas partidas v2.
 
 ## Não está entregue e bloqueia o uso real
 1. **RPC de jogada criada em protótipo** (`domino_v2_jogar`): confere posse, valida turno/encaixe e remove a peça atomicamente da mão privada; também existe uma proteção do gatilho para salas v2. **Ainda exige execução de testes em staging e revisão da compatibilidade dos gatilhos.** O cliente atual ainda atualiza `domino_salas` diretamente.
-2. Lógica autoritativa de passe: `sem_peca` deve ser rejeitado caso qualquer peça da mão encaixe. O modo `tempo` precisa de controle de tempo verificável pelo servidor.
-3. Vitória por **mão vazia**, não apenas por sete jogadas. Empate deve ser comprovado pelo servidor, não somente por duas declarações do cliente.
-4. Bloqueio da mutação direta de `domino_salas` depois da migração do cliente, incluindo controle de transição de status.
+2. **Passe sem peça implementado em protótipo**; teste funcional em staging pendente. O modo `tempo` permanece bloqueado até existir relógio verificável no servidor.
+3. **Vitória por mão vazia e empate com comprovação criados em protótipo**, ainda sem testes completos em staging. Verificar finalização e pontuação com duas contas.
+4. **Proteção inicial contra UPDATE direto criada para salas v2**; validar em staging que a segurança e os gatilhos de sala não interferem no novo fluxo. Revisar também todas as demais rotas de alteração de status, saída de sala e resultado.
 5. Adaptação do frontend: substituir a distribuição determinística e `localStorage` pela RPC; tratar reconexão e saída/abandono de partida.
 6. Estratégia para substituição das partidas existentes sem interferir em usuários ativos.
 
@@ -23,13 +26,16 @@
 - Confirmar que um usuário A não consegue visualizar a mão de B ou modificar as tabelas privadas via API.
 - Confirmar que visitante e usuário C (não participante) não conseguem executar as RPCs com sucesso.
 - Confirmar que partida terminada, incompleta ou já iniciada não aceita distribuição.
-- Jogar uma mão completa pela futura RPC, testar duplicatas, peças fora da mão, jogada fora da vez, passe inválido e partida encerrada.
+- Jogar uma mão completa com `domino_v2_jogar`, testar duplicatas, peças fora da mão, jogada fora da vez, passe inválido e partida encerrada.
+- Exercitar `domino_v2_passar`: negar passe havendo peça compatível; permitir passe sem peças jogáveis; negar `tempo` até implementação de relógio no servidor.
+- Verificar `domino_v2_registrar_resultado` com duas contas: vitória só com mão vazia, empate só com ambas sem peças jogáveis, contagem e pontuação registradas **uma única vez**.
+- Validar que os gatilhos antigos não efetuam pontuação dupla em jogos v2 e continuam funcionando nos jogos antigos.
 - Confirmar que alterações de fila, saída de sala, atualização Realtime e pontuação continuam consistentes.
 
 ## Plano de lançamento
 1. **Não mesclar esta PR** antes da revisão e validação isolada; criar branch Supabase de teste se o plano permitir, ou usar projeto de staging.
 2. Implantar migrations no staging, executar testes automáticos de integração com dois usuários e comparar permissões.
-3. Implementar RPCs de jogada/passe/finalização e atualizar interface em feature flag desativada por padrão.
+3. Revisar e testar as RPCs de jogada/passe/finalização já prototipadas; implementar controle de tempo pelo servidor e atualizar a interface atrás de feature flag desativada por padrão.
 4. Executar testes de segurança e regressão no staging; somente depois planejar ativação gradual e rollback.
 
 **Fora de escopo:** Pix automático, pagamentos, página inicial.
