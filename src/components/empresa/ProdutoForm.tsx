@@ -239,15 +239,16 @@ export const ProdutoForm = ({ empresaId, produto, onClose }: ProdutoFormProps) =
           </div>
 
           <div>
-            <Label>Tags</Label>
-            <div className="flex gap-2 mb-2">
+            <Label htmlFor="produto-tags">Tags</Label>
+            <div className="flex flex-col gap-2 mb-2 sm:flex-row">
               <Input
+                id="produto-tags"
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Digite uma tag e pressione Enter"
               />
-              <Button type="button" onClick={addTag}>
+              <Button type="button" onClick={addTag} className="min-h-11 shrink-0">
                 Adicionar
               </Button>
             </div>
@@ -255,10 +256,14 @@ export const ProdutoForm = ({ empresaId, produto, onClose }: ProdutoFormProps) =
               {tags.map((tag) => (
                 <Badge key={tag} variant="secondary" className="flex items-center gap-1">
                   {tag}
-                  <X
-                    className="w-3 h-3 cursor-pointer"
+                  <button
+                    type="button"
+                    aria-label={`Remover tag ${tag}`}
                     onClick={() => removeTag(tag)}
-                  />
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  >
+                    <X aria-hidden="true" className="h-4 w-4" />
+                  </button>
                 </Badge>
               ))}
             </div>
