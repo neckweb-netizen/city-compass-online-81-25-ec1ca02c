@@ -7,7 +7,7 @@ import { PWAInstallPrompt } from "@/components/pwa/PWAInstallPrompt";
 import { SecurityHeaders } from "@/components/security/SecurityHeaders";
 import { lazy, Suspense, useState, useEffect, useLayoutEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Hammer, Clock, MapPin, Mail, MessageSquare, Instagram, Facebook, ArrowRight } from "lucide-react";
+import { Clock, MapPin, Mail, MessageSquare, ArrowRight } from "lucide-react";
 import { initGA, logPageView } from "@/utils/analytics";
 import { trackToolView } from "@/lib/toolAnalytics";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -296,17 +296,9 @@ const App = () => {
             {maintenanceMessage} O nosso guia comercial está a receber uma atualização nos servidores para melhorar a velocidade das pesquisas comerciais da região.
           </p>
 
-          <div className="w-full max-w-md bg-purple-950/30 border border-purple-900/40 rounded-2xl p-4 mb-12 backdrop-blur-sm">
-            <div className="flex justify-between text-xs font-bold mb-2">
-              <span className="text-purple-400 flex items-center gap-1.5">
-                <Hammer className="h-3.5 w-3.5 animate-spin" /> Otimização do Banco de Dados
-              </span>
-              <span className="text-purple-300">85% Concluído</span>
-            </div>
-            <div className="w-full h-2.5 bg-[#171026] rounded-full overflow-hidden p-0.5 border border-purple-900/20">
-              <div className="h-full w-[85%] bg-gradient-to-r from-purple-600 to-indigo-500 rounded-full animate-pulse shadow-md shadow-purple-500/20" />
-            </div>
-          </div>
+          <p role="status" className="w-full max-w-md rounded-2xl border border-purple-900/40 bg-purple-950/30 px-5 py-4 text-sm text-gray-200 mb-12 backdrop-blur-sm">
+            A disponibilidade será restabelecida quando a manutenção terminar. Obrigado pela compreensão.
+          </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-2xl text-left">
             <div className="bg-[#150F22]/60 border border-purple-900/30 p-5 rounded-2xl backdrop-blur-sm hover:border-purple-800/40 transition-colors">
@@ -316,13 +308,11 @@ const App = () => {
               <p className="text-xs text-gray-400 leading-relaxed mb-4">
                 A nossa equipa comercial continua a registar novas empresas localmente sem interrupções.
               </p>
-              <a 
-                href="https://wa.me/5575999999999" 
-                target="_blank" 
-                rel="noreferrer" 
-                className="inline-flex items-center gap-1 text-xs font-bold text-purple-400 hover:text-purple-300 transition-colors group"
+              <a
+                href="mailto:suporte.sajtem@gmail.com"
+                className="inline-flex min-h-11 items-center gap-1 rounded-lg text-xs font-bold text-purple-300 underline underline-offset-4 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400"
               >
-                Falar com o Suporte <ArrowRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
+                Enviar e-mail ao suporte <ArrowRight aria-hidden="true" className="h-3 w-3" />
               </a>
             </div>
 
@@ -345,14 +335,9 @@ const App = () => {
             © {new Date().getFullYear()} Saj Tem. Todos os direitos reservados.
           </div>
           
-          <div className="flex items-center gap-4">
-            <a href="https://instagram.com" target="_blank" rel="noreferrer" className="p-2 bg-purple-950/30 border border-purple-900/40 rounded-xl text-gray-400 hover:text-white hover:bg-purple-900/40 transition-all">
-              <img src="" alt="" className="hidden" /><Instagram className="h-4 w-4" />
-            </a>
-            <a href="https://facebook.com" target="_blank" rel="noreferrer" className="p-2 bg-purple-950/30 border border-purple-900/40 rounded-xl text-gray-400 hover:text-white hover:bg-purple-900/40 transition-all">
-              <img src="" alt="" className="hidden" /><Facebook className="h-4 w-4" />
-            </a>
-          </div>
+          <a href="mailto:suporte.sajtem@gmail.com" className="rounded-lg px-3 py-2 text-gray-300 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400">
+            Contato: suporte.sajtem@gmail.com
+          </a>
         </footer>
       </div>
     );
