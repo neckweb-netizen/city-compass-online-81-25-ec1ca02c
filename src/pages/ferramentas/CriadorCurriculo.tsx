@@ -60,7 +60,7 @@ export const CriadorCurriculo = () => {
   const adicionarExperiencia = () => {
     setExperiencias([
       ...experiencias,
-      { id: Date.now().toString(), empresa: '', cidade: '', cargo: '', dataInicio: '', dataFim: '', descricao: '' }
+      { id: crypto.randomUUID(), empresa: '', cidade: '', cargo: '', dataInicio: '', dataFim: '', descricao: '' }
     ]);
   };
 
@@ -78,7 +78,7 @@ export const CriadorCurriculo = () => {
   const adicionarFormacao = () => {
     setFormacoes([
       ...formacoes,
-      { id: Date.now().toString(), descricao: '' }
+      { id: crypto.randomUUID(), descricao: '' }
     ]);
   };
 
@@ -330,7 +330,7 @@ export const CriadorCurriculo = () => {
                 <CardTitle className="text-base font-bold flex items-center gap-2">
                   <GraduationCap className="w-4 h-4 text-primary" /> Formação Educacional
                 </CardTitle>
-                <Button size="sm" variant="outline" onClick={adicionarFormacao} className="h-7 text-xs gap-1">
+                <Button type="button" size="sm" variant="outline" onClick={adicionarFormacao} className="min-h-10 shrink-0 text-xs gap-1">
                   <Plus className="w-3 h-3" /> Adicionar
                 </Button>
               </CardHeader>
@@ -344,7 +344,7 @@ export const CriadorCurriculo = () => {
                       className="text-xs" 
                     />
                     {formacoes.length > 1 && (
-                      <Button size="icon" variant="ghost" onClick={() => removerFormacao(form.id)} className="h-8 w-8 text-destructive shrink-0">
+                      <Button type="button" aria-label="Remover formação" size="icon" variant="ghost" onClick={() => removerFormacao(form.id)} className="h-10 w-10 text-destructive shrink-0">
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     )}
@@ -359,7 +359,7 @@ export const CriadorCurriculo = () => {
                 <CardTitle className="text-base font-bold flex items-center gap-2">
                   <Briefcase className="w-4 h-4 text-primary" /> Experiência Profissional
                 </CardTitle>
-                <Button size="sm" variant="outline" onClick={adicionarExperiencia} className="h-7 text-xs gap-1">
+                <Button type="button" size="sm" variant="outline" onClick={adicionarExperiencia} className="min-h-10 shrink-0 text-xs gap-1">
                   <Plus className="w-3 h-3" /> Adicionar
                 </Button>
               </CardHeader>
@@ -367,11 +367,11 @@ export const CriadorCurriculo = () => {
                 {experiencias.map((exp) => (
                   <div key={exp.id} className="p-3 border border-border/50 rounded-lg space-y-2 relative bg-muted/20">
                     {experiencias.length > 1 && (
-                      <Button size="icon" variant="ghost" onClick={() => removerExperiencia(exp.id)} className="absolute top-2 right-2 h-6 w-6 text-destructive">
+                      <Button type="button" aria-label="Remover experiência profissional" size="icon" variant="ghost" onClick={() => removerExperiencia(exp.id)} className="absolute top-2 right-2 h-10 w-10 text-destructive">
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>
                     )}
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       <div>
                         <Label className="text-[10px]">Empresa</Label>
                         <Input placeholder="Ex: Nome da Empresa LTDA" value={exp.empresa} onChange={e => atualizarExperiencia(exp.id, 'empresa', e.target.value)} className="h-8 text-xs" />
@@ -381,7 +381,7 @@ export const CriadorCurriculo = () => {
                         <Input placeholder="Ex: Santo Antônio de Jesus - BA" value={exp.cidade} onChange={e => atualizarExperiencia(exp.id, 'cidade', e.target.value)} className="h-8 text-xs" />
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       <div>
                         <Label className="text-[10px]">Data de Início</Label>
                         <Input placeholder="Ex: 01/01/2022" value={exp.dataInicio} onChange={e => atualizarExperiencia(exp.id, 'dataInicio', e.target.value)} className="h-8 text-xs" />
