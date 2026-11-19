@@ -30,16 +30,27 @@ export default function EntreNos() {
   const [allowComments,setAllowComments] = useState(true); const [sensitive,setSensitive] = useState(false); const [saving,setSaving] = useState(false);
   const [revealed,setRevealed] = useState<Set<string>>(new Set()); const [openComments,setOpenComments] = useState<string|null>(null); const [commentText,setCommentText] = useState('');
 
+  const [loadError, setLoadError] = useState(false);
   const load = useCallback(async () => {
     setLoading(true);
-    const [p,r,c] = await Promise.all([
-      supabase.from('entre_nos_postagens' as any).select('id,categoria,sexo,idade,faixa_etaria,conteudo,permitir_comentarios,conteudo_sensivel,destaque,publicacao_sistema,criado_em').eq('status','aprovado').order('destaque',{ascending:false}).order('criado_em',{ascending:false}).limit(60),
-      supabase.from('entre_nos_reacoes' as any).select('id,postagem_id,tipo'),
-      supabase.from('entre_nos_comentarios' as any).select('id,postagem_id,conteudo,criado_em').eq('status','aprovado').order('criado_em',{ascending:true})
-    ]);
-    if (p.error) toast.error('Não foi possível carregar o Entre Nós.');
-    setPosts((p.data || []) as unknown as Post[]); setReactionRows((r.data || []) as unknown as Reaction[]); setComments((c.data || []) as unknown as Comment[]); setLoading(false);
-  },[]);
+    try {
+      const [p,r,c] = await Promise.all([
+        supabase.from('entre_nos_postagens' as any).select('id,categoria,sexo,idade,faixa_etaria,conteudo,permitir_comentarios,conteudo_sensivel,destaque,publicacao_sistema,criado_em').eq('status','aprovado').order('destaque',{ascending:false}).order('criado_em',{ascending:false}).limit(60),
+        supabase.from('entre_nos_reacoes' as any).select('id,postagem_id,tipo'),
+        supabase.from('entre_nos_comentarios' as any).select('id,postagem_id,conteudo,criado_em').eq('status','aprovado').order('criado_em',{ascending:true})
+      ]);
+      if (p.error || r.error || c.error) throw new Error('Falha ao carregar o feed');
+      setPosts((p.data || []) as unknown as Post[]);
+      setReactionRows((r.data || []) as unknown as Reaction[]);
+      setComments((c.data || []) as unknown as Comment[]);
+      setLoadError(false);
+    } catch {
+      setLoadError(true);
+      toast.error('Não foi possível carregar o Entre Nós.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
   useEffect(()=>{ load(); },[load]);
 
   const counts = useMemo(()=>reactionRows.reduce<Record<string,Record<string,number>>>((a,r)=>{ a[r.postagem_id] ||= {}; a[r.postagem_id][r.tipo]=(a[r.postagem_id][r.tipo]||0)+1; return a; },{}),[reactionRows]);
@@ -117,7 +128,7 @@ export default function EntreNos() {
           </DialogContent></Dialog>
       </div>
 
-      <div className="mt-4 space-y-4">{loading ? <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary"/></div> : posts.length===0 ? <Card className="rounded-3xl"><CardContent className="py-16 text-center"><Sparkles className="mx-auto mb-3 h-10 w-10 text-primary"/><h2 className="font-bold">Este espaço está começando</h2><p className="mt-1 text-sm text-muted-foreground">Seja a primeira pessoa a compartilhar uma história.</p></CardContent></Card> : posts.map(post=>{
+      <div className="mt-4 space-y-4">{loading ? <div role="status" aria-label="Carregando histórias" className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary"/></div> : loadError ? <Card className="rounded-3xl"><CardContent className="py-12 text-center"><h2 className="font-bold">Não foi possível carregar as histórias</h2><p className="mt-2 text-sm text-muted-foreground">Verifique a conexão e tente novamente.</p><Button type="button" className="mt-4 min-h-11" onClick={() => { void load(); }}>Tentar novamente</Button></CardContent></Card> : posts.length===0 ? <Card className="rounded-3xl"><CardContent className="py-16 text-center"><Sparkles className="mx-auto mb-3 h-10 w-10 text-primary"/><h2 className="font-bold">Este espaço está começando</h2><p className="mt-1 text-sm text-muted-foreground">Seja a primeira pessoa a compartilhar uma história.</p></CardContent></Card> : posts.map(post=>{
         const hidden=post.conteudo_sensivel&&!revealed.has(post.id); const postComments=comments.filter(c=>c.postagem_id===post.id);
         return <article key={post.id} className="overflow-hidden rounded-[1.6rem] border bg-card shadow-sm transition hover:shadow-md">
           <div className="p-5 sm:p-6"><div className="flex items-start justify-between gap-3"><div className="flex gap-3"><div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-primary/12">{post.publicacao_sistema?<Sparkles className="h-5 w-5 text-primary"/>:<HeartHandshake className="h-5 w-5 text-primary"/>}</div><div><div className="flex flex-wrap items-center gap-2"><b>{post.publicacao_sistema?'Comunidade Saj Tem':'Anônimo'}</b>{post.destaque&&<Badge variant="secondary">Destaque</Badge>}</div><p className="text-xs text-muted-foreground">{post.publicacao_sistema?'História inspirada em situações reais':`${sexLabels[post.sexo]} · ${post.idade} anos`} · {new Date(post.criado_em).toLocaleDateString('pt-BR')}</p></div></div>{!post.publicacao_sistema&&<Button type="button" variant="ghost" size="icon" className="h-10 w-10 shrink-0" aria-label="Denunciar publicação" onClick={()=>report(post.id)}><Flag className="h-4 w-4"/></Button>}</div>
