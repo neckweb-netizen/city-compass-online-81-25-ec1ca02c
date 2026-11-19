@@ -413,3 +413,13 @@ test('agendamento distingue serviços carregando, indisponíveis e erro de consu
   assert.match(form, /role="alert"/);
   assert.match(form, /void refetchServicos\(\)/);
 });
+
+test('agendamento revalida a antecedência da data antes de enviar', () => {
+  const form = source('src/components/agendamento/FormularioAgendamento.tsx');
+  assert.match(form, /new Date\(formData\.data_agendamento\)\.getTime\(\)/);
+  assert.match(form, /chosenTime < Date\.now\(\) \+ 60 \* 60 \* 1000/);
+  assert.match(form, /setDateError\('Escolha um horário com pelo menos 1 hora de antecedência\.'\)/);
+  assert.match(form, /aria-invalid=\{Boolean\(dateError\)\}/);
+  assert.match(form, /id="erro-data-agendamento" role="alert"/);
+  assert.ok(form.indexOf('chosenTime < Date.now()') < form.indexOf('await criarAgendamento('));
+});
