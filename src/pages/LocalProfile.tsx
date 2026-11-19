@@ -266,6 +266,7 @@ const EmpresaProfile = () => {
           />
 
           {isInfluencer ? (
+            <>
             <InfluencerProfile
               empresa={empresa}
               avaliacoes={avaliacoes}
@@ -278,6 +279,7 @@ const EmpresaProfile = () => {
                 <EmpresaEventos />
               </Card>
             )}
+            </>
           ) : (
             <Card className="overflow-hidden border-border bg-card text-card-foreground shadow-lg">
               <Tabs defaultValue={isRadio ? 'radio' : 'informacoes'} className="w-full">
