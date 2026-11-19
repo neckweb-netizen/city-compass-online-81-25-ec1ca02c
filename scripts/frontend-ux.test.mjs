@@ -183,3 +183,29 @@ test('notas em estrelas e remoção de tags funcionam com teclado', () => {
   assert.match(product, /onClick=\{\(\) => removeTag\(tag\)\}/);
   assert.match(product, /htmlFor="produto-tags"/);
 });
+
+
+test('cadastro de local mantém categoria controlada e ações adaptadas ao celular', () => {
+  const cadastro = source('src/pages/CadastroLocal.tsx');
+  assert.match(cadastro, /value=\{field\.value \|\| ''\}/);
+  assert.match(cadastro, /aria-label="Categoria do local"/);
+  assert.match(cadastro, /flex-col-reverse gap-3 border-t/);
+  assert.match(cadastro, /aria-busy=\{isSubmitting\}/);
+});
+
+test('upload de banner tem seletor, remoção e ação de salvar acessíveis', () => {
+  const banner = source('src/components/admin/forms/BannerForm.tsx');
+  assert.match(banner, /aria-label="Remover mídia do banner"/);
+  assert.match(banner, /aria-label="Selecionar imagem do banner"/);
+  assert.match(banner, /aria-label="Selecionar vídeo para o banner"/);
+  assert.match(banner, /aria-busy=\{Boolean\(isLoading \|\| uploading\)\}/);
+});
+
+test('horários de funcionamento associam campos ao dia da semana', () => {
+  const hours = source('src/components/admin/forms/HorarioFuncionamentoFormField.tsx');
+  assert.ok(hours.includes('htmlFor={'));
+  assert.ok(hours.includes('horario-aberto-'));
+  assert.ok(hours.includes('horario-abertura-'));
+  assert.ok(hours.includes('horario-fechamento-'));
+  assert.match(hours, /sm:grid-cols-2/);
+});
