@@ -11,7 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { ToolBanner } from '@/components/ferramentas/ToolBanner';
 
-const numberFrom = (value: string) => Number(value.replace(',', '.')) || 0;
+const numberFrom = (value: string) => {
+  const parsed = Number(value.trim().replace(',', '.'));
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+};
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const decimal = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 });
 
@@ -35,7 +38,7 @@ export default function CalculadoraCombustivel() {
     const combustivelTotal = litros * valorLitro;
     const total = combustivelTotal + numberFrom(pedagios);
     const pessoas = Math.max(1, Math.floor(numberFrom(passageiros)));
-    return { km, litros, combustivelTotal, total, porPessoa: total / pessoas, valido: km > 0 && kmLitro > 0 && valorLitro > 0 };
+    return { km, litros, combustivelTotal, total, porPessoa: total / pessoas, valido: km > 0 && kmLitro > 0 && valorLitro > 0 && numberFrom(passageiros) >= 1 && numberFrom(passageiros) <= 20 };
   }, [consumo, distancia, idaVolta, passageiros, pedagios, preco]);
 
   const comparacao = useMemo(() => {
@@ -60,12 +63,12 @@ export default function CalculadoraCombustivel() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2"><Label htmlFor="distancia">Distância de ida (km)</Label><Input id="distancia" inputMode="decimal" value={distancia} onChange={event => setDistancia(event.target.value)} placeholder="Ex.: 100" /></div>
             <div className="space-y-2"><Label htmlFor="consumo">Consumo médio (km/l)</Label><Input id="consumo" inputMode="decimal" value={consumo} onChange={event => setConsumo(event.target.value)} placeholder="Ex.: 12" /></div>
-            <div className="space-y-2"><Label>Combustível</Label><Select value={combustivel} onValueChange={setCombustivel}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Gasolina">Gasolina</SelectItem><SelectItem value="Etanol">Etanol</SelectItem><SelectItem value="Diesel">Diesel</SelectItem><SelectItem value="GNV">GNV</SelectItem></SelectContent></Select></div>
+            <div className="space-y-2"><Label htmlFor="tipo-combustivel">Combustível</Label><Select value={combustivel} onValueChange={setCombustivel}><SelectTrigger id="tipo-combustivel" aria-label="Tipo de combustível"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Gasolina">Gasolina</SelectItem><SelectItem value="Etanol">Etanol</SelectItem><SelectItem value="Diesel">Diesel</SelectItem><SelectItem value="GNV">GNV</SelectItem></SelectContent></Select></div>
             <div className="space-y-2"><Label htmlFor="preco">Preço do {combustivel.toLowerCase()}</Label><Input id="preco" inputMode="decimal" value={preco} onChange={event => setPreco(event.target.value)} placeholder="Ex.: 6,19" /></div>
             <div className="space-y-2"><Label htmlFor="pedagios">Pedágios e outros custos</Label><Input id="pedagios" inputMode="decimal" value={pedagios} onChange={event => setPedagios(event.target.value)} placeholder="Opcional" /></div>
-            <div className="space-y-2"><Label htmlFor="passageiros">Pessoas dividindo</Label><Input id="passageiros" type="number" min="1" max="20" value={passageiros} onChange={event => setPassageiros(event.target.value)} /></div>
+            <div className="space-y-2"><Label htmlFor="passageiros">Pessoas dividindo</Label><Input id="passageiros" type="number" min="1" max="20" step="1" value={passageiros} onChange={event => setPassageiros(event.target.value)} /></div>
           </div>
-          <Label className="flex items-center justify-between rounded-xl border p-3"><span><span className="block font-bold">Calcular ida e volta</span><span className="text-xs font-normal text-muted-foreground">Dobra automaticamente a distância informada</span></span><Switch checked={idaVolta} onCheckedChange={setIdaVolta} /></Label>
+          <Label htmlFor="calcular-ida-volta" className="flex items-center justify-between gap-3 rounded-xl border p-3"><span><span className="block font-bold">Calcular ida e volta</span><span className="text-xs font-normal text-muted-foreground">Dobra automaticamente a distância informada</span></span><Switch id="calcular-ida-volta" checked={idaVolta} onCheckedChange={setIdaVolta} /></Label>
 
           {viagem.valido ? <div className="grid gap-3 rounded-2xl bg-amber-500/10 p-4 sm:grid-cols-2">
             <div><p className="text-xs text-muted-foreground">Distância calculada</p><p className="text-xl font-black">{decimal.format(viagem.km)} km</p></div>
