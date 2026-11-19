@@ -33,17 +33,20 @@ export const CalculadoraMargem = () => {
   const [descontoPixPercentual, setDescontoPixPercentual] = useState('');
 
   // PARSER DE MOEDA E VALORES
-  const parseMoeda = (val: string) => parseFloat(val.replace(/\./g, '').replace(',', '.')) || 0;
+  const parseMoeda = (val: string) => {
+    const numero = Number(val.trim().replace(/\./g, '').replace(',', '.'));
+    return Number.isFinite(numero) && numero > 0 ? numero : 0;
+  };
   const formatarMoeda = (num: number) => num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const custo = parseMoeda(custoProduto);
-  const margemDesejada = parseFloat(margemLucroDesejada) || 0;
-  const descPix = parseFloat(descontoPixPercentual) || 0;
+  const margemDesejada = Number(margemLucroDesejada.replace(',', '.')) || 0;
+  const descPix = Number(descontoPixPercentual.replace(',', '.')) || 0;
 
   // DETERMINAR A TAXA DA MAQUININHA APLICADA
   let taxaMaquininha = 0;
   if (operadoraSelecionada === 'custom') {
-    taxaMaquininha = parseFloat(taxaManual.replace(',', '.')) || 0;
+    taxaMaquininha = Number(taxaManual.replace(',', '.')) || 0;
   } else {
     const op = OPERADORAS[operadoraSelecionada as keyof typeof OPERADORAS];
     if (op) {
@@ -54,12 +57,11 @@ export const CalculadoraMargem = () => {
   // CÁLCULO DE MARKUP REAL PARA GARANTIR A MARGEM LÍQUIDA DESEJADA
   // Fórmula de Preço de Venda = Custo / (1 - (Margem% + Taxa%) / 100)
   const somaPorcentagens = (margemDesejada + taxaMaquininha) / 100;
-  let precoVendaIdeal = 0;
-  if (somaPorcentagens < 1 && custo > 0) {
-    precoVendaIdeal = custo / (1 - somaPorcentagens);
-  } else if (custo > 0) {
-    precoVendaIdeal = custo * (1 + margemDesejada / 100);
-  }
+  const taxasValidas = margemDesejada >= 0 && margemDesejada < 100 &&
+    taxaMaquininha >= 0 && taxaMaquininha < 100 && somaPorcentagens < 1;
+  const precoVendaIdeal = taxasValidas && custo > 0
+    ? custo / (1 - somaPorcentagens)
+    : 0;
 
   // CÁLCULO DE DESCONTOS E LUCROS REAL
   const valorTaxaRetida = precoVendaIdeal * (taxaMaquininha / 100);
@@ -82,13 +84,19 @@ export const CalculadoraMargem = () => {
     return msg;
   };
 
-  const handleCopiar = () => {
-    navigator.clipboard.writeText(gerarTextoResumo());
-    setCopiado(true);
-    setTimeout(() => setCopiado(false), 2000);
+  const handleCopiar = async () => {
+    if (!taxasValidas || custo <= 0) return;
+    try {
+      await navigator.clipboard.writeText(gerarTextoResumo());
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2000);
+    } catch (error) {
+      console.error('Não foi possível copiar o resumo:', error);
+    }
   };
 
   const handleEnviarWhatsApp = () => {
+    if (!taxasValidas || custo <= 0) return;
     const texto = encodeURIComponent(gerarTextoResumo());
     window.open(`https://wa.me/?text=${texto}`, '_blank');
   };
@@ -225,7 +233,7 @@ export const CalculadoraMargem = () => {
 
           {/* PAINEL DE RESULTADOS & PREÇO RECOMENDADO */}
           <div className="space-y-4">
-            
+            {!taxasValidas && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">Margem e taxa da maquininha precisam ser positivas e somar menos de 100% para haver um preço viável.</p>}
             <Card className="border-emerald-500/30 bg-emerald-500/5 shadow-lg">
               <CardContent className="p-6 space-y-4 text-center">
                 <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">
@@ -274,7 +282,8 @@ export const CalculadoraMargem = () => {
                 <div className="grid grid-cols-2 gap-3">
                   <Button 
                     variant="outline"
-                    onClick={handleCopiar}
+                    onClick={() => void handleCopiar()}
+                    disabled={!taxasValidas || custo <= 0}
                     className="w-full border-primary text-primary hover:bg-primary/10 font-bold h-11 rounded-xl text-xs gap-2"
                   >
                     {copiado ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
@@ -283,6 +292,7 @@ export const CalculadoraMargem = () => {
 
                   <Button 
                     onClick={handleEnviarWhatsApp}
+                    disabled={!taxasValidas || custo <= 0}
                     className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-11 rounded-xl text-xs gap-2 shadow-lg"
                   >
                     <Send className="w-4 h-4" /> Enviar WhatsApp
