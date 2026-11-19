@@ -265,3 +265,19 @@ test('currículo usa IDs exclusivos e botões de remoção acessíveis', () => {
   assert.match(cv, /aria-label="Remover experiência profissional"/);
   assert.match(cv, /grid-cols-1 gap-2 sm:grid-cols-2/);
 });
+
+
+
+test('substituição do backup financeiro salva primeiro e remove registros antigos por ID', () => {
+  const storage = source('src/hooks/useControleFinanceiroStorage.ts');
+  const start = storage.indexOf('const replaceAll = useCallback');
+  const end = storage.indexOf('const importLocalToAccount =', start);
+  assert.ok(start >= 0 && end > start);
+  const replacement = storage.slice(start, end);
+  assert.ok(replacement.includes('.upsert(batch.map'));
+  assert.ok(replacement.includes('for (let offset = 0; ; offset += 500)'));
+  assert.ok(replacement.includes('const obsoleteIds = storedIds.filter'));
+  assert.ok(replacement.includes(".in('id', obsoleteIds.slice"));
+  assert.ok(replacement.indexOf('.upsert(batch.map') < replacement.indexOf('const obsoleteIds'));
+  assert.ok(!replacement.includes(".delete()\n      .eq('user_id', user.id);"));
+});

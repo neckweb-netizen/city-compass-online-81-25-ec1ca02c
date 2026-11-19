@@ -294,6 +294,8 @@ export const useControleFinanceiroStorage = () => {
   }, [persistLocal, state, user]);
 
   const replaceAll = useCallback(async (next: FinanceState) => {
+    // Keep the requested import in the local backup even if the network fails.
+    // Never delete the existing remote transactions before saving replacements.
     persistLocal(next);
 
     if (!user) return { synced: false, reason: 'not_authenticated' as const };
@@ -301,48 +303,67 @@ export const useControleFinanceiroStorage = () => {
     setSyncing(true);
     setSyncError(null);
 
-    const deleteResponse = await (supabase as any)
-      .from('finance_lancamentos')
-      .delete()
-      .eq('user_id', user.id);
-
-    if (deleteResponse.error) {
+    const fail = (error: { message: string }) => {
       setSyncing(false);
-      setSyncError(deleteResponse.error.message);
-      return { synced: false, reason: 'remote_error' as const, error: deleteResponse.error };
-    }
+      setSyncError(error.message);
+      return { synced: false, reason: 'remote_error' as const, error };
+    };
 
-    if (next.transactions.length > 0) {
-      const insertResponse = await (supabase as any)
-        .from('finance_lancamentos')
-        .insert(next.transactions.map((item) => toTransactionRow(user.id, item)));
-
-      if (insertResponse.error) {
-        setSyncing(false);
-        setSyncError(insertResponse.error.message);
-        return { synced: false, reason: 'remote_error' as const, error: insertResponse.error };
+    try {
+      // Save the incoming records first, in bounded batches. A failed upload
+      // leaves the pre-existing remote records intact rather than wiping them.
+      for (let offset = 0; offset < next.transactions.length; offset += 200) {
+        const batch = next.transactions.slice(offset, offset + 200);
+        const { error } = await (supabase as any)
+          .from('finance_lancamentos')
+          .upsert(batch.map((item) => toTransactionRow(user.id, item)), { onConflict: 'id' });
+        if (error) return fail(error);
       }
+
+      const settingsResponse = await (supabase as any)
+        .from('finance_configuracoes')
+        .upsert({
+          user_id: user.id,
+          orcamento_mensal: next.settings.monthlyBudget,
+          meta_economia: next.settings.savingsGoal,
+          meta_reserva_emergencia: next.settings.emergencyFundGoal,
+          atualizado_em: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
+      if (settingsResponse.error) return fail(settingsResponse.error);
+
+      // Remove old records only after all replacement writes have succeeded.
+      // Page through IDs to avoid PostgREST's default 1,000-row response limit.
+      const storedIds: string[] = [];
+      for (let offset = 0; ; offset += 500) {
+        const { data, error } = await (supabase as any)
+          .from('finance_lancamentos')
+          .select('id')
+          .eq('user_id', user.id)
+          .order('id', { ascending: true })
+          .range(offset, offset + 499);
+        if (error) return fail(error);
+        const page = (data || []) as Array<{ id: string }>;
+        storedIds.push(...page.map((item) => item.id));
+        if (page.length < 500) break;
+      }
+
+      const importedIds = new Set(next.transactions.map((item) => item.id));
+      const obsoleteIds = storedIds.filter((id) => !importedIds.has(id));
+      for (let offset = 0; offset < obsoleteIds.length; offset += 200) {
+        const { error } = await (supabase as any)
+          .from('finance_lancamentos')
+          .delete()
+          .eq('user_id', user.id)
+          .in('id', obsoleteIds.slice(offset, offset + 200));
+        if (error) return fail(error);
+      }
+
+      setSyncing(false);
+      setHasLocalDataToImport(false);
+      return { synced: true as const };
+    } catch (error) {
+      return fail({ message: error instanceof Error ? error.message : 'Falha ao sincronizar backup.' });
     }
-
-    const settingsResponse = await (supabase as any)
-      .from('finance_configuracoes')
-      .upsert({
-        user_id: user.id,
-        orcamento_mensal: next.settings.monthlyBudget,
-        meta_economia: next.settings.savingsGoal,
-        meta_reserva_emergencia: next.settings.emergencyFundGoal,
-        atualizado_em: new Date().toISOString(),
-      }, { onConflict: 'user_id' });
-
-    setSyncing(false);
-
-    if (settingsResponse.error) {
-      setSyncError(settingsResponse.error.message);
-      return { synced: false, reason: 'remote_error' as const, error: settingsResponse.error };
-    }
-
-    setHasLocalDataToImport(false);
-    return { synced: true as const };
   }, [persistLocal, user]);
 
   const importLocalToAccount = useCallback(async () => {
