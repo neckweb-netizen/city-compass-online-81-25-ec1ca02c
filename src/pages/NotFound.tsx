@@ -1,5 +1,5 @@
 
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { BottomNavigation } from '@/components/layout/BottomNavigation';
 
@@ -19,9 +19,9 @@ const NotFound = () => {
         <div className="text-center">
           <h1 className="text-4xl font-bold mb-4">404</h1>
           <p className="text-xl text-muted-foreground mb-4">Página não encontrada</p>
-          <a href="/" className="text-primary hover:underline underline">
+          <Link to="/" className="inline-flex min-h-11 items-center justify-center rounded-xl px-5 py-2.5 font-semibold text-primary underline underline-offset-4 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
             Voltar ao início
-          </a>
+          </Link>
         </div>
       </main>
       
