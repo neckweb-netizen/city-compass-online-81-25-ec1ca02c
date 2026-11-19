@@ -216,9 +216,12 @@ export const DesktopSidebar = ({
         variant="ghost"
         size="icon"
         onClick={onToggle}
+        type="button"
+        aria-label={isOpen ? 'Recolher menu lateral' : 'Expandir menu lateral'}
+        aria-expanded={isOpen}
         className={cn(
-          "absolute -right-3 top-6 z-50 h-6 w-6 rounded-full border bg-background shadow-md hover:bg-muted transition-all duration-300",
-          "opacity-0 group-hover:opacity-100"
+          "absolute -right-4 top-5 z-50 h-9 w-9 rounded-full border bg-background shadow-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-primary transition-all duration-300",
+          "opacity-100"
         )}
       >
         <ChevronLeft className={cn("h-4 w-4 transition-transform duration-300", !isOpen && "rotate-180")} />

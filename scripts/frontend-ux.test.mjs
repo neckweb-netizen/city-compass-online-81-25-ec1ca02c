@@ -37,7 +37,7 @@ test('atalhos e cards de destaque podem ser abertos por teclado', () => {
 
 test('a navegação central continua circular e preserva as cinco rotas', () => {
   const nav = source('src/components/layout/BottomNavigation.tsx');
-  assert.match(nav, /h-\[3\.75rem\] w-\[3\.75rem\] rounded-full/);
+  assert.match(nav, /h-\[3\.75rem\] w-\[3\.75rem\][^"]*rounded-full/);
   for (const route of ["'/'", "'/canal-informativo'", "'/cadastro-local'", "'/ferramentas'", "'/reclamacoes'"]) {
     assert.ok(nav.includes(`rota: ${route}`), `rota ausente: ${route}`);
   }
@@ -84,4 +84,46 @@ test('landing não possui barra fixa e esconde menu, navegação e assistente de
   assert.match(layout, /!isBusinessLanding && assistantReady/);
   assert.match(layout, /!isBusinessLanding && tourReady/);
   assert.match(layout, /isBusinessLanding \? "pb-0"/);
+});
+
+test('ações de navegação expõem controles semânticos e rótulos acessíveis', () => {
+  const navigation = source('src/components/layout/BottomNavigation.tsx');
+  const sidebar = source('src/components/layout/DesktopSidebar.tsx');
+  const drawer = source('src/components/layout/MobileHamburger.tsx');
+  const header = source('src/components/layout/Header.tsx');
+  const sheet = source('src/components/ui/sheet.tsx');
+  assert.match(navigation, /to=\{item\.rota\}/);
+  assert.match(navigation, /aria-label="Criar publicação"/);
+  assert.match(sidebar, /aria-expanded=\{isOpen\}/);
+  assert.match(sidebar, /Recolher menu lateral/);
+  assert.match(drawer, /<SheetTitle className="sr-only">/);
+  assert.match(sheet, /Fechar menu/);
+  assert.match(header, /aria-label="Buscar no portal"/);
+  assert.match(header, /Abrir menu do perfil/);
+  assert.ok(header.includes('Notificações: '));
+});
+
+test('stories e cards de reclamação operam com teclado e leitor de telas', () => {
+  const stories = source('src/components/home/StoryViewer.tsx');
+  const complaints = source('src/components/problemas/ProblemaCard.tsx');
+  assert.match(stories, /aria-label="Story anterior"/);
+  assert.match(stories, /aria-label="Próximo story"/);
+  assert.match(stories, /aria-label="Fechar stories"/);
+  assert.match(complaints, /role="link"/);
+  assert.match(complaints, /tabIndex=\{0\}/);
+  assert.match(complaints, /event\.key === 'Enter'/);
+  assert.match(complaints, /Votar a favor desta reclamação/);
+});
+
+test('modo de manutenção não mostra progresso fictício nem suporte inventado', () => {
+  const app = source('src/App.tsx');
+  assert.doesNotMatch(app, /85% Concluído|5575999999999|https:\/\/instagram\.com|https:\/\/facebook\.com/);
+  assert.match(app, /mailto:suporte\.sajtem@gmail\.com/);
+  assert.match(app, /role="status"/);
+});
+
+test('página não encontrada usa link SPA sem recarregar', () => {
+  const notFound = source('src/pages/NotFound.tsx');
+  assert.match(notFound, /<Link to="\/"/);
+  assert.doesNotMatch(notFound, /<a href="\/"/);
 });

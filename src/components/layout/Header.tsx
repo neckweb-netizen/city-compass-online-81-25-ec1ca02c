@@ -177,9 +177,10 @@ export const Header = ({ sidebarOpen = true }: HeaderProps) => {
             {!isHomePage && (
               <div className="mx-4 hidden min-w-0 max-w-md flex-1 lg:block">
                 <form onSubmit={handleSearch} className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    type="text"
+                    type="search"
+                    aria-label="Buscar no portal"
                     placeholder="Buscar..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -232,7 +233,7 @@ export const Header = ({ sidebarOpen = true }: HeaderProps) => {
               {user && (
                 <DropdownMenu open={notificationsOpen} onOpenChange={setNotificationsOpen}>
                   <DropdownMenuTrigger asChild>
-                     <Button variant="ghost" size="sm" className="h-10 w-10 lg:h-12 lg:w-12 rounded-full p-0 relative hover:bg-accent flex-shrink-0" data-account-tour="notifications">
+                     <Button type="button" variant="ghost" size="sm" aria-label={totalUnread > 0 ? `Notificações: ${totalUnread} não lidas` : 'Abrir notificações'} className="h-10 w-10 lg:h-12 lg:w-12 rounded-full p-0 relative hover:bg-accent flex-shrink-0" data-account-tour="notifications">
                        {totalUnread > 0 ? (
                          <>
                            <BellRing className="h-5 w-5 lg:h-6 lg:w-6 text-primary" />
@@ -324,7 +325,7 @@ export const Header = ({ sidebarOpen = true }: HeaderProps) => {
               {user && profile ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-10 px-1.5 lg:h-12 lg:px-3 rounded-full hover:bg-accent flex-shrink-0" data-account-tour="profile-menu">
+                    <Button type="button" variant="ghost" aria-label="Abrir menu do perfil" className="h-10 px-1.5 lg:h-12 lg:px-3 rounded-full hover:bg-accent flex-shrink-0" data-account-tour="profile-menu">
                       <Avatar className="h-8 w-8 lg:h-10 lg:w-10">
                         <AvatarFallback className="bg-primary text-primary-foreground text-sm lg:text-base font-semibold">
                           {profile.nome?.charAt(0)?.toUpperCase() || 'U'}

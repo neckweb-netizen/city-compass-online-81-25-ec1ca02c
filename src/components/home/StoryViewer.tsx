@@ -194,6 +194,7 @@ export const StoryViewer = ({
                 variant="ghost"
                 className="text-white hover:text-gray-200 bg-black/50 hover:bg-black/70 backdrop-blur-sm border border-white/10 rounded-full w-9 h-9 flex items-center justify-center p-0 transition-colors"
                 onClick={onClose}
+                aria-label="Fechar stories"
               >
                 <X className="w-4 h-4" />
               </Button>
@@ -214,12 +215,16 @@ export const StoryViewer = ({
             
             {/* Áreas invisíveis laterais de clique (Apenas cobrindo a mídia central para avançar/voltar) */}
             <div className="absolute inset-0 flex z-10">
-              <div 
-                className="flex-1 cursor-pointer"
+              <button
+                type="button"
+                aria-label="Story anterior"
+                className="flex-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                 onClick={onPrev}
               />
-              <div 
-                className="flex-1 cursor-pointer"
+              <button
+                type="button"
+                aria-label="Próximo story"
+                className="flex-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                 onClick={onNext}
               />
             </div>
@@ -231,6 +236,7 @@ export const StoryViewer = ({
                 variant="ghost"
                 className="absolute left-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white bg-black/40 hover:bg-black/60 rounded-full p-2 h-auto z-20 hidden md:flex"
                 onClick={onPrev}
+                aria-label="Story anterior"
               >
                 <ChevronLeft className="w-6 h-6" />
               </Button>
@@ -242,6 +248,7 @@ export const StoryViewer = ({
                 variant="ghost"
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white bg-black/40 hover:bg-black/60 rounded-full p-2 h-auto z-20 hidden md:flex"
                 onClick={onNext}
+                aria-label="Próximo story"
               >
                 <ChevronRight className="w-6 h-6" />
               </Button>
