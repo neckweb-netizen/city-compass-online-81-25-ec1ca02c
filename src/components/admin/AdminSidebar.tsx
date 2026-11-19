@@ -42,7 +42,8 @@ import {
   SidebarMenuButton, 
   SidebarMenuItem,
   SidebarHeader,
-  SidebarFooter
+  SidebarFooter,
+  useSidebar
 } from '@/components/ui/sidebar';
 
 interface AdminSidebarProps {
@@ -52,6 +53,7 @@ interface AdminSidebarProps {
 
 export const AdminSidebar = ({ activeSection, onSectionChange }: AdminSidebarProps) => {
   const location = useLocation();
+  const { isMobile, setOpenMobile } = useSidebar();
   
   // Estados para armazenar os números de notificações pendentes
   const [pendentesLocais, setPendentesLocais] = useState(0);
@@ -192,14 +194,14 @@ export const AdminSidebar = ({ activeSection, onSectionChange }: AdminSidebarPro
   ];
 
   const handleNavigation = (section: string) => {
-    console.log('🔄 Navigating to section:', section);
     onSectionChange(section);
+    if (isMobile) setOpenMobile(false);
   };
 
   return (
     <Sidebar data-account-tour="navigation">
       <SidebarHeader className="p-4 border-b">
-        <h2 className="text-lg font-semibold text-foreground">Admin Panel</h2>
+        <h2 className="text-lg font-semibold text-foreground">Painel Administrativo</h2>
       </SidebarHeader>
       
       <SidebarContent>
@@ -210,7 +212,7 @@ export const AdminSidebar = ({ activeSection, onSectionChange }: AdminSidebarPro
               <SidebarMenu>
                 {section.items.map((item) => {
                   const Icon = item.icon;
-                  const isActive = location.pathname === item.path || activeSection === item.section;
+                  const isActive = location.pathname === item.path;
                   
                   return (
                     <SidebarMenuItem key={item.section}>
@@ -220,7 +222,7 @@ export const AdminSidebar = ({ activeSection, onSectionChange }: AdminSidebarPro
                         onClick={() => handleNavigation(item.section)}
                         className="w-full"
                       >
-                        <Link to={item.path} className="flex items-center justify-between w-full">
+                        <Link to={item.path} aria-current={isActive ? 'page' : undefined} className="flex items-center justify-between w-full">
                           <div className="flex items-center gap-2">
                             <Icon className="w-4 h-4" />
                             <span>{item.label}</span>

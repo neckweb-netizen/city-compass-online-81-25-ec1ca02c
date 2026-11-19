@@ -118,7 +118,7 @@ export const AdminLayout = () => {
         <main className="min-w-0 flex-1 bg-background text-foreground">
           <header className="sticky top-0 z-40 h-16 min-w-0 border-b flex items-center gap-2 px-3 sm:px-6 bg-card/95 backdrop-blur-sm text-card-foreground border-border shadow-sm">
             <div className="flex min-w-0 items-center gap-2 sm:gap-4">
-              <SidebarTrigger />
+              <SidebarTrigger aria-label="Abrir ou fechar menu administrativo" className="h-10 w-10 rounded-xl" />
               <h1 className="truncate text-base font-semibold text-foreground sm:text-xl">Painel Administrativo</h1>
             </div>
             
@@ -128,6 +128,8 @@ export const AdminLayout = () => {
                 variant="ghost"
                 size="sm"
                 onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+                type="button"
+                aria-label={theme === 'light' ? 'Ativar tema escuro' : 'Ativar tema claro'}
                 className="h-10 w-10 rounded-full p-0 text-muted-foreground hover:text-foreground"
                 title={theme === 'dark' ? 'Ativar Modo Claro' : 'Ativar Modo Escuro'}
               >
@@ -146,11 +148,14 @@ export const AdminLayout = () => {
                 </div>
               </div>
               
-              <Button 
-                onClick={handleSignOut} 
-                variant="ghost" 
-                size="sm"
-                className="text-muted-foreground hover:text-foreground"
+              <Button
+                type="button"
+                onClick={handleSignOut}
+                aria-label="Sair do painel administrativo"
+                title="Sair"
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 shrink-0 rounded-xl text-muted-foreground hover:text-foreground"
               >
                 <LogOut className="w-4 h-4" />
               </Button>

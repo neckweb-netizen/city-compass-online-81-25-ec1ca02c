@@ -127,3 +127,36 @@ test('página não encontrada usa link SPA sem recarregar', () => {
   assert.match(notFound, /<Link to="\/"/);
   assert.doesNotMatch(notFound, /<a href="\/"/);
 });
+
+
+test('agendamento só limpa dados após confirmação do servidor', () => {
+  const form = source('src/components/agendamento/FormularioAgendamento.tsx');
+  assert.match(form, /const handleSubmit = async/);
+  assert.match(form, /await criarAgendamento\(/);
+  const mutation = form.indexOf('await criarAgendamento(');
+  const reset = form.indexOf('setFormData({', mutation);
+  const success = form.indexOf('onSuccess?.()', mutation);
+  assert.ok(mutation >= 0 && reset > mutation && success > reset);
+  assert.match(form, /catch \{/);
+  assert.match(form, /earliest\.getTimezoneOffset\(\)/);
+  assert.doesNotMatch(form, /now\.toISOString\(\)\.slice\(0, 16\)/);
+});
+
+test('menu administrativo fecha no celular e usa rota para o destaque', () => {
+  const sidebar = source('src/components/admin/AdminSidebar.tsx');
+  const layout = source('src/components/admin/AdminLayout.tsx');
+  assert.match(sidebar, /useSidebar\(\)/);
+  assert.match(sidebar, /if \(isMobile\) setOpenMobile\(false\)/);
+  assert.match(sidebar, /location\.pathname === item\.path/);
+  assert.match(sidebar, /aria-current=\{isActive \? 'page' : undefined\}/);
+  assert.match(layout, /aria-label="Sair do painel administrativo"/);
+  assert.match(layout, /aria-label="Abrir ou fechar menu administrativo"/);
+});
+
+test('contato expõe erros associados aos campos e teclado móvel apropriado', () => {
+  const contact = source('src/components/contact/ContactForm.tsx');
+  assert.match(contact, /aria-describedby=\{errors\.email \? 'erro-email'/);
+  assert.match(contact, /id="erro-email" role="alert"/);
+  assert.match(contact, /type="tel"/);
+  assert.match(contact, /aria-busy=\{isLoading\}/);
+});
