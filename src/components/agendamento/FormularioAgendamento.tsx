@@ -35,41 +35,42 @@ export const FormularioAgendamento: React.FC<FormularioAgendamentoProps> = ({
 
   const servicosAtivos = servicos.filter(s => s.ativo);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
-    if (!formData.nome_cliente || !formData.telefone_cliente || 
+
+    if (isCreating || !formData.nome_cliente.trim() || !formData.telefone_cliente.trim() ||
         !formData.servico || !formData.data_agendamento) {
       return;
     }
 
-    criarAgendamento({
-      empresa_id: empresaId,
-      nome_cliente: formData.nome_cliente,
-      telefone_cliente: formData.telefone_cliente,
-      servico: formData.servico,
-      data_agendamento: formData.data_agendamento,
-      observacoes: formData.observacoes || undefined
-    });
-
-    // Reset form
-    setFormData({
-      nome_cliente: user?.user_metadata?.nome || '',
-      telefone_cliente: user?.user_metadata?.telefone || '',
-      servico: '',
-      data_agendamento: '',
-      observacoes: ''
-    });
-
-    if (onSuccess) {
-      onSuccess();
+    try {
+      await criarAgendamento({
+        empresa_id: empresaId,
+        nome_cliente: formData.nome_cliente.trim(),
+        telefone_cliente: formData.telefone_cliente.trim(),
+        servico: formData.servico,
+        data_agendamento: formData.data_agendamento,
+        observacoes: formData.observacoes.trim() || undefined,
+      });
+      // Keep the entered information intact if the server rejects the request.
+      setFormData({
+        nome_cliente: user?.user_metadata?.nome || '',
+        telefone_cliente: user?.user_metadata?.telefone || '',
+        servico: '',
+        data_agendamento: '',
+        observacoes: '',
+      });
+      onSuccess?.();
+    } catch {
+      // useAgendamentos already displays the server error; do not claim success.
     }
   };
 
   const getMinDateTime = () => {
-    const now = new Date();
-    now.setHours(now.getHours() + 1); // Pelo menos 1 hora no futuro
-    return now.toISOString().slice(0, 16);
+    // datetime-local expects local wall-clock fields, not UTC (toISOString).
+    const earliest = new Date(Date.now() + 60 * 60 * 1000);
+    const local = new Date(earliest.getTime() - earliest.getTimezoneOffset() * 60_000);
+    return local.toISOString().slice(0, 16);
   };
 
   return (
@@ -103,6 +104,7 @@ export const FormularioAgendamento: React.FC<FormularioAgendamentoProps> = ({
                   <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     id="nome"
+                    autoComplete="name"
                     value={formData.nome_cliente}
                     onChange={(e) => setFormData(prev => ({
                       ...prev,
@@ -121,6 +123,9 @@ export const FormularioAgendamento: React.FC<FormularioAgendamentoProps> = ({
                   <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     id="telefone"
+                    type="tel"
+                    autoComplete="tel"
+                    inputMode="tel"
                     value={formData.telefone_cliente}
                     onChange={(e) => setFormData(prev => ({
                       ...prev,
@@ -143,7 +148,7 @@ export const FormularioAgendamento: React.FC<FormularioAgendamentoProps> = ({
                   servico: value
                 }))}
               >
-                <SelectTrigger>
+                <SelectTrigger id="servico" aria-label="Serviço para agendamento">
                   <SelectValue placeholder="Selecione um serviço" />
                 </SelectTrigger>
                 <SelectContent>
@@ -199,7 +204,8 @@ export const FormularioAgendamento: React.FC<FormularioAgendamentoProps> = ({
 
             <Button
               type="submit"
-              className="w-full"
+              className="w-full min-h-11"
+              aria-busy={isCreating}
               disabled={isCreating || !formData.nome_cliente || 
                        !formData.telefone_cliente || !formData.servico || 
                        !formData.data_agendamento}
