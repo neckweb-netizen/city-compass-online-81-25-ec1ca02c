@@ -60,6 +60,8 @@ const EmpresaProfile = () => {
   const [avaliacaoModalOpen, setAvaliacaoModalOpen] = useState(false);
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [agendamentoModalOpen, setAgendamentoModalOpen] = useState(false);
+  const [showAllReviews, setShowAllReviews] = useState(false);
+  const [showInfluencerEvents, setShowInfluencerEvents] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { createShortUrl, copyToClipboard } = useShortUrls();
@@ -268,9 +270,14 @@ const EmpresaProfile = () => {
               empresa={empresa}
               avaliacoes={avaliacoes}
               estatisticas={estatisticas}
-              onAvaliacaoClick={() => setAvaliacaoModalOpen(true)}
-              onEventosClick={() => {}}
+              onAvaliacaoClick={handleAvaliar}
+              onEventosClick={() => setShowInfluencerEvents(previous => !previous)}
             />
+            {showInfluencerEvents && (
+              <Card className="mt-4 p-4 sm:p-6" role="region" aria-label="Eventos deste perfil">
+                <EmpresaEventos />
+              </Card>
+            )}
           ) : (
             <Card className="overflow-hidden border-border bg-card text-card-foreground shadow-lg">
               <Tabs defaultValue={isRadio ? 'radio' : 'informacoes'} className="w-full">
@@ -407,7 +414,7 @@ const EmpresaProfile = () => {
                                     </div>
 
                                     <div className="space-y-4">
-                                      {avaliacoes?.slice(0, 3).map((avaliacao) => (
+                                      {(showAllReviews ? avaliacoes : avaliacoes?.slice(0, 3))?.map((avaliacao) => (
                                         <div key={avaliacao.id} className="border-b pb-4 last:border-b-0">
                                           <div className="flex items-start space-x-3 mb-3">
                                             <div className="w-10 h-10 bg-violet-100 dark:bg-violet-950/50 rounded-full flex items-center justify-center">
@@ -439,7 +446,7 @@ const EmpresaProfile = () => {
 
                                       {avaliacoes && avaliacoes.length > 3 && (
                                         <div className="text-center pt-4 border-t">
-                                          <Button variant="outline" size="sm">Ver todas as {avaliacoes.length} avaliações</Button>
+                                          <Button variant="outline" size="sm" aria-expanded={showAllReviews} onClick={() => setShowAllReviews(previous => !previous)}>{showAllReviews ? 'Mostrar menos avaliações' : `Ver todas as ${avaliacoes.length} avaliações`}</Button>
                                         </div>
                                       )}
                                     </div>
