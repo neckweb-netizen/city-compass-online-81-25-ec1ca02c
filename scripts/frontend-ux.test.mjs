@@ -301,6 +301,9 @@ test('Entre Nós bloqueia composição anônima e recupera erros de rede e envio
   assert.ok(page.includes('if (r.error || c.error)'));
   assert.ok(page.includes(".in('postagem_id', postIds)"));
   assert.ok(page.includes('if (postIds.length === 0)'));
+  assert.match(page, /if\\(!requireUser\\(\\) \\|\\| reactingPostId\\) return/);
+  assert.match(page, /disabled=\\{reactingPostId === post\\.id\\}/);
+  assert.match(page, /await load\\(false\\)/);
   assert.match(page, /finally \{\s*setLoading\(false\)/);
   assert.match(page, /loadError \? <Card/);
   assert.match(page, /void load\(\)/);
