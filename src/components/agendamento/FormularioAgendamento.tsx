@@ -25,6 +25,7 @@ export const FormularioAgendamento: React.FC<FormularioAgendamentoProps> = ({
   const { criarAgendamento, isCreating } = useAgendamentos();
   const { servicos, isLoading: loadingServicos, isError: servicosError, refetch: refetchServicos } = useServicosAgendamento(empresaId);
 
+  const [dateError, setDateError] = useState('');
   const [formData, setFormData] = useState({
     nome_cliente: user?.user_metadata?.nome || '',
     telefone_cliente: user?.user_metadata?.telefone || '',
@@ -43,6 +44,14 @@ export const FormularioAgendamento: React.FC<FormularioAgendamentoProps> = ({
       return;
     }
 
+    // A data mínima do campo pode envelhecer enquanto o formulário fica aberto.
+    const chosenTime = new Date(formData.data_agendamento).getTime();
+    if (!Number.isFinite(chosenTime) || chosenTime < Date.now() + 60 * 60 * 1000) {
+      setDateError('Escolha um horário com pelo menos 1 hora de antecedência.');
+      return;
+    }
+    setDateError('');
+
     try {
       await criarAgendamento({
         empresa_id: empresaId,
@@ -53,6 +62,7 @@ export const FormularioAgendamento: React.FC<FormularioAgendamentoProps> = ({
         observacoes: formData.observacoes.trim() || undefined,
       });
       // Keep the entered information intact if the server rejects the request.
+      setDateError('');
       setFormData({
         nome_cliente: user?.user_metadata?.nome || '',
         telefone_cliente: user?.user_metadata?.telefone || '',
@@ -185,13 +195,16 @@ export const FormularioAgendamento: React.FC<FormularioAgendamentoProps> = ({
                 id="data_agendamento"
                 type="datetime-local"
                 value={formData.data_agendamento}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  data_agendamento: e.target.value
-                }))}
+                onChange={(e) => {
+                  setDateError('');
+                  setFormData(prev => ({ ...prev, data_agendamento: e.target.value }));
+                }}
+                aria-invalid={Boolean(dateError)}
+                aria-describedby={dateError ? 'erro-data-agendamento' : undefined}
                 min={getMinDateTime()}
                 required
               />
+              {dateError && <p id="erro-data-agendamento" role="alert" className="mt-1 text-sm text-destructive">{dateError}</p>}
             </div>
 
             <div>
