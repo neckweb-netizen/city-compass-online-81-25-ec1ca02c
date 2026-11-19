@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Clock, User, Phone, MessageSquare } from 'lucide-react';
+import { Calendar, Clock, User, Phone, MessageSquare, Loader2 } from 'lucide-react';
 import { useAgendamentos } from '@/hooks/useAgendamentos';
 import { useServicosAgendamento } from '@/hooks/useServicosAgendamento';
 import { useAuth } from '@/hooks/useAuth';
@@ -23,7 +23,7 @@ export const FormularioAgendamento: React.FC<FormularioAgendamentoProps> = ({
 }) => {
   const { user } = useAuth();
   const { criarAgendamento, isCreating } = useAgendamentos();
-  const { servicos } = useServicosAgendamento(empresaId);
+  const { servicos, isLoading: loadingServicos, isError: servicosError, refetch: refetchServicos } = useServicosAgendamento(empresaId);
 
   const [formData, setFormData] = useState({
     nome_cliente: user?.user_metadata?.nome || '',
@@ -88,7 +88,16 @@ export const FormularioAgendamento: React.FC<FormularioAgendamentoProps> = ({
       </CardHeader>
       
       <CardContent>
-        {servicosAtivos.length === 0 ? (
+        {loadingServicos ? (
+          <div role="status" aria-label="Carregando serviços disponíveis" className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin" /> Carregando serviços...
+          </div>
+        ) : servicosError ? (
+          <div role="alert" className="space-y-3 py-8 text-center">
+            <p className="text-sm text-muted-foreground">Não foi possível carregar os serviços. Verifique sua conexão e tente novamente.</p>
+            <Button type="button" variant="outline" className="min-h-11" onClick={() => { void refetchServicos(); }}>Tentar novamente</Button>
+          </div>
+        ) : servicosAtivos.length === 0 ? (
           <div className="text-center py-6">
             <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground">
