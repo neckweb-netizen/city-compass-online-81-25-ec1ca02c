@@ -441,3 +441,14 @@ test('agendamento bloqueia toques rápidos repetidos e libera trava após falha'
   assert.match(form, /finally \{\s*submittingRef\.current = false/);
   assert.ok(form.indexOf('submittingRef.current = true') < form.indexOf('await criarAgendamento('));
 });
+
+test('perfil de empresa abre lista de avaliações e eventos do influenciador', () => {
+  const page = source('src/pages/LocalProfile.tsx');
+  assert.match(page, /onEventosClick=\{\(\) => setShowInfluencerEvents/);
+  assert.match(page, /showInfluencerEvents && \(/);
+  assert.match(page, /<EmpresaEventos \/>/);
+  assert.match(page, /showAllReviews \? avaliacoes : avaliacoes\?\.slice\(0, 3\)/);
+  assert.match(page, /aria-expanded=\{showAllReviews\} onClick=\{\(\) => setShowAllReviews/);
+  assert.match(page, /onAvaliacaoClick=\{handleAvaliar\}/);
+  assert.match(page, /\{isInfluencer \? \(\s*<>/);
+});
