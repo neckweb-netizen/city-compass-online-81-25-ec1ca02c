@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Progress } from '@/components/ui/progress';
+import { preloadStoryWindow, isStoryImageReady } from './storyImagePreload';
 import { getSafeNavigationUrl, isSameOriginNavigation } from '@/lib/safeNavigation';
 
 interface Story {
@@ -42,40 +42,47 @@ export const StoryViewer = ({
   onPrev 
 }: StoryViewerProps) => {
   const [progress, setProgress] = useState(0);
+  const [mediaReady, setMediaReady] = useState(false);
   const navigate = useNavigate();
 
   const currentStory = currentIndex !== null ? stories[currentIndex] : null;
 
+  // Busca antecipada dos próximos arquivos: um toque não deve esperar a rede.
   useEffect(() => {
     if (currentIndex === null || !currentStory) return;
+    preloadStoryWindow(stories, currentIndex);
+    setMediaReady(isStoryImageReady(currentStory.imagem_story_url));
+  }, [currentIndex, currentStory?.imagem_story_url, stories]);
 
-    const duration = currentStory.duracao * 1000; // Convert to milliseconds
-    const interval = 50; // Update every 50ms for smooth progress
-    const increment = (interval / duration) * 100;
+  // A duração só começa quando a imagem atual já pode ser apresentada.
+  useEffect(() => {
+    if (currentIndex === null || !currentStory || !mediaReady) {
+      setProgress(0);
+      return;
+    }
 
-    setProgress(0);
+    const duration = Math.max(1000, (Number(currentStory.duracao) || 5) * 1000);
+    const startedAt = performance.now();
+    let advanceTimeout: ReturnType<typeof setTimeout> | undefined;
+    const progressInterval = window.setInterval(() => {
+      const elapsed = performance.now() - startedAt;
+      if (elapsed >= duration) {
+        window.clearInterval(progressInterval);
+        setProgress(100);
+        advanceTimeout = setTimeout(() => {
+          if (currentIndex < stories.length - 1) onNext();
+          else onClose();
+        }, 100);
+      } else {
+        setProgress((elapsed / duration) * 100);
+      }
+    }, 50);
 
-    const progressInterval = setInterval(() => {
-      setProgress(prev => {
-        const newProgress = prev + increment;
-        if (newProgress >= 100) {
-          clearInterval(progressInterval);
-          // Auto advance to next story
-          setTimeout(() => {
-            if (currentIndex < stories.length - 1) {
-              onNext();
-            } else {
-              onClose();
-            }
-          }, 100);
-          return 100;
-        }
-        return newProgress;
-      });
-    }, interval);
-
-    return () => clearInterval(progressInterval);
-  }, [currentIndex, currentStory, stories.length, onNext, onClose]);
+    return () => {
+      window.clearInterval(progressInterval);
+      if (advanceTimeout) clearTimeout(advanceTimeout);
+    };
+  }, [currentIndex, currentStory?.id, currentStory?.duracao, mediaReady, stories.length, onNext, onClose]);
 
   const handleButtonClick = () => {
     if (!currentStory) return;
@@ -204,14 +211,28 @@ export const StoryViewer = ({
           {/* ÁREA CENTRAL DO STORY - Centralizada verticalmente e protegida das barras */}
           <div className="relative flex-1 w-full flex items-center justify-center bg-black overflow-hidden">
             <img
+              key={currentStory.id}
               src={currentStory.imagem_story_url}
               alt="Story"
               className="w-full h-full object-contain"
+              loading="eager"
+              fetchPriority="high"
+              decoding="async"
+              onLoad={() => setMediaReady(true)}
               onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.src = '/placeholder.svg';
+                const target = e.currentTarget;
+                if (!target.src.endsWith('/placeholder.svg')) {
+                  target.src = '/placeholder.svg';
+                } else {
+                  setMediaReady(true);
+                }
               }}
             />
+            {!mediaReady && (
+              <div role="status" aria-label="Carregando imagem do story" className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+              </div>
+            )}
             
             {/* Áreas invisíveis laterais de clique (Apenas cobrindo a mídia central para avançar/voltar) */}
             <div className="absolute inset-0 flex z-10">
