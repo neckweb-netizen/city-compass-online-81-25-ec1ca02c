@@ -22,6 +22,7 @@ type ContactFormData = z.infer<typeof contactSchema>;
 
 export const ContactForm = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [submissionStatus, setSubmissionStatus] = useState<'success' | 'error' | null>(null);
   const { sendContactEmail } = useEmailService();
 
   const {
@@ -34,6 +35,8 @@ export const ContactForm = () => {
   });
 
   const onSubmit = async (data: ContactFormData) => {
+    if (isLoading) return;
+    setSubmissionStatus(null);
     setIsLoading(true);
     try {
       // Garantir que os campos obrigatórios estão presentes
@@ -46,8 +49,10 @@ export const ContactForm = () => {
       };
       await sendContactEmail(emailData);
       reset();
+      setSubmissionStatus('success');
     } catch (error) {
       console.error('Erro ao enviar contato:', error);
+      setSubmissionStatus('error');
     } finally {
       setIsLoading(false);
     }
@@ -62,7 +67,7 @@ export const ContactForm = () => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" aria-busy={isLoading} onChange={() => { if (submissionStatus) setSubmissionStatus(null); }}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="nome" className="flex items-center gap-2">
@@ -154,6 +159,13 @@ export const ContactForm = () => {
               <p id="erro-mensagem" role="alert" className="text-sm text-destructive">{errors.mensagem.message}</p>
             )}
           </div>
+
+          {submissionStatus === 'success' && (
+            <p role="status" className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm">Mensagem enviada com sucesso. Entraremos em contato em breve.</p>
+          )}
+          {submissionStatus === 'error' && (
+            <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">Não foi possível enviar sua mensagem. Seus dados foram preservados para você tentar novamente.</p>
+          )}
 
           <Button 
             type="submit" 
