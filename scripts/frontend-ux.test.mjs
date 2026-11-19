@@ -339,3 +339,13 @@ test('configurações preservam edições locais e adaptam ações ao celular', 
   assert.match(dialog, /aria-expanded=\{showPasswordForm\}/);
   assert.match(dialog, /aria-label="Confirme seu e-mail para excluir a conta"/);
 });
+
+test('configurações limpam confirmação sensível e bloqueiam fechamento ao salvar', () => {
+  const dialog = source('src/components/profile/ConfiguracoesDialog.tsx');
+  assert.match(dialog, /const handleDeleteDialogChange = \(nextOpen: boolean\)/);
+  assert.match(dialog, /setDeleteConfirmation\(''\)/);
+  assert.match(dialog, /onOpenChange=\{handleDeleteDialogChange\}/);
+  assert.match(dialog, /!deleting && !saving && !passwordSaving/);
+  assert.match(dialog, /disabled=\{saving \|\| passwordSaving \|\| deleting\}/);
+  assert.match(dialog, /type="email" inputMode="email" aria-label="Confirme seu e-mail/);
+});
