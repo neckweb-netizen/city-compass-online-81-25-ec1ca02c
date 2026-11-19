@@ -71,12 +71,15 @@ export const ContactForm = () => {
               </Label>
               <Input
                 id="nome"
+                autoComplete="name"
+                aria-invalid={Boolean(errors.nome)}
+                aria-describedby={errors.nome ? 'erro-nome' : undefined}
                 placeholder="Seu nome completo"
                 {...register('nome')}
                 className={errors.nome ? 'border-destructive' : ''}
               />
               {errors.nome && (
-                <p className="text-sm text-destructive">{errors.nome.message}</p>
+                <p id="erro-nome" role="alert" className="text-sm text-destructive">{errors.nome.message}</p>
               )}
             </div>
 
@@ -88,12 +91,15 @@ export const ContactForm = () => {
               <Input
                 id="email"
                 type="email"
+                autoComplete="email"
+                aria-invalid={Boolean(errors.email)}
+                aria-describedby={errors.email ? 'erro-email' : undefined}
                 placeholder="seu@email.com"
                 {...register('email')}
                 className={errors.email ? 'border-destructive' : ''}
               />
               {errors.email && (
-                <p className="text-sm text-destructive">{errors.email.message}</p>
+                <p id="erro-email" role="alert" className="text-sm text-destructive">{errors.email.message}</p>
               )}
             </div>
           </div>
@@ -106,6 +112,9 @@ export const ContactForm = () => {
               </Label>
               <Input
                 id="telefone"
+                type="tel"
+                autoComplete="tel"
+                inputMode="tel"
                 placeholder="(75) 99999-9999"
                 {...register('telefone')}
               />
@@ -115,12 +124,14 @@ export const ContactForm = () => {
               <Label htmlFor="assunto">Assunto *</Label>
               <Input
                 id="assunto"
+                aria-invalid={Boolean(errors.assunto)}
+                aria-describedby={errors.assunto ? 'erro-assunto' : undefined}
                 placeholder="Sobre o que você gostaria de falar?"
                 {...register('assunto')}
                 className={errors.assunto ? 'border-destructive' : ''}
               />
               {errors.assunto && (
-                <p className="text-sm text-destructive">{errors.assunto.message}</p>
+                <p id="erro-assunto" role="alert" className="text-sm text-destructive">{errors.assunto.message}</p>
               )}
             </div>
           </div>
@@ -132,19 +143,22 @@ export const ContactForm = () => {
             </Label>
             <Textarea
               id="mensagem"
+              aria-invalid={Boolean(errors.mensagem)}
+              aria-describedby={errors.mensagem ? 'erro-mensagem' : undefined}
               placeholder="Descreva sua dúvida, sugestão ou solicitação..."
               rows={6}
               {...register('mensagem')}
               className={errors.mensagem ? 'border-destructive' : ''}
             />
             {errors.mensagem && (
-              <p className="text-sm text-destructive">{errors.mensagem.message}</p>
+              <p id="erro-mensagem" role="alert" className="text-sm text-destructive">{errors.mensagem.message}</p>
             )}
           </div>
 
           <Button 
             type="submit" 
-            className="w-full" 
+            className="w-full min-h-11" 
+            aria-busy={isLoading}
             disabled={isLoading}
           >
             {isLoading ? (
