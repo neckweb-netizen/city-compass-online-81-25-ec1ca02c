@@ -1,10 +1,9 @@
 
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { NeonCard } from '@/components/ui/neon-card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useEmpresaStories } from '@/hooks/useEmpresaStories';
-import { preloadStoryWindow } from './storyImagePreload';
 const StoryViewer = lazy(() => import('./StoryViewer').then(module => ({ default: module.StoryViewer })));
 
 interface Story {
@@ -38,14 +37,6 @@ interface GroupedStory {
 export const StoriesSection = () => {
   const { data: stories, isLoading } = useEmpresaStories();
   const [selectedStoryIndex, setSelectedStoryIndex] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (stories?.length) preloadStoryWindow(stories, 0);
-  }, [stories]);
-
-  useEffect(() => {
-    if (selectedStoryIndex !== null && stories?.length) preloadStoryWindow(stories, selectedStoryIndex);
-  }, [selectedStoryIndex, stories]);
 
   if (isLoading) {
     return (
@@ -90,29 +81,27 @@ export const StoriesSection = () => {
     }
   });
 
-  const prepareStory = (index: number) => {
-    if (!stories?.length) return;
-    preloadStoryWindow(stories, index);
-    // Antecipar o bundle do visualizador antes do toque.
-    void import('./StoryViewer');
-  };
-
   const openStory = (groupedStory: GroupedStory) => {
-    prepareStory(groupedStory.firstStoryIndex);
     setSelectedStoryIndex(groupedStory.firstStoryIndex);
   };
 
-  const closeStory = useCallback(() => {
+  const closeStory = () => {
     setSelectedStoryIndex(null);
-  }, []);
+  };
 
-  const nextStory = useCallback(() => {
-    setSelectedStoryIndex(index => index !== null && index + 1 < (stories?.length ?? 0) ? index + 1 : null);
-  }, [stories?.length]);
+  const nextStory = () => {
+    if (selectedStoryIndex !== null && selectedStoryIndex < stories.length - 1) {
+      setSelectedStoryIndex(selectedStoryIndex + 1);
+    } else {
+      closeStory();
+    }
+  };
 
-  const prevStory = useCallback(() => {
-    setSelectedStoryIndex(index => index !== null && index > 0 ? index - 1 : index);
-  }, []);
+  const prevStory = () => {
+    if (selectedStoryIndex !== null && selectedStoryIndex > 0) {
+      setSelectedStoryIndex(selectedStoryIndex - 1);
+    }
+  };
 
   return (
     <>
@@ -127,8 +116,6 @@ export const StoriesSection = () => {
               aria-label={`Ver stories de ${groupedStory.empresa_nome}`}
               onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openStory(groupedStory); } }}
               onClick={() => openStory(groupedStory)}
-              onPointerEnter={() => prepareStory(groupedStory.firstStoryIndex)}
-              onFocus={() => prepareStory(groupedStory.firstStoryIndex)}
             >
               <div className="relative">
                 <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600 p-0.5">
@@ -158,7 +145,7 @@ export const StoriesSection = () => {
       </NeonCard>
 
       {selectedStoryIndex !== null && (
-        <Suspense fallback={<div role="status" className="fixed inset-0 z-50 flex items-center justify-center bg-black text-white">Abrindo story...</div>}>
+        <Suspense fallback={null}>
           <StoryViewer
             stories={stories}
             currentIndex={selectedStoryIndex}
