@@ -1,12 +1,9 @@
-import React from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Home, MessageCircle, Plus, Wrench, Megaphone } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 
 export const BottomNavigation = () => {
   const location = useLocation();
-  const navigate = useNavigate();
 
   // Mantenha os destinos e a ordem da navegação existente.
   const navItems = [
@@ -37,16 +34,16 @@ export const BottomNavigation = () => {
             return (
               <div key={item.rota} className="relative flex justify-center">
                 <div className="absolute -top-[2.375rem] flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-full border-[6px] border-background bg-background">
-                  <Button
-                    type="button"
-                    onClick={() => navigate(item.rota)}
+                  <Link
+                    to={item.rota}
                     aria-label="Criar publicação"
+                    aria-current={ativo ? 'page' : undefined}
                     data-tour="create-action"
                     data-account-tour="publish"
-                    className="h-[3.75rem] w-[3.75rem] rounded-full border border-primary-foreground/20 bg-primary p-0 text-primary-foreground shadow-[0_8px_20px_-6px_hsl(var(--primary)/0.65)] ring-1 ring-primary/15 transition-[transform,box-shadow] motion-safe:hover:-translate-y-0.5 motion-reduce:transform-none"
+                    className="inline-flex h-[3.75rem] w-[3.75rem] items-center justify-center rounded-full border border-primary-foreground/20 bg-primary p-0 text-primary-foreground shadow-[0_8px_20px_-6px_hsl(var(--primary)/0.65)] ring-1 ring-primary/15 transition-[transform,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 motion-safe:hover:-translate-y-0.5 motion-reduce:transform-none"
                   >
                     <IconComponent aria-hidden="true" className="!h-6 !w-6 stroke-[2.2]" />
-                  </Button>
+                  </Link>
                 </div>
                 <span className="mt-9 text-[10px] font-semibold text-primary">Criar</span>
               </div>
