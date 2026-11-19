@@ -26,6 +26,7 @@ export const FormularioAgendamento: React.FC<FormularioAgendamentoProps> = ({
   const { servicos, isLoading: loadingServicos, isError: servicosError, refetch: refetchServicos } = useServicosAgendamento(empresaId);
 
   const [dateError, setDateError] = useState('');
+  const [serviceError, setServiceError] = useState('');
   const [formData, setFormData] = useState({
     nome_cliente: user?.user_metadata?.nome || '',
     telefone_cliente: user?.user_metadata?.telefone || '',
@@ -39,10 +40,16 @@ export const FormularioAgendamento: React.FC<FormularioAgendamentoProps> = ({
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (isCreating || !formData.nome_cliente.trim() || !formData.telefone_cliente.trim() ||
+    if (isCreating || loadingServicos || servicosError || !formData.nome_cliente.trim() || !formData.telefone_cliente.trim() ||
         !formData.servico || !formData.data_agendamento) {
       return;
     }
+
+    if (!servicosAtivos.some(servico => servico.nome_servico === formData.servico)) {
+      setServiceError('O serviço selecionado não está mais disponível. Escolha outro.');
+      return;
+    }
+    setServiceError('');
 
     // A data mínima do campo pode envelhecer enquanto o formulário fica aberto.
     const chosenTime = new Date(formData.data_agendamento).getTime();
@@ -63,6 +70,7 @@ export const FormularioAgendamento: React.FC<FormularioAgendamentoProps> = ({
       });
       // Keep the entered information intact if the server rejects the request.
       setDateError('');
+      setServiceError('');
       setFormData({
         nome_cliente: user?.user_metadata?.nome || '',
         telefone_cliente: user?.user_metadata?.telefone || '',
@@ -162,12 +170,12 @@ export const FormularioAgendamento: React.FC<FormularioAgendamentoProps> = ({
               <Label htmlFor="servico">Serviço *</Label>
               <Select 
                 value={formData.servico} 
-                onValueChange={(value) => setFormData(prev => ({
-                  ...prev,
-                  servico: value
-                }))}
+                onValueChange={(value) => {
+                  setServiceError('');
+                  setFormData(prev => ({ ...prev, servico: value }));
+                }}
               >
-                <SelectTrigger id="servico" aria-label="Serviço para agendamento">
+                <SelectTrigger id="servico" aria-label="Serviço para agendamento" aria-invalid={Boolean(serviceError)} aria-describedby={serviceError ? 'erro-servico-agendamento' : undefined}>
                   <SelectValue placeholder="Selecione um serviço" />
                 </SelectTrigger>
                 <SelectContent>
@@ -187,6 +195,7 @@ export const FormularioAgendamento: React.FC<FormularioAgendamentoProps> = ({
                   ))}
                 </SelectContent>
               </Select>
+              {serviceError && <p id="erro-servico-agendamento" role="alert" className="mt-1 text-sm text-destructive">{serviceError}</p>}
             </div>
 
             <div>
@@ -228,8 +237,8 @@ export const FormularioAgendamento: React.FC<FormularioAgendamentoProps> = ({
               type="submit"
               className="w-full min-h-11"
               aria-busy={isCreating}
-              disabled={isCreating || !formData.nome_cliente || 
-                       !formData.telefone_cliente || !formData.servico || 
+              disabled={isCreating || loadingServicos || servicosError || !formData.nome_cliente.trim() || 
+                       !formData.telefone_cliente.trim() || !formData.servico || 
                        !formData.data_agendamento}
             >
               {isCreating ? 'Agendando...' : 'Confirmar Agendamento'}
