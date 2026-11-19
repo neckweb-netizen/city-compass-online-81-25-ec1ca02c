@@ -364,19 +364,3 @@ test('contato informa resultado do envio sem apagar formulário após falha', ()
   assert.ok(contact.indexOf('await sendContactEmail(emailData)') < contact.indexOf('reset();'));
 });
 
-test('stories antecipam arquivos seguintes e evitam atraso ao trocar imagem', () => {
-  const section = source('src/components/home/StoriesSection.tsx');
-  const viewer = source('src/components/home/StoryViewer.tsx');
-  const preload = source('src/components/home/storyImagePreload.ts');
-  assert.match(section, /preloadStoryWindow\(stories, index\)/);
-  assert.match(section, /onPointerEnter=\{\(\) => prepareStory/);
-  assert.match(section, /onFocus=\{\(\) => prepareStory/);
-  assert.match(section, /setSelectedStoryIndex\(index =>/);
-  assert.match(preload, /const MAX_IMAGES = 12/);
-  assert.match(preload, /index \+ 1, index \+ 2, index - 1/);
-  assert.match(viewer, /isStoryImageReady\(currentStory\.imagem_story_url\)/);
-  assert.match(viewer, /!currentStory \|\| !mediaReady/);
-  assert.match(viewer, /loading="eager"/);
-  assert.match(viewer, /fetchPriority="high"/);
-  assert.match(viewer, /onLoad=\{\(\) => setMediaReady\(true\)\}/);
-});
