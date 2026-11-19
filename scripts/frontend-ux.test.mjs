@@ -432,3 +432,12 @@ test('agendamento bloqueia seleção fora da lista atual de serviços ativos', (
   assert.match(form, /setServiceError\(''\)/);
   assert.match(form, /isCreating \|\| loadingServicos \|\| servicosError/);
 });
+
+test('agendamento bloqueia toques rápidos repetidos e libera trava após falha', () => {
+  const form = source('src/components/agendamento/FormularioAgendamento.tsx');
+  assert.match(form, /const submittingRef = useRef\(false\)/);
+  assert.match(form, /if \(submittingRef\.current \|\| isCreating/);
+  assert.match(form, /submittingRef\.current = true/);
+  assert.match(form, /finally \{\s*submittingRef\.current = false/);
+  assert.ok(form.indexOf('submittingRef.current = true') < form.indexOf('await criarAgendamento('));
+});
