@@ -147,6 +147,13 @@ export const ConfiguracoesDialog = ({ open, onOpenChange }: ConfiguracoesDialogP
     }
   };
 
+  const handleDeleteDialogChange = (nextOpen: boolean) => {
+    if (deleting) return;
+    setDeleteDialogOpen(nextOpen);
+    // Evita reaproveitar uma confirmação sensível ao reabrir a janela.
+    setDeleteConfirmation('');
+  };
+
   const handleDeleteAccount = async () => {
     if (!user?.email || deleteConfirmation.trim().toLowerCase() !== user.email.toLowerCase()) return;
 
@@ -177,7 +184,7 @@ export const ConfiguracoesDialog = ({ open, onOpenChange }: ConfiguracoesDialogP
 
   return (
     <>
-      <Dialog open={open} onOpenChange={(nextOpen) => !deleting && onOpenChange(nextOpen)}>
+      <Dialog open={open} onOpenChange={(nextOpen) => !deleting && !saving && !passwordSaving && onOpenChange(nextOpen)}>
         <DialogContent className="max-h-[90dvh] w-[calc(100vw-2rem)] max-w-xl overflow-y-auto rounded-2xl p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -319,21 +326,21 @@ export const ConfiguracoesDialog = ({ open, onOpenChange }: ConfiguracoesDialogP
 
             <div className="flex flex-col-reverse gap-3 sm:flex-row">
               <Button onClick={handleSaveConfiguracoes} className="min-h-11 flex-1" disabled={saving || !preferencesReady}>{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Salvar configurações</Button>
-              <Button variant="outline" className="min-h-11" onClick={() => onOpenChange(false)} disabled={saving}>Cancelar</Button>
+              <Button variant="outline" className="min-h-11" onClick={() => onOpenChange(false)} disabled={saving || passwordSaving || deleting}>Cancelar</Button>
             </div>
 
             <Card className="border-destructive/30">
               <CardContent className="p-4">
                 <h3 className="mb-1 font-semibold text-destructive">Zona de perigo</h3>
                 <p className="mb-3 text-xs leading-relaxed text-muted-foreground">Exclui permanentemente seu acesso e os dados vinculados à conta.</p>
-                <Button variant="destructive" onClick={() => setDeleteDialogOpen(true)} className="w-full"><Trash2 className="mr-2 h-4 w-4" />Excluir conta</Button>
+                <Button variant="destructive" onClick={() => handleDeleteDialogChange(true)} className="min-h-11 w-full"><Trash2 className="mr-2 h-4 w-4" />Excluir conta</Button>
               </CardContent>
             </Card>
           </div>
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={deleteDialogOpen} onOpenChange={(nextOpen) => !deleting && setDeleteDialogOpen(nextOpen)}>
+      <AlertDialog open={deleteDialogOpen} onOpenChange={handleDeleteDialogChange}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir sua conta permanentemente?</AlertDialogTitle>
@@ -342,7 +349,7 @@ export const ConfiguracoesDialog = ({ open, onOpenChange }: ConfiguracoesDialogP
               <span className="block">Para confirmar, digite seu e-mail: <strong className="text-foreground">{user?.email}</strong></span>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <Input aria-label="Confirme seu e-mail para excluir a conta" value={deleteConfirmation} onChange={(event) => setDeleteConfirmation(event.target.value)} placeholder="Digite seu e-mail" autoComplete="off" disabled={deleting} />
+          <Input type="email" inputMode="email" aria-label="Confirme seu e-mail para excluir a conta" value={deleteConfirmation} onChange={(event) => setDeleteConfirmation(event.target.value)} placeholder="Digite seu e-mail" autoComplete="off" disabled={deleting} />
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
