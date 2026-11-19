@@ -18,7 +18,7 @@ export const useServicosAgendamento = (empresaId?: string) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: servicos, isLoading } = useQuery({
+  const { data: servicos, isLoading, isError, refetch } = useQuery({
     queryKey: ['servicos-agendamento', empresaId],
     queryFn: async () => {
       if (!empresaId) return [];
@@ -127,6 +127,8 @@ export const useServicosAgendamento = (empresaId?: string) => {
   return {
     servicos: servicos || [],
     isLoading,
+    isError,
+    refetch,
     criarServico: criarServico.mutate,
     atualizarServico: atualizarServico.mutate,
     excluirServico: excluirServico.mutate,
