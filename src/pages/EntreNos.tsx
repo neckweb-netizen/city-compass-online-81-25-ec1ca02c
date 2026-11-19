@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { AuthDialog } from '@/components/auth/AuthDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -67,7 +67,8 @@ export default function EntreNos() {
       const { error: updateError } = await supabase
         .from('entre_nos_reacoes' as any)
         .update({ tipo: type })
-        .eq('postagem_id', postId);
+        .eq('postagem_id', postId)
+        .eq('usuario_id', user!.id);
       if (updateError) {
         toast.error('Não foi possível trocar sua reação.');
         return;
@@ -104,7 +105,7 @@ export default function EntreNos() {
 
       <div className="sticky top-16 z-20 -mx-4 mt-4 flex items-center justify-between border-y bg-background/90 px-4 py-3 backdrop-blur-xl sm:mx-0 sm:rounded-2xl sm:border">
         <div><p className="font-bold">Histórias da comunidade</p><p className="text-xs text-muted-foreground">Acolha sem julgar</p></div>
-        <Dialog open={composer} onOpenChange={setComposer}><DialogTrigger asChild><Button className="h-11 rounded-full px-5" onClick={()=>requireUser()}><Plus className="mr-2 h-4 w-4"/> Publicar</Button></DialogTrigger>
+        <Dialog open={composer} onOpenChange={(open) => { if (!open) setComposer(false); }}><Button type="button" className="h-11 rounded-full px-5" onClick={() => { if (requireUser()) setComposer(true); }}><Plus className="mr-2 h-4 w-4"/> Publicar</Button>
           <DialogContent className="max-h-[92dvh] overflow-y-auto rounded-t-[2rem] sm:max-w-xl sm:rounded-3xl">
             <DialogHeader><DialogTitle className="text-2xl">Compartilhe com segurança</DialogTitle></DialogHeader>
             <div className="rounded-2xl bg-primary/10 p-3 text-sm"><EyeOff className="mr-2 inline h-4 w-4"/>Seu nome e sua conta permanecem ocultos. Sexo e idade serão exibidos junto ao relato.</div>
@@ -119,12 +120,12 @@ export default function EntreNos() {
       <div className="mt-4 space-y-4">{loading ? <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary"/></div> : posts.length===0 ? <Card className="rounded-3xl"><CardContent className="py-16 text-center"><Sparkles className="mx-auto mb-3 h-10 w-10 text-primary"/><h2 className="font-bold">Este espaço está começando</h2><p className="mt-1 text-sm text-muted-foreground">Seja a primeira pessoa a compartilhar uma história.</p></CardContent></Card> : posts.map(post=>{
         const hidden=post.conteudo_sensivel&&!revealed.has(post.id); const postComments=comments.filter(c=>c.postagem_id===post.id);
         return <article key={post.id} className="overflow-hidden rounded-[1.6rem] border bg-card shadow-sm transition hover:shadow-md">
-          <div className="p-5 sm:p-6"><div className="flex items-start justify-between gap-3"><div className="flex gap-3"><div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-primary/12">{post.publicacao_sistema?<Sparkles className="h-5 w-5 text-primary"/>:<HeartHandshake className="h-5 w-5 text-primary"/>}</div><div><div className="flex flex-wrap items-center gap-2"><b>{post.publicacao_sistema?'Comunidade Saj Tem':'Anônimo'}</b>{post.destaque&&<Badge variant="secondary">Destaque</Badge>}</div><p className="text-xs text-muted-foreground">{post.publicacao_sistema?'História inspirada em situações reais':`${sexLabels[post.sexo]} · ${post.idade} anos`} · {new Date(post.criado_em).toLocaleDateString('pt-BR')}</p></div></div>{!post.publicacao_sistema&&<Button variant="ghost" size="icon" aria-label="Denunciar" onClick={()=>report(post.id)}><Flag className="h-4 w-4"/></Button>}</div>
+          <div className="p-5 sm:p-6"><div className="flex items-start justify-between gap-3"><div className="flex gap-3"><div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-primary/12">{post.publicacao_sistema?<Sparkles className="h-5 w-5 text-primary"/>:<HeartHandshake className="h-5 w-5 text-primary"/>}</div><div><div className="flex flex-wrap items-center gap-2"><b>{post.publicacao_sistema?'Comunidade Saj Tem':'Anônimo'}</b>{post.destaque&&<Badge variant="secondary">Destaque</Badge>}</div><p className="text-xs text-muted-foreground">{post.publicacao_sistema?'História inspirada em situações reais':`${sexLabels[post.sexo]} · ${post.idade} anos`} · {new Date(post.criado_em).toLocaleDateString('pt-BR')}</p></div></div>{!post.publicacao_sistema&&<Button type="button" variant="ghost" size="icon" className="h-10 w-10 shrink-0" aria-label="Denunciar publicação" onClick={()=>report(post.id)}><Flag className="h-4 w-4"/></Button>}</div>
             <Badge variant="outline" className="mt-4 rounded-full">{categories[post.categoria]}</Badge>
             {hidden?<button onClick={()=>setRevealed(new Set([...revealed,post.id]))} className="mt-4 w-full rounded-2xl border border-dashed bg-muted/50 p-8 text-center"><EyeOff className="mx-auto mb-2 h-6 w-6"/><b className="block">Conteúdo sensível</b><span className="text-sm text-muted-foreground">Toque para visualizar</span></button>:<p className="mt-4 whitespace-pre-wrap text-[15px] leading-7">{post.conteudo}</p>}
           </div>
-          <div className="flex flex-wrap gap-1 border-t bg-muted/20 px-3 py-2">{reactions.map(({type,label,icon:Icon})=><Button key={type} variant="ghost" size="sm" className="rounded-full" onClick={()=>react(post.id,type)}><Icon className="mr-1.5 h-4 w-4"/>{label} {counts[post.id]?.[type]||''}</Button>)}{post.permitir_comentarios&&<Button variant="ghost" size="sm" className="ml-auto rounded-full" onClick={()=>setOpenComments(openComments===post.id?null:post.id)}><MessageCircle className="mr-1.5 h-4 w-4"/>{postComments.length}</Button>}</div>
-          {openComments===post.id&&<div className="space-y-3 border-t p-4">{postComments.map(c=><div key={c.id} className="rounded-2xl bg-muted/50 p-3"><b className="text-xs">Anônimo</b><p className="mt-1 text-sm leading-6">{c.conteudo}</p></div>)}<div className="flex gap-2"><Input value={commentText} onChange={e=>setCommentText(e.target.value)} placeholder="Escreva uma resposta acolhedora..."/><Button size="icon" onClick={()=>comment(post.id)}><Send className="h-4 w-4"/></Button></div><p className="text-[11px] text-muted-foreground">Seu comentário ficará visível após a moderação.</p></div>}
+          <div className="flex flex-wrap gap-1 border-t bg-muted/20 px-3 py-2">{reactions.map(({type,label,icon:Icon})=><Button key={type} type="button" variant="ghost" size="sm" className="min-h-10 rounded-full" aria-label={`${label}: ${counts[post.id]?.[type] || 0} reações`} onClick={()=>react(post.id,type)}><Icon className="mr-1.5 h-4 w-4"/>{label} {counts[post.id]?.[type]||''}</Button>)}{post.permitir_comentarios&&<Button type="button" variant="ghost" size="sm" className="ml-auto min-h-10 rounded-full" aria-label={`${postComments.length} comentários. ${openComments===post.id?'Ocultar':'Mostrar'} comentários`} aria-expanded={openComments===post.id} onClick={()=>setOpenComments(openComments===post.id?null:post.id)}><MessageCircle className="mr-1.5 h-4 w-4"/>{postComments.length}</Button>}</div>
+          {openComments===post.id&&<div className="space-y-3 border-t p-4">{postComments.map(c=><div key={c.id} className="rounded-2xl bg-muted/50 p-3"><b className="text-xs">Anônimo</b><p className="mt-1 text-sm leading-6">{c.conteudo}</p></div>)}<div className="flex gap-2"><Input aria-label="Escreva seu comentário" value={commentText} onChange={e=>setCommentText(e.target.value)} placeholder="Escreva uma resposta acolhedora..."/><Button type="button" size="icon" className="h-10 w-10 shrink-0" aria-label="Enviar comentário para moderação" onClick={()=>comment(post.id)}><Send className="h-4 w-4"/></Button></div><p className="text-[11px] text-muted-foreground">Seu comentário ficará visível após a moderação.</p></div>}
         </article>})}</div>
       <div className="mt-6 rounded-3xl border border-amber-500/20 bg-amber-500/8 p-5 text-sm leading-6"><b>Precisa de ajuda agora?</b><p className="text-muted-foreground">Este espaço não substitui atendimento profissional. Em crise emocional, ligue 188 (CVV). Em risco imediato, procure o serviço de emergência.</p></div>
     </section><AuthDialog open={authOpen} onOpenChange={setAuthOpen}/>
