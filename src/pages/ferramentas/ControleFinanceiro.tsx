@@ -410,22 +410,68 @@ export const ControleFinanceiro = () => {
 
   const importData = (file?: File) => {
     if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('O backup excede o limite de 5 MB.');
+      return;
+    }
+
     const reader = new FileReader();
+    reader.onerror = () => toast.error('Não foi possível ler o arquivo selecionado.');
     reader.onload = () => {
       try {
-        const parsed = JSON.parse(String(reader.result)) as FinanceState;
-        if (!Array.isArray(parsed.transactions) || !parsed.settings) throw new Error('Formato inválido');
-        const nextState: FinanceState = {
-          transactions: parsed.transactions,
-          settings: { ...EMPTY_FINANCE_STATE.settings, ...parsed.settings },
+        const parsed: unknown = JSON.parse(String(reader.result));
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+          throw new Error('Formato inválido');
+        }
+        const candidate = parsed as Partial<FinanceState>;
+        if (!Array.isArray(candidate.transactions) || !candidate.settings ||
+            typeof candidate.settings !== 'object' || Array.isArray(candidate.settings)) {
+          throw new Error('Formato inválido');
+        }
+
+        const validTransaction = (value: unknown): value is Transaction => {
+          if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+          const item = value as Partial<Transaction>;
+          return typeof item.id === 'string' && item.id.length > 0 &&
+            (item.type === 'receita' || item.type === 'despesa') &&
+            typeof item.title === 'string' && item.title.trim().length > 0 &&
+            typeof item.amount === 'number' && Number.isFinite(item.amount) && item.amount > 0 &&
+            typeof item.category === 'string' &&
+            typeof item.date === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(item.date) &&
+            (item.status === 'pago' || item.status === 'pendente') &&
+            typeof item.recurring === 'boolean' &&
+            typeof item.createdAt === 'string';
         };
+        if (!candidate.transactions.every(validTransaction) ||
+            new Set(candidate.transactions.map(item => item.id)).size !== candidate.transactions.length) {
+          throw new Error('Lançamentos inválidos ou duplicados');
+        }
+
+        const settings = candidate.settings as Record<string, unknown>;
+        for (const field of ['monthlyBudget', 'savingsGoal', 'emergencyFundGoal']) {
+          const value = settings[field];
+          if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+            throw new Error('Metas financeiras inválidas');
+          }
+        }
+
+        const nextState: FinanceState = {
+          transactions: candidate.transactions,
+          settings: {
+            monthlyBudget: settings.monthlyBudget as number,
+            savingsGoal: settings.savingsGoal as number,
+            emergencyFundGoal: settings.emergencyFundGoal as number,
+          },
+        };
+        if (!window.confirm('Importar este backup substituirá seus lançamentos e metas atuais. Exporte uma cópia antes de continuar. Deseja substituir os dados?')) return;
+
         void replaceAll(nextState).then((result) => {
           if (result.synced) toast.success('Backup importado e sincronizado com sua conta.');
-          else if (result.reason === 'remote_error') toast.warning('Backup importado localmente; sincronização pendente.');
+          else if (result.reason === 'remote_error') toast.warning('Backup importado localmente; a sincronização com o servidor falhou. Verifique seus dados antes de tentar novamente.');
           else toast.success('Backup importado neste aparelho.');
-        });
+        }).catch(() => toast.error('Falha ao importar o backup. Verifique seus dados.'));
       } catch {
-        toast.error('Não foi possível importar esse arquivo.');
+        toast.error('Arquivo de backup inválido. Nenhum dado foi importado.');
       }
     };
     reader.readAsText(file);
