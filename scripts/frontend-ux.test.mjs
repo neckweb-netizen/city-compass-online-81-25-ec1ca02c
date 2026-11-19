@@ -328,3 +328,14 @@ test('links curtos apresentam erro em vez de voltar silenciosamente para home', 
   assert.match(page, /<Link to="\/">Voltar para o início<\/Link>/);
   assert.doesNotMatch(page, /window\.location\.replace\('\/'\)/);
 });
+
+test('configurações preservam edições locais e adaptam ações ao celular', () => {
+  const dialog = source('src/components/profile/ConfiguracoesDialog.tsx');
+  assert.match(dialog, /preferencesInitialized\.current = false/);
+  assert.match(dialog, /if \(!preferencesReady \|\| preferencesInitialized\.current\) return/);
+  assert.match(dialog, /preferencesInitialized\.current = true/);
+  assert.match(dialog, /max-h-\[90dvh\]/);
+  assert.match(dialog, /flex-col-reverse gap-3 sm:flex-row/);
+  assert.match(dialog, /aria-expanded=\{showPasswordForm\}/);
+  assert.match(dialog, /aria-label="Confirme seu e-mail para excluir a conta"/);
+});
