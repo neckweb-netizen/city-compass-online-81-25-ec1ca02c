@@ -5,7 +5,9 @@ import { readFileSync } from 'node:fs';
 const client = readFileSync(new URL('../src/lib/dominoV2Client.ts', import.meta.url), 'utf8');
 const screen = readFileSync(new URL('../src/components/domino/DominoTabuleiro.tsx', import.meta.url), 'utf8');
 
-test('V2 opt-in requires both explicit flag and allowed room', () => {
+test('V2 pilot is scoped to one identified room, with other rooms requiring both flag and allowlist', () => {
+  assert.match(client, /productionPilotRoomIds\.has\(roomId\.toLowerCase\(\)\)/);
+  assert.match(client, /6ed6132d-cf9a-454b-9603-3319e0f8f2f0/);
   assert.match(client, /VITE_DOMINO_V2_ENABLED === 'true'/);
   assert.match(client, /VITE_DOMINO_V2_ALLOWED_ROOM_IDS/);
   assert.match(client, /permittedRoomIds\.has\(roomId\.toLowerCase\(\)\)/);
