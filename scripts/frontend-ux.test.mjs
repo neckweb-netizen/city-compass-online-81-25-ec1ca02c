@@ -364,3 +364,19 @@ test('contato informa resultado do envio sem apagar formulário após falha', ()
   assert.ok(contact.indexOf('await sendContactEmail(emailData)') < contact.indexOf('reset();'));
 });
 
+
+test('stories pré-carregam imagens próximas sem alterar visualizador estável', () => {
+  const section = source('src/components/home/StoriesSection.tsx');
+  const viewer = source('src/components/home/StoryViewer.tsx');
+  assert.match(section, /const imageCache = useRef\(new Map/);
+  assert.match(section, /const preloadNearby = useCallback/);
+  assert.match(section, /new window\.Image\(\)/);
+  assert.match(section, /image\.src = url/);
+  assert.match(section, /offset < 3/);
+  assert.match(section, /onPointerEnter=\{\(\) => preloadNearby/);
+  assert.match(section, /onFocus=\{\(\) => preloadNearby/);
+  assert.match(section, /<Suspense fallback=\{null\}>/);
+  assert.match(viewer, /src=\{currentStory\.imagem_story_url\}/);
+  assert.match(viewer, /aria-label="Próximo story"/);
+  assert.doesNotMatch(viewer, /isStoryImageReady|fetchPriority="high"/);
+});
