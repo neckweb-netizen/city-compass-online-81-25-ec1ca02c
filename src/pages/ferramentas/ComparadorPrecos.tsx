@@ -11,7 +11,10 @@ import { ToolBanner } from '@/components/ferramentas/ToolBanner';
 
 type Product = { name: string; price: string; quantity: string };
 const initialProducts: Product[] = [{ name: 'Produto A', price: '', quantity: '' }, { name: 'Produto B', price: '', quantity: '' }, { name: 'Produto C', price: '', quantity: '' }];
-const numberFrom = (value: string) => Number(value.replace(',', '.')) || 0;
+const numberFrom = (value: string) => {
+  const parsed = Number(value.trim().replace(',', '.'));
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+};
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 4 });
 
 export default function ComparadorPrecos() {
@@ -37,13 +40,13 @@ export default function ComparadorPrecos() {
       <header className="space-y-2 text-center"><div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-teal-500/15 text-teal-600"><Scale className="h-7 w-7" /></div><h1 className="text-3xl font-black sm:text-4xl">Comparador de preços</h1><p className="mx-auto max-w-2xl text-sm text-muted-foreground">Compare embalagens de tamanhos diferentes e descubra qual produto realmente custa menos por unidade.</p></header>
       <ToolBanner secao="ferramentas" />
 
-      <Card><CardHeader><div className="flex flex-wrap items-end justify-between gap-3"><div><CardTitle>Informe até três produtos</CardTitle><p className="mt-1 text-sm text-muted-foreground">Use a mesma unidade de medida em todos.</p></div><div className="w-40 space-y-1"><Label>Unidade</Label><Select value={unit} onValueChange={setUnit}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="g">gramas (g)</SelectItem><SelectItem value="kg">quilos (kg)</SelectItem><SelectItem value="ml">mililitros (ml)</SelectItem><SelectItem value="l">litros (l)</SelectItem><SelectItem value="un.">unidades</SelectItem><SelectItem value="m">metros (m)</SelectItem></SelectContent></Select></div></div></CardHeader><CardContent>
+      <Card><CardHeader><div className="flex flex-wrap items-end justify-between gap-3"><div><CardTitle>Informe até três produtos</CardTitle><p className="mt-1 text-sm text-muted-foreground">Use a mesma unidade de medida em todos.</p></div><div className="w-40 space-y-1"><Label htmlFor="unidade-comparacao">Unidade</Label><Select value={unit} onValueChange={setUnit}><SelectTrigger id="unidade-comparacao" aria-label="Unidade de medida dos produtos"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="g">gramas (g)</SelectItem><SelectItem value="kg">quilos (kg)</SelectItem><SelectItem value="ml">mililitros (ml)</SelectItem><SelectItem value="l">litros (l)</SelectItem><SelectItem value="un.">unidades</SelectItem><SelectItem value="m">metros (m)</SelectItem></SelectContent></Select></div></div></CardHeader><CardContent>
         <div className="grid gap-4 md:grid-cols-3">{products.map((product, index) => {
           const result = results[index];
           const isBest = result.valid && bestPrice > 0 && result.unitPrice === bestPrice;
           return <div key={index} className={`rounded-2xl border p-4 transition ${isBest ? 'border-emerald-500 bg-emerald-500/10 ring-2 ring-emerald-500/15' : 'bg-card'}`}>
             <div className="mb-3 flex items-center justify-between gap-2"><Badge variant="secondary">Opção {index + 1}</Badge>{isBest && <Badge className="bg-emerald-600"><CheckCircle2 className="mr-1 h-3 w-3" />Melhor preço</Badge>}</div>
-            <div className="space-y-3"><div className="space-y-1"><Label htmlFor={`name-${index}`}>Nome</Label><Input id={`name-${index}`} value={product.name} onChange={event => updateProduct(index, 'name', event.target.value)} /></div><div className="space-y-1"><Label htmlFor={`price-${index}`}>Preço total</Label><Input id={`price-${index}`} inputMode="decimal" value={product.price} onChange={event => updateProduct(index, 'price', event.target.value)} placeholder="Ex.: 12,90" /></div><div className="space-y-1"><Label htmlFor={`quantity-${index}`}>Quantidade ({unit})</Label><Input id={`quantity-${index}`} inputMode="decimal" value={product.quantity} onChange={event => updateProduct(index, 'quantity', event.target.value)} placeholder="Ex.: 500" /></div></div>
+            <div className="space-y-3"><div className="space-y-1"><Label htmlFor={`name-${index}`}>Nome</Label><Input id={`name-${index}`} value={product.name} onChange={event => updateProduct(index, 'name', event.target.value)} /></div><div className="space-y-1"><Label htmlFor={`price-${index}`}>Preço total</Label><Input id={`price-${index}`} inputMode="decimal" aria-invalid={Boolean(product.price.trim()) && !result.valid && numberFrom(product.price) <= 0} value={product.price} onChange={event => updateProduct(index, 'price', event.target.value)} placeholder="Ex.: 12,90" /></div><div className="space-y-1"><Label htmlFor={`quantity-${index}`}>Quantidade ({unit})</Label><Input id={`quantity-${index}`} inputMode="decimal" aria-invalid={Boolean(product.quantity.trim()) && numberFrom(product.quantity) <= 0} value={product.quantity} onChange={event => updateProduct(index, 'quantity', event.target.value)} placeholder="Ex.: 500" /></div></div>
             <div className="mt-4 rounded-xl bg-muted p-3 text-center"><p className="text-xs text-muted-foreground">Preço por {unit}</p><p className="text-xl font-black">{result.valid ? currency.format(result.unitPrice) : '—'}</p></div>
           </div>;
         })}</div>

@@ -228,3 +228,21 @@ test('calculadora de orçamento trata taxa impossível sem mostrar preço falso'
   assert.match(budget, /inputMode="decimal"/);
   assert.match(budget, /htmlFor="impostos"/);
 });
+
+
+test('comparador não trata preço negativo ou inválido como oferta legítima', () => {
+  const comparator = source('src/pages/ferramentas/ComparadorPrecos.tsx');
+  assert.match(comparator, /Number\.isFinite\(parsed\) && parsed > 0/);
+  assert.match(comparator, /aria-label="Unidade de medida dos produtos"/);
+  assert.match(comparator, /aria-invalid=\{Boolean\(product\.quantity\.trim\(\)\)/);
+});
+
+test('calculadora de margem não inventa preço para taxas inviáveis', () => {
+  const margin = source('src/pages/ferramentas/CalculadoraMargem.tsx');
+  assert.match(margin, /const taxasValidas = margemDesejada >= 0/);
+  assert.match(margin, /somaPorcentagens < 1/);
+  assert.match(margin, /const precoVendaIdeal = taxasValidas && custo > 0/);
+  assert.match(margin, /!taxasValidas && <p role="alert"/);
+  assert.match(margin, /disabled=\{!taxasValidas \|\| custo <= 0\}/);
+  assert.match(margin, /await navigator\.clipboard\.writeText/);
+});
