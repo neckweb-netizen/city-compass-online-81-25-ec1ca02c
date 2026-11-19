@@ -61,10 +61,15 @@ export default function EntreNos() {
     const numericAge=Number(age);
     if(!sex || !Number.isInteger(numericAge) || numericAge<13 || numericAge>100 || content.trim().length<20){ toast.error('Informe sexo, idade válida e ao menos 20 caracteres.'); return; }
     setSaving(true);
-    const {error}=await supabase.from('entre_nos_postagens' as any).insert({usuario_id:user!.id,categoria:category,sexo:sex,idade:numericAge,conteudo:content.trim(),permitir_comentarios:allowComments,conteudo_sensivel:sensitive});
-    setSaving(false);
-    if(error){ toast.error(error.message.includes('Limite')?error.message:'Não foi possível enviar agora.'); return; }
-    toast.success('Enviado para moderação. Você será protegido pelo anonimato público.'); setComposer(false); setContent(''); setAge(''); setSex('');
+    try {
+      const {error}=await supabase.from('entre_nos_postagens' as any).insert({usuario_id:user!.id,categoria:category,sexo:sex,idade:numericAge,conteudo:content.trim(),permitir_comentarios:allowComments,conteudo_sensivel:sensitive});
+      if(error){ toast.error(error.message.includes('Limite')?error.message:'Não foi possível enviar agora.'); return; }
+      toast.success('Enviado para moderação. Você será protegido pelo anonimato público.'); setComposer(false); setContent(''); setAge(''); setSex('');
+    } catch {
+      toast.error('Não foi possível enviar agora. Tente novamente.');
+    } finally {
+      setSaving(false);
+    }
   };
   const react = async (postId:string,type:string) => {
     if(!requireUser()) return;
