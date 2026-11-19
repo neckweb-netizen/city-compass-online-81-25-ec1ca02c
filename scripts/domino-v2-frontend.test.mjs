@@ -22,6 +22,7 @@ test('V2 calls server RPCs and avoids browser persistence', () => {
   assert.match(screen, /if \(v2Enabled\) return; \/\/ The V2 server concludes and scores victories atomically/);
   assert.match(screen, /if \(v2Enabled\) return;\s*const \{ mesa, pontaE, pontaD, vezId \} = payload\.payload/);
   assert.match(screen, /if \(v2Enabled\) \{[\s\S]*?await jogarDominoV2/);
+  assert.match(screen, /else if \(v2Enabled && newData\.jogador_1_id && newData\.jogador_2_id\) \{\s*\/\/ The second player[\s\S]*?void carregarDadosPartida\(\);/);
 });
 
 test('V2 disabled mode leaves legacy paths reachable', () => {
