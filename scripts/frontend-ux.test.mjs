@@ -401,3 +401,15 @@ test('Entre Nós preserva o rascunho durante o envio de comentários', () => {
   assert.match(page, /disabled=\{commentingPostId !== null \|\| commentText\.trim\(\)\.length < 2\}/);
   assert.match(page, /Seu texto foi preservado para tentar novamente/);
 });
+
+test('agendamento distingue serviços carregando, indisponíveis e erro de consulta', () => {
+  const form = source('src/components/agendamento/FormularioAgendamento.tsx');
+  const hook = source('src/hooks/useServicosAgendamento.tsx');
+  assert.match(hook, /isLoading, isError, refetch/);
+  assert.match(form, /loadingServicos \? \(/);
+  assert.match(form, /servicosError \? \(/);
+  assert.match(form, /servicosAtivos\.length === 0 \? \(/);
+  assert.match(form, /role="status"/);
+  assert.match(form, /role="alert"/);
+  assert.match(form, /void refetchServicos\(\)/);
+});
