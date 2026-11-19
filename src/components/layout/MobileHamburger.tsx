@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Menu, CircleHelp } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -216,11 +216,12 @@ export const MobileHamburger = () => {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button aria-label="Abrir menu de navegação" variant="ghost" size="sm" className="lg:hidden text-foreground hover:text-foreground" data-tour="mobile-menu" data-account-tour="navigation">
+        <Button type="button" aria-label="Abrir menu de navegação" aria-expanded={open} variant="ghost" size="icon" className="lg:hidden h-10 w-10 shrink-0 rounded-xl text-foreground hover:text-foreground" data-tour="mobile-menu" data-account-tour="navigation">
           <Menu className="h-5 w-5 text-foreground" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-64 p-0 bg-background">
+      <SheetContent side="left" aria-describedby={undefined} className="w-[min(20rem,calc(100vw-1.25rem))] p-0 bg-background">
+        <SheetTitle className="sr-only">Menu de navegação do Saj Tem</SheetTitle>
         <div className="h-full flex flex-col">
           {/* Logo Section - Corrigida apontando para a raiz da pasta public */}
           <div className="p-4 border-b">
