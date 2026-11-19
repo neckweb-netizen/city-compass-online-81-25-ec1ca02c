@@ -50,7 +50,7 @@ test('botão de IA continua móvel e botão de publicar continua circular', () =
   const nav = source('src/components/layout/BottomNavigation.tsx');
   assert.match(assistant, /onPointerMove=\{moveDrag\}/);
   assert.match(assistant, /POSITION_KEY/);
-  assert.match(nav, /h-\[3\.75rem\] w-\[3\.75rem\] rounded-full/);
+  assert.match(nav, /h-\[3\.75rem\] w-\[3\.75rem\][^"]*rounded-full/);
 });
 
 
