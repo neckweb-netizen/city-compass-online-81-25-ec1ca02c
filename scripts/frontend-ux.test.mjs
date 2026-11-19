@@ -380,3 +380,16 @@ test('stories pré-carregam imagens próximas sem alterar visualizador estável'
   assert.match(viewer, /aria-label="Próximo story"/);
   assert.doesNotMatch(viewer, /isStoryImageReady|fetchPriority="high"/);
 });
+
+test('Entre Nós impede comentários e denúncias duplicadas e mantém texto em falhas', () => {
+  const page = source('src/pages/EntreNos.tsx');
+  assert.match(page, /if\(!requireUser\(\) \|\| commentingPostId\) return/);
+  assert.match(page, /if\(!requireUser\(\) \|\| reportingPostId\) return/);
+  assert.match(page, /setCommentingPostId\(postId\)/);
+  assert.match(page, /setReportingPostId\(postId\)/);
+  assert.match(page, /disabled=\{commentingPostId === post\.id\}/);
+  assert.match(page, /disabled=\{reportingPostId === post\.id\}/);
+  assert.match(page, /setCommentingPostId\(null\)/);
+  assert.match(page, /setReportingPostId\(null\)/);
+  assert.match(page, /Seu texto foi preservado para tentar novamente/);
+});
