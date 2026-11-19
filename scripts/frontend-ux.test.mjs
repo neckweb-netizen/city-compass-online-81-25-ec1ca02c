@@ -267,16 +267,17 @@ test('currículo usa IDs exclusivos e botões de remoção acessíveis', () => {
 });
 
 
+
 test('substituição do backup financeiro salva primeiro e remove registros antigos por ID', () => {
   const storage = source('src/hooks/useControleFinanceiroStorage.ts');
   const start = storage.indexOf('const replaceAll = useCallback');
   const end = storage.indexOf('const importLocalToAccount =', start);
   assert.ok(start >= 0 && end > start);
   const replacement = storage.slice(start, end);
-  assert.match(replacement, /\\.upsert\\(batch\\.map/);
-  assert.match(replacement, /for \\(let offset = 0; ; offset \\+= 500\\)/);
-  assert.match(replacement, /const obsoleteIds = storedIds\\.filter/);
-  assert.match(replacement, /\\.in\\('id', obsoleteIds\\.slice/);
+  assert.ok(replacement.includes('.upsert(batch.map'));
+  assert.ok(replacement.includes('for (let offset = 0; ; offset += 500)'));
+  assert.ok(replacement.includes('const obsoleteIds = storedIds.filter'));
+  assert.ok(replacement.includes(".in('id', obsoleteIds.slice"));
   assert.ok(replacement.indexOf('.upsert(batch.map') < replacement.indexOf('const obsoleteIds'));
-  assert.doesNotMatch(replacement, /\\.delete\\(\\)\\s*\\.eq\\('user_id', user\\.id\\)\\s*;/);
+  assert.ok(!replacement.includes(".delete()\n      .eq('user_id', user.id);"));
 });
