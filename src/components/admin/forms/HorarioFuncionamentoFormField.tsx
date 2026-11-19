@@ -57,10 +57,12 @@ export const HorarioFuncionamentoFormField = ({ value, onChange }: HorarioFuncio
         {diasSemana.map((dia) => (
           <div key={dia.key} className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium">{dia.nome}</Label>
+              <Label htmlFor={`horario-aberto-${dia.key}`} className="text-sm font-medium">{dia.nome}</Label>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">Fechado</span>
                 <Switch
+                  id={`horario-aberto-${dia.key}`}
+                  aria-label={`${dia.nome}: ${horarios[dia.key]?.aberto ? 'aberto' : 'fechado'}`}
                   checked={horarios[dia.key]?.aberto || false}
                   onCheckedChange={() => handleToggleDay(dia.key)}
                 />
@@ -69,10 +71,11 @@ export const HorarioFuncionamentoFormField = ({ value, onChange }: HorarioFuncio
             </div>
             
             {horarios[dia.key]?.aberto && (
-              <div className="grid grid-cols-2 gap-3 ml-4">
+              <div className="grid grid-cols-1 gap-3 pl-1 sm:grid-cols-2 sm:pl-4">
                 <div>
-                  <Label className="text-xs text-muted-foreground">Abertura</Label>
+                  <Label htmlFor={`horario-abertura-${dia.key}`} className="text-xs text-muted-foreground">Abertura</Label>
                   <Input
+                    id={`horario-abertura-${dia.key}`}
                     type="time"
                     value={horarios[dia.key]?.abertura || '08:00'}
                     onChange={(e) => handleTimeChange(dia.key, 'abertura', e.target.value)}
@@ -80,8 +83,9 @@ export const HorarioFuncionamentoFormField = ({ value, onChange }: HorarioFuncio
                   />
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">Fechamento</Label>
+                  <Label htmlFor={`horario-fechamento-${dia.key}`} className="text-xs text-muted-foreground">Fechamento</Label>
                   <Input
+                    id={`horario-fechamento-${dia.key}`}
                     type="time"
                     value={horarios[dia.key]?.fechamento || '18:00'}
                     onChange={(e) => handleTimeChange(dia.key, 'fechamento', e.target.value)}

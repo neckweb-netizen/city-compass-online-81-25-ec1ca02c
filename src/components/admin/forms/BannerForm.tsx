@@ -145,7 +145,7 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
           <div>
             <Label htmlFor="secao">Seção *</Label>
             <Select value={secao} onValueChange={(val) => { setValue('secao', val as any); trigger(['secao']); }}>
-              <SelectTrigger>
+              <SelectTrigger id="secao" aria-label="Seção do banner">
                 <SelectValue placeholder="Selecione a seção" />
               </SelectTrigger>
               <SelectContent>
@@ -164,7 +164,7 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
           <div>
             <Label htmlFor="tipo-midia">Tipo de Mídia *</Label>
             <Select value={tipoMidia} onValueChange={(val) => { setValue('tipo_midia', val as any); trigger(['tipo_midia']); }}>
-              <SelectTrigger>
+              <SelectTrigger id="tipo-midia" aria-label="Tipo de mídia do banner">
                 <SelectValue placeholder="Selecione o tipo" />
               </SelectTrigger>
               <SelectContent>
@@ -190,14 +190,15 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
                       type="button"
                       variant="destructive"
                       size="icon"
-                      className="absolute top-2 right-2"
+                      className="absolute top-2 right-2 h-10 w-10 rounded-xl"
+                      aria-label="Remover mídia do banner"
                       onClick={handleImageRemove}
                     >
                       <X className="w-4 h-4" />
                     </Button>
                   </div>
                 ) : (
-                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
+                  <label className="flex flex-col items-center justify-center w-full min-h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 focus-within:ring-2 focus-within:ring-primary transition-colors">
                     <div className="flex flex-col items-center justify-center pt-5 pb-6">
                       {uploading ? (
                         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -210,8 +211,9 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
                     </div>
                     <input
                       type="file"
+                      aria-label="Selecionar imagem do banner"
                       accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
-                      className="hidden"
+                      className="sr-only"
                       disabled={uploading}
                       onChange={handleFileUpload}
                     />
@@ -229,6 +231,7 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
               <Label>URL ou Upload de Vídeo *</Label>
               <div className="space-y-2 mt-2">
                 <Input
+                  aria-label="URL do vídeo"
                   value={imagemUrl || ''}
                   onChange={(e) => {
                     setValue('imagem_url', e.target.value);
@@ -239,14 +242,15 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
                 />
                 
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">ou envie uma imagem do dispositivo:</span>
+                  <span className="text-xs text-muted-foreground">ou envie um vídeo do dispositivo:</span>
                   <label className="cursor-pointer inline-flex items-center gap-1 text-xs bg-secondary hover:bg-secondary/80 px-3 py-2 rounded-xl font-semibold shadow-sm transition-colors focus-within:ring-2 focus-within:ring-primary/40">
                     {uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
                     Upload Vídeo
                     <input
                       type="file"
+                      aria-label="Selecionar vídeo para o banner"
                       accept="video/*"
-                      className="hidden"
+                      className="sr-only"
                       disabled={uploading}
                       onChange={handleFileUpload}
                     />
@@ -306,11 +310,11 @@ export const BannerForm = ({ banner, onSubmit, onCancel, isLoading }: BannerForm
             <Label htmlFor="ativo">Banner ativo</Label>
           </div>
 
-          <div className="flex gap-2 pt-4">
-            <Button type="submit" disabled={isLoading || uploading}>
+          <div className="flex flex-col-reverse gap-2 pt-4 sm:flex-row">
+            <Button type="submit" className="min-h-11" aria-busy={Boolean(isLoading || uploading)} disabled={isLoading || uploading}>
               {isLoading ? 'Salvando...' : (banner ? 'Atualizar' : 'Criar')}
             </Button>
-            <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading || uploading}>
+            <Button type="button" variant="outline" className="min-h-11" onClick={onCancel} disabled={isLoading || uploading}>
               Cancelar
             </Button>
           </div>
