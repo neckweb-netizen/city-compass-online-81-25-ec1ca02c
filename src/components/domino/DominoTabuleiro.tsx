@@ -848,6 +848,10 @@ export const DominoTabuleiro = ({ usuarioId, salaId, numeroSala, onVoltarAoLobby
                 console.error('Falha ao sincronizar mão V2:', error);
                 setV2Ready(false);
               });
+            } else if (v2Enabled && newData.jogador_1_id && newData.jogador_2_id) {
+              // The second player can join after this component mounted.
+              // Initialize the authoritative hands without requiring a page refresh.
+              void carregarDadosPartida();
             }
             if (!v2Enabled && newData.jogador_1_id && newData.jogador_2_id && !pedrasInicializadas.current) {
               inicializarPedrasCompartilhadas(usuarioId, newData.jogador_1_id, newData.jogador_2_id, jogadasProcessadas.length === 0);

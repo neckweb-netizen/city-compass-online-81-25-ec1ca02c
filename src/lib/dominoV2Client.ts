@@ -1,7 +1,11 @@
 import { supabase } from '@/integrations/supabase/client';
 
-// Both environment opt-in AND explicit room scope are required.
-// Defaults to OFF in all environments, including production deployments.
+// Initial production pilot is scoped to a single empty room (room 2).
+// All other rooms retain the original game unless explicitly opted in via env.
+// Database-side allowlist independently checks this UUID before dealing.
+const productionPilotRoomIds = new Set([
+  '6ed6132d-cf9a-454b-9603-3319e0f8f2f0',
+]);
 const permittedRoomIds = new Set(
   (import.meta.env.VITE_DOMINO_V2_ALLOWED_ROOM_IDS ?? '')
     .split(',')
@@ -10,8 +14,9 @@ const permittedRoomIds = new Set(
 );
 
 export const isDominoV2EnabledForRoom = (roomId: string): boolean =>
-  import.meta.env.VITE_DOMINO_V2_ENABLED === 'true' &&
-  permittedRoomIds.has(roomId.toLowerCase());
+  productionPilotRoomIds.has(roomId.toLowerCase()) ||
+  (import.meta.env.VITE_DOMINO_V2_ENABLED === 'true' &&
+    permittedRoomIds.has(roomId.toLowerCase()));
 
 async function invokeV2<T>(fn: string, args: Record<string, unknown>): Promise<T> {
   // RPC prototypes are not yet in generated DB types. Use a narrow bridge
