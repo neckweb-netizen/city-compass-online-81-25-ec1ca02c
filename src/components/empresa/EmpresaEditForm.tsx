@@ -39,7 +39,6 @@ interface EmpresaEditFormProps {
 
 export const EmpresaEditForm = ({ empresa, open, onOpenChange }: EmpresaEditFormProps) => {
   const { updateEmpresaAsync, isUpdating } = useMinhaEmpresa();
-  const [selectedCategoria, setSelectedCategoria] = useState(empresa.categoria_id || '');
   const [horarios, setHorarios] = useState<HorarioFuncionamento>(empresa.horario_funcionamento || {});
   
   // Verificar se é um influencer - temporariamente comentado até ter o join com categorias
@@ -74,6 +73,23 @@ export const EmpresaEditForm = ({ empresa, open, onOpenChange }: EmpresaEditForm
     },
   });
 
+  // React Hook Form reads defaultValues once; refresh when editing a different
+  // business, but never discard unsaved changes while the dialog is open.
+  useEffect(() => {
+    if (!open) return;
+    form.reset({
+      nome: empresa.nome || '',
+      descricao: empresa.descricao || '',
+      endereco: empresa.endereco || '',
+      telefone: empresa.telefone || '',
+      site: empresa.site || '',
+      link_radio: empresa.link_radio || '',
+      categoria_id: empresa.categoria_id || '',
+      imagem_capa_url: empresa.imagem_capa_url || '',
+    });
+    setHorarios(empresa.horario_funcionamento || {});
+  }, [empresa.id, open, form.reset]);
+
   // Detectar mudança de categoria para mostrar/esconder campo da rádio
   const categoriaAtual = form.watch('categoria_id');
   const isRadioCategory = categorias?.find(cat => cat.id === categoriaAtual)?.nome === 'Rádios';
@@ -100,7 +116,7 @@ export const EmpresaEditForm = ({ empresa, open, onOpenChange }: EmpresaEditForm
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-[600px] max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-2xl sm:w-full">
         <DialogHeader>
           <DialogTitle>Editar Empresa</DialogTitle>
         </DialogHeader>
@@ -247,11 +263,11 @@ export const EmpresaEditForm = ({ empresa, open, onOpenChange }: EmpresaEditForm
               />
             </div>
 
-            <div className="flex justify-end gap-2 pt-4">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <div className="flex flex-col-reverse gap-2 pt-4 sm:flex-row sm:justify-end">
+              <Button type="button" variant="outline" className="min-h-11" disabled={isUpdating} onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isUpdating}>
+              <Button type="submit" className="min-h-11" aria-busy={isUpdating} disabled={isUpdating}>
                 {isUpdating ? 'Salvando...' : 'Salvar Alterações'}
               </Button>
             </div>

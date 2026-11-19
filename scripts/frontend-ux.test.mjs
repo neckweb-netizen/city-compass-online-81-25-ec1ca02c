@@ -160,3 +160,26 @@ test('contato expõe erros associados aos campos e teclado móvel apropriado', (
   assert.match(contact, /type="tel"/);
   assert.match(contact, /aria-busy=\{isLoading\}/);
 });
+
+
+test('edição de empresa reidrata campos para o negócio selecionado', () => {
+  const form = source('src/components/empresa/EmpresaEditForm.tsx');
+  assert.match(form, /form\.reset\(\{/);
+  assert.match(form, /\[empresa\.id, open, form\.reset\]/);
+  assert.match(form, /setHorarios\(empresa\.horario_funcionamento \|\| \{\}\)/);
+  assert.match(form, /aria-busy=\{isUpdating\}/);
+});
+
+test('notas em estrelas e remoção de tags funcionam com teclado', () => {
+  const userRating = source('src/components/empresa/AvaliacaoModal.tsx');
+  const adminRating = source('src/components/admin/forms/EditAvaliacaoModal.tsx');
+  const product = source('src/components/empresa/ProdutoForm.tsx');
+  for (const rating of [userRating, adminRating]) {
+    assert.match(rating, /aria-pressed=\{nota === starNumber\}/);
+    assert.match(rating, /onClick=\{\(\) => setNota\(starNumber\)\}/);
+    assert.match(rating, /type="button"/);
+  }
+  assert.match(product, /Remover tag/);
+  assert.match(product, /onClick=\{\(\) => removeTag\(tag\)\}/);
+  assert.match(product, /htmlFor="produto-tags"/);
+});
