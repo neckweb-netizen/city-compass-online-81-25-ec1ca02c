@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,7 @@ export const FormularioAgendamento: React.FC<FormularioAgendamentoProps> = ({
   const { criarAgendamento, isCreating } = useAgendamentos();
   const { servicos, isLoading: loadingServicos, isError: servicosError, refetch: refetchServicos } = useServicosAgendamento(empresaId);
 
+  const submittingRef = useRef(false);
   const [dateError, setDateError] = useState('');
   const [serviceError, setServiceError] = useState('');
   const [formData, setFormData] = useState({
@@ -40,7 +41,7 @@ export const FormularioAgendamento: React.FC<FormularioAgendamentoProps> = ({
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (isCreating || loadingServicos || servicosError || !formData.nome_cliente.trim() || !formData.telefone_cliente.trim() ||
+    if (submittingRef.current || isCreating || loadingServicos || servicosError || !formData.nome_cliente.trim() || !formData.telefone_cliente.trim() ||
         !formData.servico || !formData.data_agendamento) {
       return;
     }
@@ -59,6 +60,7 @@ export const FormularioAgendamento: React.FC<FormularioAgendamentoProps> = ({
     }
     setDateError('');
 
+    submittingRef.current = true;
     try {
       await criarAgendamento({
         empresa_id: empresaId,
@@ -81,6 +83,8 @@ export const FormularioAgendamento: React.FC<FormularioAgendamentoProps> = ({
       onSuccess?.();
     } catch {
       // useAgendamentos already displays the server error; do not claim success.
+    } finally {
+      submittingRef.current = false;
     }
   };
 
