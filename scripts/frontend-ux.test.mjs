@@ -349,3 +349,17 @@ test('configurações limpam confirmação sensível e bloqueiam fechamento ao s
   assert.match(dialog, /disabled=\{saving \|\| passwordSaving \|\| deleting\}/);
   assert.match(dialog, /type="email" inputMode="email" aria-label="Confirme seu e-mail/);
 });
+
+test('contato informa resultado do envio sem apagar formulário após falha', () => {
+  const contact = source('src/components/contact/ContactForm.tsx');
+  const service = source('src/hooks/useEmailService.tsx');
+  assert.match(contact, /if \(isLoading\) return/);
+  assert.match(contact, /setSubmissionStatus\('success'\)/);
+  assert.match(contact, /setSubmissionStatus\('error'\)/);
+  assert.match(contact, /submissionStatus === 'success'/);
+  assert.match(contact, /submissionStatus === 'error'/);
+  assert.match(contact, /role="status"/);
+  assert.match(contact, /role="alert"/);
+  assert.match(service, /if \(error\) throw error/);
+  assert.ok(contact.indexOf('await sendContactEmail(emailData)') < contact.indexOf('reset();'));
+});
