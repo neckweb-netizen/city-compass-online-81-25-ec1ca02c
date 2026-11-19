@@ -46,15 +46,20 @@ export const EditAvaliacaoModal = ({ isOpen, onClose, avaliacao }: EditAvaliacao
       const isActive = starNumber <= (hoveredStar || nota);
       
       return (
-        <Star
+        <button
           key={i}
-          className={`w-6 h-6 cursor-pointer transition-colors ${
-            isActive ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'
-          }`}
+          type="button"
+          aria-label={`Definir nota de ${starNumber} ${starNumber === 1 ? 'estrela' : 'estrelas'}`}
+          aria-pressed={nota === starNumber}
+          className="inline-flex h-11 w-11 items-center justify-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           onClick={() => setNota(starNumber)}
           onMouseEnter={() => setHoveredStar(starNumber)}
           onMouseLeave={() => setHoveredStar(0)}
-        />
+        >
+          <Star aria-hidden="true" className={`h-6 w-6 transition-colors ${
+            isActive ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'
+          }`} />
+        </button>
       );
     });
   };
@@ -68,18 +73,18 @@ export const EditAvaliacaoModal = ({ isOpen, onClose, avaliacao }: EditAvaliacao
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label>Local</Label>
-            <Input value={avaliacao.empresas?.nome || 'N/A'} disabled />
+            <Label htmlFor="avaliacao-local">Local</Label>
+            <Input id="avaliacao-local" value={avaliacao.empresas?.nome || 'N/A'} disabled />
           </div>
           
           <div className="space-y-2">
-            <Label>Usuário</Label>
-            <Input value={avaliacao.usuarios?.nome || 'N/A'} disabled />
+            <Label htmlFor="avaliacao-usuario">Usuário</Label>
+            <Input id="avaliacao-usuario" value={avaliacao.usuarios?.nome || 'N/A'} disabled />
           </div>
           
           <div className="space-y-2">
             <Label>Nota</Label>
-            <div className="flex gap-1">
+            <div role="group" aria-label="Selecionar nota da avaliação" className="flex flex-wrap gap-1">
               {renderStars()}
             </div>
           </div>
@@ -96,10 +101,10 @@ export const EditAvaliacaoModal = ({ isOpen, onClose, avaliacao }: EditAvaliacao
           </div>
           
           <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" className="min-h-11" onClick={onClose}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isPending}>
+            <Button type="submit" className="min-h-11" aria-busy={isPending} disabled={isPending}>
               {isPending ? 'Salvando...' : 'Salvar'}
             </Button>
           </div>
