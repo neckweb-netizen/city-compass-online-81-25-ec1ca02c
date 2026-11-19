@@ -246,3 +246,22 @@ test('calculadora de margem não inventa preço para taxas inviáveis', () => {
   assert.match(margin, /disabled=\{!taxasValidas \|\| custo <= 0\}/);
   assert.match(margin, /await navigator\.clipboard\.writeText/);
 });
+
+
+test('importação de finanças valida estrutura e pede confirmação antes de substituir', () => {
+  const finance = source('src/pages/ferramentas/ControleFinanceiro.tsx');
+  assert.match(finance, /file\.size > 5 \* 1024 \* 1024/);
+  assert.match(finance, /candidate\.transactions\.every\(validTransaction\)/);
+  assert.match(finance, /Number\.isFinite\(item\.amount\)/);
+  assert.match(finance, /new Set\(candidate\.transactions\.map/);
+  assert.match(finance, /window\.confirm\('Importar este backup substituirá/);
+  assert.match(finance, /replaceAll\(nextState\)/);
+});
+
+test('currículo usa IDs exclusivos e botões de remoção acessíveis', () => {
+  const cv = source('src/pages/ferramentas/CriadorCurriculo.tsx');
+  assert.match(cv, /crypto\.randomUUID\(\)/);
+  assert.match(cv, /aria-label="Remover formação"/);
+  assert.match(cv, /aria-label="Remover experiência profissional"/);
+  assert.match(cv, /grid-cols-1 gap-2 sm:grid-cols-2/);
+});
