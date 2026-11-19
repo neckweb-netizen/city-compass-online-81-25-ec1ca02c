@@ -423,3 +423,12 @@ test('agendamento revalida a antecedência da data antes de enviar', () => {
   assert.match(form, /id="erro-data-agendamento" role="alert"/);
   assert.ok(form.indexOf('chosenTime < Date.now()') < form.indexOf('await criarAgendamento('));
 });
+
+test('agendamento bloqueia seleção fora da lista atual de serviços ativos', () => {
+  const form = source('src/components/agendamento/FormularioAgendamento.tsx');
+  assert.match(form, /servicosAtivos\.some\(servico => servico\.nome_servico === formData\.servico\)/);
+  assert.match(form, /setServiceError\('O serviço selecionado não está mais disponível/);
+  assert.match(form, /id="erro-servico-agendamento" role="alert"/);
+  assert.match(form, /setServiceError\(''\)/);
+  assert.match(form, /isCreating \|\| loadingServicos \|\| servicosError/);
+});
