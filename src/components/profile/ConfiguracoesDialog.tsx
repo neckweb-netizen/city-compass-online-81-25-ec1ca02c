@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertCircle, Bell, CheckCircle2, Eye, EyeOff, HelpCircle, KeyRound,
@@ -49,6 +49,7 @@ export const ConfiguracoesDialog = ({ open, onOpenChange }: ConfiguracoesDialogP
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const preferencesInitialized = useRef(false);
   const [configuracoes, setConfiguracoes] = useState({
     notificacoes: preferences.in_app_enabled,
     sistema: preferences.system_enabled,
@@ -59,7 +60,14 @@ export const ConfiguracoesDialog = ({ open, onOpenChange }: ConfiguracoesDialogP
   });
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      preferencesInitialized.current = false;
+      return;
+    }
+    // Preenche o formulário uma vez por abertura, depois que as preferências
+    // estiverem disponíveis. Atualizações em segundo plano não apagam edições.
+    if (!preferencesReady || preferencesInitialized.current) return;
+    preferencesInitialized.current = true;
     setConfiguracoes({
       notificacoes: preferences.in_app_enabled,
       sistema: preferences.system_enabled,
@@ -68,7 +76,7 @@ export const ConfiguracoesDialog = ({ open, onOpenChange }: ConfiguracoesDialogP
       comunidade: preferences.community_enabled,
       tema: theme as ThemeSetting,
     });
-  }, [open, preferences, theme]);
+  }, [open, preferencesReady, preferences, theme]);
 
   const handleSaveConfiguracoes = async () => {
     if (!preferencesReady) {
@@ -170,7 +178,7 @@ export const ConfiguracoesDialog = ({ open, onOpenChange }: ConfiguracoesDialogP
   return (
     <>
       <Dialog open={open} onOpenChange={(nextOpen) => !deleting && onOpenChange(nextOpen)}>
-        <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto">
+        <DialogContent className="max-h-[90dvh] w-[calc(100vw-2rem)] max-w-xl overflow-y-auto rounded-2xl p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5" /> Configurações da conta
@@ -280,7 +288,7 @@ export const ConfiguracoesDialog = ({ open, onOpenChange }: ConfiguracoesDialogP
                 </div>
 
                 <div className="space-y-3">
-                  <Button variant="outline" className="w-full justify-start" onClick={() => setShowPasswordForm(prev => !prev)}>
+                  <Button variant="outline" className="min-h-11 w-full justify-start" aria-expanded={showPasswordForm} onClick={() => setShowPasswordForm(prev => !prev)}>
                     <KeyRound className="mr-2 h-4 w-4" />Alterar senha
                   </Button>
                   {showPasswordForm && (
@@ -309,9 +317,9 @@ export const ConfiguracoesDialog = ({ open, onOpenChange }: ConfiguracoesDialogP
               </CardContent>
             </Card>
 
-            <div className="flex gap-3">
-              <Button onClick={handleSaveConfiguracoes} className="flex-1" disabled={saving || !preferencesReady}>{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Salvar configurações</Button>
-              <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancelar</Button>
+            <div className="flex flex-col-reverse gap-3 sm:flex-row">
+              <Button onClick={handleSaveConfiguracoes} className="min-h-11 flex-1" disabled={saving || !preferencesReady}>{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Salvar configurações</Button>
+              <Button variant="outline" className="min-h-11" onClick={() => onOpenChange(false)} disabled={saving}>Cancelar</Button>
             </div>
 
             <Card className="border-destructive/30">
@@ -334,7 +342,7 @@ export const ConfiguracoesDialog = ({ open, onOpenChange }: ConfiguracoesDialogP
               <span className="block">Para confirmar, digite seu e-mail: <strong className="text-foreground">{user?.email}</strong></span>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <Input value={deleteConfirmation} onChange={(event) => setDeleteConfirmation(event.target.value)} placeholder="Digite seu e-mail" autoComplete="off" disabled={deleting} />
+          <Input aria-label="Confirme seu e-mail para excluir a conta" value={deleteConfirmation} onChange={(event) => setDeleteConfirmation(event.target.value)} placeholder="Digite seu e-mail" autoComplete="off" disabled={deleting} />
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
