@@ -1,5 +1,5 @@
 
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { NeonCard } from '@/components/ui/neon-card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -37,6 +37,36 @@ interface GroupedStory {
 export const StoriesSection = () => {
   const { data: stories, isLoading } = useEmpresaStories();
   const [selectedStoryIndex, setSelectedStoryIndex] = useState<number | null>(null);
+  const imageCache = useRef(new Map<string, HTMLImageElement>());
+
+  // Carrega apenas o story atual e os dois seguintes; não muda o visualizador.
+  const preloadNearby = useCallback((index: number, list: Story[]) => {
+    if (typeof window === 'undefined') return;
+
+    for (let offset = 0; offset < 3; offset += 1) {
+      const url = list[index + offset]?.imagem_story_url;
+      if (!url || imageCache.current.has(url)) continue;
+
+      const image = new window.Image();
+      image.decoding = 'async';
+      imageCache.current.set(url, image);
+      image.onerror = () => imageCache.current.delete(url);
+      image.src = url;
+    }
+
+    // Referências limitadas: o navegador controla seu cache HTTP.
+    while (imageCache.current.size > 8) {
+      const oldest = imageCache.current.keys().next().value;
+      if (!oldest) break;
+      imageCache.current.delete(oldest);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (stories?.length) {
+      preloadNearby(selectedStoryIndex ?? 0, stories);
+    }
+  }, [stories, selectedStoryIndex, preloadNearby]);
 
   if (isLoading) {
     return (
@@ -82,6 +112,7 @@ export const StoriesSection = () => {
   });
 
   const openStory = (groupedStory: GroupedStory) => {
+    preloadNearby(groupedStory.firstStoryIndex, stories);
     setSelectedStoryIndex(groupedStory.firstStoryIndex);
   };
 
@@ -116,6 +147,8 @@ export const StoriesSection = () => {
               aria-label={`Ver stories de ${groupedStory.empresa_nome}`}
               onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openStory(groupedStory); } }}
               onClick={() => openStory(groupedStory)}
+              onPointerEnter={() => preloadNearby(groupedStory.firstStoryIndex, stories)}
+              onFocus={() => preloadNearby(groupedStory.firstStoryIndex, stories)}
             >
               <div className="relative">
                 <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600 p-0.5">
