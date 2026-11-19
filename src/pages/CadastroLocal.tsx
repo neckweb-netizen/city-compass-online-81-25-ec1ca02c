@@ -32,17 +32,6 @@ const empresaSchema = z.object({
 
 type EmpresaFormData = z.infer<typeof empresaSchema>;
 
-const generateSlug = (nome: string): string => {
-  return nome
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // Remove acentos
-    .replace(/[^a-z0-9\s-]/g, '') // Remove caracteres especiais
-    .trim()
-    .replace(/\s+/g, '-') // Substitui espaços por hífens
-    .replace(/-+/g, '-'); // Remove hífens duplicados
-};
-
 const CadastroLocal = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -207,9 +196,9 @@ const CadastroLocal = () => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Categoria *</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value || ''}>
                           <FormControl>
-                            <SelectTrigger>
+                            <SelectTrigger aria-label="Categoria do local">
                               <SelectValue placeholder="Selecione uma categoria" />
                             </SelectTrigger>
                           </FormControl>
@@ -330,10 +319,12 @@ const CadastroLocal = () => {
 
                 </div>
 
-                <div className="flex justify-end gap-4 pt-6 border-t">
+                <div className="flex flex-col-reverse gap-3 border-t pt-6 sm:flex-row sm:justify-end">
                   <Button 
                     type="button" 
-                    variant="outline" 
+                    variant="outline"
+                    className="min-h-11"
+                    disabled={isSubmitting}
                     onClick={() => navigate('/')}
                   >
                     Cancelar
@@ -341,7 +332,8 @@ const CadastroLocal = () => {
                   <Button 
                     type="submit" 
                     disabled={isSubmitting}
-                    className="min-w-[140px]"
+                    aria-busy={isSubmitting}
+                    className="min-h-11 min-w-[140px]"
                   >
                     {isSubmitting ? 'Cadastrando...' : 'Cadastrar Local'}
                   </Button>
