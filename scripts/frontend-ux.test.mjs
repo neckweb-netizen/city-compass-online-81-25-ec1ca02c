@@ -209,3 +209,22 @@ test('horários de funcionamento associam campos ao dia da semana', () => {
   assert.ok(hours.includes('horario-fechamento-'));
   assert.match(hours, /sm:grid-cols-2/);
 });
+
+
+test('calculadora de combustível não aceita custos negativos e rotula seletor de combustível', () => {
+  const calculator = source('src/pages/ferramentas/CalculadoraCombustivel.tsx');
+  assert.match(calculator, /Number\.isFinite\(parsed\) && parsed >= 0/);
+  assert.match(calculator, /numberFrom\(passageiros\) >= 1/);
+  assert.match(calculator, /aria-label="Tipo de combustível"/);
+  assert.match(calculator, /id="calcular-ida-volta"/);
+});
+
+test('calculadora de orçamento trata taxa impossível sem mostrar preço falso', () => {
+  const budget = source('src/pages/ferramentas/CalculadoraOrcamento.tsx');
+  assert.match(budget, /const impostoValido = impostos < 100/);
+  assert.match(budget, /const fatorImposto = impostoValido \? 1 - \(impostos \/ 100\) : 0/);
+  assert.match(budget, /const valorHoraRecomendado = fatorImposto > 0 \? valorHoraBase \/ fatorImposto : 0/);
+  assert.match(budget, /A taxa de impostos precisa ser menor que 100%/);
+  assert.match(budget, /inputMode="decimal"/);
+  assert.match(budget, /htmlFor="impostos"/);
+});

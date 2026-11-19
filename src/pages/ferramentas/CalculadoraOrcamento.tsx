@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,6 +8,11 @@ import { ArrowLeft, Calculator, Sparkles, Clock, DollarSign, RefreshCw, FileText
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ToolBanner } from '@/components/ferramentas/ToolBanner';
+
+const numeroNaoNegativo = (value: string) => {
+  const numero = Number(value.trim().replace(',', '.'));
+  return Number.isFinite(numero) ? Math.max(0, numero) : 0;
+};
 
 export const CalculadoraOrcamento = () => {
   const navigate = useNavigate();
@@ -25,24 +30,25 @@ export const CalculadoraOrcamento = () => {
   const [margemLucroProjeto, setMargemLucroProjeto] = useState('20');
 
   // CÁLCULOS DO VALOR/HORA
-  const pretensao = parseFloat(pretensaoMensal.replace(',', '.')) || 0;
-  const horasPorDia = parseFloat(horasDia.replace(',', '.')) || 0;
-  const diasPorMes = parseFloat(diasMes.replace(',', '.')) || 0;
-  const custos = parseFloat(custosFixos.replace(',', '.')) || 0;
-  const impostos = parseFloat(impostosPorcentagem.replace(',', '.')) || 0;
+  const pretensao = numeroNaoNegativo(pretensaoMensal);
+  const horasPorDia = numeroNaoNegativo(horasDia);
+  const diasPorMes = numeroNaoNegativo(diasMes);
+  const custos = numeroNaoNegativo(custosFixos);
+  const impostos = numeroNaoNegativo(impostosPorcentagem);
 
   const totalHorasMes = horasPorDia * diasPorMes;
   const custoTotalMensal = pretensao + custos;
   
   // VALOR DA HORA LÍQUIDO E BRUTO (COM IMPOSTOS)
   const valorHoraBase = totalHorasMes > 0 ? custoTotalMensal / totalHorasMes : 0;
-  const fatorImposto = impostos < 100 ? 1 - (impostos / 100) : 1;
-  const valorHoraRecomendado = fatorImposto > 0 ? valorHoraBase / fatorImposto : valorHoraBase;
+  const impostoValido = impostos < 100;
+  const fatorImposto = impostoValido ? 1 - (impostos / 100) : 0;
+  const valorHoraRecomendado = fatorImposto > 0 ? valorHoraBase / fatorImposto : 0;
 
   // CÁLCULOS DO PROJETO
-  const hrsProjeto = parseFloat(horasProjeto.replace(',', '.')) || 0;
-  const extrasProjeto = parseFloat(custosExtrasProjeto.replace(',', '.')) || 0;
-  const margemProjeto = parseFloat(margemLucroProjeto.replace(',', '.')) || 0;
+  const hrsProjeto = numeroNaoNegativo(horasProjeto);
+  const extrasProjeto = numeroNaoNegativo(custosExtrasProjeto);
+  const margemProjeto = numeroNaoNegativo(margemLucroProjeto);
 
   const subtotalMaoDeObra = hrsProjeto * valorHoraRecomendado;
   const subtotalComExtras = subtotalMaoDeObra + extrasProjeto;
@@ -103,17 +109,17 @@ export const CalculadoraOrcamento = () => {
                   Informe seus objetivos financeiros e rotina de trabalho
                 </CardDescription>
               </div>
-              <Button variant="ghost" size="sm" onClick={handleLimpar} className="h-8 text-xs gap-1">
+              <Button type="button" variant="ghost" size="sm" onClick={handleLimpar} className="min-h-10 shrink-0 gap-1 text-xs" aria-label="Restaurar valores iniciais da calculadora">
                 <RefreshCw className="w-3.5 h-3.5" /> Resetar
               </Button>
             </div>
           </CardHeader>
           <CardContent className="pt-4 space-y-4">
+            {!impostoValido && <p role="alert" className="rounded-xl border border-destructive/30 p-3 text-sm text-destructive">A taxa de impostos precisa ser menor que 100% para calcular o preço recomendado.</p>}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">Pretensão Salarial Mensal (R$)</Label>
-                <Input 
-                  placeholder="Ex: 3000,00" 
+                <Label htmlFor="pretensao-mensal" className="text-xs font-semibold">Pretensão Salarial Mensal (R$)</Label>
+                <Input id="pretensao-mensal" inputMode="decimal" placeholder="Ex: 3000,00" 
                   value={pretensaoMensal} 
                   onChange={e => setPretensaoMensal(e.target.value)} 
                   className="h-10 text-sm"
@@ -121,9 +127,8 @@ export const CalculadoraOrcamento = () => {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">Custos Fixos Mensais (Luz, Net, MEI)</Label>
-                <Input 
-                  placeholder="Ex: 500,00" 
+                <Label htmlFor="custos-fixos" className="text-xs font-semibold">Custos Fixos Mensais (Luz, Net, MEI)</Label>
+                <Input id="custos-fixos" inputMode="decimal" placeholder="Ex: 500,00" 
                   value={custosFixos} 
                   onChange={e => setCustosFixos(e.target.value)} 
                   className="h-10 text-sm"
@@ -131,9 +136,8 @@ export const CalculadoraOrcamento = () => {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">Impostos / Taxas (%)</Label>
-                <Input 
-                  placeholder="Ex: 6" 
+                <Label htmlFor="impostos" className="text-xs font-semibold">Impostos / Taxas (%)</Label>
+                <Input id="impostos" inputMode="decimal" placeholder="Ex: 6" 
                   value={impostosPorcentagem} 
                   onChange={e => setImpostosPorcentagem(e.target.value)} 
                   className="h-10 text-sm"
@@ -141,9 +145,8 @@ export const CalculadoraOrcamento = () => {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">Horas Trabalhadas por Dia</Label>
-                <Input 
-                  placeholder="Ex: 8" 
+                <Label htmlFor="horas-dia" className="text-xs font-semibold">Horas Trabalhadas por Dia</Label>
+                <Input id="horas-dia" inputMode="decimal" placeholder="Ex: 8" 
                   value={horasDia} 
                   onChange={e => setHorasDia(e.target.value)} 
                   className="h-10 text-sm"
@@ -151,9 +154,8 @@ export const CalculadoraOrcamento = () => {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">Dias Trabalhados por Mês</Label>
-                <Input 
-                  placeholder="Ex: 20" 
+                <Label htmlFor="dias-mes" className="text-xs font-semibold">Dias Trabalhados por Mês</Label>
+                <Input id="dias-mes" inputMode="decimal" placeholder="Ex: 20" 
                   value={diasMes} 
                   onChange={e => setDiasMes(e.target.value)} 
                   className="h-10 text-sm"
@@ -208,9 +210,8 @@ export const CalculadoraOrcamento = () => {
               <CardContent className="pt-4 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold">Horas Estimadas no Projeto</Label>
-                    <Input 
-                      placeholder="Ex: 10" 
+                    <Label htmlFor="horas-projeto" className="text-xs font-semibold">Horas Estimadas no Projeto</Label>
+                <Input id="horas-projeto" inputMode="decimal" placeholder="Ex: 10" 
                       value={horasProjeto} 
                       onChange={e => setHorasProjeto(e.target.value)} 
                       className="h-10 text-sm"
@@ -218,9 +219,8 @@ export const CalculadoraOrcamento = () => {
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold">Custos Extras/Insumos (R$)</Label>
-                    <Input 
-                      placeholder="Ex: 50,00" 
+                    <Label htmlFor="custos-extras" className="text-xs font-semibold">Custos Extras/Insumos (R$)</Label>
+                <Input id="custos-extras" inputMode="decimal" placeholder="Ex: 50,00" 
                       value={custosExtrasProjeto} 
                       onChange={e => setCustosExtrasProjeto(e.target.value)} 
                       className="h-10 text-sm"
@@ -228,9 +228,8 @@ export const CalculadoraOrcamento = () => {
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold">Margem de Lucro Adicional (%)</Label>
-                    <Input 
-                      placeholder="Ex: 20" 
+                    <Label htmlFor="margem-lucro" className="text-xs font-semibold">Margem de Lucro Adicional (%)</Label>
+                <Input id="margem-lucro" inputMode="decimal" placeholder="Ex: 20" 
                       value={margemLucroProjeto} 
                       onChange={e => setMargemLucroProjeto(e.target.value)} 
                       className="h-10 text-sm"
