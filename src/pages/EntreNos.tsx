@@ -28,11 +28,12 @@ export default function EntreNos() {
   const [loading,setLoading] = useState(true); const [composer,setComposer] = useState(false); const [authOpen,setAuthOpen] = useState(false);
   const [category,setCategory] = useState('desabafo'); const [sex,setSex] = useState(''); const [age,setAge] = useState(''); const [content,setContent] = useState('');
   const [allowComments,setAllowComments] = useState(true); const [sensitive,setSensitive] = useState(false); const [saving,setSaving] = useState(false);
+  const [reactingPostId, setReactingPostId] = useState<string | null>(null);
   const [revealed,setRevealed] = useState<Set<string>>(new Set()); const [openComments,setOpenComments] = useState<string|null>(null); const [commentText,setCommentText] = useState('');
 
   const [loadError, setLoadError] = useState(false);
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (showSpinner = true) => {
+    if (showSpinner) setLoading(true);
     try {
       const p = await supabase.from('entre_nos_postagens' as any)
         .select('id,categoria,sexo,idade,faixa_etaria,conteudo,permitir_comentarios,conteudo_sensivel,destaque,publicacao_sistema,criado_em')
@@ -70,7 +71,7 @@ export default function EntreNos() {
       setLoadError(true);
       toast.error('Não foi possível carregar o Entre Nós.');
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
   }, []);
   useEffect(()=>{ load(); },[load]);
@@ -94,7 +95,9 @@ export default function EntreNos() {
     }
   };
   const react = async (postId:string,type:string) => {
-    if(!requireUser()) return;
+    if(!requireUser() || reactingPostId) return;
+    setReactingPostId(postId);
+    try {
     const { error: insertError } = await supabase
       .from('entre_nos_reacoes' as any)
       .insert({ postagem_id: postId, usuario_id: user!.id, tipo: type });
@@ -116,8 +119,13 @@ export default function EntreNos() {
       return;
     }
 
-    await load();
+    await load(false);
     toast.success('Reação registrada.');
+    } catch {
+      toast.error('Não foi possível registrar sua reação.');
+    } finally {
+      setReactingPostId(null);
+    }
   };
   const comment = async (postId:string) => {
     if(!requireUser() || commentText.trim().length<2) return;
@@ -162,7 +170,7 @@ export default function EntreNos() {
             <Badge variant="outline" className="mt-4 rounded-full">{categories[post.categoria]}</Badge>
             {hidden?<button onClick={()=>setRevealed(new Set([...revealed,post.id]))} className="mt-4 w-full rounded-2xl border border-dashed bg-muted/50 p-8 text-center"><EyeOff className="mx-auto mb-2 h-6 w-6"/><b className="block">Conteúdo sensível</b><span className="text-sm text-muted-foreground">Toque para visualizar</span></button>:<p className="mt-4 whitespace-pre-wrap text-[15px] leading-7">{post.conteudo}</p>}
           </div>
-          <div className="flex flex-wrap gap-1 border-t bg-muted/20 px-3 py-2">{reactions.map(({type,label,icon:Icon})=><Button key={type} type="button" variant="ghost" size="sm" className="min-h-10 rounded-full" aria-label={`${label}: ${counts[post.id]?.[type] || 0} reações`} onClick={()=>react(post.id,type)}><Icon className="mr-1.5 h-4 w-4"/>{label} {counts[post.id]?.[type]||''}</Button>)}{post.permitir_comentarios&&<Button type="button" variant="ghost" size="sm" className="ml-auto min-h-10 rounded-full" aria-label={`${postComments.length} comentários. ${openComments===post.id?'Ocultar':'Mostrar'} comentários`} aria-expanded={openComments===post.id} onClick={() => { setCommentText(''); setOpenComments(openComments===post.id ? null : post.id); }}><MessageCircle className="mr-1.5 h-4 w-4"/>{postComments.length}</Button>}</div>
+          <div className="flex flex-wrap gap-1 border-t bg-muted/20 px-3 py-2">{reactions.map(({type,label,icon:Icon})=><Button key={type} type="button" variant="ghost" size="sm" className="min-h-10 rounded-full" disabled={reactingPostId === post.id} aria-busy={reactingPostId === post.id} aria-label={`${label}: ${counts[post.id]?.[type] || 0} reações`} onClick={()=>react(post.id,type)}><Icon className="mr-1.5 h-4 w-4"/>{label} {counts[post.id]?.[type]||''}</Button>)}{post.permitir_comentarios&&<Button type="button" variant="ghost" size="sm" className="ml-auto min-h-10 rounded-full" aria-label={`${postComments.length} comentários. ${openComments===post.id?'Ocultar':'Mostrar'} comentários`} aria-expanded={openComments===post.id} onClick={() => { setCommentText(''); setOpenComments(openComments===post.id ? null : post.id); }}><MessageCircle className="mr-1.5 h-4 w-4"/>{postComments.length}</Button>}</div>
           {openComments===post.id&&<div className="space-y-3 border-t p-4">{postComments.map(c=><div key={c.id} className="rounded-2xl bg-muted/50 p-3"><b className="text-xs">Anônimo</b><p className="mt-1 text-sm leading-6">{c.conteudo}</p></div>)}<div className="flex gap-2"><Input aria-label="Escreva seu comentário" value={commentText} onChange={e=>setCommentText(e.target.value)} placeholder="Escreva uma resposta acolhedora..."/><Button type="button" size="icon" className="h-10 w-10 shrink-0" aria-label="Enviar comentário para moderação" onClick={()=>comment(post.id)}><Send className="h-4 w-4"/></Button></div><p className="text-[11px] text-muted-foreground">Seu comentário ficará visível após a moderação.</p></div>}
         </article>})}</div>
       <div className="mt-6 rounded-3xl border border-amber-500/20 bg-amber-500/8 p-5 text-sm leading-6"><b>Precisa de ajuda agora?</b><p className="text-muted-foreground">Este espaço não substitui atendimento profissional. Em crise emocional, ligue 188 (CVV). Em risco imediato, procure o serviço de emergência.</p></div>
