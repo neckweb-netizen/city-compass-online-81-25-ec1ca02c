@@ -52,17 +52,25 @@ export const AvaliacaoModal = ({ open, onOpenChange, empresaId, empresaNome }: A
       const isHovered = hoveredStar > 0 && starNumber <= hoveredStar;
       
       return (
-        <Star
+        <button
           key={i}
-          className={`h-8 w-8 cursor-pointer transition-colors ${
-            isSelected || isHovered
-              ? 'fill-yellow-400 text-yellow-400' 
-              : 'text-gray-300 hover:text-yellow-200'
-          }`}
+          type="button"
+          aria-label={`Avaliar com ${starNumber} ${starNumber === 1 ? 'estrela' : 'estrelas'}`}
+          aria-pressed={nota === starNumber}
+          className="inline-flex h-11 w-11 items-center justify-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           onClick={() => setNota(starNumber)}
           onMouseEnter={() => setHoveredStar(starNumber)}
           onMouseLeave={() => setHoveredStar(0)}
-        />
+        >
+          <Star
+            aria-hidden="true"
+            className={`h-8 w-8 transition-colors ${
+              isSelected || isHovered
+                ? 'fill-yellow-400 text-yellow-400'
+                : 'text-gray-300 hover:text-yellow-200'
+            }`}
+          />
+        </button>
       );
     });
   };
@@ -94,10 +102,11 @@ export const AvaliacaoModal = ({ open, onOpenChange, empresaId, empresaNome }: A
 
           {/* Comentário */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">
+            <label htmlFor="avaliacao-comentario" className="text-sm font-medium">
               Comentário (opcional)
             </label>
             <Textarea
+              id="avaliacao-comentario"
               placeholder="Conte sua experiência com esta empresa..."
               value={comentario}
               onChange={(e) => setComentario(e.target.value)}
@@ -110,16 +119,19 @@ export const AvaliacaoModal = ({ open, onOpenChange, empresaId, empresaNome }: A
           <div className="flex space-x-3">
             <Button
               variant="outline"
+              type="button"
               onClick={() => onOpenChange(false)}
-              className="flex-1"
+              className="min-h-11 flex-1"
               disabled={criarAvaliacaoMutation.isPending}
             >
               Cancelar
             </Button>
             <Button
+              type="button"
               onClick={handleSubmit}
+              aria-busy={criarAvaliacaoMutation.isPending}
               disabled={nota === 0 || criarAvaliacaoMutation.isPending}
-              className="flex-1"
+              className="min-h-11 flex-1"
             >
               {criarAvaliacaoMutation.isPending ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
