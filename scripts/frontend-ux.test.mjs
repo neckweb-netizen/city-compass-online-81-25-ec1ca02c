@@ -281,3 +281,44 @@ test('substituição do backup financeiro salva primeiro e remove registros anti
   assert.ok(replacement.indexOf('.upsert(batch.map') < replacement.indexOf('const obsoleteIds'));
   assert.ok(!replacement.includes(".delete()\n      .eq('user_id', user.id);"));
 });
+
+
+test('navegação rápida usa router sem recarregar documento e paginação fica em português', () => {
+  const navigation = source('src/components/layout/FastNavigation.tsx');
+  const pagination = source('src/components/ui/pagination.tsx');
+  assert.match(navigation, /routerNavigate\(path\)/);
+  assert.doesNotMatch(navigation, /window\.location\.href = path/);
+  assert.match(navigation, /aria-current=\{isActive \? 'page'/);
+  assert.match(pagination, /aria-label="Paginação"/);
+  assert.match(pagination, /<span>Anterior<\/span>/);
+  assert.match(pagination, /<span>Próxima<\/span>/);
+});
+
+test('Entre Nós bloqueia composição anônima e recupera erros de rede e envio', () => {
+  const page = source('src/pages/EntreNos.tsx');
+  assert.match(page, /if \(requireUser\(\)\) setComposer\(true\)/);
+  assert.match(page, /if \(p\.error \|\| r\.error \|\| c\.error\)/);
+  assert.match(page, /finally \{\s*setLoading\(false\)/);
+  assert.match(page, /loadError \? <Card/);
+  assert.match(page, /void load\(\)/);
+  assert.match(page, /Number\.isInteger\(numericAge\)/);
+  assert.match(page, /\.eq\('usuario_id', user!\.id\)/);
+  assert.match(page, /finally \{\s*setSaving\(false\)/);
+});
+
+test('Viver SAJ diferencia falha de carregamento de catálogo vazio', () => {
+  const page = source('src/pages/ViverSaj.tsx');
+  assert.match(page, /modulesQuery\.isError \? <Card/);
+  assert.match(page, /modulesQuery\.refetch\(\)/);
+  assert.match(page, /modules\.length === 0 \? <Card/);
+  assert.match(page, /aria-label="Carregando áreas do Viver SAJ"/);
+});
+
+test('links curtos apresentam erro em vez de voltar silenciosamente para home', () => {
+  const page = source('src/pages/ShortUrlRedirect.tsx');
+  assert.match(page, /destination\.origin !== window\.location\.origin/);
+  assert.match(page, /if \(active\) setErrorMessage/);
+  assert.match(page, /role="alert"/);
+  assert.match(page, /<Link to="\/">Voltar para o início<\/Link>/);
+  assert.doesNotMatch(page, /window\.location\.replace\('\/'\)/);
+});
