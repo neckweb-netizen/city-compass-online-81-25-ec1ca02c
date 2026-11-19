@@ -59,9 +59,19 @@ export const ProblemaCard = ({ problema }: ProblemaCardProps) => {
     : null;
 
   return (
-    <Card 
-      className="cursor-pointer hover:shadow-lg transition-shadow"
+    <Card
+      role="link"
+      tabIndex={0}
+      aria-label={`Ver detalhes da reclamação: ${problema.titulo}`}
+      className="cursor-pointer rounded-xl hover:shadow-lg transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
       onClick={() => navigate(`/reclamacoes/${problema.id}`)}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          navigate(`/reclamacoes/${problema.id}`);
+        }
+      }}
     >
       <CardContent className="p-6">
         <div className="flex items-start gap-4">
@@ -70,7 +80,9 @@ export const ProblemaCard = ({ problema }: ProblemaCardProps) => {
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 w-8 p-0"
+              type="button"
+              aria-label="Votar a favor desta reclamação"
+              className="h-10 w-10 p-0 rounded-xl"
               onClick={(e) => handleVoto(e, 1)}
               disabled={!user}
             >
@@ -82,7 +94,9 @@ export const ProblemaCard = ({ problema }: ProblemaCardProps) => {
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 w-8 p-0"
+              type="button"
+              aria-label="Votar contra esta reclamação"
+              className="h-10 w-10 p-0 rounded-xl"
               onClick={(e) => handleVoto(e, -1)}
               disabled={!user}
             >
