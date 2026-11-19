@@ -34,15 +34,37 @@ export default function EntreNos() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [p,r,c] = await Promise.all([
-        supabase.from('entre_nos_postagens' as any).select('id,categoria,sexo,idade,faixa_etaria,conteudo,permitir_comentarios,conteudo_sensivel,destaque,publicacao_sistema,criado_em').eq('status','aprovado').order('destaque',{ascending:false}).order('criado_em',{ascending:false}).limit(60),
-        supabase.from('entre_nos_reacoes' as any).select('id,postagem_id,tipo'),
-        supabase.from('entre_nos_comentarios' as any).select('id,postagem_id,conteudo,criado_em').eq('status','aprovado').order('criado_em',{ascending:true})
-      ]);
-      if (p.error || r.error || c.error) throw new Error('Falha ao carregar o feed');
-      setPosts((p.data || []) as unknown as Post[]);
-      setReactionRows((r.data || []) as unknown as Reaction[]);
-      setComments((c.data || []) as unknown as Comment[]);
+      const p = await supabase.from('entre_nos_postagens' as any)
+        .select('id,categoria,sexo,idade,faixa_etaria,conteudo,permitir_comentarios,conteudo_sensivel,destaque,publicacao_sistema,criado_em')
+        .eq('status', 'aprovado')
+        .order('destaque', { ascending: false })
+        .order('criado_em', { ascending: false })
+        .limit(60);
+      if (p.error) throw new Error('Falha ao carregar publicações');
+      const loadedPosts = (p.data || []) as unknown as Post[];
+      const postIds = loadedPosts.map(post => post.id);
+
+      if (postIds.length === 0) {
+        setPosts([]);
+        setReactionRows([]);
+        setComments([]);
+      } else {
+        // Limita os dados complementares às publicações realmente exibidas.
+        const [r, c] = await Promise.all([
+          supabase.from('entre_nos_reacoes' as any)
+            .select('id,postagem_id,tipo')
+            .in('postagem_id', postIds),
+          supabase.from('entre_nos_comentarios' as any)
+            .select('id,postagem_id,conteudo,criado_em')
+            .in('postagem_id', postIds)
+            .eq('status', 'aprovado')
+            .order('criado_em', { ascending: true }),
+        ]);
+        if (r.error || c.error) throw new Error('Falha ao carregar interações');
+        setPosts(loadedPosts);
+        setReactionRows((r.data || []) as unknown as Reaction[]);
+        setComments((c.data || []) as unknown as Comment[]);
+      }
       setLoadError(false);
     } catch {
       setLoadError(true);
