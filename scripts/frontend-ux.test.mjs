@@ -297,7 +297,10 @@ test('navegação rápida usa router sem recarregar documento e paginação fica
 test('Entre Nós bloqueia composição anônima e recupera erros de rede e envio', () => {
   const page = source('src/pages/EntreNos.tsx');
   assert.match(page, /if \(requireUser\(\)\) setComposer\(true\)/);
-  assert.match(page, /if \(p\.error \|\| r\.error \|\| c\.error\)/);
+  assert.match(page, /if \\(p\\.error\\)/);
+  assert.match(page, /if \\(r\\.error \\|\\| c\\.error\\)/);
+  assert.match(page, /\\.in\\('postagem_id', postIds\\)/);
+  assert.match(page, /if \\(postIds\\.length === 0\\)/);
   assert.match(page, /finally \{\s*setLoading\(false\)/);
   assert.match(page, /loadError \? <Card/);
   assert.match(page, /void load\(\)/);
