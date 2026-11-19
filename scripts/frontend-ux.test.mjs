@@ -393,3 +393,11 @@ test('Entre Nós impede comentários e denúncias duplicadas e mantém texto em 
   assert.match(page, /setReportingPostId\(null\)/);
   assert.match(page, /Seu texto foi preservado para tentar novamente/);
 });
+
+test('Entre Nós preserva o rascunho durante o envio de comentários', () => {
+  const page = source('src/pages/EntreNos.tsx');
+  assert.match(page, /aria-expanded=\{openComments===post\.id\} disabled=\{commentingPostId !== null\}/);
+  assert.match(page, /disabled=\{commentingPostId === post\.id\} placeholder="Escreva uma resposta acolhedora/);
+  assert.match(page, /disabled=\{commentingPostId !== null \|\| commentText\.trim\(\)\.length < 2\}/);
+  assert.match(page, /Seu texto foi preservado para tentar novamente/);
+});
