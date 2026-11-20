@@ -5,7 +5,7 @@ export const getJobApplicationHref = (method: string, contact: string): string |
   if (!raw) return null;
 
   if (method === 'email') {
-    return /^[^\s@]+@[^\s@]+\\.[^\s@]+$/.test(raw) ? `mailto:${raw}` : null;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw) ? `mailto:${raw}` : null;
   }
 
   if (method === 'whatsapp') {
