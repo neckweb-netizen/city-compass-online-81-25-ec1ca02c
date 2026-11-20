@@ -67,7 +67,7 @@ export const FormularioAgendamento: React.FC<FormularioAgendamentoProps> = ({
         nome_cliente: formData.nome_cliente.trim(),
         telefone_cliente: formData.telefone_cliente.trim(),
         servico: formData.servico,
-        data_agendamento: formData.data_agendamento,
+        data_agendamento: new Date(formData.data_agendamento).toISOString(),
         observacoes: formData.observacoes.trim() || undefined,
       });
       // Keep the entered information intact if the server rejects the request.
