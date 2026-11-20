@@ -36,15 +36,19 @@ export const EmpresaCuponsList = ({ empresaId, isOwner = false }: EmpresaCuponsL
   const { verificarLimiteCupons } = usePlanoLimites();
 
   const { data: cupons, isLoading, isError, refetch } = useQuery({
-    queryKey: ['empresa-cupons', empresaId],
+    queryKey: ['empresa-cupons', empresaId, isOwner],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('cupons')
         .select('*')
         .eq('empresa_id', empresaId)
-        .eq('ativo', true)
-        .gte('data_fim', new Date().toISOString())
         .order('criado_em', { ascending: false });
+      if (!isOwner) {
+        query = query.eq('ativo', true)
+          .lte('data_inicio', new Date().toISOString())
+          .gte('data_fim', new Date().toISOString());
+      }
+      const { data, error } = await query;
 
       if (error) throw error;
       return data;
@@ -179,10 +183,12 @@ export const EmpresaCuponsList = ({ empresaId, isOwner = false }: EmpresaCuponsL
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-3">
                       <h3 className="font-semibold text-lg">{cupom.titulo}</h3>
                       <div className="flex flex-wrap gap-2">
-                        <Badge variant="default">Ativo</Badge>
-                        {isExpired(cupom.data_fim) && (
-                          <Badge variant="destructive">Expirado</Badge>
-                        )}
+                        {!cupom.ativo ? <Badge variant="secondary">Inativo</Badge>
+                          : isExpired(cupom.data_fim) ? <Badge variant="destructive">Expirado</Badge>
+                          : new Date(cupom.data_inicio) > new Date() ? <Badge variant="outline">Agendado</Badge>
+                          : cupom.quantidade_total != null && cupom.quantidade_usada >= cupom.quantidade_total
+                            ? <Badge variant="destructive">Esgotado</Badge>
+                            : <Badge variant="default">Ativo</Badge>}
                       </div>
                     </div>
                     
@@ -295,8 +301,8 @@ export const EmpresaCuponsList = ({ empresaId, isOwner = false }: EmpresaCuponsL
           cupom={editingCupom}
           onSuccess={() => {
             void queryClient.invalidateQueries({ queryKey: ['empresa-cupons', empresaId] });
-      void queryClient.invalidateQueries({ queryKey: ['latest-cupons'] });
-      void queryClient.invalidateQueries({ queryKey: ['admin-cupons'] });
+            void queryClient.invalidateQueries({ queryKey: ['latest-cupons'] });
+            void queryClient.invalidateQueries({ queryKey: ['admin-cupons'] });
             handleCloseForm();
           }}
         />
