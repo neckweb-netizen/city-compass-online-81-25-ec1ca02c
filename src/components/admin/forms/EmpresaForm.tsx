@@ -1,5 +1,6 @@
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { createCompanySlug } from '@/lib/companySlug';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod/v3';
@@ -41,23 +42,13 @@ interface EmpresaFormProps {
   onSuccess?: () => void;
 }
 
-// Função para gerar slug a partir do nome
-const generateSlug = (nome: string): string => {
-  return nome
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // Remove acentos
-    .replace(/[^a-z0-9\s-]/g, '') // Remove caracteres especiais
-    .trim()
-    .replace(/\s+/g, '-') // Substitui espaços por hífens
-    .replace(/-+/g, '-'); // Remove hífens duplicados
-};
-
 export const EmpresaForm = ({ onSuccess }: EmpresaFormProps) => {
   const [open, setOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const [createdEmpresaId, setCreatedEmpresaId] = useState<string | null>(null);
   const { toast } = useToast();
-  const { data: categorias } = useCategorias();
+  const { data: categorias, isLoading: categoriasLoading, isError: categoriasError, refetch: refetchCategorias } = useCategorias('empresa');
   const { data: cidadePadrao } = useCidadePadrao();
 
   const form = useForm<EmpresaFormData>({
@@ -69,6 +60,13 @@ export const EmpresaForm = ({ onSuccess }: EmpresaFormProps) => {
   });
 
   const onSubmit = async (data: EmpresaFormData) => {
+    if (submittingRef.current) return;
+    if (categoriasLoading || categoriasError || !categorias?.some(cat => cat.id === data.categoria_id && cat.ativo && cat.tipo === 'empresa')) {
+      toast({ title: 'Categoria indisponível', description: 'Selecione uma categoria válida.', variant: 'destructive' });
+      return;
+    }
+    submittingRef.current = true;
+    setIsSubmitting(true);
     try {
       // Obter o usuário atual
       const { data: { user } } = await supabase.auth.getUser();
@@ -91,26 +89,8 @@ export const EmpresaForm = ({ onSuccess }: EmpresaFormProps) => {
         return;
       }
 
-      // Gerar slug único
-      const baseSlug = generateSlug(data.nome);
-      let slug = baseSlug;
-      let counter = 1;
-
-      // Verificar se o slug já existe e gerar um único
-      while (true) {
-        const { data: existingEmpresa } = await supabase
-          .from('empresas')
-          .select('id')
-          .eq('slug', slug)
-          .single();
-
-        if (!existingEmpresa) {
-          break; // Slug é único
-        }
-
-        slug = `${baseSlug}-${counter}`;
-        counter++;
-      }
+      // Slug único, sem consultas que podem ocultar empresas sob RLS.
+      const slug = createCompanySlug(data.nome);
 
       // Verificar tipo de conta do usuário para decidir se vai ter proprietário
       const { data: userProfile, error: profileError } = await supabase
@@ -182,11 +162,14 @@ export const EmpresaForm = ({ onSuccess }: EmpresaFormProps) => {
         description: 'Tente novamente.',
         variant: 'destructive' 
       });
+    } finally {
+      submittingRef.current = false;
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen && submittingRef.current) return; setOpen(nextOpen); }}>
       <DialogTrigger asChild>
         <Button>
           <Plus className="w-4 h-4 mr-2" />
@@ -238,10 +221,10 @@ export const EmpresaForm = ({ onSuccess }: EmpresaFormProps) => {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Categoria</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value || ''} disabled={categoriasLoading || categoriasError}>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione uma categoria" />
+                      <SelectTrigger aria-label="Categoria da empresa">
+                        <SelectValue placeholder={categoriasLoading ? 'Carregando categorias...' : 'Selecione uma categoria'} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -252,12 +235,13 @@ export const EmpresaForm = ({ onSuccess }: EmpresaFormProps) => {
                       ))}
                     </SelectContent>
                   </Select>
+                  {categoriasError && <div role="alert" className="space-y-2 text-sm"><p>Não foi possível carregar as categorias.</p><Button type="button" variant="outline" onClick={() => { void refetchCategorias(); }}>Tentar novamente</Button></div>}
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="endereco"
