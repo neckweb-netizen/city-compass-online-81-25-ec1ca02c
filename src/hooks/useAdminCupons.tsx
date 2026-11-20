@@ -25,15 +25,15 @@ export const useAdminCupons = () => {
 
   const toggleCupomMutation = useMutation({
     mutationFn: async ({ id, ativo }: { id: string; ativo: boolean }) => {
-      const { error } = await supabase
-        .from('cupons')
-        .update({ ativo })
-        .eq('id', id);
-
+      const { data: updated, error } = await supabase
+        .from('cupons').update({ ativo }).eq('id', id).select('id').maybeSingle();
       if (error) throw error;
+      if (!updated) throw new Error('Cupom não encontrado ou sem permissão para atualizar.');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-cupons'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin-cupons'] });
+      void queryClient.invalidateQueries({ queryKey: ['empresa-cupons'] });
+      void queryClient.invalidateQueries({ queryKey: ['latest-cupons'] });
       toast({ title: 'Cupom atualizado com sucesso!' });
     },
     onError: () => {
@@ -43,15 +43,15 @@ export const useAdminCupons = () => {
 
   const deleteCupomMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('cupons')
-        .delete()
-        .eq('id', id);
-
+      const { data: removed, error } = await supabase
+        .from('cupons').delete().eq('id', id).select('id').maybeSingle();
       if (error) throw error;
+      if (!removed) throw new Error('Cupom não encontrado ou sem permissão para excluir.');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-cupons'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin-cupons'] });
+      void queryClient.invalidateQueries({ queryKey: ['empresa-cupons'] });
+      void queryClient.invalidateQueries({ queryKey: ['latest-cupons'] });
       toast({ title: 'Cupom removido com sucesso!' });
     },
     onError: () => {
@@ -62,6 +62,8 @@ export const useAdminCupons = () => {
   return {
     cupons: cuponsQuery.data || [],
     loading: cuponsQuery.isLoading,
+    error: cuponsQuery.error,
+    isProcessing: toggleCupomMutation.isPending || deleteCupomMutation.isPending,
     toggleCupom: toggleCupomMutation.mutate,
     deleteCupom: deleteCupomMutation.mutate,
     refetch: cuponsQuery.refetch,
