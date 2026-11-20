@@ -44,8 +44,8 @@ export const ShareButton = ({
   // Links já estão disponíveis no momento do toque, evitando bloqueios de pop-up
   // no navegador do celular. A URL curta continua disponível na ação de copiar.
   const shareUrl = shortUrl ?? url;
-  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${title}\\n\\n${description}\\n\\n${shareUrl}`)}`;
-  const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(`${title}\\n\\n${description}`)}`;
+  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${title}\n\n${description}\n\n${shareUrl}`)}`;
+  const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(`${title}\n\n${description}`)}`;
   const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
 
   return <DropdownMenu>
