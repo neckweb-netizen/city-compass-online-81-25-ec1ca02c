@@ -656,3 +656,14 @@ test('painel de vagas recupera falhas de categorias e não envia sem opções', 
   assert.match(page, /Nenhuma categoria de vaga disponível no momento/);
   assert.match(page, /disabled=\{createVagaMutation\.isPending \|\| updateVagaMutation\.isPending \|\| categoriasLoading \|\| categoriasError \|\| categorias\.length === 0/);
 });
+
+test('painel de vagas impede alterações concorrentes durante o salvamento', () => {
+  const page = source('src/components/empresa/EmpresaVagas.tsx');
+  assert.match(page, /const actionPending = toggleStatusMutation\.isPending \|\| deleteVagaMutation\.isPending \|\|/);
+  assert.match(page, /createVagaMutation\.isPending \|\| updateVagaMutation\.isPending \|\| submittingRef\.current/);
+  assert.match(page, /<Button disabled=\{actionPending\}>/);
+  assert.match(page, /disabled=\{actionPending\} onClick=\{\(\) => setIsDialogOpen\(true\)\}/);
+  assert.match(page, /if \(actionPending\) return/);
+  assert.match(page, /Excluir a vaga/);
+  assert.match(page, /Esta ação não pode ser desfeita/);
+});
