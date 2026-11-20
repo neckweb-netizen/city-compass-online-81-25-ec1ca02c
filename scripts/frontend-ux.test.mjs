@@ -528,3 +528,15 @@ test('botão ver detalhes das vagas abre informações e contato da candidatura'
   assert.match(page, /isError \? \(/);
   assert.match(page, /void refetch\(\)/);
 });
+
+test('vagas públicas exibem todos os tipos cadastráveis e os requisitos', () => {
+  const page = source('src/pages/VagasEmprego.tsx');
+  const form = source('src/components/forms/VagaFormModal.tsx');
+  for (const kind of ['clt', 'pj', 'estagio', 'temporario', 'freelance', 'meio_periodo', 'integral']) {
+    assert.match(form, new RegExp("value: '" + kind + "'"));
+    assert.match(page, new RegExp('<SelectItem value="' + kind + '">'));
+  }
+  assert.match(page, /requisitos: string \| null/);
+  assert.match(page, /selectedVaga\.requisitos &&/);
+  assert.match(page, /\{selectedVaga\.requisitos\}/);
+});
