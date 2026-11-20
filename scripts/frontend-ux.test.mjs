@@ -617,3 +617,19 @@ test('vagas da empresa usam cidade cadastrada em vez de UUID genérico', () => {
   assert.match(page, /cidade_id: empresa\.cidade_id/);
   assert.doesNotMatch(page, /550e8400-e29b-41d4-a716-446655440000/);
 });
+
+test('gerenciamento de vagas confirma alterações e restringe operações à empresa', () => {
+  const page = source('src/components/empresa/EmpresaVagas.tsx');
+  const update = page.slice(page.indexOf('  const updateVagaMutation ='), page.indexOf('  // Deletar vaga'));
+  const deletion = page.slice(page.indexOf('  const deleteVagaMutation ='), page.indexOf('  // Toggle status'));
+  const toggle = page.slice(page.indexOf('  const toggleStatusMutation ='), page.indexOf('  const resetForm ='));
+  for (const action of [update, deletion, toggle]) {
+    assert.match(action, /\.eq\('criado_por', empresaId\)/);
+    assert.match(action, /\.maybeSingle\(\)/);
+    assert.match(action, /if \(error\) throw error/);
+    assert.match(action, /throw new Error\('Vaga não encontrada ou sem permissão/);
+  }
+  assert.match(page, /invalidateQueries\(\{ queryKey: \['empresa-vagas', empresaId\] \}\)/);
+  assert.match(page, /invalidateQueries\(\{ queryKey: \['vagas-emprego'\] \}\)/);
+  assert.match(page, /invalidateQueries\(\{ queryKey: \['latest-job-coupons'\] \}\)/);
+});
