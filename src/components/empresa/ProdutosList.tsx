@@ -39,6 +39,7 @@ export const ProdutosList = ({ empresaId }: ProdutosListProps) => {
   
   // Verificar se o usuário pode editar esta empresa
   const podeEditarEstaEmpresa = podeEditar(empresaId);
+  const visibleProducts = (produtos ?? []).filter(produto => podeEditarEstaEmpresa || produto.ativo);
 
   const handleEdit = (produto: any) => {
     setEditingProduto(produto);
@@ -131,9 +132,9 @@ export const ProdutosList = ({ empresaId }: ProdutosListProps) => {
         )}
       </div>
 
-      {produtos && produtos.length > 0 ? (
+      {visibleProducts.length > 0 ? (
         <div className="grid gap-4">
-          {produtos.map((produto) => (
+          {visibleProducts.map((produto) => (
             <Card key={produto.id} className="hover:shadow-lg transition-shadow">
               <CardContent className="p-4">
                 <div className="flex flex-col lg:flex-row gap-4">
@@ -154,6 +155,7 @@ export const ProdutosList = ({ empresaId }: ProdutosListProps) => {
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
                       <h3 className="font-semibold text-base lg:text-lg truncate">{produto.nome}</h3>
+                      {!produto.ativo && podeEditarEstaEmpresa && <Badge variant="outline">Desativado</Badge>}
                       {produto.destaque && (
                         <Badge variant="secondary" className="text-xs w-fit">
                           <Star className="w-3 h-3 mr-1" />
@@ -186,7 +188,7 @@ export const ProdutosList = ({ empresaId }: ProdutosListProps) => {
                         )}
                       </div>
                       
-                      {produto.estoque_disponivel !== undefined && (
+                      {produto.estoque_disponivel != null && (
                         <span className="text-gray-500 text-sm">
                           Estoque: {produto.estoque_disponivel}
                         </span>
