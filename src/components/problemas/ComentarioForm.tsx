@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
@@ -13,15 +14,24 @@ interface ComentarioFormProps {
 
 export const ComentarioForm = ({ problemaId }: ComentarioFormProps) => {
   const [conteudo, setConteudo] = useState('');
+  const submittingRef = useRef(false);
   const { criarComentario } = useProblemaDetalhes(problemaId);
   const { user } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!conteudo.trim()) return;
-
-    await criarComentario.mutateAsync({ conteudo });
-    setConteudo('');
+    if (submittingRef.current || criarComentario.isPending) return;
+    const message = conteudo.trim();
+    if (message.length < 2 || message.length > 4000) { toast.error('O comentário deve ter de 2 a 4000 caracteres.'); return; }
+    submittingRef.current = true;
+    try {
+      await criarComentario.mutateAsync({ conteudo: message });
+      setConteudo('');
+    } catch {
+      // Preservar texto para nova tentativa.
+    } finally {
+      submittingRef.current = false;
+    }
   };
 
   if (!user) return null;
@@ -41,6 +51,8 @@ export const ComentarioForm = ({ problemaId }: ComentarioFormProps) => {
                 placeholder="Escreva seu comentário..."
                 value={conteudo}
                 onChange={(e) => setConteudo(e.target.value)}
+                maxLength={4000}
+                disabled={criarComentario.isPending}
                 rows={3}
                 className="resize-none border-border/50 focus:border-primary transition-colors text-sm"
               />
@@ -49,7 +61,7 @@ export const ComentarioForm = ({ problemaId }: ComentarioFormProps) => {
           <div className="flex justify-end">
             <Button 
               type="submit" 
-              disabled={!conteudo.trim() || criarComentario.isPending}
+              disabled={conteudo.trim().length < 2 || criarComentario.isPending}
               className="gap-2 h-9"
               size="sm"
             >
