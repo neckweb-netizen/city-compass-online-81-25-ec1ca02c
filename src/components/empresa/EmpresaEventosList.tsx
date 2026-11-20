@@ -20,7 +20,7 @@ export const EmpresaEventosList = ({ empresaId, isOwner = false }: EmpresaEvento
   const [showForm, setShowForm] = useState(false);
   const { verificarLimiteEventos } = usePlanoLimites();
 
-  const { data: eventos, isLoading } = useQuery({
+  const { data: eventos, isLoading, isError, refetch } = useQuery({
     queryKey: ['empresa-eventos', empresaId],
     queryFn: async () => {
       const now = new Date().toISOString();
@@ -71,6 +71,18 @@ export const EmpresaEventosList = ({ empresaId, isOwner = false }: EmpresaEvento
     );
   }
 
+  if (isError) {
+    return (
+      <div role="alert" className="space-y-3 rounded-2xl border p-6 text-center">
+        <p className="font-semibold">Não foi possível carregar os eventos.</p>
+        <p className="text-sm text-muted-foreground">Verifique sua conexão e tente novamente.</p>
+        <Button type="button" variant="outline" className="min-h-11" onClick={() => { void refetch(); }}>
+          Tentar novamente
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -102,6 +114,8 @@ export const EmpresaEventosList = ({ empresaId, isOwner = false }: EmpresaEvento
                       <img
                         src={evento.imagem_url}
                         alt={evento.titulo}
+                        loading="lazy"
+                        decoding="async"
                         className="w-full h-full object-cover"
                       />
                     </div>
