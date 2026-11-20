@@ -9,6 +9,7 @@ export const getJobApplicationHref = (method: string, contact: string): string |
   }
 
   if (method === 'whatsapp') {
+    if (!/^[+()0-9\s-]+$/.test(raw)) return null;
     const digits = raw.replace(/[^0-9]/g, '');
     if (digits.length < 10 || digits.length > 15) return null;
     const international = digits.length <= 11 ? `55${digits}` : digits;
