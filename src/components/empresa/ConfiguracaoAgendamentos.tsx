@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,14 +37,22 @@ export const ConfiguracaoAgendamentos: React.FC<ConfiguracaoAgendamentosProps> =
   const { empresa, updateEmpresa, isUpdating } = useMinhaEmpresa();
   const { 
     servicos, 
-    criarServico, 
-    atualizarServico, 
+    criarServico,
+    criarServicoAsync,
+    atualizarServico,
+    atualizarServicoAsync,
     excluirServico,
     isCreating,
-    isDeleting 
+    isUpdating: isUpdatingService,
+    isDeleting,
+    isLoading: loadingServicos,
+    isError: servicosError,
+    refetch: refetchServicos 
   } = useServicosAgendamento(empresaId);
 
   const [modalAberto, setModalAberto] = useState(false);
+  const submittingRef = useRef(false);
+  const [savingService, setSavingService] = useState(false);
   const [servicoEditando, setServicoEditando] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     nome_servico: '',
@@ -79,17 +88,27 @@ export const ConfiguracaoAgendamentos: React.FC<ConfiguracaoAgendamentosProps> =
     });
   };
 
-  const handleSubmitServico = () => {
+  const handleSubmitServico = async () => {
+    if (submittingRef.current || isCreating || isUpdatingService) return;
+    const nome = formData.nome_servico.trim();
+    const preco = formData.preco.trim() ? Number(formData.preco) : undefined;
+    if (nome.length < 2 || nome.length > 160 || !Number.isInteger(formData.duracao_minutos) || formData.duracao_minutos < 5 || formData.duracao_minutos > 1440 || (preco !== undefined && (!Number.isFinite(preco) || preco < 0))) {
+      toast.error('Informe nome, duração e preço válidos.');
+      return;
+    }
+    submittingRef.current = true;
+    setSavingService(true);
     const dados = {
       empresa_id: empresaId,
-      nome_servico: formData.nome_servico,
+      nome_servico: nome,
       descricao: formData.descricao || undefined,
       duracao_minutos: formData.duracao_minutos,
-      preco: formData.preco ? parseFloat(formData.preco) : undefined
+      preco
     };
 
+    try {
     if (servicoEditando) {
-      atualizarServico({ 
+      await atualizarServicoAsync({ 
         id: servicoEditando, 
         dados: {
           nome_servico: dados.nome_servico,
@@ -99,7 +118,7 @@ export const ConfiguracaoAgendamentos: React.FC<ConfiguracaoAgendamentosProps> =
         }
       });
     } else {
-      criarServico(dados);
+      await criarServicoAsync(dados);
     }
 
     setModalAberto(false);
@@ -110,6 +129,12 @@ export const ConfiguracaoAgendamentos: React.FC<ConfiguracaoAgendamentosProps> =
       duracao_minutos: 60,
       preco: ''
     });
+    } catch {
+      // O hook mostra o erro; manter o formulário preenchido para nova tentativa.
+    } finally {
+      submittingRef.current = false;
+      setSavingService(false);
+    }
   };
 
   const handleEditarServico = (servico: any) => {
@@ -169,7 +194,7 @@ export const ConfiguracaoAgendamentos: React.FC<ConfiguracaoAgendamentosProps> =
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Serviços Disponíveis para Agendamento</CardTitle>
             
-            <Dialog open={modalAberto} onOpenChange={setModalAberto}>
+            <Dialog open={modalAberto} onOpenChange={(open) => { if (!open && submittingRef.current) return; setModalAberto(open); }}>
               <DialogTrigger asChild>
                 <Button 
                   onClick={() => {
@@ -222,7 +247,7 @@ export const ConfiguracaoAgendamentos: React.FC<ConfiguracaoAgendamentosProps> =
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="duracao">Duração (minutos)</Label>
                       <Input
@@ -257,7 +282,7 @@ export const ConfiguracaoAgendamentos: React.FC<ConfiguracaoAgendamentosProps> =
                   <div className="flex gap-2 pt-4">
                     <Button
                       onClick={handleSubmitServico}
-                      disabled={!formData.nome_servico || isCreating}
+                      disabled={!formData.nome_servico.trim() || isCreating || isUpdatingService || savingService}
                       className="flex-1"
                     >
                       {servicoEditando ? 'Atualizar' : 'Criar'}
@@ -265,6 +290,7 @@ export const ConfiguracaoAgendamentos: React.FC<ConfiguracaoAgendamentosProps> =
                     <Button
                       variant="outline"
                       onClick={() => setModalAberto(false)}
+                      disabled={savingService}
                     >
                       Cancelar
                     </Button>
