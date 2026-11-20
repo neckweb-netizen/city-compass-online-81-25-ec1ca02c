@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Calendar, MapPin, Building2, User, Image, Plus } from 'lucide-react';
 import { EventoForm } from '@/components/admin/forms/EventoForm';
@@ -11,8 +13,9 @@ import { EventCheckinManager } from '@/components/admin/events/EventCheckinManag
 
 export const EventosSection = () => {
   const { profile } = useAuth();
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
-  const { data: eventos, isLoading, refetch } = useQuery({
+  const { data: eventos, isLoading, isError, refetch } = useQuery({
     queryKey: ['admin-eventos'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -30,6 +33,33 @@ export const EventosSection = () => {
     },
   });
 
+  const handleReview = async (eventoId: string, approve: boolean) => {
+    if (processingId) return;
+    setProcessingId(eventoId);
+    try {
+      const { data: updated, error } = await supabase
+        .from('eventos')
+        .update({
+          status_aprovacao: approve ? 'aprovado' : 'rejeitado',
+          aprovado_por: profile?.id,
+          data_aprovacao: new Date().toISOString(),
+          ativo: approve,
+        })
+        .eq('id', eventoId)
+        .eq('status_aprovacao', 'pendente')
+        .select('id')
+        .maybeSingle();
+      if (error) throw error;
+      if (!updated) throw new Error('Evento já analisado, inexistente ou sem permissão.');
+      toast.success(approve ? 'Evento aprovado!' : 'Evento rejeitado.');
+      void refetch();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Não foi possível analisar o evento.');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -43,9 +73,16 @@ export const EventosSection = () => {
     );
   }
 
+  if (isError) return (
+    <div role="alert" className="space-y-3 p-6 text-center">
+      <p>Não foi possível carregar os eventos.</p>
+      <Button variant="outline" onClick={() => { void refetch(); }}>Tentar novamente</Button>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Gestão de Eventos</h2>
           <p className="text-muted-foreground">
@@ -64,13 +101,13 @@ export const EventosSection = () => {
         {eventos?.map((evento) => (
           <Card key={evento.id}>
             <CardHeader>
-              <div className="flex items-start justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="space-y-1">
                   <CardTitle className="flex items-center gap-2">
                     <Calendar className="w-5 h-5" />
                     {evento.titulo}
                   </CardTitle>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                  <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <Calendar className="w-4 h-4" />
                       {new Date(evento.data_inicio).toLocaleDateString()}
@@ -157,40 +194,13 @@ export const EventosSection = () => {
 
                   {evento.status_aprovacao === 'pendente' && profile?.tipo_conta && ['admin_geral', 'admin_cidade'].includes(profile.tipo_conta) && (
                     <div className="flex gap-2 pt-2">
-                      <Button 
-                        size="sm" 
-                        onClick={async () => {
-                          const { error } = await supabase
-                            .from('eventos')
-                            .update({ 
-                              status_aprovacao: 'aprovado',
-                              aprovado_por: profile.id,
-                              data_aprovacao: new Date().toISOString(),
-                              ativo: true
-                            })
-                            .eq('id', evento.id);
-                          
-                          if (!error) refetch();
-                        }}
+                      <Button size="sm" disabled={!!processingId}
+                        onClick={() => { void handleReview(evento.id, true); }}
                       >
                         Aprovar
                       </Button>
-                      <Button 
-                        size="sm" 
-                        variant="destructive"
-                        onClick={async () => {
-                          const { error } = await supabase
-                            .from('eventos')
-                            .update({ 
-                              status_aprovacao: 'rejeitado',
-                              aprovado_por: profile.id,
-                              data_aprovacao: new Date().toISOString(),
-                              ativo: false
-                            })
-                            .eq('id', evento.id);
-                          
-                          if (!error) refetch();
-                        }}
+                      <Button size="sm" variant="destructive" disabled={!!processingId}
+                        onClick={() => { void handleReview(evento.id, false); }}
                       >
                         Rejeitar
                       </Button>
