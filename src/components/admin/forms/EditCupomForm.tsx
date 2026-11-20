@@ -1,10 +1,11 @@
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod/v3';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
+
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -20,19 +21,21 @@ import { Edit, Ticket, CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const cupomSchema = z.object({
-  titulo: z.string().min(3, 'Título deve ter pelo menos 3 caracteres'),
-  codigo: z.string().min(3, 'Código deve ter pelo menos 3 caracteres'),
+  titulo: z.string().trim().min(3, 'Título deve ter pelo menos 3 caracteres'),
+  codigo: z.string().trim().min(3, 'Código deve ter pelo menos 3 caracteres'),
   descricao: z.string().optional(),
   tipo: z.enum(['porcentagem', 'valor_fixo']),
   valor: z.number().min(0.01, 'Valor deve ser maior que 0'),
   data_inicio: z.date({ required_error: 'Data de início é obrigatória' }),
   data_fim: z.date({ required_error: 'Data de fim é obrigatória' }),
   empresa_id: z.string().uuid('ID do local é obrigatório'),
-  quantidade_total: z.number().min(1, 'Quantidade deve ser maior que 0').optional(),
+  quantidade_total: z.number().int().min(1, 'Quantidade deve ser maior que 0').optional(),
   ativo: z.boolean().default(true),
-}).refine((data) => data.data_fim > data.data_inicio, {
-  message: 'A data de fim deve ser posterior à data de início',
-  path: ['data_fim'],
+}).superRefine((data, ctx) => {
+  if (data.data_fim <= data.data_inicio)
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['data_fim'], message: 'A data de fim deve ser posterior ao início.' });
+  if (data.tipo === 'porcentagem' && data.valor > 100)
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['valor'], message: 'O desconto máximo é 100%.' });
 });
 
 type CupomFormData = z.infer<typeof cupomSchema>;
@@ -44,15 +47,18 @@ interface EditCupomFormProps {
 
 export const EditCupomForm = ({ cupom, onSuccess }: EditCupomFormProps) => {
   const [open, setOpen] = useState(false);
+  const submittingRef = useRef(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
   const { data: empresas } = useQuery({
-    queryKey: ['locais-list'],
+    queryKey: ['admin-coupon-companies'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('empresas')
         .select('id, nome')
         .eq('ativo', true)
+        .eq('status_aprovacao', 'aprovado')
         .order('nome');
       
       if (error) throw error;
@@ -77,8 +83,15 @@ export const EditCupomForm = ({ cupom, onSuccess }: EditCupomFormProps) => {
   });
 
   const onSubmit = async (data: CupomFormData) => {
+    if (submittingRef.current) return;
+    if (!empresas?.some(e => e.id === data.empresa_id)) {
+      toast({ title: 'Empresa indisponível', description: 'Escolha uma empresa aprovada.', variant: 'destructive' });
+      return;
+    }
+    submittingRef.current = true;
+    setIsSubmitting(true);
     try {
-      const { error } = await supabase
+      const { data: updated, error } = await supabase
         .from('cupons')
         .update({
           titulo: data.titulo,
@@ -92,9 +105,12 @@ export const EditCupomForm = ({ cupom, onSuccess }: EditCupomFormProps) => {
           quantidade_total: data.quantidade_total || null,
           ativo: data.ativo,
         })
-        .eq('id', cupom.id);
+        .eq('id', cupom.id)
+        .select('id')
+        .maybeSingle();
 
       if (error) throw error;
+      if (!updated) throw new Error('Cupom não encontrado ou sem permissão para editar.');
 
       toast({ title: 'Cupom atualizado com sucesso!' });
       setOpen(false);
@@ -103,14 +119,17 @@ export const EditCupomForm = ({ cupom, onSuccess }: EditCupomFormProps) => {
       console.error('Erro ao atualizar cupom:', error);
       toast({ 
         title: 'Erro ao atualizar cupom', 
-        description: 'Tente novamente.',
+        description: error instanceof Error ? error.message : 'Tente novamente.',
         variant: 'destructive' 
       });
+    } finally {
+      submittingRef.current = false;
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen && submittingRef.current) return; setOpen(nextOpen); }}>
       <DialogTrigger asChild>
         <Button size="sm" variant="outline">
           <Edit className="w-4 h-4" />
@@ -364,10 +383,10 @@ export const EditCupomForm = ({ cupom, onSuccess }: EditCupomFormProps) => {
             </div>
 
             <div className="flex justify-end gap-2 pt-4">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              <Button type="button" variant="outline" disabled={isSubmitting} onClick={() => setOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit">
+              <Button type="submit" disabled={isSubmitting} aria-busy={isSubmitting}>
                 Salvar Alterações
               </Button>
             </div>
