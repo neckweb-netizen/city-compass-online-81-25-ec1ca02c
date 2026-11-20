@@ -633,3 +633,16 @@ test('gerenciamento de vagas confirma alterações e restringe operações à em
   assert.match(page, /invalidateQueries\(\{ queryKey: \['vagas-emprego'\] \}\)/);
   assert.match(page, /invalidateQueries\(\{ queryKey: \['latest-job-coupons'\] \}\)/);
 });
+
+test('painel empresarial valida tipo e bloqueia fechamento durante salvamento da vaga', () => {
+  const page = source('src/components/empresa/EmpresaVagas.tsx');
+  assert.match(page, /const submittingRef = useRef\(false\)/);
+  assert.match(page, /if \(submittingRef\.current \|\| createVagaMutation\.isPending \|\| updateVagaMutation\.isPending\) return/);
+  assert.match(page, /!formData\.categoria_id \|\| !formData\.tipo_vaga/);
+  assert.match(page, /!formData\.titulo\.trim\(\)/);
+  assert.match(page, /Tipo de Vaga \*/);
+  assert.match(page, /submittingRef\.current = true/);
+  assert.match(page, /onSettled: \(\) => \{ submittingRef\.current = false; \}/);
+  assert.match(page, /onOpenChange=\{handleDialogOpenChange\}/);
+  assert.match(page, /!nextOpen && \(submittingRef\.current \|\| createVagaMutation\.isPending \|\| updateVagaMutation\.isPending\)/);
+});
