@@ -104,6 +104,7 @@ export const useCriarAvaliacao = () => {
       comentario?: string;
       usuarioId: string;
     }) => {
+      if (!Number.isInteger(nota) || nota < 1 || nota > 5 || (comentario?.length || 0) > 4000) throw new Error('Nota ou comentário inválido.');
       const { data, error } = await supabase
         .from('avaliacoes')
         .insert({
@@ -121,10 +122,10 @@ export const useCriarAvaliacao = () => {
     onSuccess: (_, variables) => {
       toast.success('Avaliação criada com sucesso!');
       // Invalidar queries relacionadas
-      queryClient.invalidateQueries({ queryKey: ['empresa-avaliacoes', variables.empresaId] });
-      queryClient.invalidateQueries({ queryKey: ['empresa-estatisticas-avaliacoes', variables.empresaId] });
-      queryClient.invalidateQueries({ queryKey: ['usuario-ja-avaliou', variables.empresaId, variables.usuarioId] });
-      queryClient.invalidateQueries({ queryKey: ['user-avaliacoes', variables.usuarioId] });
+      void queryClient.invalidateQueries({ queryKey: ['empresa-avaliacoes', variables.empresaId] });
+      void queryClient.invalidateQueries({ queryKey: ['empresa-estatisticas-avaliacoes', variables.empresaId] });
+      void queryClient.invalidateQueries({ queryKey: ['usuario-ja-avaliou', variables.empresaId, variables.usuarioId] });
+      void queryClient.invalidateQueries({ queryKey: ['user-avaliacoes', variables.usuarioId] });
     },
     onError: (error: any) => {
       console.error('Erro ao criar avaliação:', error);
@@ -198,19 +199,26 @@ export const useEditarAvaliacao = () => {
       if (nota !== undefined) updateData.nota = nota;
       updateData.atualizado_em = new Date().toISOString();
 
+      if (nota !== undefined && (!Number.isInteger(nota) || nota < 1 || nota > 5)) throw new Error('Nota inválida.');
+      if (comentario !== undefined && comentario.length > 4000) throw new Error('Comentário muito longo.');
       const { data, error } = await supabase
         .from('avaliacoes')
         .update(updateData)
         .eq('id', id)
         .select()
-        .single();
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error('Avaliação não encontrada ou sem permissão para editar.');
 
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
       toast.success('Avaliação atualizada com sucesso!');
-      queryClient.invalidateQueries({ queryKey: ['admin-avaliacoes'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin-avaliacoes'] });
+      void queryClient.invalidateQueries({ queryKey: ['empresa-avaliacoes'] });
+      void queryClient.invalidateQueries({ queryKey: ['empresa-estatisticas-avaliacoes'] });
+      void queryClient.invalidateQueries({ queryKey: ['user-avaliacoes'] });
     },
     onError: (error: any) => {
       console.error('Erro ao editar avaliação:', error);
@@ -224,20 +232,51 @@ export const useRemoverAvaliacao = () => {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('avaliacoes')
         .delete()
-        .eq('id', id);
-
+        .eq('id', id)
+        .select('id')
+        .maybeSingle();
       if (error) throw error;
+      if (!data) throw new Error('Avaliação não encontrada ou sem permissão para remover.');
     },
     onSuccess: () => {
       toast.success('Avaliação removida com sucesso!');
-      queryClient.invalidateQueries({ queryKey: ['admin-avaliacoes'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin-avaliacoes'] });
+      void queryClient.invalidateQueries({ queryKey: ['empresa-avaliacoes'] });
+      void queryClient.invalidateQueries({ queryKey: ['empresa-estatisticas-avaliacoes'] });
+      void queryClient.invalidateQueries({ queryKey: ['user-avaliacoes'] });
     },
     onError: (error: any) => {
       console.error('Erro ao remover avaliação:', error);
       toast.error('Erro ao remover avaliação. Tente novamente.');
     },
+  });
+};
+
+/** Company owners can edit only their public response, never the review rating or authorship. */
+export const useResponderAvaliacao = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, empresaId, resposta }: { id: string; empresaId: string; resposta: string }) => {
+      const message = resposta.trim();
+      if (!message || message.length > 2000) throw new Error('Resposta deve conter entre 1 e 2000 caracteres.');
+      const { data, error } = await supabase
+        .from('avaliacoes')
+        .update({ resposta_empresa: message, respondido_em: new Date().toISOString() })
+        .eq('id', id)
+        .eq('empresa_id', empresaId)
+        .select('id')
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error('Avaliação não encontrada ou sem permissão para responder.');
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['empresa-avaliacoes'] });
+      void queryClient.invalidateQueries({ queryKey: ['user-avaliacoes'] });
+      toast.success('Resposta publicada com sucesso.');
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : 'Não foi possível responder.'),
   });
 };
