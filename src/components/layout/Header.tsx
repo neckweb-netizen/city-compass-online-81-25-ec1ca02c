@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { MobileHamburger } from '@/components/layout/MobileHamburger';
 import { useNotifications } from '@/hooks/useNotifications';
 import { cn } from '@/lib/utils';
+import { getSafeNotificationPath } from '@/lib/safeNavigation';
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -35,9 +36,11 @@ export const Header = ({ sidebarOpen = true }: HeaderProps) => {
   const { 
     notifications, 
     totalUnread, 
-    loading: loadingNotifications, 
-    markAsRead, 
-    markAllAsRead 
+    loading: loadingNotifications,
+    error: notificationsError,
+    markAsRead,
+    markAllAsRead,
+    isMutating 
   } = useNotifications({ detailsEnabled: notificationsOpen });
 
   // Monitora a URL para abrir o Modal automaticamente na aba correta
@@ -82,10 +85,9 @@ export const Header = ({ sidebarOpen = true }: HeaderProps) => {
     if (!notification.read) {
       markAsRead(notification.id);
     }
-    if (notification.action_url) {
-      if (notification.action_url.startsWith('/')) navigate(notification.action_url);
-      else window.location.assign(notification.action_url);
-    }
+    const path = getSafeNotificationPath(notification.action_url);
+    if (path) navigate(path);
+    setNotificationsOpen(false);
   };
 
   const formatarTempo = (dataString: string) => {
@@ -264,7 +266,8 @@ export const Header = ({ sidebarOpen = true }: HeaderProps) => {
                            variant="ghost"
                            size="sm"
                            onClick={() => markAllAsRead()}
-                           className="h-6 px-2 text-xs"
+                           disabled={isMutating}
+                           className="min-h-9 px-2 text-xs"
                          >
                            <Check className="h-3 w-3 mr-1" />
                            Marcar todas
@@ -276,6 +279,8 @@ export const Header = ({ sidebarOpen = true }: HeaderProps) => {
                        <div className="p-4 text-center text-muted-foreground">
                          Carregando notificações...
                        </div>
+                     ) : notificationsError ? (
+                       <DropdownMenuItem className="p-4 text-destructive" onClick={() => navigate('/notificacoes')}>Falha ao carregar. Abrir central de notificações</DropdownMenuItem>
                      ) : notifications.length > 0 ? (
                        notifications.slice(0, 8).map((notification) => (
                          <DropdownMenuItem 
