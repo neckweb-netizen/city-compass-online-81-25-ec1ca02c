@@ -370,7 +370,7 @@ export const EmpresaForm = ({ onSuccess }: EmpresaFormProps) => {
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                   Cancelar
                 </Button>
-                <Button type="submit">
+                <Button type="submit" disabled={isSubmitting || categoriasLoading || categoriasError} aria-busy={isSubmitting}>
                   Criar Empresa
                 </Button>
               </div>
