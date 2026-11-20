@@ -70,7 +70,7 @@ export const VagaFormModal = ({ open, onOpenChange }: VagaFormModalProps) => {
   });
 
   // Buscar categorias de oportunidades
-  const { data: categorias = [] } = useQuery({
+  const { data: categorias = [], isLoading: categoriasLoading, isError: categoriasError, refetch: refetchCategorias } = useQuery({
     queryKey: ['categorias-oportunidades'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -157,8 +157,14 @@ export const VagaFormModal = ({ open, onOpenChange }: VagaFormModalProps) => {
     }
   }, [open]);
 
+  const handleDialogOpenChange = (nextOpen: boolean) => {
+    // Não permitir que o formulário seja descartado enquanto o servidor publica a vaga.
+    if (!nextOpen && (submittingRef.current || createVagaMutation.isPending)) return;
+    onOpenChange(nextOpen);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       {empresaLoading || empresaError || !empresaUsuario ? (
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -212,8 +218,8 @@ export const VagaFormModal = ({ open, onOpenChange }: VagaFormModalProps) => {
               value={formData.categoria_id} 
               onValueChange={(value) => setFormData(prev => ({ ...prev, categoria_id: value }))}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione a categoria" />
+              <SelectTrigger aria-label="Categoria da vaga" disabled={categoriasLoading || categoriasError || categorias.length === 0}>
+                <SelectValue placeholder={categoriasLoading ? 'Carregando categorias...' : 'Selecione a categoria'} />
               </SelectTrigger>
               <SelectContent>
                 {categorias.map((categoria) => (
@@ -223,6 +229,15 @@ export const VagaFormModal = ({ open, onOpenChange }: VagaFormModalProps) => {
                 ))}
               </SelectContent>
             </Select>
+            {categoriasError && (
+              <div role="alert" className="mt-2 space-y-2 text-sm">
+                <p className="text-destructive">Não foi possível carregar as categorias.</p>
+                <Button type="button" variant="outline" size="sm" onClick={() => { void refetchCategorias(); }}>Tentar novamente</Button>
+              </div>
+            )}
+            {!categoriasLoading && !categoriasError && categorias.length === 0 && (
+              <p role="status" className="mt-2 text-sm text-muted-foreground">Nenhuma categoria de vaga disponível no momento.</p>
+            )}
           </div>
         </div>
 
@@ -316,13 +331,14 @@ export const VagaFormModal = ({ open, onOpenChange }: VagaFormModalProps) => {
           <Button 
             type="button" 
             variant="outline" 
-            onClick={() => onOpenChange(false)}
+            onClick={() => handleDialogOpenChange(false)}
+            disabled={createVagaMutation.isPending}
           >
             Cancelar
           </Button>
           <Button 
             type="submit"
-            disabled={createVagaMutation.isPending || !formData.tipo_vaga}
+            disabled={createVagaMutation.isPending || categoriasLoading || categoriasError || !formData.categoria_id || !formData.tipo_vaga}
           >
             {createVagaMutation.isPending ? 'Publicando...' : 'Publicar Vaga'}
           </Button>
