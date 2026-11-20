@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { Briefcase } from 'lucide-react';
+import { Briefcase, Loader2 } from 'lucide-react';
 
 interface VagaFormModalProps {
   open: boolean;
@@ -49,7 +49,7 @@ export const VagaFormModal = ({ open, onOpenChange }: VagaFormModalProps) => {
   });
 
   // Buscar empresa do usuário logado
-  const { data: empresaUsuario } = useQuery({
+  const { data: empresaUsuario, isLoading: empresaLoading, isError: empresaError, refetch: refetchEmpresa } = useQuery({
     queryKey: ['minha-empresa', profile?.id],
     queryFn: async () => {
       if (!profile?.id) return null;
@@ -147,7 +147,7 @@ export const VagaFormModal = ({ open, onOpenChange }: VagaFormModalProps) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {!empresaUsuario ? (
+      {empresaLoading || empresaError || !empresaUsuario ? (
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -155,10 +155,21 @@ export const VagaFormModal = ({ open, onOpenChange }: VagaFormModalProps) => {
               Publicar Vaga
             </DialogTitle>
           </DialogHeader>
-          <div className="text-center py-8">
-            <p className="text-muted-foreground">
-              Para publicar vagas, você precisa ter uma empresa aprovada.
-            </p>
+          <div className="text-center py-8 space-y-3">
+            {empresaLoading ? (
+              <div role="status" className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin" /> Consultando sua empresa...
+              </div>
+            ) : empresaError ? (
+              <div role="alert" className="space-y-3">
+                <p className="text-muted-foreground">Não foi possível consultar sua empresa. Verifique sua conexão.</p>
+                <Button type="button" variant="outline" onClick={() => { void refetchEmpresa(); }}>Tentar novamente</Button>
+              </div>
+            ) : (
+              <p className="text-muted-foreground">
+                Para publicar vagas, você precisa ter uma empresa aprovada.
+              </p>
+            )}
           </div>
         </DialogContent>
       ) : (
