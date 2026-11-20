@@ -106,3 +106,18 @@ test('administrative coupon updates confirm affected records', () => {
   assert.ok(page.includes('isProcessing'));
   assert.ok(page.includes('error'));
 });
+
+test('company event edits return modified public details to moderation', () => {
+  const sql = source('supabase/migrations/20261120203000_company_event_edit_requires_review.sql');
+  const owner = source('src/components/empresa/EmpresaEventosList.tsx');
+  const edit = source('src/components/empresa/EventoEditModal.tsx');
+  assert.ok(sql.includes("new.status_aprovacao := 'pendente'"));
+  assert.ok(sql.includes('new.ativo := false'));
+  assert.ok(sql.includes('new.aprovado_por := null'));
+  assert.ok(sql.includes('eventos_periodo_coerente'));
+  assert.ok(owner.includes('<EventoEditModal'));
+  assert.ok(owner.includes('toggleVisibility(evento)'));
+  assert.ok(edit.includes(".eq('empresa_id', empresaId)"));
+  assert.ok(edit.includes('if (!updated) throw new Error'));
+  assert.ok(edit.includes('Alterações nas informações públicas serão enviadas novamente para aprovação.'));
+});
