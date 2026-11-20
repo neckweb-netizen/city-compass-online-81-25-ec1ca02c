@@ -69,7 +69,7 @@ export const CadastrarEmpresaDialog = ({
   const [empresaData, setEmpresaData] = useState<EmpresaFormData | null>(null);
   
   const { toast } = useToast();
-  const { data: categorias } = useCategorias();
+  const { data: categorias, isLoading: categoriasLoading, isError: categoriasError, refetch: refetchCategorias } = useCategorias('empresa');
   const { data: cidadePadrao } = useCidadePadrao();
   const { user, profile } = useAuth();
   
@@ -86,6 +86,10 @@ export const CadastrarEmpresaDialog = ({
   });
 
   const onEmpresaSubmit = (data: EmpresaFormData) => {
+    if (categoriasLoading || categoriasError || !categorias?.some(c => c.id === data.categoria_id && c.ativo && c.tipo === 'empresa')) {
+      toast({ title: 'Categoria indisponível', description: 'Selecione uma categoria de empresa válida.', variant: 'destructive' });
+      return;
+    }
     setEmpresaData({ ...data, horario_funcionamento: horarios });
     setCurrentStep(2);
   };
@@ -325,10 +329,10 @@ export const CadastrarEmpresaDialog = ({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Categoria</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value || ''} disabled={categoriasLoading || categoriasError}>
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione uma categoria" />
+                        <SelectTrigger aria-label="Categoria da empresa">
+                          <SelectValue placeholder={categoriasLoading ? 'Carregando categorias...' : 'Selecione uma categoria'} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -339,6 +343,7 @@ export const CadastrarEmpresaDialog = ({
                         ))}
                       </SelectContent>
                     </Select>
+                    {categoriasError && <div role="alert" className="space-y-2 text-sm"><p>Não foi possível carregar as categorias.</p><Button type="button" variant="outline" onClick={() => { void refetchCategorias(); }}>Tentar novamente</Button></div>}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -466,7 +471,7 @@ export const CadastrarEmpresaDialog = ({
                 <Button type="button" variant="outline" onClick={handleCancel}>
                   Cancelar
                 </Button>
-                <Button type="submit">
+                <Button type="submit" disabled={categoriasLoading || categoriasError}>
                   Próxima Etapa
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
