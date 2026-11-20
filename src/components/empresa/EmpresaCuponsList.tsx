@@ -35,7 +35,7 @@ export const EmpresaCuponsList = ({ empresaId, isOwner = false }: EmpresaCuponsL
   const queryClient = useQueryClient();
   const { verificarLimiteCupons } = usePlanoLimites();
 
-  const { data: cupons, isLoading } = useQuery({
+  const { data: cupons, isLoading, isError, refetch } = useQuery({
     queryKey: ['empresa-cupons', empresaId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -54,15 +54,21 @@ export const EmpresaCuponsList = ({ empresaId, isOwner = false }: EmpresaCuponsL
 
   const excluirCupom = useMutation({
     mutationFn: async (cupomId: string) => {
-      const { error } = await supabase
+      const { data: removed, error } = await supabase
         .from('cupons')
         .delete()
-        .eq('id', cupomId);
+        .eq('id', cupomId)
+        .eq('empresa_id', empresaId)
+        .select('id')
+        .maybeSingle();
 
       if (error) throw error;
+      if (!removed) throw new Error('Cupom não encontrado ou sem permissão para excluir.');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['empresa-cupons', empresaId] });
+      void queryClient.invalidateQueries({ queryKey: ['empresa-cupons', empresaId] });
+      void queryClient.invalidateQueries({ queryKey: ['latest-cupons'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin-cupons'] });
       toast({
         title: "Cupom excluído!",
         description: "O cupom foi removido com sucesso.",
@@ -83,9 +89,12 @@ export const EmpresaCuponsList = ({ empresaId, isOwner = false }: EmpresaCuponsL
   };
 
   const handleDelete = async () => {
-    if (deleteId) {
+    if (!deleteId || excluirCupom.isPending) return;
+    try {
       await excluirCupom.mutateAsync(deleteId);
       setDeleteId(null);
+    } catch {
+      // Preservar confirmação quando a exclusão falhar.
     }
   };
 
@@ -94,12 +103,14 @@ export const EmpresaCuponsList = ({ empresaId, isOwner = false }: EmpresaCuponsL
     setEditingCupom(null);
   };
 
-  const copyToClipboard = (codigo: string) => {
-    navigator.clipboard.writeText(codigo);
-    toast({
-      title: "Código copiado!",
-      description: "O código do cupom foi copiado para a área de transferência.",
-    });
+  const copyToClipboard = async (codigo: string) => {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('Cópia indisponível');
+      await navigator.clipboard.writeText(codigo);
+      toast({ title: 'Código copiado!', description: 'O código do cupom foi copiado.' });
+    } catch {
+      toast({ title: 'Não foi possível copiar', description: 'Copie o código exibido manualmente.', variant: 'destructive' });
+    }
   };
 
   const formatDate = (date: string) => {
@@ -130,6 +141,13 @@ export const EmpresaCuponsList = ({ empresaId, isOwner = false }: EmpresaCuponsL
       </div>
     );
   }
+
+  if (isError) return (
+    <div role="alert" className="space-y-3 rounded-xl border p-6 text-center">
+      <p className="font-semibold">Não foi possível carregar os cupons.</p>
+      <Button type="button" variant="outline" onClick={() => { void refetch(); }}>Tentar novamente</Button>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -194,8 +212,9 @@ export const EmpresaCuponsList = ({ empresaId, isOwner = false }: EmpresaCuponsL
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => copyToClipboard(cupom.codigo)}
-                            className="h-6 px-2"
+                            onClick={() => { void copyToClipboard(cupom.codigo); }}
+                            aria-label={`Copiar código ${cupom.codigo}`}
+                            className="min-h-10 px-3"
                           >
                             <Copy className="w-3 h-3" />
                           </Button>
@@ -217,6 +236,8 @@ export const EmpresaCuponsList = ({ empresaId, isOwner = false }: EmpresaCuponsL
                         variant="outline"
                         size="sm"
                         onClick={() => handleEdit(cupom)}
+                        disabled={excluirCupom.isPending}
+                        aria-label={`Editar cupom ${cupom.titulo}`}
                         className="flex-1 lg:flex-none"
                       >
                         <Edit className="w-4 h-4 sm:mr-0 lg:mr-2" />
@@ -226,6 +247,8 @@ export const EmpresaCuponsList = ({ empresaId, isOwner = false }: EmpresaCuponsL
                         variant="outline"
                         size="sm"
                         onClick={() => setDeleteId(cupom.id)}
+                        disabled={excluirCupom.isPending}
+                        aria-label={`Excluir cupom ${cupom.titulo}`}
                         className="flex-1 lg:flex-none"
                       >
                         <Trash2 className="w-4 h-4 sm:mr-0 lg:mr-2" />
@@ -271,14 +294,16 @@ export const EmpresaCuponsList = ({ empresaId, isOwner = false }: EmpresaCuponsL
           empresaId={empresaId}
           cupom={editingCupom}
           onSuccess={() => {
-            queryClient.invalidateQueries({ queryKey: ['empresa-cupons', empresaId] });
+            void queryClient.invalidateQueries({ queryKey: ['empresa-cupons', empresaId] });
+      void queryClient.invalidateQueries({ queryKey: ['latest-cupons'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin-cupons'] });
             handleCloseForm();
           }}
         />
       )}
 
       {isOwner && (
-        <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+        <AlertDialog open={!!deleteId} onOpenChange={(open) => { if (!open && !excluirCupom.isPending) setDeleteId(null); }}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Excluir Cupom</AlertDialogTitle>
@@ -287,9 +312,9 @@ export const EmpresaCuponsList = ({ empresaId, isOwner = false }: EmpresaCuponsL
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDelete}>
-                Excluir
+              <AlertDialogCancel disabled={excluirCupom.isPending}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction disabled={excluirCupom.isPending} onClick={() => { void handleDelete(); }}>
+                {excluirCupom.isPending ? 'Excluindo...' : 'Excluir'}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
