@@ -21,17 +21,20 @@ export const EmpresaEventosList = ({ empresaId, isOwner = false }: EmpresaEvento
   const { verificarLimiteEventos } = usePlanoLimites();
 
   const { data: eventos, isLoading, isError, refetch } = useQuery({
-    queryKey: ['empresa-eventos', empresaId],
+    queryKey: ['empresa-eventos', empresaId, isOwner],
     queryFn: async () => {
       const now = new Date().toISOString();
-      const { data, error } = await supabase
+      let query = supabase
         .from('eventos')
         .select('*')
         .eq('empresa_id', empresaId)
-        .eq('ativo', true)
-        .eq('status_aprovacao', 'aprovado')
-        .or(`data_fim.gte.${now},data_fim.is.null`)
         .order('data_inicio', { ascending: true });
+      if (!isOwner) {
+        query = query.eq('ativo', true)
+          .eq('status_aprovacao', 'aprovado')
+          .or(`data_fim.gte.${now},and(data_fim.is.null,data_inicio.gte.${now})`);
+      }
+      const { data, error } = await query;
 
       if (error) throw error;
       return data;
@@ -128,6 +131,12 @@ export const EmpresaEventosList = ({ empresaId, isOwner = false }: EmpresaEvento
                         <Badge variant="default">
                           {evento.gratuito ? 'Gratuito' : 'Pago'}
                         </Badge>
+                        {isOwner && (
+                          <Badge variant={evento.status_aprovacao === 'aprovado' ? 'secondary' : 'outline'}>
+                            {evento.status_aprovacao === 'aprovado' ? (evento.ativo ? 'Publicado' : 'Inativo')
+                              : evento.status_aprovacao === 'rejeitado' ? 'Rejeitado' : 'Aguardando aprovação'}
+                          </Badge>
+                        )}
                         {evento.destaque && (
                           <Badge variant="secondary">Destaque</Badge>
                         )}
@@ -220,7 +229,7 @@ export const EmpresaEventosList = ({ empresaId, isOwner = false }: EmpresaEvento
           open={showForm}
           onOpenChange={setShowForm}
           empresaId={empresaId}
-          onSuccess={() => setShowForm(false)}
+          onSuccess={() => { void refetch(); setShowForm(false); }}
         />
       )}
     </div>
