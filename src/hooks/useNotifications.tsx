@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { usePushNotifications } from '@/contexts/PushNotificationsContext';
-import { navigateToSafeUrl } from '@/lib/safeNavigation';
+import { getSafeNotificationPath } from '@/lib/safeNavigation';
 import { shouldShowNotificationToast } from '@/lib/notificationToastDedup';
 
 export interface AppNotification {
@@ -93,7 +93,7 @@ export const useNotifications = ({ detailsEnabled = true }: { detailsEnabled?: b
             description: item.message || undefined,
             duration: 6000,
             ...(item.action_url ? {
-              action: { label: item.action_label || 'Abrir', onClick: () => navigateToSafeUrl(item.action_url) },
+              action: { label: item.action_label || 'Abrir', onClick: () => { const path = getSafeNotificationPath(item.action_url); if (path) window.location.assign(path); } },
             } : {}),
           });
         }
@@ -113,7 +113,8 @@ export const useNotifications = ({ detailsEnabled = true }: { detailsEnabled?: b
       const { error } = await (supabase as any).from('notifications')
         .update({ read: true, read_at: new Date().toISOString() })
         .eq('id', notificationId)
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .eq('read', false);
       if (error) throw error;
     },
     onSuccess: invalidate,
@@ -154,6 +155,7 @@ export const useNotifications = ({ detailsEnabled = true }: { detailsEnabled?: b
     totalUnread: inAppEnabled ? unreadCountQuery.data || 0 : 0,
     loading: !preferencesReady || (inAppEnabled && ((detailsEnabled && notificationsQuery.isLoading) || unreadCountQuery.isLoading)),
     error: notificationsQuery.error || unreadCountQuery.error,
+    isProcessing: markAsReadMutation.isPending || markAllAsReadMutation.isPending || archiveMutation.isPending,
     markAsRead: markAsReadMutation.mutate,
     markAllAsRead: markAllAsReadMutation.mutate,
     archive: archiveMutation.mutate,
