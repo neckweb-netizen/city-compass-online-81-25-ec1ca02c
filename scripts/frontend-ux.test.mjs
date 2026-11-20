@@ -646,3 +646,13 @@ test('painel empresarial valida tipo e bloqueia fechamento durante salvamento da
   assert.match(page, /onOpenChange=\{handleDialogOpenChange\}/);
   assert.match(page, /!nextOpen && \(submittingRef\.current \|\| createVagaMutation\.isPending \|\| updateVagaMutation\.isPending\)/);
 });
+
+test('painel de vagas recupera falhas de categorias e não envia sem opções', () => {
+  const page = source('src/components/empresa/EmpresaVagas.tsx');
+  assert.match(page, /isLoading: categoriasLoading, isError: categoriasError, refetch: refetchCategorias/);
+  assert.match(page, /if \(categoriasLoading \|\| categoriasError \|\| categorias\.length === 0\)/);
+  assert.match(page, /categoriasError && \(/);
+  assert.match(page, /void refetchCategorias\(\)/);
+  assert.match(page, /Nenhuma categoria de vaga disponível no momento/);
+  assert.match(page, /disabled=\{createVagaMutation\.isPending \|\| updateVagaMutation\.isPending \|\| categoriasLoading \|\| categoriasError \|\| categorias\.length === 0/);
+});
