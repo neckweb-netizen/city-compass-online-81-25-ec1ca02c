@@ -31,6 +31,7 @@ export default function EntreNos() {
   const [reactingPostId, setReactingPostId] = useState<string | null>(null);
   const [commentingPostId, setCommentingPostId] = useState<string | null>(null);
   const [reportingPostId, setReportingPostId] = useState<string | null>(null);
+  const [reportingCommentId, setReportingCommentId] = useState<string | null>(null);
   const [revealed,setRevealed] = useState<Set<string>>(new Set()); const [openComments,setOpenComments] = useState<string|null>(null); const [commentText,setCommentText] = useState('');
 
   const [loadError, setLoadError] = useState(false);
@@ -132,7 +133,7 @@ export default function EntreNos() {
   const comment = async (postId:string) => {
     if(!requireUser() || commentingPostId) return;
     const message = commentText.trim();
-    if(message.length < 2) { toast.error('Escreva ao menos 2 caracteres para comentar.'); return; }
+    if(message.length < 2 || message.length > 1000) { toast.error('O comentário deve ter entre 2 e 1000 caracteres.'); return; }
     setCommentingPostId(postId);
     try {
       const {error}=await supabase.from('entre_nos_comentarios' as any).insert({postagem_id:postId,usuario_id:user!.id,conteudo:message});
@@ -146,7 +147,7 @@ export default function EntreNos() {
     }
   };
   const report = async (postId:string) => {
-    if(!requireUser() || reportingPostId) return;
+    if(!requireUser() || reportingPostId || reportingCommentId) return;
     setReportingPostId(postId);
     try {
       const {error}=await supabase.from('entre_nos_denuncias' as any).insert({postagem_id:postId,denunciante_id:user!.id,motivo:'outro',detalhes:'Denúncia enviada pelo feed'});
@@ -157,6 +158,19 @@ export default function EntreNos() {
     } finally {
       setReportingPostId(null);
     }
+  };
+
+  const reportComment = async (commentId: string) => {
+    if (!requireUser() || reportingCommentId || reportingPostId) return;
+    setReportingCommentId(commentId);
+    try {
+      const { error } = await supabase.from('entre_nos_denuncias' as any)
+        .insert({ comentario_id: commentId, denunciante_id: user!.id, motivo: 'outro', detalhes: 'Denúncia de comentário enviada pelo feed' });
+      if (error) throw error;
+      toast.success('Comentário denunciado à moderação.');
+    } catch (error: any) {
+      toast.error(error?.code === '23505' ? 'Você já denunciou este comentário.' : 'Não foi possível denunciar o comentário.');
+    } finally { setReportingCommentId(null); }
   };
 
   return <main className="min-h-screen bg-gradient-to-b from-primary/8 via-background to-background pb-28 lg:pb-10">
@@ -191,7 +205,7 @@ export default function EntreNos() {
             {hidden?<button onClick={()=>setRevealed(new Set([...revealed,post.id]))} className="mt-4 w-full rounded-2xl border border-dashed bg-muted/50 p-8 text-center"><EyeOff className="mx-auto mb-2 h-6 w-6"/><b className="block">Conteúdo sensível</b><span className="text-sm text-muted-foreground">Toque para visualizar</span></button>:<p className="mt-4 whitespace-pre-wrap text-[15px] leading-7">{post.conteudo}</p>}
           </div>
           <div className="flex flex-wrap gap-1 border-t bg-muted/20 px-3 py-2">{reactions.map(({type,label,icon:Icon})=><Button key={type} type="button" variant="ghost" size="sm" className="min-h-10 rounded-full" disabled={reactingPostId === post.id} aria-busy={reactingPostId === post.id} aria-label={`${label}: ${counts[post.id]?.[type] || 0} reações`} onClick={()=>react(post.id,type)}><Icon className="mr-1.5 h-4 w-4"/>{label} {counts[post.id]?.[type]||''}</Button>)}{post.permitir_comentarios&&<Button type="button" variant="ghost" size="sm" className="ml-auto min-h-10 rounded-full" aria-label={`${postComments.length} comentários. ${openComments===post.id?'Ocultar':'Mostrar'} comentários`} aria-expanded={openComments===post.id} disabled={commentingPostId !== null} onClick={() => { setCommentText(''); setOpenComments(openComments===post.id ? null : post.id); }}><MessageCircle className="mr-1.5 h-4 w-4"/>{postComments.length}</Button>}</div>
-          {openComments===post.id&&<div className="space-y-3 border-t p-4">{postComments.map(c=><div key={c.id} className="rounded-2xl bg-muted/50 p-3"><b className="text-xs">Anônimo</b><p className="mt-1 text-sm leading-6">{c.conteudo}</p></div>)}<div className="flex gap-2"><Input aria-label="Escreva seu comentário" value={commentText} onChange={e=>setCommentText(e.target.value)} disabled={commentingPostId === post.id} placeholder="Escreva uma resposta acolhedora..."/><Button type="button" size="icon" className="h-10 w-10 shrink-0" aria-label="Enviar comentário para moderação" disabled={commentingPostId !== null || commentText.trim().length < 2} aria-busy={commentingPostId === post.id} onClick={()=>comment(post.id)}><Send className="h-4 w-4"/></Button></div><p className="text-[11px] text-muted-foreground">Seu comentário ficará visível após a moderação.</p></div>}
+          {openComments===post.id&&<div className="space-y-3 border-t p-4">{postComments.map(c=><div key={c.id} className="rounded-2xl bg-muted/50 p-3"><div className="flex items-center justify-between gap-2"><b className="text-xs">Anônimo</b><Button type="button" variant="ghost" size="sm" className="min-h-9" aria-label="Denunciar comentário" disabled={reportingCommentId !== null} onClick={()=>{void reportComment(c.id);}}><Flag className="mr-1 h-3.5 w-3.5"/>Denunciar</Button></div><p className="mt-1 text-sm leading-6">{c.conteudo}</p></div>)}<div className="flex gap-2"><Input aria-label="Escreva seu comentário" maxLength={1000} value={commentText} onChange={e=>setCommentText(e.target.value)} disabled={commentingPostId === post.id} placeholder="Escreva uma resposta acolhedora..."/><Button type="button" size="icon" className="h-10 w-10 shrink-0" aria-label="Enviar comentário para moderação" disabled={commentingPostId !== null || commentText.trim().length < 2} aria-busy={commentingPostId === post.id} onClick={()=>comment(post.id)}><Send className="h-4 w-4"/></Button></div><p className="text-[11px] text-muted-foreground">Seu comentário ficará visível após a moderação.</p></div>}
         </article>})}</div>
       <div className="mt-6 rounded-3xl border border-amber-500/20 bg-amber-500/8 p-5 text-sm leading-6"><b>Precisa de ajuda agora?</b><p className="text-muted-foreground">Este espaço não substitui atendimento profissional. Em crise emocional, ligue 188 (CVV). Em risco imediato, procure o serviço de emergência.</p></div>
     </section><AuthDialog open={authOpen} onOpenChange={setAuthOpen}/>
