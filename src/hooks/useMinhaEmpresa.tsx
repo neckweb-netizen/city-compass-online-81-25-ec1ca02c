@@ -12,12 +12,8 @@ export const useMinhaEmpresa = () => {
   const { data: empresas, isLoading, error } = useQuery({
     queryKey: ['minhas-empresas', user?.id],
     queryFn: async () => {
-      if (!user) {
-        console.log('useMinhaEmpresa: Usuário não encontrado');
-        return [];
-      }
+      if (!user) return [];
 
-      console.log('useMinhaEmpresa: Buscando empresas para usuário:', user.id);
 
       // Busca empresas do usuário diretamente
       const { data, error } = await supabase
@@ -26,12 +22,7 @@ export const useMinhaEmpresa = () => {
         .eq('usuario_id', user.id)
         .order('criado_em', { ascending: false });
 
-      if (error) {
-        console.error('Erro ao buscar empresas do usuário:', error);
-        return [];
-      }
-
-      console.log('useMinhaEmpresa: Empresas encontradas:', data);
+      if (error) throw error;
       return data || [];
     },
     enabled: !!user,
