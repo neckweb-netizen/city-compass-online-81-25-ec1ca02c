@@ -21,7 +21,7 @@ const categoryIcons = {
 
 export default function NotificationsPage() {
   const navigate = useNavigate();
-  const { notifications, totalUnread, loading, error, markAsRead, markAllAsRead, archive, refetch, isMutating } = useNotifications();
+  const { notifications, totalUnread, loading, error, markAsRead, markAllAsRead, archive, refetch, isProcessing } = useNotifications();
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const visible = filter === 'unread' ? notifications.filter(item => !item.read) : notifications;
 
@@ -48,7 +48,7 @@ export default function NotificationsPage() {
             <Settings className="h-4 w-4 mr-2" />Preferências
           </Button>
           {totalUnread > 0 && (
-            <Button size="sm" disabled={isMutating} onClick={() => markAllAsRead()}>
+            <Button size="sm" disabled={isProcessing} onClick={() => markAllAsRead()}>
               <CheckCheck className="h-4 w-4 mr-2" />Marcar todas
             </Button>
           )}
@@ -95,7 +95,7 @@ export default function NotificationsPage() {
                       </p>
                       {getSafeNotificationPath(item.action_url) && <span className="inline-block text-sm font-medium text-primary mt-3">{item.action_label || 'Abrir detalhes'} →</span>}
                     </button>
-                    <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0" title="Arquivar" aria-label={`Arquivar notificação ${item.title}`} disabled={isMutating} onClick={() => archive(item.id)}>
+                    <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0" title="Arquivar" aria-label={`Arquivar notificação ${item.title}`} disabled={isProcessing} onClick={() => archive(item.id)}>
                       <Archive className="h-4 w-4" />
                     </Button>
                   </div>
