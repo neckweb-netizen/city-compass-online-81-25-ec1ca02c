@@ -141,7 +141,9 @@ export const EmpresaVagas = ({ empresaId }: EmpresaVagasProps) => {
       toast.success('Vaga criada com sucesso!');
       setIsDialogOpen(false);
       resetForm();
-      refetch();
+      void queryClient.invalidateQueries({ queryKey: ['empresa-vagas', empresaId] });
+      void queryClient.invalidateQueries({ queryKey: ['vagas-emprego'] });
+      void queryClient.invalidateQueries({ queryKey: ['latest-job-coupons'] });
     },
     onError: (error: any) => {
       toast.error('Erro ao criar vaga: ' + error.message);
@@ -155,17 +157,21 @@ export const EmpresaVagas = ({ empresaId }: EmpresaVagasProps) => {
         .from('vagas_emprego')
         .update(data)
         .eq('id', id)
+        .eq('criado_por', empresaId)
         .select()
-        .single();
-      
+        .maybeSingle();
+
       if (error) throw error;
+      if (!result) throw new Error('Vaga não encontrada ou sem permissão para editar.');
       return result;
     },
     onSuccess: () => {
       toast.success('Vaga atualizada com sucesso!');
       setIsDialogOpen(false);
       resetForm();
-      refetch();
+      void queryClient.invalidateQueries({ queryKey: ['empresa-vagas', empresaId] });
+      void queryClient.invalidateQueries({ queryKey: ['vagas-emprego'] });
+      void queryClient.invalidateQueries({ queryKey: ['latest-job-coupons'] });
     },
     onError: (error: any) => {
       toast.error('Erro ao atualizar vaga: ' + error.message);
@@ -175,16 +181,22 @@ export const EmpresaVagas = ({ empresaId }: EmpresaVagasProps) => {
   // Deletar vaga
   const deleteVagaMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
+      const { data: removed, error } = await supabase
         .from('vagas_emprego')
         .delete()
-        .eq('id', id);
-      
+        .eq('id', id)
+        .eq('criado_por', empresaId)
+        .select('id')
+        .maybeSingle();
+
       if (error) throw error;
+      if (!removed) throw new Error('Vaga não encontrada ou sem permissão para excluir.');
     },
     onSuccess: () => {
       toast.success('Vaga removida com sucesso!');
-      refetch();
+      void queryClient.invalidateQueries({ queryKey: ['empresa-vagas', empresaId] });
+      void queryClient.invalidateQueries({ queryKey: ['vagas-emprego'] });
+      void queryClient.invalidateQueries({ queryKey: ['latest-job-coupons'] });
     },
     onError: (error: any) => {
       toast.error('Erro ao remover vaga: ' + error.message);
@@ -194,16 +206,22 @@ export const EmpresaVagas = ({ empresaId }: EmpresaVagasProps) => {
   // Toggle status da vaga
   const toggleStatusMutation = useMutation({
     mutationFn: async ({ id, ativo }: { id: string; ativo: boolean }) => {
-      const { error } = await supabase
+      const { data: updated, error } = await supabase
         .from('vagas_emprego')
         .update({ ativo })
-        .eq('id', id);
-      
+        .eq('id', id)
+        .eq('criado_por', empresaId)
+        .select('id')
+        .maybeSingle();
+
       if (error) throw error;
+      if (!updated) throw new Error('Vaga não encontrada ou sem permissão para alterar status.');
     },
     onSuccess: () => {
       toast.success('Status da vaga atualizado!');
-      refetch();
+      void queryClient.invalidateQueries({ queryKey: ['empresa-vagas', empresaId] });
+      void queryClient.invalidateQueries({ queryKey: ['vagas-emprego'] });
+      void queryClient.invalidateQueries({ queryKey: ['latest-job-coupons'] });
     },
     onError: (error: any) => {
       toast.error('Erro ao atualizar status: ' + error.message);
