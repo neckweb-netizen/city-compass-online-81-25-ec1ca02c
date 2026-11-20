@@ -607,3 +607,13 @@ test('painel de empresa mostra falha de consulta e bloqueia ações repetidas na
   assert.match(page, /aria-label=\{`Excluir vaga \$\{vaga\.titulo\}`\}/);
   assert.match(page, /aria-label=\{`Editar vaga \$\{vaga\.titulo\}`\}/);
 });
+
+test('vagas da empresa usam cidade cadastrada em vez de UUID genérico', () => {
+  const page = source('src/components/empresa/EmpresaVagas.tsx');
+  assert.match(page, /\.from\('empresas'\)/);
+  assert.match(page, /\.select\('cidade_id'\)/);
+  assert.match(page, /\.eq\('id', empresaId\)/);
+  assert.match(page, /if \(!empresa\?\.cidade_id\)/);
+  assert.match(page, /cidade_id: empresa\.cidade_id/);
+  assert.doesNotMatch(page, /550e8400-e29b-41d4-a716-446655440000/);
+});
