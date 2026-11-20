@@ -68,3 +68,15 @@ test('moderation can list reports with retry and confirm deleting review', () =>
   assert.match(admin, /Denúncias recebidas/);
   assert.match(admin, /isRemoving/);
 });
+
+test('moderators can dismiss false reports while retaining the decision', () => {
+  const sql = source('supabase/migrations/20261120235900_review_reports_dismissal.sql');
+  const admin = source('src/components/admin/sections/AvaliacoesSection.tsx');
+  assert.match(sql, /status in \('pendente','descartada'\)/);
+  assert.match(sql, /private\.admin_mfa_verified/);
+  assert.match(sql, /guard_review_report_status/);
+  assert.match(sql, /grant update \(status, analisado_em\)/);
+  assert.match(admin, /dismissReport/);
+  assert.match(admin, /Descartar denúncia/);
+  assert.match(admin, /\.eq\('status', 'pendente'\)/);
+});
