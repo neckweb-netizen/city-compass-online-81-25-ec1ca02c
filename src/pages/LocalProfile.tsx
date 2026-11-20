@@ -17,6 +17,7 @@ import { SolicitarResponsabilidadeDialog } from '@/components/empresa/SolicitarR
 import { SolicitarPropriedadeAviso } from '@/components/empresa/SolicitarPropriedadeAviso';
 import { InfluencerProfile } from '@/components/empresa/InfluencerProfile';
 import { AvaliacaoModal } from '@/components/empresa/AvaliacaoModal';
+import { ReviewActions } from '@/components/empresa/ReviewActions';
 import { BannerSection } from '@/components/home/BannerSection';
 import { RadioPlayer } from '@/components/ui/radio-player';
 import { ArrowLeft, Calendar, CalendarCheck, Camera, Heart, Info, MessageCircle, Package, Radio, Share2, Star, Ticket, Verified } from 'lucide-react';
@@ -442,6 +443,9 @@ const EmpresaProfile = () => {
                                                   <p className="text-xs text-muted-foreground">{avaliacao.resposta_empresa}</p>
                                                 </div>
                                               )}
+                                              <ReviewActions reviewId={avaliacao.id} companyId={empresa.id}
+                                                companyOwnerId={empresa.usuario_id} reviewerId={avaliacao.usuario_id}
+                                                existingReply={avaliacao.resposta_empresa} />
                                             </div>
                                           </div>
                                         </div>
