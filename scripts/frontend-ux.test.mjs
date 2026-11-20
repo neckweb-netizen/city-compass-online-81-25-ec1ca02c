@@ -481,3 +481,13 @@ test('links sociais de influenciadores rejeitam destinos inválidos e esquemas n
   assert.match(profile, /href=\{url\}/);
   assert.doesNotMatch(profile, /href=\{typeof url === 'string' \? url : '#'\}/);
 });
+
+test('compartilhamento de empresas usa gesto nativo antes de operações assíncronas', () => {
+  const page = source('src/pages/LocalProfile.tsx');
+  const share = page.slice(page.indexOf('  const handleShare = async () => {'), page.indexOf('  const precisaResponsavel ='));
+  assert.match(share, /if \(navigator\.share\) \{/);
+  assert.match(share, /url: originalUrl/);
+  assert.ok(share.indexOf('await navigator.share(') < share.indexOf('await createShortUrl('));
+  assert.match(share, /copyToClipboard\(result\?\.short_url \?\? originalUrl\)/);
+  assert.match(share, /error\.name === 'AbortError'/);
+});
