@@ -113,12 +113,23 @@ export const EmpresaVagas = ({ empresaId }: EmpresaVagasProps) => {
   // Criar vaga
   const createVagaMutation = useMutation({
     mutationFn: async (data: any) => {
+      // Vincule a vaga à cidade real da empresa; nunca use um UUID genérico.
+      const { data: empresa, error: empresaError } = await supabase
+        .from('empresas')
+        .select('cidade_id')
+        .eq('id', empresaId)
+        .maybeSingle();
+      if (empresaError) throw empresaError;
+      if (!empresa?.cidade_id) {
+        throw new Error('A empresa precisa ter uma cidade cadastrada antes de publicar vagas.');
+      }
+
       const { data: result, error } = await supabase
         .from('vagas_emprego')
         .insert({
           ...data,
           criado_por: empresaId,
-          cidade_id: data.cidade_id || '550e8400-e29b-41d4-a716-446655440000' // Cidade padrão
+          cidade_id: empresa.cidade_id
         })
         .select()
         .single();
