@@ -1,12 +1,12 @@
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod/v3';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,16 +17,16 @@ import { Package } from 'lucide-react';
 import { usePlanoLimites } from '@/hooks/usePlanoLimites';
 
 const produtoSchema = z.object({
-  nome: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
+  nome: z.string().trim().min(3, 'Nome deve ter pelo menos 3 caracteres'),
   descricao: z.string().optional(),
   preco_original: z.number().min(0.01, 'Preço deve ser maior que 0'),
-  preco_promocional: z.number().min(0).optional(),
+  preco_promocional: z.number().positive('Preço promocional deve ser maior que zero').optional(),
   categoria_produto: z.string().optional(),
   codigo_produto: z.string().optional(),
-  estoque_disponivel: z.number().min(0, 'Estoque não pode ser negativo').optional(),
+  estoque_disponivel: z.number().int('Estoque deve ser inteiro').min(0, 'Estoque não pode ser negativo').optional(),
   empresa_id: z.string().uuid('Selecione uma empresa'),
   imagem_principal_url: z.string().url('URL inválida').optional().or(z.literal('')),
-});
+}).refine(data => data.preco_promocional === undefined || data.preco_promocional < data.preco_original, { message: 'Preço promocional deve ser menor que o original', path: ['preco_promocional'] });
 
 type ProdutoFormData = z.infer<typeof produtoSchema>;
 
@@ -37,18 +37,22 @@ interface ProdutoFormModalProps {
 
 export const ProdutoFormModal = ({ open, onOpenChange }: ProdutoFormModalProps) => {
   const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = useRef(false);
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const { verificarLimiteProdutos } = usePlanoLimites();
 
   // Buscar empresas do usuário logado
-  const { data: empresas } = useQuery({
-    queryKey: ['user-empresas-produto'],
+  const { data: empresas, isLoading: empresasLoading, isError: empresasError, refetch: refetchEmpresas } = useQuery({
+    queryKey: ['user-empresas-produto', user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('empresas')
         .select('id, nome')
         .eq('usuario_id', user?.id)
         .eq('ativo', true)
+        .eq('status_aprovacao', 'aprovado')
         .order('nome');
 
       if (error) throw error;
@@ -65,6 +69,13 @@ export const ProdutoFormModal = ({ open, onOpenChange }: ProdutoFormModalProps) 
   });
 
   const onSubmit = async (data: ProdutoFormData) => {
+    if (submittingRef.current) return;
+    if (empresasLoading || empresasError || !empresas?.some(e => e.id === data.empresa_id)) {
+      toast({ title: 'Empresa indisponível', description: 'Selecione uma empresa aprovada e tente novamente.', variant: 'destructive' });
+      return;
+    }
+    submittingRef.current = true;
+    setIsSubmitting(true);
     try {
       // Verificar limite do plano antes de criar novo produto
       const podeCriar = await verificarLimiteProdutos();
@@ -88,6 +99,7 @@ export const ProdutoFormModal = ({ open, onOpenChange }: ProdutoFormModalProps) 
 
       if (error) throw error;
 
+      void queryClient.invalidateQueries({ queryKey: ['produtos'] });
       toast({ title: 'Produto criado com sucesso!' });
       form.reset();
       onOpenChange(false);
@@ -98,11 +110,14 @@ export const ProdutoFormModal = ({ open, onOpenChange }: ProdutoFormModalProps) 
         description: 'Tente novamente.',
         variant: 'destructive' 
       });
+    } finally {
+      submittingRef.current = false;
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen && submittingRef.current) return; onOpenChange(nextOpen); }}>
       <DialogContent className="w-[95vw] max-w-[600px] h-[90vh] flex flex-col p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -142,7 +157,7 @@ export const ProdutoFormModal = ({ open, onOpenChange }: ProdutoFormModalProps) 
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="preco_original"
@@ -184,7 +199,7 @@ export const ProdutoFormModal = ({ open, onOpenChange }: ProdutoFormModalProps) 
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="categoria_produto"
@@ -239,10 +254,10 @@ export const ProdutoFormModal = ({ open, onOpenChange }: ProdutoFormModalProps) 
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Empresa</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value || ''} disabled={empresasLoading || empresasError}>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione uma empresa" />
+                      <SelectTrigger aria-label="Empresa responsável pelo produto">
+                        <SelectValue placeholder={empresasLoading ? 'Carregando empresas...' : 'Selecione uma empresa'} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -253,6 +268,7 @@ export const ProdutoFormModal = ({ open, onOpenChange }: ProdutoFormModalProps) 
                       ))}
                     </SelectContent>
                   </Select>
+                  {empresasError && <div role="alert" className="space-y-2 text-sm"><p>Não foi possível consultar suas empresas.</p><Button type="button" variant="outline" onClick={() => { void refetchEmpresas(); }}>Tentar novamente</Button></div>}
                   <FormMessage />
                 </FormItem>
               )}
@@ -277,10 +293,10 @@ export const ProdutoFormModal = ({ open, onOpenChange }: ProdutoFormModalProps) 
         
         {/* Botões fixos na parte inferior */}
         <div className="flex justify-end gap-2 pt-4 border-t border-border mt-4">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button type="button" variant="outline" disabled={isSubmitting} onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button type="submit" onClick={form.handleSubmit(onSubmit)}>
+          <Button type="submit" disabled={isSubmitting || empresasLoading || empresasError || !empresas?.length} aria-busy={isSubmitting} onClick={form.handleSubmit(onSubmit)}>
             Criar Produto
           </Button>
         </div>
