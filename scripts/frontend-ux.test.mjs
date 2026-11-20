@@ -551,3 +551,13 @@ test('últimas vagas confirma cópia somente após sucesso e permite repetir con
   assert.match(home, /void refetch\(\)/);
   assert.match(home, /min-h-10 text-xs/);
 });
+
+test('oportunidades permite abrir publicação pelo teclado e não simula clique nas categorias', () => {
+  const page = source('src/pages/Oportunidades.tsx');
+  assert.match(page, /aria-label="Publicar nova vaga de emprego"/);
+  assert.match(page, /tabIndex=\{0\}/);
+  assert.match(page, /event\.key === 'Enter' \|\| event\.key === ' '/);
+  assert.match(page, /event\.preventDefault\(\)/);
+  assert.match(page, /setIsVagaModalOpen\(true\)/);
+  assert.doesNotMatch(page, /cursor-pointer hover:bg-primary hover:text-primary-foreground transition-all duration-300 px-4 py-2 text-sm font-medium hover:scale-105 hover:shadow-md/);
+});
