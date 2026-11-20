@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Star, MessageCircle, ExternalLink, Calendar } from 'lucide-react';
 import { useUserAvaliacoes } from '@/hooks/useAvaliacoes';
+import { EditOwnReview } from './EditOwnReview';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 
@@ -16,7 +17,7 @@ export const AvaliacoesDialog = ({ open, onOpenChange }: AvaliacoesDialogProps) 
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const { data: avaliacoes, isLoading } = useUserAvaliacoes(user?.id);
+  const { data: avaliacoes, isLoading, isError, refetch } = useUserAvaliacoes(user?.id);
 
   const handleVisitEmpresa = (empresa: any) => {
     navigate(`/local/${empresa.slug || empresa.id}`);
@@ -50,6 +51,8 @@ export const AvaliacoesDialog = ({ open, onOpenChange }: AvaliacoesDialogProps) 
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
               <p className="text-sm text-muted-foreground mt-2">Carregando avaliações...</p>
             </div>
+          ) : isError ? (
+            <div role="alert" className="space-y-3 py-8 text-center"><p>Não foi possível carregar suas avaliações.</p><Button variant="outline" onClick={() => { void refetch(); }}>Tentar novamente</Button></div>
           ) : avaliacoes && avaliacoes.length > 0 ? (
             avaliacoes.map((avaliacao) => (
               <Card key={avaliacao.id} className="hover:shadow-md transition-shadow">
@@ -60,6 +63,7 @@ export const AvaliacoesDialog = ({ open, onOpenChange }: AvaliacoesDialogProps) 
                         src={avaliacao.empresas.imagem_capa_url}
                         alt={avaliacao.empresas.nome}
                         className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+                        loading="lazy" decoding="async"
                       />
                     ) : (
                       <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
@@ -109,9 +113,12 @@ export const AvaliacoesDialog = ({ open, onOpenChange }: AvaliacoesDialogProps) 
                         </div>
                       )}
                       
+                      {user && <EditOwnReview key={avaliacao.id} id={avaliacao.id} userId={user.id}
+                        currentRating={avaliacao.nota} currentComment={avaliacao.comentario} />}
                       <Button
                         size="sm"
                         variant="outline"
+                        disabled={!avaliacao.empresas}
                         onClick={() => handleVisitEmpresa(avaliacao.empresas)}
                         className="flex items-center gap-1"
                       >
