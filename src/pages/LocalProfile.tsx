@@ -129,22 +129,23 @@ const EmpresaProfile = () => {
     const originalUrl = `${window.location.origin}/local/${empresa.id}`;
 
     try {
-      const result = await createShortUrl({ original_url: originalUrl });
-      if (!result) return;
-      const shareUrl = result.short_url;
-
+      // O compartilhamento nativo precisa acontecer diretamente após o toque.
+      // A criação assíncrona do link curto pode invalidar o gesto no celular.
       if (navigator.share) {
         await navigator.share({
           title: empresa.nome,
           text: `Confira o perfil de ${empresa.nome}`,
-          url: shareUrl,
+          url: originalUrl,
         });
-      } else {
-        await copyToClipboard(shareUrl);
+        return;
       }
+
+      const result = await createShortUrl({ original_url: originalUrl });
+      // Compartilhar o link original continua possível mesmo com falha no encurtador.
+      await copyToClipboard(result?.short_url ?? originalUrl);
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return;
-      toast({ title: 'Erro', description: 'Não foi possível gerar o link curto.', variant: 'destructive' });
+      toast({ title: 'Erro ao compartilhar', description: 'Não foi possível compartilhar este perfil. Tente novamente.', variant: 'destructive' });
     }
   };
 
