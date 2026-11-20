@@ -90,7 +90,8 @@ export const useShortUrls = () => {
         textArea.select();
         
         try {
-          document.execCommand('copy');
+          const copied = document.execCommand('copy');
+          if (!copied) throw new Error('O navegador não autorizou a cópia');
           toast({
             title: "Copiado!",
             description: "URL copiada para a área de transferência",
