@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -63,6 +63,7 @@ const FORMAS_CANDIDATURA = [
 
 export const EmpresaVagas = ({ empresaId }: EmpresaVagasProps) => {
   const queryClient = useQueryClient();
+  const submittingRef = useRef(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingVaga, setEditingVaga] = useState<VagaEmprego | null>(null);
   const [formData, setFormData] = useState({
@@ -147,7 +148,8 @@ export const EmpresaVagas = ({ empresaId }: EmpresaVagasProps) => {
     },
     onError: (error: any) => {
       toast.error('Erro ao criar vaga: ' + error.message);
-    }
+    },
+    onSettled: () => { submittingRef.current = false; }
   });
 
   // Atualizar vaga
@@ -175,7 +177,8 @@ export const EmpresaVagas = ({ empresaId }: EmpresaVagasProps) => {
     },
     onError: (error: any) => {
       toast.error('Erro ao atualizar vaga: ' + error.message);
-    }
+    },
+    onSettled: () => { submittingRef.current = false; }
   });
 
   // Deletar vaga
@@ -259,17 +262,34 @@ export const EmpresaVagas = ({ empresaId }: EmpresaVagasProps) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.titulo || !formData.descricao || !formData.categoria_id || !formData.forma_candidatura || !formData.contato_candidatura) {
-      toast.error('Preencha todos os campos obrigatórios');
+    if (submittingRef.current || createVagaMutation.isPending || updateVagaMutation.isPending) return;
+
+    if (!formData.titulo.trim() || !formData.descricao.trim() ||
+        !formData.categoria_id || !formData.tipo_vaga ||
+        !formData.forma_candidatura || !formData.contato_candidatura.trim()) {
+      toast.error('Preencha os campos obrigatórios, incluindo o tipo de vaga.');
       return;
     }
 
+    const values = {
+      ...formData,
+      titulo: formData.titulo.trim(),
+      descricao: formData.descricao.trim(),
+      contato_candidatura: formData.contato_candidatura.trim(),
+    };
+
+    submittingRef.current = true;
     if (editingVaga) {
-      updateVagaMutation.mutate({ id: editingVaga.id, ...formData });
+      updateVagaMutation.mutate({ id: editingVaga.id, ...values });
     } else {
-      createVagaMutation.mutate(formData);
+      createVagaMutation.mutate(values);
     }
+  };
+
+  const handleDialogOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && (submittingRef.current || createVagaMutation.isPending || updateVagaMutation.isPending)) return;
+    setIsDialogOpen(nextOpen);
+    if (!nextOpen) resetForm();
   };
 
   const formatSalario = (faixa: string | null) => {
@@ -318,10 +338,7 @@ export const EmpresaVagas = ({ empresaId }: EmpresaVagasProps) => {
           </p>
         </div>
         
-        <Dialog open={isDialogOpen} onOpenChange={(open) => {
-          setIsDialogOpen(open);
-          if (!open) resetForm();
-        }}>
+        <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="w-4 h-4 mr-2" />
@@ -371,7 +388,7 @@ export const EmpresaVagas = ({ empresaId }: EmpresaVagasProps) => {
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="tipo_vaga">Tipo de Vaga</Label>
+                  <Label htmlFor="tipo_vaga">Tipo de Vaga *</Label>
                   <Select 
                     value={formData.tipo_vaga} 
                     onValueChange={(value) => setFormData(prev => ({ ...prev, tipo_vaga: value }))}
@@ -459,13 +476,14 @@ export const EmpresaVagas = ({ empresaId }: EmpresaVagasProps) => {
                 <Button 
                   type="button" 
                   variant="outline" 
-                  onClick={() => setIsDialogOpen(false)}
+                  onClick={() => handleDialogOpenChange(false)}
+                  disabled={createVagaMutation.isPending || updateVagaMutation.isPending}
                 >
                   Cancelar
                 </Button>
                 <Button 
                   type="submit"
-                  disabled={createVagaMutation.isPending || updateVagaMutation.isPending}
+                  disabled={createVagaMutation.isPending || updateVagaMutation.isPending || !formData.tipo_vaga}
                 >
                   {createVagaMutation.isPending || updateVagaMutation.isPending ? 'Salvando...' : 
                    editingVaga ? 'Atualizar' : 'Criar Vaga'}
