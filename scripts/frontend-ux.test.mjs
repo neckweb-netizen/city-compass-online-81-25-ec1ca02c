@@ -581,5 +581,17 @@ test('publicação de vagas exige tipo e bloqueia envios simultâneos', () => {
   assert.match(form, /Tipo de Vaga \*/);
   assert.match(form, /submittingRef\.current = true/);
   assert.match(form, /submittingRef\.current = false/);
-  assert.match(form, /disabled=\{createVagaMutation\.isPending \|\| !formData\.tipo_vaga\}/);
+  assert.match(form, /disabled=\{createVagaMutation\.isPending \|\| categoriasLoading \|\| categoriasError \|\| !formData\.categoria_id \|\| !formData\.tipo_vaga\}/);
+});
+
+test('publicação de vaga mantém formulário durante envio e recupera falha das categorias', () => {
+  const form = source('src/components/forms/VagaFormModal.tsx');
+  assert.match(form, /const handleDialogOpenChange = \(nextOpen: boolean\) =>/);
+  assert.match(form, /!nextOpen && \(submittingRef\.current \|\| createVagaMutation\.isPending\)/);
+  assert.match(form, /onOpenChange=\{handleDialogOpenChange\}/);
+  assert.match(form, /onClick=\{\(\) => handleDialogOpenChange\(false\)\}/);
+  assert.match(form, /isLoading: categoriasLoading, isError: categoriasError, refetch: refetchCategorias/);
+  assert.match(form, /categoriasError && \(/);
+  assert.match(form, /void refetchCategorias\(\)/);
+  assert.match(form, /Nenhuma categoria de vaga disponível no momento/);
 });
