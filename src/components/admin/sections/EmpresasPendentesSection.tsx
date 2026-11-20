@@ -29,13 +29,15 @@ interface AcaoEmpresaDialogProps {
   empresa: any;
   tipo: 'aprovar' | 'rejeitar';
   onConfirm: (observacoes?: string) => void;
+  disabled?: boolean;
 }
 
-const AcaoEmpresaDialog = ({ empresa, tipo, onConfirm }: AcaoEmpresaDialogProps) => {
+const AcaoEmpresaDialog = ({ empresa, tipo, onConfirm, disabled = false }: AcaoEmpresaDialogProps) => {
   const [observacoes, setObservacoes] = useState('');
   const [open, setOpen] = useState(false);
 
   const handleConfirm = () => {
+    if (disabled || (tipo === 'rejeitar' && !observacoes.trim())) return;
     onConfirm(observacoes);
     setObservacoes('');
     setOpen(false);
@@ -46,6 +48,7 @@ const AcaoEmpresaDialog = ({ empresa, tipo, onConfirm }: AcaoEmpresaDialogProps)
       <DialogTrigger asChild>
         <Button
           size="sm"
+          disabled={disabled}
           variant={tipo === 'aprovar' ? 'default' : 'destructive'}
         >
           {tipo === 'aprovar' ? (
@@ -95,7 +98,7 @@ const AcaoEmpresaDialog = ({ empresa, tipo, onConfirm }: AcaoEmpresaDialogProps)
             <Button
               onClick={handleConfirm}
               variant={tipo === 'aprovar' ? 'default' : 'destructive'}
-              disabled={tipo === 'rejeitar' && !observacoes.trim()}
+              disabled={disabled || (tipo === 'rejeitar' && !observacoes.trim())}
             >
               Confirmar {tipo === 'aprovar' ? 'Aprovação' : 'Rejeição'}
             </Button>
@@ -107,7 +110,7 @@ const AcaoEmpresaDialog = ({ empresa, tipo, onConfirm }: AcaoEmpresaDialogProps)
 };
 
 export const EmpresasPendentesSection = () => {
-  const { empresasPendentes, loadingPendentes, aprovarEmpresa, rejeitarEmpresa } = useAdminEmpresas();
+  const { empresasPendentes, loadingPendentes, errorPendentes, refetchPendentes, isProcessing, aprovarEmpresa, rejeitarEmpresa } = useAdminEmpresas();
 
   if (loadingPendentes) {
     return (
@@ -129,6 +132,16 @@ export const EmpresasPendentesSection = () => {
     );
     window.open(`https://wa.me/${numeroLimpo}?text=${mensagem}`, '_blank');
   };
+
+  if (errorPendentes) {
+    return (
+      <div role="alert" className="space-y-3 p-6 text-center">
+        <h2 className="font-semibold">Não foi possível carregar as empresas pendentes</h2>
+        <p className="text-sm text-muted-foreground">Verifique sua conexão e tente novamente.</p>
+        <Button variant="outline" onClick={() => { void refetchPendentes(); }}>Tentar novamente</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -228,6 +241,7 @@ export const EmpresasPendentesSection = () => {
                   <AcaoEmpresaDialog
                     empresa={empresa}
                     tipo="aprovar"
+                    disabled={isProcessing}
                     onConfirm={(observacoes) => 
                       aprovarEmpresa({ id: empresa.id, observacoes })
                     }
@@ -236,6 +250,7 @@ export const EmpresasPendentesSection = () => {
                   <AcaoEmpresaDialog
                     empresa={empresa}
                     tipo="rejeitar"
+                    disabled={isProcessing}
                     onConfirm={(observacoes) => 
                       rejeitarEmpresa({ id: empresa.id, observacoes: observacoes! })
                     }
