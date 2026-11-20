@@ -19,7 +19,7 @@ const ProblemaDetalhes = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
-  const { problema, comentarios, isLoading, votarComentario } = useProblemaDetalhes(id!);
+  const { problema, comentarios, isLoading, comentariosLoading, comentariosError, refetchComentarios, votarComentario } = useProblemaDetalhes(id!);
   const { votarProblema, incrementarVisualizacao } = useProblemasCidade();
 
   useEffect(() => {
@@ -81,8 +81,8 @@ const ProblemaDetalhes = () => {
   };
 
   const handleVotarComentario = async (comentarioId: string, tipoVoto: 1 | -1) => {
-    if (!user) return;
-    await votarComentario.mutateAsync({ comentarioId, tipoVoto });
+    if (!user || votarComentario.isPending) return;
+    try { await votarComentario.mutateAsync({ comentarioId, tipoVoto }); } catch { /* A tela mantém os dados atuais. */ }
   };
 
   const IconeCategoria = problema.categoria?.icone
@@ -241,11 +241,15 @@ const ProblemaDetalhes = () => {
           <div className="grid lg:grid-cols-3 gap-4">
             {/* Lista de comentários - 2/3 no desktop */}
             <div className="lg:col-span-2 space-y-3">
-              {comentarios && comentarios.length > 0 ? (
+              {comentariosLoading ? (
+                <p role="status" className="py-6 text-center text-muted-foreground">Carregando comentários...</p>
+              ) : comentariosError ? (
+                <div role="alert" className="space-y-3 rounded-xl border p-6 text-center"><p>Não foi possível carregar os comentários.</p><Button variant="outline" onClick={() => { void refetchComentarios(); }}>Tentar novamente</Button></div>
+              ) : comentarios && comentarios.length > 0 ? (
                 <ComentariosList 
                   comentarios={comentarios as any} 
                   onVotar={handleVotarComentario}
-                  canVote={!!user}
+                  canVote={!!user && !votarComentario.isPending}
                 />
               ) : (
                 <Card className="border-dashed">
