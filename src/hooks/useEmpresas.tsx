@@ -28,6 +28,7 @@ export const useEmpresas = (cidadeId?: string, categoriaId?: string, enabled = t
           estatisticas(*)
         `)
         .eq('ativo', true)
+        .eq('status_aprovacao', 'aprovado')
         .order('destaque', { ascending: false })
         .order('verificado', { ascending: false })
         .order('criado_em', { ascending: false });
@@ -80,22 +81,17 @@ export const useEmpresaById = (id: string) => {
   return useQuery({
     queryKey: ['empresa', id],
     queryFn: async () => {
-      console.log('🔍 useEmpresaById - Iniciando busca com parâmetro:', id);
-      console.log('🔍 useEmpresaById - Tipo do parâmetro:', typeof id);
-      
+
       if (!id || id === 'undefined' || id.trim() === '') {
-        console.error('❌ useEmpresaById - ID inválido:', id);
         throw new Error('ID da empresa é obrigatório');
       }
 
       const isUUID = isValidUUID(id);
-      console.log('🔍 useEmpresaById - É UUID?', isUUID);
 
       let data, error;
 
       if (isUUID) {
         // Se for UUID, buscar por ID
-        console.log('🔍 useEmpresaById - Buscando por ID (UUID):', id);
         const result = await supabase
           .from('empresas')
           .select(`
@@ -113,10 +109,8 @@ export const useEmpresaById = (id: string) => {
         
         data = result.data;
         error = result.error;
-        console.log('🔍 useEmpresaById - Resultado busca por ID:', { data, error });
       } else {
         // Se não for UUID, buscar por slug
-        console.log('🔍 useEmpresaById - Buscando por slug:', id);
         const result = await supabase
           .from('empresas')
           .select(`
@@ -134,20 +128,16 @@ export const useEmpresaById = (id: string) => {
         
         data = result.data;
         error = result.error;
-        console.log('🔍 useEmpresaById - Resultado busca por slug:', { data, error });
       }
       
       if (error) {
-        console.error('❌ useEmpresaById - Erro na busca:', error);
         throw error;
       }
       
       if (!data) {
-        console.error('❌ useEmpresaById - Empresa não encontrada:', id);
         throw new Error('Empresa não encontrada');
       }
       
-      console.log('✅ useEmpresaById - Empresa encontrada:', data.nome);
       return data;
     },
     enabled: !!id && id !== 'undefined' && id.trim() !== '',
