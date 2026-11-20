@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Briefcase, Loader2 } from 'lucide-react';
+import { isValidJobApplicationContact } from '@/lib/jobApplication';
 
 interface VagaFormModalProps {
   open: boolean;
@@ -110,7 +111,9 @@ export const VagaFormModal = ({ open, onOpenChange }: VagaFormModalProps) => {
       toast.success('Vaga criada com sucesso!');
       onOpenChange(false);
       resetForm();
-      queryClient.invalidateQueries({ queryKey: ['vagas-emprego'] });
+      void queryClient.invalidateQueries({ queryKey: ['vagas-emprego'] });
+      void queryClient.invalidateQueries({ queryKey: ['latest-job-coupons'] });
+      void queryClient.invalidateQueries({ queryKey: ['empresa-vagas'] });
     },
     onError: (error: any) => {
       submittingRef.current = false;
@@ -139,6 +142,11 @@ export const VagaFormModal = ({ open, onOpenChange }: VagaFormModalProps) => {
         !formData.categoria_id || !formData.tipo_vaga ||
         !formData.forma_candidatura || !formData.contato_candidatura.trim()) {
       toast.error('Preencha todos os campos obrigatórios, incluindo o tipo de vaga.');
+      return;
+    }
+
+    if (!isValidJobApplicationContact(formData.forma_candidatura, formData.contato_candidatura)) {
+      toast.error('Informe um contato válido para a forma de candidatura escolhida.');
       return;
     }
 
