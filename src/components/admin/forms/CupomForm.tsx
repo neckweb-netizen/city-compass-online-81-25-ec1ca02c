@@ -1,10 +1,11 @@
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod/v3';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -19,19 +20,21 @@ import { Plus, Ticket, CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const cupomSchema = z.object({
-  titulo: z.string().min(3, 'Título deve ter pelo menos 3 caracteres'),
-  codigo: z.string().min(3, 'Código deve ter pelo menos 3 caracteres'),
+  titulo: z.string().trim().min(3, 'Título deve ter pelo menos 3 caracteres'),
+  codigo: z.string().trim().min(3, 'Código deve ter pelo menos 3 caracteres'),
   descricao: z.string().optional(),
   tipo: z.enum(['porcentagem', 'valor_fixo']),
   valor: z.number().min(0.01, 'Valor deve ser maior que 0'),
   data_inicio: z.date({ required_error: 'Data de início é obrigatória' }),
   data_fim: z.date({ required_error: 'Data de fim é obrigatória' }),
   empresa_id: z.string().uuid('ID do local é obrigatório'),
-  quantidade_total: z.number().min(1, 'Quantidade deve ser maior que 0').optional(),
+  quantidade_total: z.number().int().min(1, 'Quantidade deve ser maior que 0').optional(),
   ativo: z.boolean().default(true),
-}).refine((data) => data.data_fim > data.data_inicio, {
-  message: 'A data de fim deve ser posterior à data de início',
-  path: ['data_fim'],
+}).superRefine((data, ctx) => {
+  if (data.data_fim <= data.data_inicio)
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['data_fim'], message: 'A data de fim deve ser posterior ao início.' });
+  if (data.tipo === 'porcentagem' && data.valor > 100)
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['valor'], message: 'O desconto máximo é 100%.' });
 });
 
 type CupomFormData = z.infer<typeof cupomSchema>;
@@ -42,7 +45,18 @@ interface CupomFormProps {
 
 export const CupomForm = ({ onSuccess }: CupomFormProps) => {
   const [open, setOpen] = useState(false);
+  const submittingRef = useRef(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const { data: empresas = [], isLoading: empresasLoading, isError: empresasError, refetch: refetchEmpresas } = useQuery({
+    queryKey: ['admin-coupon-companies'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('empresas')
+        .select('id, nome').eq('ativo', true).eq('status_aprovacao', 'aprovado').order('nome');
+      if (error) throw error;
+      return data || [];
+    }
+  });
 
   const form = useForm<CupomFormData>({
     resolver: zodResolver(cupomSchema),
@@ -53,6 +67,13 @@ export const CupomForm = ({ onSuccess }: CupomFormProps) => {
   });
 
   const onSubmit = async (data: CupomFormData) => {
+    if (submittingRef.current) return;
+    if (!empresas?.some(e => e.id === data.empresa_id)) {
+      toast({ title: 'Empresa indisponível', description: 'Escolha uma empresa aprovada.', variant: 'destructive' });
+      return;
+    }
+    submittingRef.current = true;
+    setIsSubmitting(true);
     try {
       const { error } = await supabase
         .from('cupons')
@@ -79,14 +100,17 @@ export const CupomForm = ({ onSuccess }: CupomFormProps) => {
       console.error('Erro ao criar cupom:', error);
       toast({ 
         title: 'Erro ao criar cupom', 
-        description: 'Tente novamente.',
+        description: error instanceof Error ? error.message : 'Tente novamente.',
         variant: 'destructive' 
       });
+    } finally {
+      submittingRef.current = false;
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen && submittingRef.current) return; setOpen(nextOpen); }}>
       <DialogTrigger asChild>
         <Button>
           <Plus className="w-4 h-4 mr-2" />
@@ -103,7 +127,7 @@ export const CupomForm = ({ onSuccess }: CupomFormProps) => {
         
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="titulo"
@@ -147,7 +171,7 @@ export const CupomForm = ({ onSuccess }: CupomFormProps) => {
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="tipo"
@@ -191,7 +215,7 @@ export const CupomForm = ({ onSuccess }: CupomFormProps) => {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="data_inicio"
@@ -277,16 +301,18 @@ export const CupomForm = ({ onSuccess }: CupomFormProps) => {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="empresa_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>ID do Local</FormLabel>
-                    <FormControl>
-                      <Input placeholder="UUID do local" {...field} />
-                    </FormControl>
+                    <FormLabel>Empresa responsável *</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || ''} disabled={empresasLoading || empresasError}>
+                      <FormControl><SelectTrigger><SelectValue placeholder="Selecione uma empresa aprovada" /></SelectTrigger></FormControl>
+                      <SelectContent>{empresas.map(empresa => <SelectItem key={empresa.id} value={empresa.id}>{empresa.nome}</SelectItem>)}</SelectContent>
+                    </Select>
+                    {empresasError && <div role="alert" className="space-y-2 text-sm"><p>Falha ao carregar empresas.</p><Button type="button" variant="outline" onClick={() => { void refetchEmpresas(); }}>Tentar novamente</Button></div>}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -330,10 +356,10 @@ export const CupomForm = ({ onSuccess }: CupomFormProps) => {
             />
 
             <div className="flex justify-end gap-2 pt-4">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              <Button type="button" variant="outline" disabled={isSubmitting} onClick={() => setOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit">
+              <Button type="submit" disabled={isSubmitting || empresasLoading || empresasError} aria-busy={isSubmitting}>
                 Criar Cupom
               </Button>
             </div>
