@@ -34,7 +34,8 @@ interface ConfiguracaoAgendamentosProps {
 export const ConfiguracaoAgendamentos: React.FC<ConfiguracaoAgendamentosProps> = ({ 
   empresaId 
 }) => {
-  const { empresa, updateEmpresa, isUpdating } = useMinhaEmpresa();
+  const { empresas, updateEmpresaAsync, isUpdating } = useMinhaEmpresa();
+  const empresa = empresas.find(item => item.id === empresaId);
   const { 
     servicos, 
     criarServico,
@@ -83,9 +84,7 @@ export const ConfiguracaoAgendamentos: React.FC<ConfiguracaoAgendamentosProps> =
   }, [empresa]);
 
   const handleToggleAgendamentos = (ativo: boolean) => {
-    updateEmpresa({
-      agendamentos_ativo: ativo
-    });
+    void updateEmpresaAsync({ agendamentos_ativo: ativo }, empresaId).catch(() => undefined);
   };
 
   const handleSubmitServico = async () => {
@@ -148,16 +147,31 @@ export const ConfiguracaoAgendamentos: React.FC<ConfiguracaoAgendamentosProps> =
     setModalAberto(true);
   };
 
-  const salvarHorarios = () => updateEmpresa({
-    agendamento_intervalo_minutos: configuracaoHorarios.intervalo_minutos,
-    agendamento_hora_inicio: configuracaoHorarios.hora_inicio,
-    agendamento_hora_fim: configuracaoHorarios.hora_fim,
-    agendamento_dias_semana: configuracaoHorarios.dias_semana,
-    agendamento_antecedencia_minutos: configuracaoHorarios.antecedencia_minutos,
-    agendamento_max_dias: configuracaoHorarios.max_dias,
-  });
+  const salvarHorarios = async () => {
+    const h = configuracaoHorarios;
+    if (!h.dias_semana.length || h.hora_fim <= h.hora_inicio ||
+      ![15, 20, 30, 45, 60, 90, 120].includes(h.intervalo_minutos) ||
+      !Number.isInteger(h.antecedencia_minutos) || h.antecedencia_minutos < 0 || h.antecedencia_minutos > 10080 ||
+      !Number.isInteger(h.max_dias) || h.max_dias < 1 || h.max_dias > 365) {
+      toast.error('Confira dias, horários, antecedência e período da agenda.');
+      return;
+    }
+    try {
+      await updateEmpresaAsync({
+        agendamento_intervalo_minutos: h.intervalo_minutos,
+        agendamento_hora_inicio: h.hora_inicio,
+        agendamento_hora_fim: h.hora_fim,
+        agendamento_dias_semana: h.dias_semana,
+        agendamento_antecedencia_minutos: h.antecedencia_minutos,
+        agendamento_max_dias: h.max_dias,
+      }, empresaId);
+    } catch {
+      // O hook já apresenta o erro e mantém as alterações do formulário.
+    }
+  };
 
   const dias = [{valor:1,label:'Seg'}, {valor:2,label:'Ter'}, {valor:3,label:'Qua'}, {valor:4,label:'Qui'}, {valor:5,label:'Sex'}, {valor:6,label:'Sáb'}, {valor:7,label:'Dom'}];
+  const busy = savingService || isCreating || isUpdatingService || isDeleting;
 
   return (
     <div className="space-y-6">
@@ -348,6 +362,7 @@ export const ConfiguracaoAgendamentos: React.FC<ConfiguracaoAgendamentosProps> =
                         variant="outline"
                         size="sm"
                         onClick={() => handleEditarServico(servico)}
+                        disabled={busy}
                       >
                         <Edit className="w-4 h-4 mr-1" />
                         Editar
@@ -355,6 +370,7 @@ export const ConfiguracaoAgendamentos: React.FC<ConfiguracaoAgendamentosProps> =
                       <Button
                         variant="outline"
                         size="sm"
+                        disabled={busy}
                         onClick={() => atualizarServico({
                           id: servico.id,
                           dados: { ativo: !servico.ativo }
@@ -365,8 +381,8 @@ export const ConfiguracaoAgendamentos: React.FC<ConfiguracaoAgendamentosProps> =
                       <Button
                         variant="destructive"
                         size="sm"
-                        onClick={() => excluirServico(servico.id)}
-                        disabled={isDeleting}
+                        onClick={() => { if (window.confirm(`Excluir o serviço ${servico.nome_servico}?`)) excluirServico(servico.id); }}
+                        disabled={busy}
                       >
                         <Trash2 className="w-4 h-4 mr-1" />
                         Excluir
@@ -421,7 +437,7 @@ export const ConfiguracaoAgendamentos: React.FC<ConfiguracaoAgendamentosProps> =
 
               <div><Label>Agenda aberta por quantos dias</Label><Input type="number" min={1} max={365} value={configuracaoHorarios.max_dias} onChange={e=>setConfiguracaoHorarios(prev=>({...prev,max_dias:Number(e.target.value)}))}/><p className="mt-1 text-xs text-muted-foreground">O cliente só poderá escolher horários realmente livres dentro desse período.</p></div>
 
-              <Button onClick={salvarHorarios} disabled={isUpdating || configuracaoHorarios.dias_semana.length===0 || configuracaoHorarios.hora_fim<=configuracaoHorarios.hora_inicio} className="w-full sm:w-auto">{isUpdating?'Salvando...':'Salvar configuração da agenda'}</Button>
+              <Button onClick={() => { void salvarHorarios(); }} disabled={isUpdating || configuracaoHorarios.dias_semana.length===0 || configuracaoHorarios.hora_fim<=configuracaoHorarios.hora_inicio} className="w-full sm:w-auto">{isUpdating?'Salvando...':'Salvar configuração da agenda'}</Button>
             </div>
           </CardContent>
         </Card>
