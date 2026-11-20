@@ -21,6 +21,7 @@ import { Switch } from '@/components/ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { usePlanoLimites } from '@/hooks/usePlanoLimites';
+import { useCidadePadrao } from '@/hooks/useCidadePadrao';
 import { cn } from '@/lib/utils';
 import { uploadMedia } from '@/lib/media-upload';
 
@@ -83,6 +84,7 @@ export const EventoForm = ({ onSuccess, empresaId }: EventoFormProps) => {
   const { data: categorias } = useCategoriasEventos();
   const { empresa } = useMinhaEmpresa();
   const { verificarLimiteEventos } = usePlanoLimites();
+  const { data: cidadePadrao } = useCidadePadrao();
 
   const form = useForm<EventoFormData>({
     resolver: zodResolver(eventoSchema),
@@ -153,7 +155,7 @@ export const EventoForm = ({ onSuccess, empresaId }: EventoFormProps) => {
         if (!podecriar) return;
       }
 
-      let cidadeId = profile?.cidade_id || empresa?.cidade_id;
+      let cidadeId = profile?.cidade_id || empresa?.cidade_id || cidadePadrao?.id;
       if (empresaId) {
         const { data: empresaSelecionada, error: empresaError } = await supabase
           .from('empresas').select('cidade_id').eq('id', empresaId).maybeSingle();
