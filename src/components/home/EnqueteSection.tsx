@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -8,28 +8,43 @@ import { Progress } from '@/components/ui/progress';
 import { BarChart3, Users, Vote } from 'lucide-react';
 import { useEnquetes } from '@/hooks/useEnquetes';
 import { useAuth } from '@/hooks/useAuth';
+import { AuthDialog } from '@/components/auth/AuthDialog';
 
 export const EnqueteSection = () => {
-  const { enqueteAtiva, isLoading, votarEnquete } = useEnquetes();
-  const { profile } = useAuth();
+  const { enqueteAtiva, isLoading, isActiveError, refetchActive, votarEnquete } = useEnquetes();
+  const { profile, user } = useAuth();
   const [selectedOpcoes, setSelectedOpcoes] = useState<number[]>([]);
   const [jaVotou, setJaVotou] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+  const votingRef = useRef(false);
+
+  useEffect(() => {
+    setSelectedOpcoes([]);
+    setJaVotou(false);
+  }, [enqueteAtiva?.id]);
 
   const isAdmin = profile?.tipo_conta === 'admin_geral' || profile?.tipo_conta === 'admin_cidade';
 
-  if (isLoading || !enqueteAtiva) {
-    return null;
-  }
+  if (isLoading) return null;
+  if (isActiveError) return (
+    <Card role="alert" className="rounded-3xl"><CardContent className="space-y-3 p-6 text-center">
+      <p>Não foi possível carregar a enquete.</p>
+      <Button variant="outline" onClick={() => { void refetchActive(); }}>Tentar novamente</Button>
+    </CardContent></Card>
+  );
+  if (!enqueteAtiva) return null;
 
   const handleVote = () => {
-    if (selectedOpcoes.length === 0) return;
-    
+    if (selectedOpcoes.length === 0 || votingRef.current || votarEnquete.isPending) return;
+    if (!user) { setAuthOpen(true); return; }
+    votingRef.current = true;
     votarEnquete.mutate(
       { enqueteId: enqueteAtiva.id, opcoes: selectedOpcoes },
       {
         onSuccess: () => {
           setJaVotou(true);
-        }
+        },
+        onSettled: () => { votingRef.current = false; }
       }
     );
   };
@@ -58,6 +73,7 @@ export const EnqueteSection = () => {
   };
 
   return (
+    <>
     <Card className="relative overflow-hidden rounded-3xl border border-border/60 bg-card text-card-foreground shadow-sm">
       <CardHeader className="pb-4 relative z-10">
         <div className="flex items-center space-x-2">
@@ -145,7 +161,7 @@ export const EnqueteSection = () => {
               disabled={selectedOpcoes.length === 0 || votarEnquete.isPending}
               className="w-full font-bold py-3 shadow-sm"
             >
-              {votarEnquete.isPending ? 'Votando...' : 'Votar Agora'}
+              {votarEnquete.isPending ? 'Votando...' : user ? 'Votar Agora' : 'Entrar para votar'}
             </Button>
           </div>
         ) : isAdmin ? (
@@ -214,5 +230,7 @@ export const EnqueteSection = () => {
         )}
       </CardContent>
     </Card>
+    <AuthDialog open={authOpen} onOpenChange={setAuthOpen} defaultTab="login" />
+    </>
   );
 };
