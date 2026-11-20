@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +20,7 @@ interface EditAvaliacaoModalProps {
 }
 
 export const EditAvaliacaoModal = ({ isOpen, onClose, avaliacao }: EditAvaliacaoModalProps) => {
+  const submittingRef = useRef(false);
   const [nota, setNota] = useState(avaliacao.nota);
   const [comentario, setComentario] = useState(avaliacao.comentario || '');
   const [hoveredStar, setHoveredStar] = useState(0);
@@ -28,15 +29,17 @@ export const EditAvaliacaoModal = ({ isOpen, onClose, avaliacao }: EditAvaliacao
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+    if (submittingRef.current || isPending || nota < 1 || nota > 5 || comentario.length > 4000) return;
+    submittingRef.current = true;
     editarAvaliacao({
       id: avaliacao.id,
       nota,
-      comentario: comentario.trim() || undefined,
+      comentario: comentario.trim(),
     }, {
       onSuccess: () => {
         onClose();
-      }
+      },
+      onSettled: () => { submittingRef.current = false; }
     });
   };
 
@@ -65,7 +68,7 @@ export const EditAvaliacaoModal = ({ isOpen, onClose, avaliacao }: EditAvaliacao
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(nextOpen) => { if (!nextOpen && submittingRef.current) return; if (!nextOpen) onClose(); }}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Editar Avaliação</DialogTitle>
@@ -97,11 +100,12 @@ export const EditAvaliacaoModal = ({ isOpen, onClose, avaliacao }: EditAvaliacao
               onChange={(e) => setComentario(e.target.value)}
               placeholder="Comentário da avaliação..."
               rows={4}
+              maxLength={4000}
             />
           </div>
           
           <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" className="min-h-11" onClick={onClose}>
+            <Button type="button" variant="outline" className="min-h-11" disabled={isPending} onClick={onClose}>
               Cancelar
             </Button>
             <Button type="submit" className="min-h-11" aria-busy={isPending} disabled={isPending}>
