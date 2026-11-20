@@ -40,7 +40,7 @@ export const Header = ({ sidebarOpen = true }: HeaderProps) => {
     error: notificationsError,
     markAsRead,
     markAllAsRead,
-    isMutating 
+    isProcessing 
   } = useNotifications({ detailsEnabled: notificationsOpen });
 
   // Monitora a URL para abrir o Modal automaticamente na aba correta
@@ -266,7 +266,7 @@ export const Header = ({ sidebarOpen = true }: HeaderProps) => {
                            variant="ghost"
                            size="sm"
                            onClick={() => markAllAsRead()}
-                           disabled={isMutating}
+                           disabled={isProcessing}
                            className="min-h-9 px-2 text-xs"
                          >
                            <Check className="h-3 w-3 mr-1" />
