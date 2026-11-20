@@ -540,3 +540,14 @@ test('vagas públicas exibem todos os tipos cadastráveis e os requisitos', () =
   assert.match(page, /selectedVaga\.requisitos &&/);
   assert.match(page, /\{selectedVaga\.requisitos\}/);
 });
+
+test('últimas vagas confirma cópia somente após sucesso e permite repetir consulta', () => {
+  const home = source('src/components/home/LatestJobCoupons.tsx');
+  assert.match(home, /isLoading, isError, refetch/);
+  assert.match(home, /await navigator\.clipboard\.writeText\(contato\)/);
+  assert.ok(home.indexOf('await navigator.clipboard.writeText(contato)') < home.indexOf('title: "Contato copiado!"'));
+  assert.match(home, /title: "Não foi possível copiar"/);
+  assert.match(home, /if \(isError\)/);
+  assert.match(home, /void refetch\(\)/);
+  assert.match(home, /min-h-10 text-xs/);
+});
