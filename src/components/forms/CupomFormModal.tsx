@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod/v3';
@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useCidades } from '@/hooks/useCidades';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePlanoLimites } from '@/hooks/usePlanoLimites';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -18,15 +18,22 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Tag } from 'lucide-react';
 
 const cupomSchema = z.object({
-  titulo: z.string().min(3, 'Título deve ter pelo menos 3 caracteres'),
-  codigo: z.string().min(3, 'Código deve ter pelo menos 3 caracteres'),
+  titulo: z.string().trim().min(3, 'Título deve ter pelo menos 3 caracteres'),
+  codigo: z.string().trim().min(3, 'Código deve ter pelo menos 3 caracteres'),
   descricao: z.string().optional(),
   tipo: z.enum(['porcentagem', 'valor_fixo']),
   valor: z.number().min(0.01, 'Valor deve ser maior que 0'),
   empresa_id: z.string().uuid('Selecione uma empresa'),
   data_inicio: z.string().min(1, 'Data de início é obrigatória'),
   data_fim: z.string().min(1, 'Data de fim é obrigatória'),
-  quantidade_total: z.number().min(1, 'Quantidade deve ser pelo menos 1').optional(),
+  quantidade_total: z.number().int().min(1, 'Quantidade deve ser pelo menos 1').optional(),
+}).superRefine((data, ctx) => {
+  if (data.tipo === 'porcentagem' && data.valor > 100)
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['valor'], message: 'O desconto máximo é 100%.' });
+  if (new Date(data.data_fim).getTime() <= new Date(data.data_inicio).getTime())
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['data_fim'], message: 'O fim deve ser posterior ao início.' });
+  if (!Number.isFinite(new Date(data.data_inicio).getTime()) || !Number.isFinite(new Date(data.data_fim).getTime()))
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['data_fim'], message: 'Datas inválidas.' });
 });
 
 type CupomFormData = z.infer<typeof cupomSchema>;
@@ -41,18 +48,22 @@ interface CupomFormModalProps {
 
 export const CupomFormModal = ({ open, onOpenChange, empresaId, cupom, onSuccess }: CupomFormModalProps) => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const submittingRef = useRef(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
   const { verificarLimiteCupons } = usePlanoLimites();
 
   // Buscar empresas do usuário logado
-  const { data: empresas } = useQuery({
-    queryKey: ['user-empresas-cupom'],
+  const { data: empresas, isLoading: empresasLoading, isError: empresasError, refetch: refetchEmpresas } = useQuery({
+    queryKey: ['user-empresas-cupom', user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('empresas')
         .select('id, nome')
         .eq('usuario_id', user?.id)
         .eq('ativo', true)
+        .eq('status_aprovacao', 'aprovado')
         .order('nome');
 
       if (error) throw error;
@@ -63,17 +74,26 @@ export const CupomFormModal = ({ open, onOpenChange, empresaId, cupom, onSuccess
 
   const form = useForm<CupomFormData>({
     resolver: zodResolver(cupomSchema),
-    defaultValues: cupom || {
+    defaultValues: cupom ? { ...cupom, data_inicio: cupom.data_inicio?.slice(0, 16), data_fim: cupom.data_fim?.slice(0, 16) } : {
       tipo: 'porcentagem',
       empresa_id: empresaId || '',
     },
   });
 
   const onSubmit = async (data: CupomFormData) => {
+    if (submittingRef.current) return;
+    if (empresasLoading || empresasError || !empresas?.some(e => e.id === data.empresa_id) ||
+        (empresaId && data.empresa_id !== empresaId) ||
+        (cupom && data.empresa_id !== cupom.empresa_id)) {
+      toast({ title: 'Empresa indisponível', description: 'Selecione uma empresa aprovada.', variant: 'destructive' });
+      return;
+    }
+    submittingRef.current = true;
+    setIsSubmitting(true);
     try {
       if (cupom) {
         // Editar cupom existente
-        const { error } = await supabase
+        const { data: updated, error } = await supabase
           .from('cupons')
           .update({
             titulo: data.titulo,
@@ -86,9 +106,13 @@ export const CupomFormModal = ({ open, onOpenChange, empresaId, cupom, onSuccess
             data_fim: data.data_fim,
             quantidade_total: data.quantidade_total || null,
           })
-          .eq('id', cupom.id);
+          .eq('id', cupom.id)
+          .eq('empresa_id', cupom.empresa_id)
+          .select('id')
+          .maybeSingle();
 
         if (error) throw error;
+        if (!updated) throw new Error('Cupom não encontrado ou sem permissão para editar.');
         toast({ title: 'Cupom atualizado com sucesso!' });
       } else {
         // Verificar limite do plano antes de criar novo cupom
@@ -116,6 +140,9 @@ export const CupomFormModal = ({ open, onOpenChange, empresaId, cupom, onSuccess
         toast({ title: 'Cupom criado com sucesso!' });
       }
 
+      void queryClient.invalidateQueries({ queryKey: ['empresa-cupons'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin-cupons'] });
+      void queryClient.invalidateQueries({ queryKey: ['latest-cupons'] });
       form.reset();
       onSuccess?.();
       onOpenChange(false);
@@ -123,14 +150,17 @@ export const CupomFormModal = ({ open, onOpenChange, empresaId, cupom, onSuccess
       console.error('Erro ao salvar cupom:', error);
       toast({ 
         title: `Erro ao ${cupom ? 'atualizar' : 'criar'} cupom`, 
-        description: 'Tente novamente.',
+        description: error instanceof Error ? error.message : 'Tente novamente.',
         variant: 'destructive' 
       });
+    } finally {
+      submittingRef.current = false;
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen && submittingRef.current) return; onOpenChange(nextOpen); }}>
       <DialogContent className="w-[95vw] max-w-[600px] h-[90vh] flex flex-col p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -142,7 +172,7 @@ export const CupomFormModal = ({ open, onOpenChange, empresaId, cupom, onSuccess
         <div className="flex-1 overflow-y-auto pr-2">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="titulo"
@@ -190,7 +220,7 @@ export const CupomFormModal = ({ open, onOpenChange, empresaId, cupom, onSuccess
               )}
             />
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <FormField
                 control={form.control}
                 name="tipo"
@@ -259,10 +289,10 @@ export const CupomFormModal = ({ open, onOpenChange, empresaId, cupom, onSuccess
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Empresa</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value} disabled={empresasLoading || empresasError}>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione uma empresa" />
+                      <SelectTrigger aria-label="Empresa responsável pelo cupom">
+                        <SelectValue placeholder={empresasLoading ? 'Carregando empresas...' : 'Selecione uma empresa'} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -273,12 +303,13 @@ export const CupomFormModal = ({ open, onOpenChange, empresaId, cupom, onSuccess
                       ))}
                     </SelectContent>
                   </Select>
+                  {empresasError && <div role="alert" className="space-y-2 text-sm"><p>Não foi possível carregar as empresas.</p><Button type="button" variant="outline" onClick={() => { void refetchEmpresas(); }}>Tentar novamente</Button></div>}
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="data_inicio"
@@ -313,10 +344,10 @@ export const CupomFormModal = ({ open, onOpenChange, empresaId, cupom, onSuccess
         
         {/* Botões fixos na parte inferior */}
         <div className="flex justify-end gap-2 pt-4 border-t border-border mt-4">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button type="button" variant="outline" disabled={isSubmitting} onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button type="submit" onClick={form.handleSubmit(onSubmit)}>
+          <Button type="submit" disabled={isSubmitting || empresasLoading || empresasError} aria-busy={isSubmitting} onClick={form.handleSubmit(onSubmit)}>
             {cupom ? 'Atualizar Cupom' : 'Criar Cupom'}
           </Button>
         </div>
