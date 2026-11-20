@@ -30,7 +30,7 @@ import { EmpresaPedidosLocais } from './EmpresaPedidosLocais';
 
 export const EmpresaDashboard = () => {
   const { user, profile } = useAuth();
-  const { empresa, empresas, isLoading } = useMinhaEmpresa();
+  const { empresa, empresas, isLoading, error } = useMinhaEmpresa();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState('overview');
   const [editFormOpen, setEditFormOpen] = useState(false);
@@ -60,6 +60,16 @@ export const EmpresaDashboard = () => {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-lg font-medium">Carregando painel da empresa...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div role="alert" className="container mx-auto px-4 py-12 text-center space-y-3">
+        <h2 className="text-xl font-semibold">Não foi possível carregar suas empresas</h2>
+        <p className="text-sm text-muted-foreground">Verifique sua conexão e tente novamente.</p>
+        <Button variant="outline" onClick={() => window.location.reload()}>Tentar novamente</Button>
       </div>
     );
   }
@@ -136,17 +146,19 @@ export const EmpresaDashboard = () => {
 
       {/* Header */}
       <div className="mb-8">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between mb-4">
+          <div className="flex min-w-0 items-center gap-4">
             {empresaAtual.imagem_capa_url && (
               <img
                 src={empresaAtual.imagem_capa_url}
                 alt={empresaAtual.nome}
+                loading="lazy"
+                decoding="async"
                 className="w-16 h-16 rounded-lg object-cover"
               />
             )}
             <div>
-              <h1 className="text-3xl font-bold flex items-center gap-2">
+              <h1 className="text-2xl sm:text-3xl font-bold flex flex-wrap items-center gap-2 break-words">
                 {empresaAtual.nome}
                 {empresaAtual.verificado && (
                   <Badge variant="default" className="bg-blue-600">
@@ -155,7 +167,7 @@ export const EmpresaDashboard = () => {
                   </Badge>
                 )}
               </h1>
-              <div className="flex items-center gap-4 text-muted-foreground mt-1">
+              <div className="flex flex-wrap items-center gap-3 text-muted-foreground mt-1">
                 {empresaAtual.endereco && (
                   <span className="flex items-center gap-1">
                     <MapPin className="w-4 h-4" />
