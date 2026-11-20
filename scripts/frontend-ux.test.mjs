@@ -516,3 +516,15 @@ test('botão compartilhar não reutiliza link curto de outra página', () => {
   assert.match(share, /setShortLinkCache\(\{ sourceUrl: url, shortUrl: result\.short_url \}\)/);
   assert.match(share, /const shareUrl = shortUrl \?\? url/);
 });
+
+test('botão ver detalhes das vagas abre informações e contato da candidatura', () => {
+  const page = source('src/pages/VagasEmprego.tsx');
+  assert.match(page, /const \[selectedVaga, setSelectedVaga\] = useState<Vaga \| null>\(null\)/);
+  assert.match(page, /setSelectedVaga\(vaga\)/);
+  assert.match(page, /onClick=\{\(\) => handleVisualizarVaga\(vaga\)\}/);
+  assert.match(page, /<Dialog open=\{selectedVaga !== null\}/);
+  assert.match(page, /\{selectedVaga\.contato_candidatura\}/);
+  assert.match(page, /\{selectedVaga\.descricao\}/);
+  assert.match(page, /isError \? \(/);
+  assert.match(page, /void refetch\(\)/);
+});
