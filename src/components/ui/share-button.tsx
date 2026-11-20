@@ -19,7 +19,8 @@ export const ShareButton = ({
   size = 'sm',
   className
 }: ShareButtonProps) => {
-  const [shortUrl, setShortUrl] = useState<string | null>(null);
+  const [shortLinkCache, setShortLinkCache] = useState<{ sourceUrl: string; shortUrl: string } | null>(null);
+  const shortUrl = shortLinkCache?.sourceUrl === url ? shortLinkCache.shortUrl : null;
   const {
     createShortUrl,
     copyToClipboard,
@@ -32,7 +33,7 @@ export const ShareButton = ({
     const result = await createShortUrl({ original_url: url });
     if (!result) return null;
 
-    setShortUrl(result.short_url);
+    setShortLinkCache({ sourceUrl: url, shortUrl: result.short_url });
     return result.short_url;
   };
 
