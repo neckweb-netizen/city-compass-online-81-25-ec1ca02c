@@ -20,7 +20,7 @@ export const useAgendamentos = (empresaId?: string) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: agendamentos, isLoading } = useQuery({
+  const { data: agendamentos, isLoading, isError, refetch } = useQuery({
     queryKey: ['agendamentos', empresaId],
     queryFn: async () => {
       if (!empresaId) return [];
@@ -59,7 +59,7 @@ export const useAgendamentos = (empresaId?: string) => {
       return data as string;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['agendamentos'] });
+      void queryClient.invalidateQueries({ queryKey: ['agendamentos'] });
       toast({
         title: 'Agendamento criado!',
         description: 'Seu agendamento foi solicitado com sucesso.',
@@ -76,11 +76,14 @@ export const useAgendamentos = (empresaId?: string) => {
   });
 
   const atualizarStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+    mutationFn: async ({ id, status, fromStatus }: { id: string; status: Agendamento['status']; fromStatus: Agendamento['status'] }) => {
+      if (!empresaId) throw new Error('Empresa não identificada.');
       const { data, error } = await supabase
         .from('agendamentos')
         .update({ status })
         .eq('id', id)
+        .eq('empresa_id', empresaId)
+        .eq('status', fromStatus)
         .select('id')
         .maybeSingle();
 
@@ -88,7 +91,7 @@ export const useAgendamentos = (empresaId?: string) => {
       if (!data) throw new Error('Agendamento não encontrado ou sem permissão para alterar.');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['agendamentos'] });
+      void queryClient.invalidateQueries({ queryKey: ['agendamentos'] });
       toast({
         title: 'Status atualizado',
         description: 'O status do agendamento foi atualizado com sucesso.',
@@ -107,6 +110,8 @@ export const useAgendamentos = (empresaId?: string) => {
   return {
     agendamentos: agendamentos || [],
     isLoading,
+    isError,
+    refetch,
     criarAgendamento: criarAgendamento.mutateAsync,
     atualizarStatus: atualizarStatus.mutate,
     isCreating: criarAgendamento.isPending,
