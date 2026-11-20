@@ -1,5 +1,6 @@
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { getSafeNavigationUrl } from '@/lib/safeNavigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod/v3';
@@ -20,23 +21,23 @@ import { Badge } from '@/components/ui/badge';
 import { X } from 'lucide-react';
 
 const produtoSchema = z.object({
-  nome: z.string().min(1, 'Nome é obrigatório'),
+  nome: z.string().trim().min(2, 'Informe ao menos 2 caracteres'),
   descricao: z.string().optional(),
   preco_original: z.number().min(0.01, 'Preço deve ser maior que zero'),
-  preco_promocional: z.number().optional(),
+  preco_promocional: z.number().positive('O preço promocional deve ser maior que zero').optional(),
   categoria_produto: z.string().optional(),
   imagem_principal_url: z.string().optional(),
   galeria_imagens: z.array(z.string()).optional(),
   ativo: z.boolean().default(true),
   destaque: z.boolean().default(false),
-  estoque_disponivel: z.number().optional(),
+  estoque_disponivel: z.number().int('Estoque deve ser inteiro').min(0, 'Estoque não pode ser negativo').optional(),
   codigo_produto: z.string().optional(),
   tags: z.array(z.string()).optional(),
-  link_compra: z.string().optional(),
+  link_compra: z.string().optional().refine(value => !value || getSafeNavigationUrl(value) !== null, 'Informe um endereço HTTP/HTTPS válido'),
   link_whatsapp: z.string().optional(),
 }).refine(
   (data) => {
-    if (data.preco_promocional && data.preco_promocional >= data.preco_original) {
+    if (data.preco_promocional !== undefined && data.preco_promocional >= data.preco_original) {
       return false;
     }
     return true;
@@ -47,10 +48,15 @@ const produtoSchema = z.object({
   }
 ).refine(
   (data) => {
-    if (data.link_whatsapp && !data.link_whatsapp.startsWith('https://wa.me/') && !data.link_whatsapp.startsWith('https://api.whatsapp.com/')) {
+    if (!data.link_whatsapp) return true;
+    const safe = getSafeNavigationUrl(data.link_whatsapp);
+    if (!safe) return false;
+    try {
+      const url = new URL(safe);
+      return url.protocol === 'https:' && ['wa.me', 'api.whatsapp.com'].includes(url.hostname);
+    } catch {
       return false;
     }
-    return true;
   },
   {
     message: 'Link do WhatsApp deve começar com https://wa.me/ ou https://api.whatsapp.com/',
@@ -65,6 +71,7 @@ interface ProdutoFormProps {
 }
 
 export const ProdutoForm = ({ empresaId, produto, onClose }: ProdutoFormProps) => {
+  const submittingRef = useRef(false);
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>(produto?.tags || []);
 
@@ -79,7 +86,17 @@ export const ProdutoForm = ({ empresaId, produto, onClose }: ProdutoFormProps) =
     watch,
   } = useForm<z.input<typeof produtoSchema>, unknown, z.output<typeof produtoSchema>>({
     resolver: zodResolver(produtoSchema),
-    defaultValues: produto || {
+    defaultValues: produto ? {
+      ...produto,
+      descricao: produto.descricao ?? '',
+      preco_promocional: produto.preco_promocional ?? undefined,
+      estoque_disponivel: produto.estoque_disponivel ?? undefined,
+      categoria_produto: produto.categoria_produto ?? '',
+      imagem_principal_url: produto.imagem_principal_url ?? '',
+      link_compra: produto.link_compra ?? '',
+      link_whatsapp: produto.link_whatsapp ?? '',
+      tags: produto.tags ?? [],
+    } : {
       nome: '',
       descricao: '',
       preco_original: 0,
@@ -100,6 +117,8 @@ export const ProdutoForm = ({ empresaId, produto, onClose }: ProdutoFormProps) =
   const watchedValues = watch();
 
   const onSubmit = async (data: z.output<typeof produtoSchema>) => {
+    if (submittingRef.current || criarProduto.isPending || atualizarProduto.isPending) return;
+    submittingRef.current = true;
     try {
       const produtoData = {
         ...(data as ProdutoInput),
@@ -119,6 +138,8 @@ export const ProdutoForm = ({ empresaId, produto, onClose }: ProdutoFormProps) =
       onClose();
     } catch (error) {
       console.error('Erro ao salvar produto:', error);
+    } finally {
+      submittingRef.current = false;
     }
   };
 
@@ -145,7 +166,7 @@ export const ProdutoForm = ({ empresaId, produto, onClose }: ProdutoFormProps) =
   };
 
   return (
-    <Dialog open onOpenChange={onClose}>
+    <Dialog open onOpenChange={(nextOpen) => { if (!nextOpen && !submittingRef.current && !criarProduto.isPending && !atualizarProduto.isPending) onClose(); }}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
@@ -208,7 +229,7 @@ export const ProdutoForm = ({ empresaId, produto, onClose }: ProdutoFormProps) =
                 id="preco_promocional"
                 type="number"
                 step="0.01"
-                {...register('preco_promocional', { valueAsNumber: true })}
+                {...register('preco_promocional', { setValueAs: value => value === '' ? undefined : Number(value) })}
                 placeholder="0.00"
               />
               {errors.preco_promocional && (
@@ -232,7 +253,7 @@ export const ProdutoForm = ({ empresaId, produto, onClose }: ProdutoFormProps) =
               <Input
                 id="estoque_disponivel"
                 type="number"
-                {...register('estoque_disponivel', { valueAsNumber: true })}
+                {...register('estoque_disponivel', { setValueAs: value => value === '' ? undefined : Number(value) })}
                 placeholder="0"
               />
             </div>
@@ -333,7 +354,7 @@ export const ProdutoForm = ({ empresaId, produto, onClose }: ProdutoFormProps) =
           </div>
 
           <div className="flex gap-2 justify-end">
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" disabled={criarProduto.isPending || atualizarProduto.isPending} onClick={onClose}>
               Cancelar
             </Button>
             <Button 
