@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod/v3';
@@ -75,6 +75,8 @@ interface EventoFormProps {
 export const EventoForm = ({ onSuccess, empresaId }: EventoFormProps) => {
   const [open, setOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const { toast } = useToast();
   const { user, profile } = useAuth();
   const queryClient = useQueryClient();
@@ -141,11 +143,17 @@ export const EventoForm = ({ onSuccess, empresaId }: EventoFormProps) => {
   };
 
   const onSubmit = async (data: EventoFormData) => {
+    if (submittingRef.current || uploading) return;
+    submittingRef.current = true;
+    setIsSubmitting(true);
     try {
-      const podecriar = await verificarLimiteEventos();
-      if (!podecriar) return;
+      const isAdmin = profile?.tipo_conta === 'admin_geral' || profile?.tipo_conta === 'admin_cidade';
+      if (!isAdmin) {
+        const podecriar = await verificarLimiteEventos();
+        if (!podecriar) return;
+      }
 
-      const cidadeId = profile?.cidade_id || empresa?.cidade_id;
+      const cidadeId = empresaId ? empresa?.cidade_id : (profile?.cidade_id || empresa?.cidade_id);
       
       if (!cidadeId) {
         toast({
@@ -166,6 +174,16 @@ export const EventoForm = ({ onSuccess, empresaId }: EventoFormProps) => {
         const [horaFim, minutoFim] = data.horario_fim.split(':');
         dataFim.setHours(parseInt(horaFim), parseInt(minutoFim));
       }
+
+      if (dataFim && dataFim <= dataInicio) {
+        toast({ title: 'Horário inválido', description: 'O horário final deve ser posterior ao início.', variant: 'destructive' });
+        return;
+      }
+      if (dataInicio.getTime() < Date.now() - 60_000) {
+        toast({ title: 'Data inválida', description: 'O início do evento deve ser no futuro.', variant: 'destructive' });
+        return;
+      }
+      if (!user?.id) throw new Error('Faça login para publicar eventos.');
 
       const eventoData = {
         titulo: data.titulo,
@@ -207,9 +225,9 @@ export const EventoForm = ({ onSuccess, empresaId }: EventoFormProps) => {
 
       toast({ title: 'Evento criado com sucesso! Aguardando aprovação.' });
       
-      queryClient.invalidateQueries({ queryKey: ['empresa-eventos'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-eventos'] });
-      queryClient.invalidateQueries({ queryKey: ['eventos'] });
+      void queryClient.invalidateQueries({ queryKey: ['empresa-eventos'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin-eventos'] });
+      void queryClient.invalidateQueries({ queryKey: ['eventos'] });
       
       form.reset();
       if (!empresaId) {
@@ -222,6 +240,9 @@ export const EventoForm = ({ onSuccess, empresaId }: EventoFormProps) => {
         description: error instanceof Error ? error.message : 'Tente novamente.',
         variant: 'destructive' 
       });
+    } finally {
+      submittingRef.current = false;
+      setIsSubmitting(false);
     }
   };
 
@@ -534,11 +555,11 @@ export const EventoForm = ({ onSuccess, empresaId }: EventoFormProps) => {
 
         <div className="flex justify-end gap-2 pt-4 border-t">
           {!empresaId && (
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            <Button type="button" variant="outline" disabled={isSubmitting} onClick={() => setOpen(false)}>
               Cancelar
             </Button>
           )}
-          <Button type="submit" disabled={uploading}>
+          <Button type="submit" disabled={uploading || isSubmitting} aria-busy={isSubmitting}>
             Criar Evento
           </Button>
         </div>
@@ -559,7 +580,7 @@ export const EventoForm = ({ onSuccess, empresaId }: EventoFormProps) => {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen && (submittingRef.current || uploading)) return; setOpen(nextOpen); }}>
       <DialogTrigger asChild>
         <Button>
           <Plus className="w-4 h-4 mr-2" />
