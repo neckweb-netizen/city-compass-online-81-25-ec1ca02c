@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,6 +33,7 @@ interface Vaga {
 const VagasEmprego = () => {
   const { profile } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedCategoria, setSelectedCategoria] = useState('todos');
   const [selectedTipo, setSelectedTipo] = useState('todos');
   const [isVagaModalOpen, setIsVagaModalOpen] = useState(false);
@@ -40,8 +41,13 @@ const VagasEmprego = () => {
   
   const isEmpresa = profile?.tipo_conta === 'empresa';
 
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebouncedSearch(searchTerm.trim()), 300);
+    return () => window.clearTimeout(timeout);
+  }, [searchTerm]);
+
   const { data: vagas = [], isLoading, isError, refetch } = useQuery({
-    queryKey: ['vagas-emprego', searchTerm, selectedCategoria, selectedTipo],
+    queryKey: ['vagas-emprego', debouncedSearch, selectedCategoria, selectedTipo],
     queryFn: async () => {
       let query = supabase
         .from('vagas_emprego')
@@ -52,8 +58,8 @@ const VagasEmprego = () => {
         .eq('ativo', true)
         .order('criado_em', { ascending: false });
 
-      if (searchTerm) {
-        query = query.ilike('titulo', `%${searchTerm}%`);
+      if (debouncedSearch) {
+        query = query.ilike('titulo', `%${debouncedSearch}%`);
       }
 
       if (selectedCategoria !== 'todos') {
@@ -154,6 +160,7 @@ const VagasEmprego = () => {
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
+                  aria-label="Buscar vagas de emprego por título"
                   placeholder="Buscar vagas por título..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -278,8 +285,8 @@ const VagasEmprego = () => {
                         )}
                       </div>
 
-                      <div className="flex items-center justify-between pt-4 border-t border-border">
-                        <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-4 border-t border-border">
+                        <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-sm text-muted-foreground">
                           <div className="flex items-center gap-2">
                             <Eye className="w-4 h-4" />
                             {vaga.visualizacoes} visualizações
@@ -292,7 +299,7 @@ const VagasEmprego = () => {
                         <Button 
                           onClick={() => handleVisualizarVaga(vaga)}
                           size="lg"
-                          className="shadow-lg hover:shadow-xl transition-all duration-300"
+                          className="w-full sm:w-auto shadow-lg hover:shadow-xl transition-all duration-300"
                         >
                           Ver Detalhes
                         </Button>
