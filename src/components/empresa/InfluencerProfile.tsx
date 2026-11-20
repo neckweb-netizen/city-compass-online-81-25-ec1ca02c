@@ -36,11 +36,11 @@ export const InfluencerProfile = ({
     return Object.fromEntries(Object.entries(values).flatMap(([platform, value]) => {
       if (typeof value !== 'string') return [];
       const raw = value.trim();
-      if (!raw || /[\\s\\u0000-\\u001f]/.test(raw) || raw.startsWith('//')) return [];
+      if (!raw || /[\s\u0000-\u001f]/.test(raw) || raw.startsWith('//')) return [];
       // Accept ordinary website addresses without a scheme, never executable URLs.
-      if (!/^https?:\\/\\//i.test(raw) && /^[a-z][a-z0-9+.-]*:/i.test(raw)) return [];
+      if (!/^https?:\/\//i.test(raw) && /^[a-z][a-z0-9+.-]*:/i.test(raw)) return [];
       try {
-        const url = new URL(/^https?:\\/\\//i.test(raw) ? raw : `https://${raw}`);
+        const url = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`);
         if (!['http:', 'https:'].includes(url.protocol) || !url.hostname.includes('.')) return [];
         return [[platform, url.toString()]];
       } catch {
