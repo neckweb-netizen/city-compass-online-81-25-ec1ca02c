@@ -470,3 +470,14 @@ test('influenciadores expandem avaliações sem abrir formulário de nova avalia
   assert.match(profile, /setShowAllReviews\(previous => !previous\)/);
   assert.match(profile, /Mostrar menos avaliações/);
 });
+
+test('links sociais de influenciadores rejeitam destinos inválidos e esquemas não HTTP', () => {
+  const profile = source('src/components/empresa/InfluencerProfile.tsx');
+  assert.match(profile, /typeof value !== 'string'/);
+  assert.match(profile, /new URL\(/);
+  assert.match(profile, /\['http:', 'https:'\]\.includes\(url\.protocol\)/);
+  assert.match(profile, /url\.hostname\.includes\('\.'\)/);
+  assert.match(profile, /raw\.startsWith\('\/\/'\)/);
+  assert.match(profile, /href=\{url\}/);
+  assert.doesNotMatch(profile, /href=\{typeof url === 'string' \? url : '#'\}/);
+});
