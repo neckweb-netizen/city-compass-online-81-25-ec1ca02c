@@ -153,7 +153,13 @@ export const EventoForm = ({ onSuccess, empresaId }: EventoFormProps) => {
         if (!podecriar) return;
       }
 
-      const cidadeId = empresaId ? empresa?.cidade_id : (profile?.cidade_id || empresa?.cidade_id);
+      let cidadeId = profile?.cidade_id || empresa?.cidade_id;
+      if (empresaId) {
+        const { data: empresaSelecionada, error: empresaError } = await supabase
+          .from('empresas').select('cidade_id').eq('id', empresaId).maybeSingle();
+        if (empresaError) throw empresaError;
+        cidadeId = empresaSelecionada?.cidade_id;
+      }
       
       if (!cidadeId) {
         toast({
