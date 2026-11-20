@@ -327,7 +327,8 @@ export const EmpresaVagas = ({ empresaId }: EmpresaVagasProps) => {
     );
   }
 
-  const actionPending = toggleStatusMutation.isPending || deleteVagaMutation.isPending;
+  const actionPending = toggleStatusMutation.isPending || deleteVagaMutation.isPending ||
+    createVagaMutation.isPending || updateVagaMutation.isPending || submittingRef.current;
 
   return (
     <div className="space-y-6">
@@ -344,7 +345,7 @@ export const EmpresaVagas = ({ empresaId }: EmpresaVagasProps) => {
         
         <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
           <DialogTrigger asChild>
-            <Button>
+            <Button disabled={actionPending}>
               <Plus className="w-4 h-4 mr-2" />
               Nova Vaga
             </Button>
@@ -515,7 +516,7 @@ export const EmpresaVagas = ({ empresaId }: EmpresaVagasProps) => {
             <p className="text-muted-foreground mb-6">
               Comece criando sua primeira vaga de emprego para atrair talentos.
             </p>
-            <Button onClick={() => setIsDialogOpen(true)}>
+            <Button disabled={actionPending} onClick={() => setIsDialogOpen(true)}>
               <Plus className="w-4 h-4 mr-2" />
               Criar Primeira Vaga
             </Button>
@@ -568,7 +569,7 @@ export const EmpresaVagas = ({ empresaId }: EmpresaVagasProps) => {
                     <Button
                       size="sm"
                       variant="outline"
-                      disabled={actionPending || createVagaMutation.isPending || updateVagaMutation.isPending}
+                      disabled={actionPending}
                       aria-label={`Editar vaga ${vaga.titulo}`}
                       onClick={() => handleEdit(vaga)}
                     >
@@ -580,7 +581,8 @@ export const EmpresaVagas = ({ empresaId }: EmpresaVagasProps) => {
                       disabled={actionPending}
                       aria-label={`Excluir vaga ${vaga.titulo}`}
                       onClick={() => {
-                        if (confirm('Tem certeza que deseja excluir esta vaga?')) {
+                        if (actionPending) return;
+                        if (confirm(`Excluir a vaga "${vaga.titulo}"? Esta ação não pode ser desfeita.`)) {
                           deleteVagaMutation.mutate(vaga.id);
                         }
                       }}
