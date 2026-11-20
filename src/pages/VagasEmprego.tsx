@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { MapPin, Clock, DollarSign, Eye, Search, Filter, ArrowLeft, Briefcase, Building, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { Dialog } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { VagaFormModal } from '@/components/forms/VagaFormModal';
 
 interface Vaga {
@@ -34,10 +34,11 @@ const VagasEmprego = () => {
   const [selectedCategoria, setSelectedCategoria] = useState('todos');
   const [selectedTipo, setSelectedTipo] = useState<'todos' | 'clt' | 'temporario' | 'estagio' | 'freelance'>('todos');
   const [isVagaModalOpen, setIsVagaModalOpen] = useState(false);
+  const [selectedVaga, setSelectedVaga] = useState<Vaga | null>(null);
   
   const isEmpresa = profile?.tipo_conta === 'empresa';
 
-  const { data: vagas = [], isLoading } = useQuery({
+  const { data: vagas = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['vagas-emprego', searchTerm, selectedCategoria, selectedTipo],
     queryFn: async () => {
       let query = supabase
@@ -83,8 +84,10 @@ const VagasEmprego = () => {
   });
 
 
-  const handleVisualizarVaga = async (vagaId: string) => {
-    await supabase.rpc('incrementar_visualizacao_vaga', { vaga_id: vagaId });
+  const handleVisualizarVaga = (vaga: Vaga) => {
+    setSelectedVaga(vaga);
+    // Uma falha ao registrar a visualização não impede o acesso à vaga.
+    void supabase.rpc('incrementar_visualizacao_vaga', { vaga_id: vaga.id }).then(() => undefined, () => undefined);
   };
 
   const getTipoVagaLabel = (tipo: string) => {
@@ -206,6 +209,14 @@ const VagasEmprego = () => {
                 </Card>
               ))}
             </div>
+          ) : isError ? (
+            <Card role="alert" className="shadow-lg">
+              <CardContent className="space-y-3 py-12 text-center">
+                <h3 className="text-lg font-semibold">Não foi possível carregar as vagas</h3>
+                <p className="text-sm text-muted-foreground">Verifique sua conexão e tente novamente.</p>
+                <Button type="button" variant="outline" onClick={() => { void refetch(); }}>Tentar novamente</Button>
+              </CardContent>
+            </Card>
           ) : vagas.length === 0 ? (
             <Card className="shadow-lg">
               <CardContent className="py-16 text-center">
@@ -268,7 +279,7 @@ const VagasEmprego = () => {
                           </div>
                         </div>
                         <Button 
-                          onClick={() => handleVisualizarVaga(vaga.id)}
+                          onClick={() => handleVisualizarVaga(vaga)}
                           size="lg"
                           className="shadow-lg hover:shadow-xl transition-all duration-300"
                         >
@@ -289,6 +300,32 @@ const VagasEmprego = () => {
           )}
         </div>
       </div>
+
+      <Dialog open={selectedVaga !== null} onOpenChange={(open) => { if (!open) setSelectedVaga(null); }}>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{selectedVaga?.titulo}</DialogTitle>
+            <DialogDescription>Informações e contato para candidatura</DialogDescription>
+          </DialogHeader>
+          {selectedVaga && (
+            <div className="space-y-4 text-sm">
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="secondary">{getTipoVagaLabel(selectedVaga.tipo_vaga)}</Badge>
+                {selectedVaga.faixa_salarial && <Badge variant="outline">{selectedVaga.faixa_salarial}</Badge>}
+              </div>
+              <div>
+                <h3 className="mb-1 font-semibold">Descrição da vaga</h3>
+                <p className="whitespace-pre-wrap break-words text-muted-foreground">{selectedVaga.descricao}</p>
+              </div>
+              <div className="rounded-xl border bg-muted/30 p-4">
+                <h3 className="font-semibold">Como se candidatar</h3>
+                <p className="mt-1 whitespace-pre-wrap break-words">{selectedVaga.forma_candidatura}</p>
+                <p className="mt-2 break-all font-medium">{selectedVaga.contato_candidatura}</p>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Botão Flutuante para Empresas */}
       {isEmpresa && (
