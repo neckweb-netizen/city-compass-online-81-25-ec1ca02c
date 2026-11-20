@@ -44,18 +44,23 @@ export interface ProdutoInput {
 export const useProdutos = (empresaId?: string) => {
   return useQuery({
     queryKey: ['produtos', empresaId],
+    staleTime: 60_000,
     queryFn: async () => {
       let query = supabase
         .from('produtos')
         .select(`
           *,
-          empresas(
+          empresas!inner(
             id,
             nome,
-            verificado
+            verificado,
+            ativo,
+            status_aprovacao
           )
         `)
         .eq('ativo', true)
+        .eq('empresas.ativo', true)
+        .eq('empresas.status_aprovacao', 'aprovado')
         .order('destaque', { ascending: false })
         .order('criado_em', { ascending: false });
 
@@ -78,6 +83,7 @@ export const useProdutos = (empresaId?: string) => {
 export const useProdutosPorEmpresa = (empresaId: string) => {
   return useQuery({
     queryKey: ['produtos', 'empresa', empresaId],
+    staleTime: 30_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('produtos')
@@ -116,7 +122,7 @@ export const useCriarProduto = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['produtos'] });
+      void queryClient.invalidateQueries({ queryKey: ['produtos'] });
       toast.success('Produto criado com sucesso!');
     },
     onError: (error: any) => {
@@ -130,23 +136,25 @@ export const useAtualizarProduto = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, ...produto }: Partial<ProdutoInput> & { id: string }) => {
+    mutationFn: async ({ id, empresa_id, ...produto }: Partial<ProdutoInput> & { id: string; empresa_id: string }) => {
       const { data, error } = await supabase
         .from('produtos')
         .update(produto)
         .eq('id', id)
+        .eq('empresa_id', empresa_id)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Erro ao atualizar produto:', error);
         throw error;
       }
 
+      if (!data) throw new Error('Produto não encontrado ou sem permissão para editar.');
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['produtos'] });
+      void queryClient.invalidateQueries({ queryKey: ['produtos'] });
       toast.success('Produto atualizado com sucesso!');
     },
     onError: (error: any) => {
@@ -160,19 +168,21 @@ export const useExcluirProduto = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
+    mutationFn: async ({ id, empresaId }: { id: string; empresaId: string }) => {
+      const { data, error } = await supabase
         .from('produtos')
         .update({ ativo: false })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('empresa_id', empresaId)
+        .select('id')
+        .maybeSingle();
 
-      if (error) {
-        console.error('Erro ao excluir produto:', error);
-        throw error;
-      }
+      if (error) throw error;
+      if (!data) throw new Error('Produto não encontrado ou sem permissão para desativar.');
+      return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['produtos'] });
+      void queryClient.invalidateQueries({ queryKey: ['produtos'] });
       toast.success('Produto excluído com sucesso!');
     },
     onError: (error: any) => {
