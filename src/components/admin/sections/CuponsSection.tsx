@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/alert-dialog';
 
 export const CuponsSection = () => {
-  const { cupons, loading, toggleCupom, deleteCupom, refetch } = useAdminCupons();
+  const { cupons, loading, error, isProcessing, toggleCupom, deleteCupom, refetch } = useAdminCupons();
 
   if (loading) {
     return (
@@ -35,6 +35,13 @@ export const CuponsSection = () => {
       </div>
     );
   }
+
+  if (error) return (
+    <div role="alert" className="space-y-3 rounded-xl border p-6 text-center">
+      <p>Não foi possível carregar os cupons.</p>
+      <Button variant="outline" onClick={() => { void refetch(); }}>Tentar novamente</Button>
+    </div>
+  );
 
   const isExpired = (dataFim: string) => new Date(dataFim) < new Date();
   const isActive = (dataInicio: string, dataFim: string) => {
@@ -159,6 +166,8 @@ export const CuponsSection = () => {
                 <div className="flex items-center gap-2">
                   <Switch
                     checked={cupom.ativo}
+                    disabled={isProcessing}
+                    aria-label={`Ativar ou desativar cupom ${cupom.titulo}`}
                     onCheckedChange={(checked) => 
                       toggleCupom({ id: cupom.id, ativo: checked })
                     }
@@ -171,7 +180,7 @@ export const CuponsSection = () => {
                   
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button size="sm" variant="destructive">
+                      <Button size="sm" variant="destructive" disabled={isProcessing} aria-label={`Excluir cupom ${cupom.titulo}`}>
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </AlertDialogTrigger>
@@ -186,6 +195,7 @@ export const CuponsSection = () => {
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
                         <AlertDialogAction
+                          disabled={isProcessing}
                           onClick={() => deleteCupom(cupom.id)}
                           className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
