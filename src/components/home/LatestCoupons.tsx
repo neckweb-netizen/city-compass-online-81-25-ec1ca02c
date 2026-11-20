@@ -17,18 +17,20 @@ export const LatestCoupons = ({ cidadeId }: LatestCouponsProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const { data: cupons, isLoading, error } = useQuery({
+  const { data: cupons, isLoading, error, refetch } = useQuery({
     queryKey: ['latest-cupons', cidadeId],
     queryFn: async () => {
-      console.log('Buscando cupons com cidade ID:', cidadeId);
-      
+
       let query = supabase
         .from('cupons')
         .select(`
           *,
-          empresas!inner(nome, id, cidade_id)
+          empresas!inner(nome, id, cidade_id, ativo, status_aprovacao)
         `)
         .eq('ativo', true)
+        .eq('empresas.ativo', true)
+        .eq('empresas.status_aprovacao', 'aprovado')
+        .lte('data_inicio', new Date().toISOString())
         .gte('data_fim', new Date().toISOString())
         .order('criado_em', { ascending: false });
 
@@ -44,17 +46,18 @@ export const LatestCoupons = ({ cidadeId }: LatestCouponsProps) => {
         throw error;
       }
       
-      console.log('Cupons encontrados:', data);
-      return data;
+return data;
     }
   });
 
-  const copyToClipboard = (codigo: string) => {
-    navigator.clipboard.writeText(codigo);
-    toast({
-      title: "Código copiado!",
-      description: "O código do cupom foi copiado para a área de transferência.",
-    });
+  const copyToClipboard = async (codigo: string) => {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('Cópia indisponível');
+      await navigator.clipboard.writeText(codigo);
+      toast({ title: 'Código copiado!', description: 'O código do cupom foi copiado.' });
+    } catch {
+      toast({ title: 'Não foi possível copiar', description: 'Copie manualmente o código exibido.', variant: 'destructive' });
+    }
   };
 
   const renderContent = () => {
@@ -68,8 +71,7 @@ export const LatestCoupons = ({ cidadeId }: LatestCouponsProps) => {
     }
 
     if (error) {
-      console.error('Erro na query de cupons:', error);
-      return (
+return (
         <CardContent className="text-center py-8 space-y-4">
           <div className="text-4xl">⚠️</div>
           <div className="space-y-2">
@@ -77,6 +79,7 @@ export const LatestCoupons = ({ cidadeId }: LatestCouponsProps) => {
             <p className="text-muted-foreground text-sm">
               Ocorreu um erro ao buscar os cupons. Tente novamente.
             </p>
+            <Button type="button" variant="outline" onClick={() => { void refetch(); }}>Tentar novamente</Button>
           </div>
         </CardContent>
       );
@@ -140,8 +143,8 @@ export const LatestCoupons = ({ cidadeId }: LatestCouponsProps) => {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => copyToClipboard(cupom.codigo)}
-                      className="w-full h-6 sm:h-8 text-xs"
+                      onClick={() => { void copyToClipboard(cupom.codigo); }}
+                      className="w-full min-h-10 text-xs"
                     >
                       <Copy className="h-3 w-3 mr-1" />
                       Copiar
