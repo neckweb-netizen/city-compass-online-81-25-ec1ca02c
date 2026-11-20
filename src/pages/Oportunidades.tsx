@@ -131,8 +131,17 @@ const Oportunidades = () => {
           {/* Card para Empresas Postarem Vagas */}
           {isEmpresa && (
             <Card
-              className="group hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 shadow-lg hover:-translate-y-2 bg-gradient-to-br from-primary/5 via-card to-primary/10"
+              role="button"
+              tabIndex={0}
+              aria-label="Publicar nova vaga de emprego"
+              className="group hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 shadow-lg hover:-translate-y-2 bg-gradient-to-br from-primary/5 via-card to-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               onClick={() => setIsVagaModalOpen(true)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  setIsVagaModalOpen(true);
+                }
+              }}
             >
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-3 text-primary group-hover:scale-105 transition-transform duration-300">
@@ -184,7 +193,7 @@ const Oportunidades = () => {
               <Badge
                 key={categoria}
                 variant="secondary"
-                className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-all duration-300 px-4 py-2 text-sm font-medium hover:scale-105 hover:shadow-md"
+                className="px-4 py-2 text-sm font-medium"
               >
                 {categoria}
               </Badge>
