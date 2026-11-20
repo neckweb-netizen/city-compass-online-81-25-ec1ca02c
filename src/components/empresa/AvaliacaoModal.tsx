@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -16,6 +16,7 @@ interface AvaliacaoModalProps {
 
 export const AvaliacaoModal = ({ open, onOpenChange, empresaId, empresaNome }: AvaliacaoModalProps) => {
   const { user } = useAuth();
+  const submittingRef = useRef(false);
   const [nota, setNota] = useState<number>(0);
   const [comentario, setComentario] = useState('');
   const [hoveredStar, setHoveredStar] = useState<number>(0);
@@ -27,10 +28,8 @@ export const AvaliacaoModal = ({ open, onOpenChange, empresaId, empresaNome }: A
       return;
     }
     
-    if (nota === 0) {
-      return;
-    }
-
+    if (nota === 0 || comentario.length > 4000 || submittingRef.current || criarAvaliacaoMutation.isPending) return;
+    submittingRef.current = true;
     criarAvaliacaoMutation.mutate({
       empresaId,
       nota,
@@ -41,7 +40,8 @@ export const AvaliacaoModal = ({ open, onOpenChange, empresaId, empresaNome }: A
         setNota(0);
         setComentario('');
         onOpenChange(false);
-      }
+      },
+      onSettled: () => { submittingRef.current = false; }
     });
   };
 
@@ -76,7 +76,7 @@ export const AvaliacaoModal = ({ open, onOpenChange, empresaId, empresaNome }: A
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen && submittingRef.current) return; onOpenChange(nextOpen); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Avaliar {empresaNome}</DialogTitle>
@@ -111,6 +111,7 @@ export const AvaliacaoModal = ({ open, onOpenChange, empresaId, empresaNome }: A
               value={comentario}
               onChange={(e) => setComentario(e.target.value)}
               rows={4}
+              maxLength={4000}
               className="resize-none"
             />
           </div>
