@@ -234,6 +234,13 @@ export function AdminVagas() {
     }
   };
 
+  const pending = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
+  const handleDialogOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && pending) return;
+    setIsDialogOpen(nextOpen);
+    if (!nextOpen) setEditingVaga(null);
+  };
+
   if (isLoading) return <div role="status" className="p-6">Carregando vagas...</div>;
   if (isError) return (
     <div role="alert" className="space-y-3 p-6 text-center">
@@ -250,9 +257,9 @@ export function AdminVagas() {
           <p className="text-muted-foreground">Gerencie as vagas de emprego disponíveis</p>
         </div>
         
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
           <DialogTrigger asChild>
-            <Button onClick={() => setEditingVaga(null)}>
+            <Button disabled={pending} onClick={() => { setEditingVaga(null); setSelectedEmpresaId(''); }}>
               <Plus className="h-4 w-4 mr-2" />
               Nova Vaga
             </Button>
@@ -265,8 +272,22 @@ export function AdminVagas() {
               </DialogDescription>
             </DialogHeader>
             
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <form key={editingVaga?.id ?? 'new'} onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label>Empresa responsável *</Label>
+                <Select value={selectedEmpresaId} onValueChange={setSelectedEmpresaId} disabled={!!editingVaga}>
+                  <SelectTrigger aria-label="Empresa responsável pela vaga">
+                    <SelectValue placeholder="Selecione uma empresa aprovada" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {empresas.map(empresa => (
+                      <SelectItem key={empresa.id} value={empresa.id}>{empresa.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {empresas.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma empresa aprovada disponível.</p>}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="titulo">Título da Vaga</Label>
                   <Input
@@ -304,21 +325,12 @@ export function AdminVagas() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="cidade_id">Cidade</Label>
-                  <Select name="cidade_id" defaultValue={editingVaga?.cidade_id || ''}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a cidade" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {cidades?.map((cidade) => (
-                        <SelectItem key={cidade.id} value={cidade.id}>
-                          {cidade.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <p className="rounded-md border px-3 py-2 text-sm text-muted-foreground">
+                    {cidades?.find(cidade => cidade.id === (editingVaga?.cidade_id || empresas.find(e => e.id === selectedEmpresaId)?.cidade_id))?.nome || 'Definida pela empresa'}
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="faixa_salarial">Faixa Salarial</Label>
@@ -331,7 +343,7 @@ export function AdminVagas() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="tipo_vaga">Tipo de Vaga</Label>
                   <Select name="tipo_vaga" defaultValue={editingVaga?.tipo_vaga || ''}>
@@ -343,6 +355,9 @@ export function AdminVagas() {
                       <SelectItem value="temporario">Temporário</SelectItem>
                       <SelectItem value="estagio">Estágio</SelectItem>
                       <SelectItem value="freelance">Freelance</SelectItem>
+                      <SelectItem value="pj">PJ</SelectItem>
+                      <SelectItem value="meio_periodo">Meio Período</SelectItem>
+                      <SelectItem value="integral">Tempo Integral</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -360,16 +375,21 @@ export function AdminVagas() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="forma_candidatura">Forma de Candidatura</Label>
-                  <Input
-                    id="forma_candidatura"
-                    name="forma_candidatura"
-                    defaultValue={editingVaga?.forma_candidatura}
-                    required
-                    placeholder="Ex: email, presencial, whatsapp"
-                  />
+                  <Select name="forma_candidatura" defaultValue={editingVaga?.forma_candidatura || ''}>
+                    <SelectTrigger aria-label="Forma de candidatura">
+                      <SelectValue placeholder="Selecione a forma" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="email">E-mail</SelectItem>
+                      <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                      <SelectItem value="presencial">Presencial</SelectItem>
+                      <SelectItem value="site">Site da empresa</SelectItem>
+                      <SelectItem value="linkedin">LinkedIn</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="contato_candidatura">Contato para Candidatura</Label>
@@ -397,11 +417,12 @@ export function AdminVagas() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setIsDialogOpen(false)}
+                  onClick={() => handleDialogOpenChange(false)}
+                  disabled={pending}
                 >
                   Cancelar
                 </Button>
-                <Button type="submit">
+                <Button type="submit" disabled={pending || (!editingVaga && !selectedEmpresaId)}>
                   {editingVaga ? 'Atualizar' : 'Criar'}
                 </Button>
               </div>
@@ -432,8 +453,11 @@ export function AdminVagas() {
                   <Button
                     variant="ghost"
                     size="sm"
+                    disabled={pending}
+                    aria-label={`Editar vaga ${vaga.titulo}`}
                     onClick={() => {
                       setEditingVaga(vaga);
+                      setSelectedEmpresaId(vaga.criado_por);
                       setIsDialogOpen(true);
                     }}
                   >
@@ -442,7 +466,13 @@ export function AdminVagas() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => deleteMutation.mutate(vaga.id)}
+                    disabled={pending}
+                    aria-label={`Excluir vaga ${vaga.titulo}`}
+                    onClick={() => {
+                      if (window.confirm(`Excluir a vaga "${vaga.titulo}"? Esta ação não pode ser desfeita.`)) {
+                        deleteMutation.mutate(vaga.id);
+                      }
+                    }}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
