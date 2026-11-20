@@ -17,6 +17,7 @@ interface Vaga {
   id: string;
   titulo: string;
   descricao: string;
+  requisitos: string | null;
   tipo_vaga: string;
   faixa_salarial: string | null;
   forma_candidatura: string;
@@ -32,7 +33,7 @@ const VagasEmprego = () => {
   const { profile } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategoria, setSelectedCategoria] = useState('todos');
-  const [selectedTipo, setSelectedTipo] = useState<'todos' | 'clt' | 'temporario' | 'estagio' | 'freelance'>('todos');
+  const [selectedTipo, setSelectedTipo] = useState('todos');
   const [isVagaModalOpen, setIsVagaModalOpen] = useState(false);
   const [selectedVaga, setSelectedVaga] = useState<Vaga | null>(null);
   
@@ -95,7 +96,10 @@ const VagasEmprego = () => {
       'clt': 'CLT',
       'temporario': 'Temporário',
       'estagio': 'Estágio',
-      'freelance': 'Freelance'
+      'freelance': 'Freelance',
+      'pj': 'PJ',
+      'meio_periodo': 'Meio Período',
+      'integral': 'Tempo Integral'
     };
     return labels[tipo as keyof typeof labels] || tipo;
   };
@@ -105,7 +109,10 @@ const VagasEmprego = () => {
       'clt': 'bg-green-100 text-green-800',
       'temporario': 'bg-blue-100 text-blue-800',
       'estagio': 'bg-yellow-100 text-yellow-800',
-      'freelance': 'bg-purple-100 text-purple-800'
+      'freelance': 'bg-purple-100 text-purple-800',
+      'pj': 'bg-indigo-100 text-indigo-800',
+      'meio_periodo': 'bg-cyan-100 text-cyan-800',
+      'integral': 'bg-teal-100 text-teal-800'
     };
     return colors[tipo as keyof typeof colors] || 'bg-gray-100 text-gray-800';
   };
@@ -167,7 +174,7 @@ const VagasEmprego = () => {
                 </SelectContent>
               </Select>
 
-              <Select value={selectedTipo} onValueChange={(value) => setSelectedTipo(value as 'todos' | 'clt' | 'temporario' | 'estagio' | 'freelance')}>
+              <Select value={selectedTipo} onValueChange={setSelectedTipo}>
                 <SelectTrigger className="h-12 border-2 focus:border-primary/50 transition-colors duration-300">
                   <SelectValue placeholder="Tipo de contrato" />
                 </SelectTrigger>
@@ -177,6 +184,9 @@ const VagasEmprego = () => {
                   <SelectItem value="temporario">Temporário</SelectItem>
                   <SelectItem value="estagio">Estágio</SelectItem>
                   <SelectItem value="freelance">Freelance</SelectItem>
+                  <SelectItem value="pj">PJ</SelectItem>
+                  <SelectItem value="meio_periodo">Meio Período</SelectItem>
+                  <SelectItem value="integral">Tempo Integral</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -317,6 +327,12 @@ const VagasEmprego = () => {
                 <h3 className="mb-1 font-semibold">Descrição da vaga</h3>
                 <p className="whitespace-pre-wrap break-words text-muted-foreground">{selectedVaga.descricao}</p>
               </div>
+              {selectedVaga.requisitos && (
+                <div>
+                  <h3 className="mb-1 font-semibold">Requisitos</h3>
+                  <p className="whitespace-pre-wrap break-words text-muted-foreground">{selectedVaga.requisitos}</p>
+                </div>
+              )}
               <div className="rounded-xl border bg-muted/30 p-4">
                 <h3 className="font-semibold">Como se candidatar</h3>
                 <p className="mt-1 whitespace-pre-wrap break-words">{selectedVaga.forma_candidatura}</p>
