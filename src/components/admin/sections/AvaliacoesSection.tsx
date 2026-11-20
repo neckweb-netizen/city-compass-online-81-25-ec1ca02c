@@ -1,5 +1,7 @@
 
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,7 +12,16 @@ import { EditAvaliacaoModal } from '@/components/admin/forms/EditAvaliacaoModal'
 
 export const AvaliacoesSection = () => {
   const [editingAvaliacao, setEditingAvaliacao] = useState<any>(null);
-  const { data: avaliacoes, isLoading } = useAdminAvaliacoes();
+  const { data: avaliacoes, isLoading, isError, refetch } = useAdminAvaliacoes();
+  const { data: reports = [], isError: reportsError, refetch: refetchReports } = useQuery({
+    queryKey: ['admin-denuncias-avaliacoes'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('denuncias_avaliacoes' as any)
+        .select('id,avaliacao_id,motivo,criado_em').order('criado_em', { ascending: false }).limit(100);
+      if (error) throw error;
+      return (data || []) as unknown as Array<{ id: string; avaliacao_id: string; motivo: string; criado_em: string }>;
+    },
+  });
   const { mutate: removerAvaliacao, isPending: isRemoving } = useRemoverAvaliacao();
 
   if (isLoading) {
@@ -26,6 +37,13 @@ export const AvaliacoesSection = () => {
     );
   }
 
+  if (isError) return (
+    <div role="alert" className="space-y-3 rounded-xl border p-6 text-center">
+      <p>Não foi possível carregar as avaliações.</p>
+      <Button variant="outline" onClick={() => { void refetch(); }}>Tentar novamente</Button>
+    </div>
+  );
+
   const renderStars = (nota: number) => {
     return Array.from({ length: 5 }, (_, i) => (
       <Star
@@ -39,7 +57,7 @@ export const AvaliacoesSection = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-wrap justify-between items-center gap-3">
         <div>
           <h2 className="text-3xl font-bold tracking-tight text-foreground">Gestão de Avaliações</h2>
           <p className="text-muted-foreground">
@@ -51,6 +69,8 @@ export const AvaliacoesSection = () => {
         </Badge>
       </div>
       
+      {reportsError ? <div role="alert" className="space-y-2 rounded-lg border p-4"><p>Não foi possível carregar as denúncias.</p><Button variant="outline" onClick={() => { void refetchReports(); }}>Tentar novamente</Button></div> : reports.length > 0 ? <Card><CardHeader><CardTitle>Denúncias recebidas ({reports.length})</CardTitle></CardHeader><CardContent className="space-y-3">{reports.map(report => <div key={report.id} className="rounded-lg border p-3 text-sm"><p className="font-medium">Avaliação: {report.avaliacao_id}</p><p className="mt-1 break-words">{report.motivo}</p><p className="mt-1 text-xs text-muted-foreground">{new Date(report.criado_em).toLocaleDateString('pt-BR')}</p></div>)}</CardContent></Card> : null}
+
       <div className="grid gap-4">
         {avaliacoes?.map((avaliacao) => (
           <Card key={avaliacao.id}>
@@ -89,13 +109,15 @@ export const AvaliacoesSection = () => {
                     <Button
                       size="sm"
                       variant="outline"
+                      disabled={isRemoving}
+                      aria-label={`Editar avaliação de ${avaliacao.usuarios?.nome || 'usuário'}`}
                       onClick={() => setEditingAvaliacao(avaliacao)}
                     >
                       <Edit className="w-4 h-4" />
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700">
+                        <Button size="sm" variant="outline" disabled={isRemoving} aria-label={`Remover avaliação de ${avaliacao.usuarios?.nome || 'usuário'}`} className="text-red-600 hover:text-red-700">
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </AlertDialogTrigger>
