@@ -502,3 +502,17 @@ test('compartilhamento social abre links diretamente sem popup assíncrono', () 
   assert.doesNotMatch(share, /window\.open\(/);
   assert.match(share, /const urlToCopy = await getOrCreateShortUrl\(\)/);
 });
+
+test('cópia de link só confirma sucesso quando navegador retorna verdadeiro', () => {
+  const hook = source('src/hooks/useShortUrls.tsx');
+  assert.match(hook, /const copied = document\.execCommand\('copy'\)/);
+  assert.match(hook, /if \(!copied\) throw new Error/);
+  assert.ok(hook.indexOf("if (!copied) throw new Error") < hook.indexOf('title: "Copiado!"', hook.indexOf("const copied = document.execCommand")));
+});
+
+test('botão compartilhar não reutiliza link curto de outra página', () => {
+  const share = source('src/components/ui/share-button.tsx');
+  assert.match(share, /shortLinkCache\?\.sourceUrl === url \? shortLinkCache\.shortUrl : null/);
+  assert.match(share, /setShortLinkCache\(\{ sourceUrl: url, shortUrl: result\.short_url \}\)/);
+  assert.match(share, /const shareUrl = shortUrl \?\? url/);
+});
