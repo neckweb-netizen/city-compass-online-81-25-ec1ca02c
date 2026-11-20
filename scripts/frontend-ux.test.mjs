@@ -452,3 +452,21 @@ test('perfil de empresa abre lista de avaliações e eventos do influenciador', 
   assert.match(page, /onAvaliacaoClick=\{handleAvaliar\}/);
   assert.match(page, /\{isInfluencer \? \(\s*<>/);
 });
+
+test('eventos de empresas mostram erro recuperável sem confundir com ausência de eventos', () => {
+  const events = source('src/components/empresa/EmpresaEventosList.tsx');
+  assert.match(events, /isLoading, isError, refetch/);
+  assert.match(events, /if \(isError\)/);
+  assert.match(events, /Não foi possível carregar os eventos/);
+  assert.match(events, /void refetch\(\)/);
+  assert.match(events, /Nenhum evento disponível/);
+});
+
+test('influenciadores expandem avaliações sem abrir formulário de nova avaliação', () => {
+  const profile = source('src/components/empresa/InfluencerProfile.tsx');
+  assert.match(profile, /const \[showAllReviews, setShowAllReviews\] = useState\(false\)/);
+  assert.match(profile, /showAllReviews \? avaliacoes : avaliacoes\.slice\(0, 3\)/);
+  assert.match(profile, /aria-expanded=\{showAllReviews\}/);
+  assert.match(profile, /setShowAllReviews\(previous => !previous\)/);
+  assert.match(profile, /Mostrar menos avaliações/);
+});
