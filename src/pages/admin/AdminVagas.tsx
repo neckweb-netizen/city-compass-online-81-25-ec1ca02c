@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Trash2, Edit, Plus, Briefcase, MapPin, Clock, DollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { isValidJobApplicationContact } from '@/lib/jobApplication';
 import {
   Dialog,
   DialogContent,
@@ -32,7 +33,7 @@ interface Vaga {
   descricao: string;
   categoria_id: string;
   cidade_id: string;
-  tipo_vaga: 'clt' | 'temporario' | 'estagio' | 'freelance';
+  tipo_vaga: string;
   requisitos?: string;
   faixa_salarial?: string;
   forma_candidatura: string;
@@ -50,7 +51,7 @@ interface VagaInput {
   descricao: string;
   categoria_id: string;
   cidade_id: string;
-  tipo_vaga: 'clt' | 'temporario' | 'estagio' | 'freelance';
+  tipo_vaga: string;
   requisitos: string | null;
   faixa_salarial: string | null;
   forma_candidatura: string;
@@ -65,9 +66,10 @@ interface VagaUpdate extends VagaInput {
 export function AdminVagas() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingVaga, setEditingVaga] = useState<Vaga | null>(null);
+  const [selectedEmpresaId, setSelectedEmpresaId] = useState('');
   const queryClient = useQueryClient();
 
-  const { data: vagas, isLoading } = useQuery({
+  const { data: vagas, isLoading, isError, refetch } = useQuery({
     queryKey: ['admin-vagas'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -84,8 +86,9 @@ export function AdminVagas() {
     queryKey: ['categorias'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('categorias')
+        .from('categorias_oportunidades')
         .select('id, nome')
+        .eq('tipo', 'vaga')
         .eq('ativo', true);
       
       if (error) throw error;
@@ -106,13 +109,36 @@ export function AdminVagas() {
     }
   });
 
+  const { data: empresas = [] } = useQuery({
+    queryKey: ['admin-vagas-empresas'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('empresas')
+        .select('id, nome, cidade_id').eq('ativo', true)
+        .eq('status_aprovacao', 'aprovado').order('nome');
+      if (error) throw error;
+      return data || [];
+    }
+  });
+  const refreshJobLists = () => {
+    void queryClient.invalidateQueries({ queryKey: ['admin-vagas'] });
+    void queryClient.invalidateQueries({ queryKey: ['empresa-vagas'] });
+    void queryClient.invalidateQueries({ queryKey: ['vagas-emprego'] });
+    void queryClient.invalidateQueries({ queryKey: ['latest-job-coupons'] });
+  };
+
   const createMutation = useMutation({
     mutationFn: async (vaga: VagaInput) => {
+      const { data: empresa, error: empresaError } = await supabase.from('empresas')
+        .select('id, cidade_id').eq('id', selectedEmpresaId)
+        .eq('ativo', true).eq('status_aprovacao', 'aprovado').maybeSingle();
+      if (empresaError) throw empresaError;
+      if (!empresa?.cidade_id) throw new Error('Selecione uma empresa aprovada com cidade cadastrada.');
       const { data, error } = await supabase
         .from('vagas_emprego')
         .insert({
           ...vaga,
-          criado_por: '00000000-0000-0000-0000-000000000000', // Placeholder para admin
+          criado_por: empresa.id,
+          cidade_id: empresa.cidade_id,
           visualizacoes: 0,
           destaque: false
         })
@@ -123,7 +149,7 @@ export function AdminVagas() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-vagas'] });
+      refreshJobLists();
       toast.success('Vaga criada com sucesso!');
       setIsDialogOpen(false);
       setEditingVaga(null);
@@ -147,7 +173,7 @@ export function AdminVagas() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-vagas'] });
+      refreshJobLists();
       toast.success('Vaga atualizada com sucesso!');
       setIsDialogOpen(false);
       setEditingVaga(null);
@@ -159,15 +185,13 @@ export function AdminVagas() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('vagas_emprego')
-        .delete()
-        .eq('id', id);
-      
+      const { data: removed, error } = await supabase.from('vagas_emprego')
+        .delete().eq('id', id).select('id').maybeSingle();
       if (error) throw error;
+      if (!removed) throw new Error('Vaga não encontrada ou sem permissão para excluir.');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-vagas'] });
+      refreshJobLists();
       toast.success('Vaga excluída com sucesso!');
     },
     onError: (error: Error) => {
@@ -183,8 +207,8 @@ export function AdminVagas() {
       titulo: formData.get('titulo') as string,
       descricao: formData.get('descricao') as string,
       categoria_id: formData.get('categoria_id') as string,
-      cidade_id: formData.get('cidade_id') as string,
-      tipo_vaga: formData.get('tipo_vaga') as 'clt' | 'temporario' | 'estagio' | 'freelance',
+      cidade_id: editingVaga?.cidade_id || empresas.find(e => e.id === selectedEmpresaId)?.cidade_id || '',
+      tipo_vaga: formData.get('tipo_vaga') as string,
       requisitos: formData.get('requisitos') as string || null,
       faixa_salarial: formData.get('faixa_salarial') as string || null,
       forma_candidatura: formData.get('forma_candidatura') as string,
@@ -192,16 +216,31 @@ export function AdminVagas() {
       ativo: formData.get('ativo') === 'true',
     };
 
+    if (createMutation.isPending || updateMutation.isPending || deleteMutation.isPending) return;
+    if (!vaga.titulo.trim() || !vaga.descricao.trim() || !vaga.categoria_id ||
+        !vaga.tipo_vaga || !vaga.cidade_id || !vaga.forma_candidatura || !vaga.contato_candidatura.trim()) {
+      toast.error('Preencha os campos obrigatórios, incluindo empresa, categoria e tipo de vaga.');
+      return;
+    }
+    if (!isValidJobApplicationContact(vaga.forma_candidatura, vaga.contato_candidatura)) {
+      toast.error('Informe um contato válido para a forma de candidatura escolhida.');
+      return;
+    }
     if (editingVaga) {
       updateMutation.mutate({ id: editingVaga.id, ...vaga });
     } else {
+      if (!selectedEmpresaId) { toast.error('Selecione a empresa responsável.'); return; }
       createMutation.mutate(vaga);
     }
   };
 
-  if (isLoading) {
-    return <div className="p-6">Carregando...</div>;
-  }
+  if (isLoading) return <div role="status" className="p-6">Carregando vagas...</div>;
+  if (isError) return (
+    <div role="alert" className="space-y-3 p-6 text-center">
+      <p>Não foi possível carregar as vagas.</p>
+      <Button type="button" variant="outline" onClick={() => { void refetch(); }}>Tentar novamente</Button>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
