@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -52,9 +53,10 @@ interface EnqueteForm {
 }
 
 export const EnquetesSection = () => {
-  const { enquetes, enqueteAtiva, isLoadingAll, criarEnquete, atualizarEnquete, excluirEnquete } = useEnquetes(true);
+  const { enquetes, enqueteAtiva, isLoadingAll, isAdminError, refetchAdmin, isProcessing, criarEnquete, atualizarEnquete, excluirEnquete } = useEnquetes(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEnquete, setEditingEnquete] = useState<string | null>(null);
+  const submittingRef = useRef(false);
   const [form, setForm] = useState<EnqueteForm>({
     titulo: '',
     descricao: '',
@@ -79,31 +81,34 @@ export const EnquetesSection = () => {
   };
 
   const handleSubmit = () => {
-    const opcoesFiltradas = form.opcoes.filter(opcao => opcao.trim() !== '');
-    
-    if (form.titulo.trim() === '' || opcoesFiltradas.length < 2) {
+    if (submittingRef.current || isProcessing) return;
+    const opcoesFiltradas = form.opcoes.map(opcao => opcao.trim()).filter(Boolean);
+    const inicio = new Date(form.data_inicio);
+    const fim = form.data_fim ? new Date(form.data_fim) : null;
+    if (form.titulo.trim().length < 3 || form.titulo.trim().length > 200 || opcoesFiltradas.length < 2 || opcoesFiltradas.length > 20 || new Set(opcoesFiltradas.map(o => o.toLowerCase())).size !== opcoesFiltradas.length || !Number.isFinite(inicio.getTime()) || (fim && (!Number.isFinite(fim.getTime()) || fim <= inicio))) {
+      toast.error('Confira título, opções sem repetição e período da enquete.');
       return;
     }
-
+    submittingRef.current = true;
     const enqueteData = {
-      titulo: form.titulo,
+      titulo: form.titulo.trim(),
       descricao: form.descricao || null,
       opcoes: opcoesFiltradas,
       multipla_escolha: form.multipla_escolha,
       ativo: form.ativo,
-      data_inicio: form.data_inicio,
-      data_fim: form.data_fim || null
+      data_inicio: inicio.toISOString(),
+      data_fim: fim?.toISOString() || null
     };
 
     if (editingEnquete) {
       atualizarEnquete.mutate(
         { id: editingEnquete, ...enqueteData },
-        { onSuccess: () => { setIsDialogOpen(false); resetForm(); }}
+        { onSuccess: () => { setIsDialogOpen(false); resetForm(); }, onSettled: () => { submittingRef.current = false; }}
       );
     } else {
       criarEnquete.mutate(
         enqueteData,
-        { onSuccess: () => { setIsDialogOpen(false); resetForm(); }}
+        { onSuccess: () => { setIsDialogOpen(false); resetForm(); }, onSettled: () => { submittingRef.current = false; }}
       );
     }
   };
@@ -123,6 +128,7 @@ export const EnquetesSection = () => {
   };
 
   const addOpcao = () => {
+    if (form.opcoes.length >= 20) return;
     setForm({ ...form, opcoes: [...form.opcoes, ''] });
   };
 
@@ -171,7 +177,7 @@ export const EnquetesSection = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Gerenciar Enquetes</h1>
           <p className="text-muted-foreground">
@@ -180,11 +186,12 @@ export const EnquetesSection = () => {
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          if (!open && (submittingRef.current || isProcessing)) return;
           setIsDialogOpen(open);
           if (!open) resetForm();
         }}>
           <DialogTrigger asChild>
-            <Button>
+            <Button disabled={isProcessing}>
               <Plus className="h-4 w-4 mr-2" />
               Nova Enquete
             </Button>
@@ -241,7 +248,7 @@ export const EnquetesSection = () => {
                       )}
                     </div>
                   ))}
-                  <Button type="button" variant="outline" onClick={addOpcao}>
+                  <Button type="button" variant="outline" onClick={addOpcao} disabled={form.opcoes.length >= 20 || isProcessing}>
                     <Plus className="h-4 w-4 mr-2" />
                     Adicionar Opção
                   </Button>
@@ -266,7 +273,7 @@ export const EnquetesSection = () => {
                 <Label htmlFor="ativo">Enquete ativa</Label>
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="data-inicio">Data de Início *</Label>
                   <Input
@@ -290,12 +297,12 @@ export const EnquetesSection = () => {
             </div>
             
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              <Button variant="outline" disabled={isProcessing} onClick={() => setIsDialogOpen(false)}>
                 Cancelar
               </Button>
               <Button 
                 onClick={handleSubmit}
-                disabled={!form.titulo.trim() || form.opcoes.filter(o => o.trim()).length < 2}
+                disabled={isProcessing || !form.titulo.trim() || form.opcoes.filter(o => o.trim()).length < 2}
               >
                 {editingEnquete ? 'Atualizar' : 'Criar'}
               </Button>
@@ -313,12 +320,14 @@ export const EnquetesSection = () => {
         <TabsContent value="lista" className="space-y-6">
           {isLoadingAll ? (
             <div className="text-center py-8">Carregando enquetes...</div>
+          ) : isAdminError ? (
+            <div role="alert" className="space-y-3 rounded-xl border p-6 text-center"><p>Não foi possível carregar as enquetes.</p><Button variant="outline" onClick={() => { void refetchAdmin(); }}>Tentar novamente</Button></div>
           ) : (
             <div className="grid gap-6">
               {enquetes?.map((enquete) => (
                 <Card key={enquete.id} className={`${isActive(enquete) ? 'border-primary/20 bg-primary/5' : ''}`}>
                   <CardHeader>
-                    <div className="flex justify-between items-start">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 mb-2">
                           <Vote className="h-5 w-5 text-primary" />
@@ -360,13 +369,15 @@ export const EnquetesSection = () => {
                           variant="outline"
                           size="icon"
                           onClick={() => handleEdit(enquete)}
+                          disabled={isProcessing}
+                          aria-label={`Editar enquete ${enquete.titulo}`}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
                         
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="outline" size="icon">
+                            <Button variant="outline" size="icon" disabled={isProcessing} aria-label={`Excluir enquete ${enquete.titulo}`}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </AlertDialogTrigger>
@@ -380,6 +391,7 @@ export const EnquetesSection = () => {
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancelar</AlertDialogCancel>
                               <AlertDialogAction 
+                                disabled={isProcessing}
                                 onClick={() => excluirEnquete.mutate(enquete.id)}
                                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                               >
