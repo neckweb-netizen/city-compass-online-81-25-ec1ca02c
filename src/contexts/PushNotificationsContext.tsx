@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { navigateToSafeUrl } from '@/lib/safeNavigation';
+import { getSafeNotificationPath } from '@/lib/safeNavigation';
 import { shouldShowNotificationToast } from '@/lib/notificationToastDedup';
 
 // The Firebase SDK is intentionally loaded only for authenticated users.
@@ -143,7 +143,7 @@ export const PushNotificationsProvider = ({ children }: { children: ReactNode })
       toast.info(title, {
         description,
         duration: 7000,
-        ...(actionUrl ? { action: { label: 'Abrir', onClick: () => navigateToSafeUrl(actionUrl) } } : {}),
+        ...(actionUrl ? { action: { label: 'Abrir', onClick: () => { const path = getSafeNotificationPath(actionUrl); if (path) window.location.assign(path); } } } : {}),
       });
     })).then((cleanup) => {
       if (active) unsubscribe = cleanup;
