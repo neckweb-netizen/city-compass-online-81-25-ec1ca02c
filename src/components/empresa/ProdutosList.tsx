@@ -30,8 +30,9 @@ export const ProdutosList = ({ empresaId }: ProdutosListProps) => {
   const [showForm, setShowForm] = useState(false);
   const [editingProduto, setEditingProduto] = useState<any>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [checkingLimit, setCheckingLimit] = useState(false);
 
-  const { data: produtos, isLoading } = useProdutosPorEmpresa(empresaId);
+  const { data: produtos, isLoading, isError, refetch } = useProdutosPorEmpresa(empresaId);
   const excluirProduto = useExcluirProduto();
   const { podeEditar } = useMinhaEmpresa();
   const { verificarLimiteProdutos } = usePlanoLimites();
@@ -45,9 +46,25 @@ export const ProdutosList = ({ empresaId }: ProdutosListProps) => {
   };
 
   const handleDelete = async () => {
-    if (deleteId) {
-      await excluirProduto.mutateAsync(deleteId);
+    if (!deleteId || excluirProduto.isPending) return;
+    try {
+      await excluirProduto.mutateAsync({ id: deleteId, empresaId });
       setDeleteId(null);
+    } catch {
+      // A operação já exibe uma mensagem de erro; preservar confirmação para nova tentativa.
+    }
+  };
+
+  const handleNewProduct = async () => {
+    if (checkingLimit || excluirProduto.isPending) return;
+    setCheckingLimit(true);
+    try {
+      if (await verificarLimiteProdutos()) {
+        setEditingProduto(null);
+        setShowForm(true);
+      }
+    } finally {
+      setCheckingLimit(false);
     }
   };
 
@@ -88,18 +105,24 @@ export const ProdutosList = ({ empresaId }: ProdutosListProps) => {
     );
   }
 
+  if (isError) {
+    return (
+      <div role="alert" className="space-y-3 rounded-xl border p-6 text-center">
+        <h2 className="font-semibold">Não foi possível carregar os produtos</h2>
+        <p className="text-sm text-muted-foreground">Verifique sua conexão e tente novamente.</p>
+        <Button type="button" variant="outline" onClick={() => { void refetch(); }}>Tentar novamente</Button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-xl md:text-2xl font-bold">Produtos</h2>
         {podeEditarEstaEmpresa && (
           <Button 
-            onClick={async () => {
-              const podecriar = await verificarLimiteProdutos();
-              if (podecriar) {
-                setShowForm(true);
-              }
-            }} 
+            onClick={() => { void handleNewProduct(); }}
+            disabled={checkingLimit || excluirProduto.isPending}
             className="w-full sm:w-auto"
           >
             <Plus className="w-4 h-4 mr-2" />
@@ -118,7 +141,9 @@ export const ProdutosList = ({ empresaId }: ProdutosListProps) => {
                     {produto.imagem_principal_url ? (
                       <img 
                         src={produto.imagem_principal_url} 
-                        alt={produto.nome} 
+                        alt={produto.nome}
+                        loading="lazy"
+                        decoding="async"
                         className="w-full h-full object-cover"
                       />
                     ) : (
@@ -169,9 +194,9 @@ export const ProdutosList = ({ empresaId }: ProdutosListProps) => {
                     </div>
                     
                     {/* Botões de ação do produto */}
-                    {(produto.link_compra || produto.link_whatsapp) && (
+                    {(getSafeNavigationUrl(produto.link_compra) || getSafeNavigationUrl(produto.link_whatsapp)) && (
                       <div className="flex gap-2 mb-3">
-                        {produto.link_compra && (
+                        {getSafeNavigationUrl(produto.link_compra) && (
                           <Button
                             variant="default"
                             size="sm"
@@ -189,7 +214,7 @@ export const ProdutosList = ({ empresaId }: ProdutosListProps) => {
                             </a>
                           </Button>
                         )}
-                        {produto.link_whatsapp && (
+                        {getSafeNavigationUrl(produto.link_whatsapp) && (
                           <Button
                             variant="outline"
                             size="sm"
@@ -230,6 +255,8 @@ export const ProdutosList = ({ empresaId }: ProdutosListProps) => {
                             variant="outline"
                             size="sm"
                             onClick={() => handleEdit(produto)}
+                            disabled={excluirProduto.isPending}
+                            aria-label={`Editar produto ${produto.nome}`}
                             className="flex-1 sm:flex-none"
                           >
                             <Edit className="w-4 h-4 sm:mr-0 lg:mr-2" />
@@ -239,6 +266,8 @@ export const ProdutosList = ({ empresaId }: ProdutosListProps) => {
                             variant="outline"
                             size="sm"
                             onClick={() => setDeleteId(produto.id)}
+                            disabled={excluirProduto.isPending}
+                            aria-label={`Desativar produto ${produto.nome}`}
                             className="flex-1 sm:flex-none"
                           >
                             <Trash2 className="w-4 h-4 sm:mr-0 lg:mr-2" />
@@ -259,12 +288,8 @@ export const ProdutosList = ({ empresaId }: ProdutosListProps) => {
             <p className="text-gray-500 mb-4">Nenhum produto cadastrado ainda</p>
             {podeEditarEstaEmpresa && (
               <Button 
-                onClick={async () => {
-                  const podecriar = await verificarLimiteProdutos();
-                  if (podecriar) {
-                    setShowForm(true);
-                  }
-                }} 
+                onClick={() => { void handleNewProduct(); }}
+                disabled={checkingLimit || excluirProduto.isPending}
                 className="w-full sm:w-auto"
               >
                 <Plus className="w-4 h-4 mr-2" />
@@ -283,18 +308,18 @@ export const ProdutosList = ({ empresaId }: ProdutosListProps) => {
         />
       )}
 
-      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+      <AlertDialog open={!!deleteId} onOpenChange={(nextOpen) => { if (!nextOpen && !excluirProduto.isPending) setDeleteId(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir Produto</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir este produto? Esta ação não pode ser desfeita.
+              Tem certeza que deseja desativar este produto? Ele deixará de aparecer publicamente, mas continuará cadastrado.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>
-              Excluir
+            <AlertDialogCancel disabled={excluirProduto.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction disabled={excluirProduto.isPending} onClick={() => { void handleDelete(); }}>
+              {excluirProduto.isPending ? 'Desativando...' : 'Desativar produto'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
