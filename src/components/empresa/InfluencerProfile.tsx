@@ -1,5 +1,5 @@
 import { getOptimizedImageUrl, getOptimizedImageSrcSet } from '@/lib/imageOptimization';
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -35,6 +35,7 @@ export const InfluencerProfile = ({
   };
 
   const redesSociais = parseRedesSociais(empresa.site);
+  const [showAllReviews, setShowAllReviews] = useState(false);
 
   const getSocialIcon = (platform: string) => {
     switch (platform.toLowerCase()) {
@@ -226,7 +227,7 @@ export const InfluencerProfile = ({
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {avaliacoes.slice(0, 3).map((avaliacao) => (
+              {(showAllReviews ? avaliacoes : avaliacoes.slice(0, 3)).map((avaliacao) => (
                 <div key={avaliacao.id} className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="font-medium">{avaliacao.usuarios?.nome || 'Usuário'}</span>
@@ -248,13 +249,14 @@ export const InfluencerProfile = ({
                 </div>
               ))}
               
-              {avaliacoes.length > 3 && onAvaliacaoClick && (
+              {avaliacoes.length > 3 && (
                 <Button 
                   variant="outline" 
                   className="w-full"
-                  onClick={onAvaliacaoClick}
+                  aria-expanded={showAllReviews}
+                  onClick={() => setShowAllReviews(previous => !previous)}
                 >
-                  Ver todas as avaliações ({avaliacoes.length})
+                  {showAllReviews ? 'Mostrar menos avaliações' : `Ver todas as avaliações (${avaliacoes.length})` }
                 </Button>
               )}
             </div>
