@@ -79,7 +79,7 @@ export const CupomForm = ({ onSuccess }: CupomFormProps) => {
         .from('cupons')
         .insert({
           titulo: data.titulo,
-          codigo: data.codigo,
+          codigo: data.codigo.trim().toUpperCase(),
           descricao: data.descricao || null,
           tipo: data.tipo,
           valor: data.valor,
