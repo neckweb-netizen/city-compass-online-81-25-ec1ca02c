@@ -78,14 +78,14 @@ export const useNotifications = ({ detailsEnabled = true }: { detailsEnabled?: b
   });
 
   useEffect(() => {
-    if (!user?.id || !inAppEnabled || !detailsEnabled) return;
+    if (!user?.id || !inAppEnabled) return;
     const channel = supabase
       .channel(`notifications-${user.id}`)
       .on('postgres_changes', {
         event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}`,
       }, (payload) => {
-        queryClient.invalidateQueries({ queryKey });
-        queryClient.invalidateQueries({ queryKey: ['notifications-unread-count', user.id] });
+        void queryClient.invalidateQueries({ queryKey });
+        void queryClient.invalidateQueries({ queryKey: ['notifications-unread-count', user.id] });
         if (payload.eventType === 'INSERT') {
           const item = payload.new as AppNotification;
           if (!shouldShowNotificationToast(item.id)) return;
@@ -100,22 +100,26 @@ export const useNotifications = ({ detailsEnabled = true }: { detailsEnabled?: b
       })
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
-  }, [detailsEnabled, inAppEnabled, queryClient, queryKey, user?.id]);
+  }, [inAppEnabled, queryClient, queryKey, user?.id]);
 
   const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey });
-    queryClient.invalidateQueries({ queryKey: ['notifications-unread-count', user?.id] });
+    void queryClient.invalidateQueries({ queryKey });
+    void queryClient.invalidateQueries({ queryKey: ['notifications-unread-count', user?.id] });
   };
 
   const markAsReadMutation = useMutation({
     mutationFn: async (notificationId: string) => {
       if (!user?.id) throw new Error('Usuário não autenticado');
-      const { error } = await (supabase as any).from('notifications')
+      const { data: updated, error } = await (supabase as any).from('notifications')
         .update({ read: true, read_at: new Date().toISOString() })
         .eq('id', notificationId)
         .eq('user_id', user.id)
-        .eq('read', false);
+        .eq('read', false)
+        .is('archived_at', null)
+        .select('id')
+        .maybeSingle();
       if (error) throw error;
+      if (!updated) throw new Error('Notificação já lida ou indisponível.');
     },
     onSuccess: invalidate,
     onError: () => toast.error('Não foi possível marcar a notificação como lida.'),
@@ -138,11 +142,15 @@ export const useNotifications = ({ detailsEnabled = true }: { detailsEnabled?: b
   const archiveMutation = useMutation({
     mutationFn: async (notificationId: string) => {
       if (!user?.id) throw new Error('Usuário não autenticado');
-      const { error } = await (supabase as any).from('notifications')
+      const { data: updated, error } = await (supabase as any).from('notifications')
         .update({ archived_at: new Date().toISOString() })
         .eq('id', notificationId)
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .is('archived_at', null)
+        .select('id')
+        .maybeSingle();
       if (error) throw error;
+      if (!updated) throw new Error('Notificação já arquivada ou indisponível.');
     },
     onSuccess: invalidate,
     onError: () => toast.error('Não foi possível arquivar a notificação.'),
@@ -155,7 +163,7 @@ export const useNotifications = ({ detailsEnabled = true }: { detailsEnabled?: b
     totalUnread: inAppEnabled ? unreadCountQuery.data || 0 : 0,
     loading: !preferencesReady || (inAppEnabled && ((detailsEnabled && notificationsQuery.isLoading) || unreadCountQuery.isLoading)),
     error: notificationsQuery.error || unreadCountQuery.error,
-    isProcessing: markAsReadMutation.isPending || markAllAsReadMutation.isPending || archiveMutation.isPending,
+    isMutating: markAsReadMutation.isPending || markAllAsReadMutation.isPending || archiveMutation.isPending,
     markAsRead: markAsReadMutation.mutate,
     markAllAsRead: markAllAsReadMutation.mutate,
     archive: archiveMutation.mutate,
