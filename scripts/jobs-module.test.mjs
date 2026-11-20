@@ -93,3 +93,13 @@ test('admin vacancy form distinguishes loading from API failures', () => {
   assert.match(admin, /onOpenChange=\{handleDialogOpenChange\}/);
   assert.match(admin, /disabled=\{pending \|\| categoriasLoading \|\| categoriasError/);
 });
+
+test('company vacancy trigger protects reserved fields without removing admin controls', () => {
+  const sql = source('supabase/migrations/20261120172000_guard_company_jobs_reserved_fields.sql');
+  assert.match(sql, /security invoker/);
+  assert.match(sql, /current_user <> 'authenticated' or public\.user_has_permission\(\)/);
+  for (const field of ['destaque', 'criado_por', 'cidade_id', 'visualizacoes']) {
+    assert.ok(sql.includes(field));
+  }
+  assert.match(sql, /before insert or update on public\.vagas_emprego/);
+});
