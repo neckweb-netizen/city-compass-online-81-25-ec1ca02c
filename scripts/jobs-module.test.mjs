@@ -54,3 +54,31 @@ test('vacancy policies scope permissions to approved company owner or assigned m
     assert.ok(sql.includes(`add value if not exists '${value}'`));
   }
 });
+
+test('public vacancy search is debounced and mobile card actions remain accessible', () => {
+  const page = source('src/pages/VagasEmprego.tsx');
+  assert.match(page, /setDebouncedSearch\(searchTerm\.trim\(\)\)/);
+  assert.match(page, /window\.clearTimeout\(timeout\)/);
+  assert.match(page, /queryKey: \['vagas-emprego', debouncedSearch, selectedCategoria, selectedTipo\]/);
+  assert.match(page, /aria-label="Buscar vagas de emprego por título"/);
+  assert.match(page, /w-full sm:w-auto shadow-lg/);
+});
+
+test('admin vacancy management uses real approved companies and compatible categories', () => {
+  const admin = source('src/pages/admin/AdminVagas.tsx');
+  assert.match(admin, /\.from\('categorias_oportunidades'\)/);
+  assert.match(admin, /\.eq\('tipo', 'vaga'\)/);
+  assert.match(admin, /\.from\('empresas'\)/);
+  assert.match(admin, /\.eq\('status_aprovacao', 'aprovado'\)/);
+  assert.match(admin, /criado_por: empresa\.id/);
+  assert.match(admin, /cidade_id: empresa\.cidade_id/);
+  assert.match(admin, /selectedEmpresaId/);
+  assert.match(admin, /isValidJobApplicationContact\(vaga\.forma_candidatura, vaga\.contato_candidatura\)/);
+  assert.doesNotMatch(admin, /00000000-0000-0000-0000-000000000000/);
+  for (const kind of ['clt', 'pj', 'estagio', 'temporario', 'freelance', 'meio_periodo', 'integral']) {
+    assert.match(admin, new RegExp('<SelectItem value="' + kind + '">'));
+  }
+  assert.match(admin, /window\.confirm/);
+  assert.match(admin, /if \(!removed\) throw new Error/);
+  assert.match(admin, /queryKey: \['latest-job-coupons'\]/);
+});
