@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
+import { getSafeNotificationPath } from '@/lib/safeNavigation';
 
 const categoryIcons = {
   system: Bell,
@@ -20,15 +21,14 @@ const categoryIcons = {
 
 export default function NotificationsPage() {
   const navigate = useNavigate();
-  const { notifications, totalUnread, loading, error, markAsRead, markAllAsRead, archive } = useNotifications();
+  const { notifications, totalUnread, loading, error, markAsRead, markAllAsRead, archive, refetch, isMutating } = useNotifications();
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const visible = filter === 'unread' ? notifications.filter(item => !item.read) : notifications;
 
   const openNotification = (item: AppNotification) => {
     if (!item.read) markAsRead(item.id);
-    if (!item.action_url) return;
-    if (/^https:\/\//i.test(item.action_url)) window.open(item.action_url, '_blank', 'noopener,noreferrer');
-    else navigate(item.action_url);
+    const path = getSafeNotificationPath(item.action_url);
+    if (path) navigate(path);
   };
 
   return (
@@ -48,7 +48,7 @@ export default function NotificationsPage() {
             <Settings className="h-4 w-4 mr-2" />Preferências
           </Button>
           {totalUnread > 0 && (
-            <Button size="sm" onClick={() => markAllAsRead()}>
+            <Button size="sm" disabled={isMutating} onClick={() => markAllAsRead()}>
               <CheckCheck className="h-4 w-4 mr-2" />Marcar todas
             </Button>
           )}
@@ -65,7 +65,7 @@ export default function NotificationsPage() {
       {loading ? (
         <div className="space-y-3">{[0, 1, 2].map(item => <div key={item} className="h-28 rounded-2xl bg-muted animate-pulse" />)}</div>
       ) : error ? (
-        <Card className="border-destructive/30"><CardContent className="py-10 text-center text-sm text-destructive">Não foi possível carregar suas notificações.</CardContent></Card>
+        <Card role="alert" className="border-destructive/30"><CardContent className="space-y-3 py-10 text-center text-sm text-destructive"><p>Não foi possível carregar suas notificações.</p><Button variant="outline" onClick={() => { void refetch(); }}>Tentar novamente</Button></CardContent></Card>
       ) : visible.length === 0 ? (
         <Card><CardContent className="py-14 text-center">
           <Bell className="h-12 w-12 mx-auto text-muted-foreground/40 mb-3" />
@@ -78,11 +78,11 @@ export default function NotificationsPage() {
             const Icon = categoryIcons[item.category] || Bell;
             return (
               <Card key={item.id} className={cn('overflow-hidden transition-colors', !item.read && 'border-primary/40 bg-primary/[0.035]')}>
-                {item.image_url && <img src={item.image_url} alt="" className="w-full max-h-60 object-cover" />}
+                {item.image_url && <img src={item.image_url} alt="" loading="lazy" decoding="async" className="w-full max-h-60 object-cover" />}
                 <CardContent className="p-4 sm:p-5">
                   <div className="flex gap-3">
                     <div className="h-10 w-10 shrink-0 rounded-xl bg-primary/10 flex items-center justify-center overflow-hidden">
-                      {item.icon_url ? <img src={item.icon_url} alt="" className="h-full w-full object-cover" /> : <Icon className="h-5 w-5 text-primary" />}
+                      {item.icon_url ? <img src={item.icon_url} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" /> : <Icon className="h-5 w-5 text-primary" />}
                     </div>
                     <button className="min-w-0 flex-1 rounded-xl p-1.5 text-left transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30" onClick={() => openNotification(item)}>
                       <div className="flex items-start gap-2">
@@ -93,9 +93,9 @@ export default function NotificationsPage() {
                       <p className="text-xs text-muted-foreground/80 mt-2">
                         {formatDistanceToNow(new Date(item.created_at), { addSuffix: true, locale: ptBR })}
                       </p>
-                      {item.action_url && <span className="inline-block text-sm font-medium text-primary mt-3">{item.action_label || 'Abrir detalhes'} →</span>}
+                      {getSafeNotificationPath(item.action_url) && <span className="inline-block text-sm font-medium text-primary mt-3">{item.action_label || 'Abrir detalhes'} →</span>}
                     </button>
-                    <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" title="Arquivar" onClick={() => archive(item.id)}>
+                    <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0" title="Arquivar" aria-label={`Arquivar notificação ${item.title}`} disabled={isMutating} onClick={() => archive(item.id)}>
                       <Archive className="h-4 w-4" />
                     </Button>
                   </div>
