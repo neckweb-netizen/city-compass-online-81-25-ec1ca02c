@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod/v3';
@@ -62,6 +62,8 @@ export const CadastrarEmpresaDialog = ({
   buttonText = 'Cadastrar Empresa'
 }: CadastrarEmpresaDialogProps) => {
   const [open, setOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [horarios, setHorarios] = useState<HorarioFuncionamento>({});
   const [empresaData, setEmpresaData] = useState<EmpresaFormData | null>(null);
@@ -89,7 +91,9 @@ export const CadastrarEmpresaDialog = ({
   };
 
   const onUsuarioSubmit = async (data: UsuarioFormData) => {
-    if (!empresaData) return;
+    if (!empresaData || submittingRef.current) return;
+    submittingRef.current = true;
+    setIsSubmitting(true);
 
     try {
       // 1. Verificar se a cidade padrão está disponível
@@ -228,14 +232,19 @@ export const CadastrarEmpresaDialog = ({
         description: 'Ocorreu um erro inesperado. Verifique sua conexão e tente novamente.',
         variant: 'destructive'
       });
+    } finally {
+      submittingRef.current = false;
+      setIsSubmitting(false);
     }
   };
 
   const handleBack = () => {
+    if (submittingRef.current) return;
     setCurrentStep(1);
   };
 
   const handleCancel = () => {
+    if (submittingRef.current) return;
     empresaForm.reset();
     usuarioForm.reset();
     setHorarios({});
@@ -245,7 +254,7 @@ export const CadastrarEmpresaDialog = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen && submittingRef.current) return; setOpen(nextOpen); }}>
       <DialogTrigger asChild>
         {variant === 'card' ? (
           <div className="bg-primary border border-primary/20 rounded-lg p-4 cursor-pointer hover:bg-primary/90 transition-colors" data-tutorial="register-business">
@@ -527,16 +536,16 @@ export const CadastrarEmpresaDialog = ({
               />
 
               <div className="flex justify-between gap-2 pt-4">
-                <Button type="button" variant="outline" onClick={handleBack}>
+                <Button type="button" variant="outline" onClick={handleBack} disabled={isSubmitting}>
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Voltar
                 </Button>
                 <div className="flex gap-2">
-                  <Button type="button" variant="outline" onClick={handleCancel}>
+                  <Button type="button" variant="outline" onClick={handleCancel} disabled={isSubmitting}>
                     Cancelar
                   </Button>
-                  <Button type="submit">
-                    Finalizar Cadastro
+                  <Button type="submit" disabled={isSubmitting} aria-busy={isSubmitting}>
+                    {isSubmitting ? 'Cadastrando...' : 'Finalizar Cadastro'}
                   </Button>
                 </div>
               </div>
