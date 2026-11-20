@@ -10,6 +10,7 @@ import { FavoritosDialog } from './FavoritosDialog';
 import { AvaliacoesDialog } from './AvaliacoesDialog';
 import { ConfiguracoesDialog } from './ConfiguracoesDialog';
 import { CadastrarEmpresaDialog } from './CadastrarEmpresaDialog';
+import { MeusAgendamentosDialog } from './MeusAgendamentosDialog';
 import { 
   User, 
   Heart, 
@@ -30,6 +31,7 @@ export const ProfileContent = () => {
   const [favoritosDialogOpen, setFavoritosDialogOpen] = useState(false);
   const [avaliacoesDialogOpen, setAvaliacoesDialogOpen] = useState(false);
   const [configuracoesDialogOpen, setConfiguracoesDialogOpen] = useState(false);
+  const [agendamentosDialogOpen, setAgendamentosDialogOpen] = useState(false);
 
   if (!user || !profile) {
     return (
@@ -185,6 +187,24 @@ export const ProfileContent = () => {
             <ConfiguracoesDialog 
               open={configuracoesDialogOpen} 
               onOpenChange={setConfiguracoesDialogOpen} 
+            />
+          </CardContent>
+        </NeonCard>
+        <NeonCard className="hover:shadow-md transition-shadow">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <Calendar className="h-6 w-6 text-primary" />
+              <h3 className="font-semibold">Meus Agendamentos</h3>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Consulte e gerencie as reservas feitas com sua conta.
+            </p>
+            <Button onClick={() => setAgendamentosDialogOpen(true)}>
+              Ver Agendamentos
+            </Button>
+            <MeusAgendamentosDialog
+              open={agendamentosDialogOpen}
+              onOpenChange={setAgendamentosDialogOpen}
             />
           </CardContent>
         </NeonCard>
