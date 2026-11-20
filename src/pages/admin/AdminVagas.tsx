@@ -82,8 +82,8 @@ export function AdminVagas() {
     }
   });
 
-  const { data: categorias } = useQuery({
-    queryKey: ['categorias'],
+  const { data: categorias, isLoading: categoriasLoading, isError: categoriasError, refetch: refetchCategorias } = useQuery({
+    queryKey: ['admin-vagas-categorias'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('categorias_oportunidades')
@@ -109,7 +109,7 @@ export function AdminVagas() {
     }
   });
 
-  const { data: empresas = [] } = useQuery({
+  const { data: empresas = [], isLoading: empresasLoading, isError: empresasError, refetch: refetchEmpresas } = useQuery({
     queryKey: ['admin-vagas-empresas'],
     queryFn: async () => {
       const { data, error } = await supabase.from('empresas')
@@ -217,6 +217,14 @@ export function AdminVagas() {
     };
 
     if (createMutation.isPending || updateMutation.isPending || deleteMutation.isPending) return;
+    if (categoriasLoading || categoriasError || !categorias?.length) {
+      toast.error('As categorias de vagas não estão disponíveis. Tente novamente.');
+      return;
+    }
+    if (!editingVaga && (empresasLoading || empresasError || !empresas.length)) {
+      toast.error('Não foi possível consultar as empresas aprovadas.');
+      return;
+    }
     if (!vaga.titulo.trim() || !vaga.descricao.trim() || !vaga.categoria_id ||
         !vaga.tipo_vaga || !vaga.cidade_id || !vaga.forma_candidatura || !vaga.contato_candidatura.trim()) {
       toast.error('Preencha os campos obrigatórios, incluindo empresa, categoria e tipo de vaga.');
@@ -275,7 +283,7 @@ export function AdminVagas() {
             <form key={editingVaga?.id ?? 'new'} onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label>Empresa responsável *</Label>
-                <Select value={selectedEmpresaId} onValueChange={setSelectedEmpresaId} disabled={!!editingVaga}>
+                <Select value={selectedEmpresaId} onValueChange={setSelectedEmpresaId} disabled={!!editingVaga || empresasLoading || empresasError}>
                   <SelectTrigger aria-label="Empresa responsável pela vaga">
                     <SelectValue placeholder="Selecione uma empresa aprovada" />
                   </SelectTrigger>
@@ -285,7 +293,9 @@ export function AdminVagas() {
                     ))}
                   </SelectContent>
                 </Select>
-                {empresas.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma empresa aprovada disponível.</p>}
+                {empresasLoading && <p role="status" className="text-sm text-muted-foreground">Carregando empresas...</p>}
+                {empresasError && <div role="alert" className="space-y-2 text-sm"><p>Falha ao carregar empresas.</p><Button type="button" variant="outline" onClick={() => { void refetchEmpresas(); }}>Tentar novamente</Button></div>}
+                {!empresasLoading && !empresasError && empresas.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma empresa aprovada disponível.</p>}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -299,8 +309,8 @@ export function AdminVagas() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="categoria_id">Categoria</Label>
-                  <Select name="categoria_id" defaultValue={editingVaga?.categoria_id || ''}>
-                    <SelectTrigger>
+                  <Select name="categoria_id" defaultValue={editingVaga?.categoria_id || ''} disabled={categoriasLoading || categoriasError || !categorias?.length}>
+                    <SelectTrigger aria-label="Categoria da vaga">
                       <SelectValue placeholder="Selecione a categoria" />
                     </SelectTrigger>
                     <SelectContent>
@@ -311,6 +321,8 @@ export function AdminVagas() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {categoriasLoading && <p role="status" className="text-sm text-muted-foreground">Carregando categorias...</p>}
+                  {categoriasError && <div role="alert" className="space-y-2 text-sm"><p>Falha ao carregar categorias.</p><Button type="button" variant="outline" onClick={() => { void refetchCategorias(); }}>Tentar novamente</Button></div>}
                 </div>
               </div>
 
@@ -422,7 +434,7 @@ export function AdminVagas() {
                 >
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={pending || (!editingVaga && !selectedEmpresaId)}>
+                <Button type="submit" disabled={pending || categoriasLoading || categoriasError || !categorias?.length || (!editingVaga && (!selectedEmpresaId || empresasLoading || empresasError))}>
                   {editingVaga ? 'Atualizar' : 'Criar'}
                 </Button>
               </div>
