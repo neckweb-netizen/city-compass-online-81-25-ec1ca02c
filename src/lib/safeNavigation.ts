@@ -39,3 +39,18 @@ export const navigateToSafeUrl = (value: unknown): void => {
   }
   window.open(safeUrl, '_blank', 'noopener,noreferrer');
 };
+
+/** Notification actions are navigation within Saj Tem, never external redirects. */
+export const getSafeNotificationPath = (value: unknown, origin: string = window.location.origin): string | null => {
+  if (typeof value !== 'string') return null;
+  const candidate = value.trim();
+  if (!candidate || hasControlCharacters(candidate) || candidate.includes('\\')) return null;
+  if (candidate.startsWith('//')) return null;
+  try {
+    const parsed = new URL(candidate, origin);
+    if (parsed.origin !== origin || !['https:', 'http:'].includes(parsed.protocol)) return null;
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return null;
+  }
+};
