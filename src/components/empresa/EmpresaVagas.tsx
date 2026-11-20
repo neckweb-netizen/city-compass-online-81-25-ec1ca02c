@@ -78,7 +78,7 @@ export const EmpresaVagas = ({ empresaId }: EmpresaVagasProps) => {
   });
 
   // Buscar categorias de oportunidades
-  const { data: categorias = [] } = useQuery({
+  const { data: categorias = [], isLoading: categoriasLoading, isError: categoriasError, refetch: refetchCategorias } = useQuery({
     queryKey: ['categorias-oportunidades'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -263,6 +263,10 @@ export const EmpresaVagas = ({ empresaId }: EmpresaVagasProps) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (submittingRef.current || createVagaMutation.isPending || updateVagaMutation.isPending) return;
+    if (categoriasLoading || categoriasError || categorias.length === 0) {
+      toast.error('As categorias não estão disponíveis. Tente carregá-las novamente.');
+      return;
+    }
 
     if (!formData.titulo.trim() || !formData.descricao.trim() ||
         !formData.categoria_id || !formData.tipo_vaga ||
@@ -372,8 +376,8 @@ export const EmpresaVagas = ({ empresaId }: EmpresaVagasProps) => {
                     value={formData.categoria_id} 
                     onValueChange={(value) => setFormData(prev => ({ ...prev, categoria_id: value }))}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a categoria" />
+                    <SelectTrigger aria-label="Categoria da vaga" disabled={categoriasLoading || categoriasError || categorias.length === 0}>
+                      <SelectValue placeholder={categoriasLoading ? 'Carregando categorias...' : 'Selecione a categoria'} />
                     </SelectTrigger>
                     <SelectContent>
                       {categorias.map((categoria) => (
@@ -383,6 +387,15 @@ export const EmpresaVagas = ({ empresaId }: EmpresaVagasProps) => {
                       ))}
                     </SelectContent>
                   </Select>
+                  {categoriasError && (
+                    <div role="alert" className="mt-2 space-y-2 text-sm">
+                      <p className="text-destructive">Não foi possível carregar as categorias.</p>
+                      <Button type="button" variant="outline" size="sm" onClick={() => { void refetchCategorias(); }}>Tentar novamente</Button>
+                    </div>
+                  )}
+                  {!categoriasLoading && !categoriasError && categorias.length === 0 && (
+                    <p role="status" className="mt-2 text-sm text-muted-foreground">Nenhuma categoria de vaga disponível no momento.</p>
+                  )}
                 </div>
               </div>
 
@@ -483,7 +496,7 @@ export const EmpresaVagas = ({ empresaId }: EmpresaVagasProps) => {
                 </Button>
                 <Button 
                   type="submit"
-                  disabled={createVagaMutation.isPending || updateVagaMutation.isPending || !formData.tipo_vaga}
+                  disabled={createVagaMutation.isPending || updateVagaMutation.isPending || categoriasLoading || categoriasError || categorias.length === 0 || !formData.categoria_id || !formData.tipo_vaga}
                 >
                   {createVagaMutation.isPending || updateVagaMutation.isPending ? 'Salvando...' : 
                    editingVaga ? 'Atualizar' : 'Criar Vaga'}
