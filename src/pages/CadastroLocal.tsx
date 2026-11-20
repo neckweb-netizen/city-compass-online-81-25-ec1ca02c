@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod/v3';
@@ -34,10 +34,11 @@ type EmpresaFormData = z.infer<typeof empresaSchema>;
 
 const CadastroLocal = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { data: categorias } = useCategorias();
+  const { data: categorias, isLoading: categoriasLoading, isError: categoriasError, refetch: refetchCategorias } = useCategorias();
   const { data: cidadePadrao } = useCidadePadrao();
 
   const form = useForm<EmpresaFormData>({
@@ -50,8 +51,14 @@ const CadastroLocal = () => {
   const isRadioCategory = categorias?.find(cat => cat.id === categoriaAtual)?.nome === 'Rádios';
 
   const onSubmit = async (data: EmpresaFormData) => {
+    if (submittingRef.current) return;
+    if (categoriasLoading || categoriasError || !categorias?.some(c => c.id === data.categoria_id && c.ativo && c.tipo === 'empresa')) {
+      toast({ title: 'Categoria indisponível', description: 'Selecione uma categoria de empresa válida.', variant: 'destructive' });
+      return;
+    }
+    submittingRef.current = true;
+    setIsSubmitting(true);
     try {
-      setIsSubmitting(true);
       
       // Obter o usuário atual
       const { data: { user } } = await supabase.auth.getUser();
@@ -117,6 +124,7 @@ const CadastroLocal = () => {
         variant: 'destructive' 
       });
     } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -196,7 +204,7 @@ const CadastroLocal = () => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Categoria *</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || ''}>
+                        <Select onValueChange={field.onChange} value={field.value || ''} disabled={categoriasLoading || categoriasError}>
                           <FormControl>
                             <SelectTrigger aria-label="Categoria do local">
                               <SelectValue placeholder="Selecione uma categoria" />
@@ -210,6 +218,12 @@ const CadastroLocal = () => {
                             ))}
                           </SelectContent>
                         </Select>
+                        {categoriasError && (
+                          <div role="alert" className="space-y-2 text-sm">
+                            <p>Não foi possível carregar as categorias.</p>
+                            <Button type="button" variant="outline" onClick={() => { void refetchCategorias(); }}>Tentar novamente</Button>
+                          </div>
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}
@@ -331,7 +345,7 @@ const CadastroLocal = () => {
                   </Button>
                   <Button 
                     type="submit" 
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || categoriasLoading || categoriasError}
                     aria-busy={isSubmitting}
                     className="min-h-11 min-w-[140px]"
                   >
