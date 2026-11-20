@@ -33,7 +33,7 @@ import {
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
 export const EmpresasSection = () => {
-  const { empresas, loading, toggleEmpresa, deleteEmpresa, refetch } = useAdminEmpresas();
+  const { empresas, loading, error, isProcessing, toggleEmpresa, deleteEmpresa, refetch } = useAdminEmpresas();
   const { stories, createStory, updateStory, deleteStory } = useAdminEmpresaStories();
   const [filtroStatus, setFiltroStatus] = useState<string>('todos');
   const [filtroCategoria, setFiltroCategoria] = useState<string>('todas'); // NOVO: Estado para filtro de categoria
@@ -49,6 +49,16 @@ export const EmpresasSection = () => {
         <div className="text-center py-12">
           <p className="text-muted-foreground">Carregando empresas...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div role="alert" className="space-y-3 p-6 text-center">
+        <h2 className="font-semibold">Não foi possível carregar as empresas</h2>
+        <p className="text-sm text-muted-foreground">Verifique sua conexão e tente novamente.</p>
+        <Button variant="outline" onClick={refetch}>Tentar novamente</Button>
       </div>
     );
   }
@@ -270,6 +280,8 @@ export const EmpresasSection = () => {
                     <div className="flex items-center gap-2">
                       <Switch
                         checked={empresa.ativo}
+                        disabled={isProcessing}
+                        aria-label={`Ativar ou desativar ${empresa.nome}`}
                         onCheckedChange={(checked) => 
                           toggleEmpresa({ id: empresa.id, field: 'ativo', value: checked })
                         }
@@ -280,6 +292,8 @@ export const EmpresasSection = () => {
                     <div className="flex items-center gap-2">
                       <Switch
                         checked={empresa.verificado}
+                        disabled={isProcessing}
+                        aria-label={`Alterar verificação de ${empresa.nome}`}
                         onCheckedChange={(checked) => 
                           toggleEmpresa({ id: empresa.id, field: 'verificado', value: checked })
                         }
@@ -290,6 +304,8 @@ export const EmpresasSection = () => {
                     <div className="flex items-center gap-2">
                       <Switch
                         checked={empresa.destaque}
+                        disabled={isProcessing}
+                        aria-label={`Alterar destaque de ${empresa.nome}`}
                         onCheckedChange={(checked) => 
                           toggleEmpresa({ id: empresa.id, field: 'destaque', value: checked })
                         }
@@ -319,7 +335,7 @@ export const EmpresasSection = () => {
                       
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button size="sm" variant="destructive">
+                          <Button size="sm" variant="destructive" disabled={isProcessing} aria-label={`Excluir empresa ${empresa.nome}`}>
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </AlertDialogTrigger>
@@ -334,6 +350,7 @@ export const EmpresasSection = () => {
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancelar</AlertDialogCancel>
                             <AlertDialogAction
+                              disabled={isProcessing}
                               onClick={() => deleteEmpresa(empresa.id)}
                               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             >
