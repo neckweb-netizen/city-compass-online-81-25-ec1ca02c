@@ -191,7 +191,7 @@ export const useProblemaDetalhes = (problemaId: string) => {
     enabled: !!problemaId,
   });
 
-  const { data: comentarios } = useQuery({
+  const { data: comentarios, isLoading: comentariosLoading, isError: comentariosError, refetch: refetchComentarios } = useQuery({
     queryKey: ['comentarios-problema', problemaId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -199,6 +199,7 @@ export const useProblemaDetalhes = (problemaId: string) => {
         .select('*')
         .eq('problema_id', problemaId)
         .eq('ativo', true)
+        .eq('moderado', true)
         .is('comentario_pai_id', null)
         .order('criado_em', { ascending: false });
 
@@ -234,12 +235,14 @@ export const useProblemaDetalhes = (problemaId: string) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuário não autenticado');
 
+      if (novoComentario.conteudo.trim().length < 2 || novoComentario.conteudo.trim().length > 4000) throw new Error('Comentário deve ter de 2 a 4000 caracteres.');
       const { data, error } = await supabase
         .from('comentarios_problema')
         .insert([{
           problema_id: problemaId,
           usuario_id: user.id,
           ...novoComentario,
+          conteudo: novoComentario.conteudo.trim(),
         }])
         .select()
         .single();
@@ -249,7 +252,7 @@ export const useProblemaDetalhes = (problemaId: string) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['comentarios-problema', problemaId] });
-      toast.success('Comentário publicado!');
+      toast.success('Comentário enviado para moderação.');
     },
     onError: () => {
       toast.error('Erro ao publicar comentário');
@@ -295,6 +298,9 @@ export const useProblemaDetalhes = (problemaId: string) => {
     problema,
     comentarios,
     isLoading,
+    comentariosLoading,
+    comentariosError,
+    refetchComentarios,
     criarComentario,
     votarComentario,
   };
