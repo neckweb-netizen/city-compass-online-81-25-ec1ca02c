@@ -33,7 +33,7 @@ export const useEnquetes = (includeAdminList = false) => {
   const queryClient = useQueryClient();
 
   // Buscar enquete ativa para exibir na home
-  const { data: enqueteAtiva, isLoading } = useQuery({
+  const { data: enqueteAtiva, isLoading, isError: isActiveError, refetch: refetchActive } = useQuery({
     queryKey: ['enquete-ativa'],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('buscar_enquete_ativa');
@@ -43,7 +43,7 @@ export const useEnquetes = (includeAdminList = false) => {
   });
 
   // Buscar todas as enquetes (admin)
-  const { data: enquetes, isLoading: isLoadingAll } = useQuery({
+  const { data: enquetes, isLoading: isLoadingAll, isError: isAdminError, refetch: refetchAdmin } = useQuery({
     queryKey: ['enquetes'],
     enabled: includeAdminList,
     queryFn: async () => {
@@ -68,8 +68,8 @@ export const useEnquetes = (includeAdminList = false) => {
       const { data, error } = await supabase.rpc('votar_enquete', {
         enquete_id_param: enqueteId,
         opcoes_indices: opcoes,
-        ip_param: await getClientIP(),
-        user_agent_param: navigator.userAgent
+        ip_param: null,
+        user_agent_param: null
       });
       
       if (error) throw error;
@@ -78,7 +78,7 @@ export const useEnquetes = (includeAdminList = false) => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['enquete-ativa'] });
+      void queryClient.invalidateQueries({ queryKey: ['enquete-ativa'] });
       toast.success('Voto registrado com sucesso!');
     },
     onError: (error: any) => {
@@ -103,7 +103,7 @@ export const useEnquetes = (includeAdminList = false) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['enquetes'] });
-      queryClient.invalidateQueries({ queryKey: ['enquete-ativa'] });
+      void queryClient.invalidateQueries({ queryKey: ['enquete-ativa'] });
       toast.success('Enquete criada com sucesso!');
     },
     onError: (error: any) => {
@@ -119,14 +119,16 @@ export const useEnquetes = (includeAdminList = false) => {
         .update(enquete)
         .eq('id', id)
         .select()
-        .single();
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error('Enquete não encontrada ou sem permissão para editar.');
       
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['enquetes'] });
-      queryClient.invalidateQueries({ queryKey: ['enquete-ativa'] });
+      void queryClient.invalidateQueries({ queryKey: ['enquete-ativa'] });
       toast.success('Enquete atualizada com sucesso!');
     },
     onError: (error: any) => {
@@ -137,16 +139,18 @@ export const useEnquetes = (includeAdminList = false) => {
   // Excluir enquete (admin)
   const excluirEnquete = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
+      const { data: removed, error } = await supabase
         .from('enquetes')
         .delete()
-        .eq('id', id);
-      
+        .eq('id', id)
+        .select('id')
+        .maybeSingle();
       if (error) throw error;
+      if (!removed) throw new Error('Enquete não encontrada ou sem permissão para excluir.');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['enquetes'] });
-      queryClient.invalidateQueries({ queryKey: ['enquete-ativa'] });
+      void queryClient.invalidateQueries({ queryKey: ['enquete-ativa'] });
       toast.success('Enquete excluída com sucesso!');
     },
     onError: (error: any) => {
@@ -159,20 +163,14 @@ export const useEnquetes = (includeAdminList = false) => {
     enquetes,
     isLoading,
     isLoadingAll,
+    isActiveError,
+    isAdminError,
+    refetchActive,
+    refetchAdmin,
+    isProcessing: criarEnquete.isPending || atualizarEnquete.isPending || excluirEnquete.isPending,
     votarEnquete,
     criarEnquete,
     atualizarEnquete,
     excluirEnquete
   };
 };
-
-// Função auxiliar para obter IP do cliente
-async function getClientIP(): Promise<string> {
-  try {
-    const response = await fetch('https://api.ipify.org?format=json');
-    const data = await response.json();
-    return data.ip;
-  } catch {
-    return 'unknown';
-  }
-}
