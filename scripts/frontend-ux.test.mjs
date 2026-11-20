@@ -572,3 +572,14 @@ test('formulário de vagas distingue consulta, erro e empresa sem aprovação', 
   assert.match(form, /void refetchEmpresa\(\)/);
   assert.match(form, /Para publicar vagas, você precisa ter uma empresa aprovada/);
 });
+
+test('publicação de vagas exige tipo e bloqueia envios simultâneos', () => {
+  const form = source('src/components/forms/VagaFormModal.tsx');
+  assert.match(form, /const submittingRef = useRef\(false\)/);
+  assert.match(form, /if \(submittingRef\.current \|\| createVagaMutation\.isPending\) return/);
+  assert.match(form, /!formData\.categoria_id \|\| !formData\.tipo_vaga/);
+  assert.match(form, /Tipo de Vaga \*/);
+  assert.match(form, /submittingRef\.current = true/);
+  assert.match(form, /submittingRef\.current = false/);
+  assert.match(form, /disabled=\{createVagaMutation\.isPending \|\| !formData\.tipo_vaga\}/);
+});
