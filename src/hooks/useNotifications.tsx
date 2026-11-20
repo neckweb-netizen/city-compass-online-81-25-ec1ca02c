@@ -164,6 +164,7 @@ export const useNotifications = ({ detailsEnabled = true }: { detailsEnabled?: b
     loading: !preferencesReady || (inAppEnabled && ((detailsEnabled && notificationsQuery.isLoading) || unreadCountQuery.isLoading)),
     error: notificationsQuery.error || unreadCountQuery.error,
     isMutating: markAsReadMutation.isPending || markAllAsReadMutation.isPending || archiveMutation.isPending,
+    isProcessing: markAsReadMutation.isPending || markAllAsReadMutation.isPending || archiveMutation.isPending,
     markAsRead: markAsReadMutation.mutate,
     markAllAsRead: markAllAsReadMutation.mutate,
     archive: archiveMutation.mutate,
