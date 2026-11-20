@@ -14,7 +14,7 @@ export const LatestJobCoupons = () => {
   const navigate = useNavigate();
   const { data: cidadePadrao } = useCidadePadrao();
 
-  const { data: vagasEmprego, isLoading } = useQuery({
+  const { data: vagasEmprego, isLoading, isError, refetch } = useQuery({
     queryKey: ['latest-job-coupons', cidadePadrao?.id],
     queryFn: async () => {
       let query = supabase
@@ -41,12 +41,21 @@ export const LatestJobCoupons = () => {
     }
   });
 
-  const copyToClipboard = (contato: string) => {
-    navigator.clipboard.writeText(contato);
-    toast({
-      title: "Contato copiado!",
-      description: "O contato da vaga foi copiado para a área de transferência.",
-    });
+  const copyToClipboard = async (contato: string) => {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('Área de transferência indisponível');
+      await navigator.clipboard.writeText(contato);
+      toast({
+        title: "Contato copiado!",
+        description: "O contato da vaga foi copiado para a área de transferência.",
+      });
+    } catch {
+      toast({
+        title: "Não foi possível copiar",
+        description: "Abra os detalhes da vaga para consultar o contato.",
+        variant: "destructive",
+      });
+    }
   };
 
   const renderContent = () => {
@@ -55,6 +64,16 @@ export const LatestJobCoupons = () => {
         <CardContent className="text-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
           <p className="text-muted-foreground mt-2">Carregando vagas...</p>
+        </CardContent>
+      );
+    }
+
+    if (isError) {
+      return (
+        <CardContent role="alert" className="space-y-3 py-8 text-center">
+          <h3 className="font-semibold">Não foi possível carregar as últimas vagas</h3>
+          <p className="text-sm text-muted-foreground">Verifique sua conexão e tente novamente.</p>
+          <Button type="button" variant="outline" onClick={() => { void refetch(); }}>Tentar novamente</Button>
         </CardContent>
       );
     }
@@ -125,8 +144,8 @@ export const LatestJobCoupons = () => {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => copyToClipboard(vaga.contato_candidatura)}
-                      className="w-full h-6 sm:h-8 text-xs"
+                      onClick={() => { void copyToClipboard(vaga.contato_candidatura); }}
+                      className="w-full min-h-10 text-xs"
                     >
                       <Copy className="h-3 w-3 mr-1" />
                       Copiar
