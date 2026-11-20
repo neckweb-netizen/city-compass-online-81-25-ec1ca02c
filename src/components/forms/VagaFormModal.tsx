@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -37,6 +37,7 @@ const FORMAS_CANDIDATURA = [
 export const VagaFormModal = ({ open, onOpenChange }: VagaFormModalProps) => {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
+  const submittingRef = useRef(false);
   const [formData, setFormData] = useState({
     titulo: '',
     descricao: '',
@@ -105,12 +106,14 @@ export const VagaFormModal = ({ open, onOpenChange }: VagaFormModalProps) => {
       return result;
     },
     onSuccess: () => {
+      submittingRef.current = false;
       toast.success('Vaga criada com sucesso!');
       onOpenChange(false);
       resetForm();
       queryClient.invalidateQueries({ queryKey: ['vagas-emprego'] });
     },
     onError: (error: any) => {
+      submittingRef.current = false;
       toast.error('Erro ao criar vaga: ' + error.message);
     }
   });
@@ -130,13 +133,22 @@ export const VagaFormModal = ({ open, onOpenChange }: VagaFormModalProps) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.titulo || !formData.descricao || !formData.categoria_id || !formData.forma_candidatura || !formData.contato_candidatura) {
-      toast.error('Preencha todos os campos obrigatórios');
+    if (submittingRef.current || createVagaMutation.isPending) return;
+
+    if (!formData.titulo.trim() || !formData.descricao.trim() ||
+        !formData.categoria_id || !formData.tipo_vaga ||
+        !formData.forma_candidatura || !formData.contato_candidatura.trim()) {
+      toast.error('Preencha todos os campos obrigatórios, incluindo o tipo de vaga.');
       return;
     }
 
-    createVagaMutation.mutate(formData);
+    submittingRef.current = true;
+    createVagaMutation.mutate({
+      ...formData,
+      titulo: formData.titulo.trim(),
+      descricao: formData.descricao.trim(),
+      contato_candidatura: formData.contato_candidatura.trim(),
+    });
   };
 
   useEffect(() => {
@@ -216,7 +228,7 @@ export const VagaFormModal = ({ open, onOpenChange }: VagaFormModalProps) => {
 
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="tipo_vaga">Tipo de Vaga</Label>
+            <Label htmlFor="tipo_vaga">Tipo de Vaga *</Label>
             <Select 
               value={formData.tipo_vaga} 
               onValueChange={(value) => setFormData(prev => ({ ...prev, tipo_vaga: value }))}
@@ -310,7 +322,7 @@ export const VagaFormModal = ({ open, onOpenChange }: VagaFormModalProps) => {
           </Button>
           <Button 
             type="submit"
-            disabled={createVagaMutation.isPending}
+            disabled={createVagaMutation.isPending || !formData.tipo_vaga}
           >
             {createVagaMutation.isPending ? 'Publicando...' : 'Publicar Vaga'}
           </Button>
