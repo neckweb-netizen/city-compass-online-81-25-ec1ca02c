@@ -1,6 +1,7 @@
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,17 +13,37 @@ import { EditAvaliacaoModal } from '@/components/admin/forms/EditAvaliacaoModal'
 
 export const AvaliacoesSection = () => {
   const [editingAvaliacao, setEditingAvaliacao] = useState<any>(null);
+  const [dismissingId, setDismissingId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   const { data: avaliacoes, isLoading, isError, refetch } = useAdminAvaliacoes();
   const { data: reports = [], isError: reportsError, refetch: refetchReports } = useQuery({
     queryKey: ['admin-denuncias-avaliacoes'],
     queryFn: async () => {
       const { data, error } = await supabase.from('denuncias_avaliacoes' as any)
-        .select('id,avaliacao_id,motivo,criado_em').order('criado_em', { ascending: false }).limit(100);
+        .select('id,avaliacao_id,motivo,criado_em,status').eq('status', 'pendente').order('criado_em', { ascending: false }).limit(100);
       if (error) throw error;
-      return (data || []) as unknown as Array<{ id: string; avaliacao_id: string; motivo: string; criado_em: string }>;
+      return (data || []) as unknown as Array<{ id: string; avaliacao_id: string; motivo: string; criado_em: string; status: string }>;
     },
   });
   const { mutate: removerAvaliacao, isPending: isRemoving } = useRemoverAvaliacao();
+
+  const dismissReport = async (id: string) => {
+    if (dismissingId || !window.confirm('Descartar esta denúncia como improcedente?')) return;
+    setDismissingId(id);
+    try {
+      const { data, error } = await supabase.from('denuncias_avaliacoes' as any)
+        .update({ status: 'descartada' } as any)
+        .eq('id', id).eq('status', 'pendente').select('id').maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error('Denúncia já analisada ou sem permissão.');
+      await queryClient.invalidateQueries({ queryKey: ['admin-denuncias-avaliacoes'] });
+      toast.success('Denúncia descartada.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Não foi possível descartar a denúncia.');
+    } finally {
+      setDismissingId(null);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -69,7 +90,7 @@ export const AvaliacoesSection = () => {
         </Badge>
       </div>
       
-      {reportsError ? <div role="alert" className="space-y-2 rounded-lg border p-4"><p>Não foi possível carregar as denúncias.</p><Button variant="outline" onClick={() => { void refetchReports(); }}>Tentar novamente</Button></div> : reports.length > 0 ? <Card><CardHeader><CardTitle>Denúncias recebidas ({reports.length})</CardTitle></CardHeader><CardContent className="space-y-3">{reports.map(report => <div key={report.id} className="rounded-lg border p-3 text-sm"><p className="font-medium">Avaliação: {report.avaliacao_id}</p><p className="mt-1 break-words">{report.motivo}</p><p className="mt-1 text-xs text-muted-foreground">{new Date(report.criado_em).toLocaleDateString('pt-BR')}</p></div>)}</CardContent></Card> : null}
+      {reportsError ? <div role="alert" className="space-y-2 rounded-lg border p-4"><p>Não foi possível carregar as denúncias.</p><Button variant="outline" onClick={() => { void refetchReports(); }}>Tentar novamente</Button></div> : reports.length > 0 ? <Card><CardHeader><CardTitle>Denúncias recebidas ({reports.length})</CardTitle></CardHeader><CardContent className="space-y-3">{reports.map(report => <div key={report.id} className="rounded-lg border p-3 text-sm"><p className="font-medium">Avaliação: {report.avaliacao_id}</p><p className="mt-1 break-words">{report.motivo}</p><p className="mt-1 text-xs text-muted-foreground">{new Date(report.criado_em).toLocaleDateString('pt-BR')}</p><Button type="button" variant="outline" size="sm" className="mt-2 min-h-10" disabled={!!dismissingId || isRemoving} onClick={() => { void dismissReport(report.id); }}>{dismissingId === report.id ? 'Atualizando...' : 'Descartar denúncia'}</Button></div>)}</CardContent></Card> : null}
 
       <div className="grid gap-4">
         {avaliacoes?.map((avaliacao) => (
