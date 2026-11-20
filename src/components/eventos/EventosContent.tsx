@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,16 +16,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 export const EventosContent = () => {
   const { user } = useAuth();
-  const { data: cidadePadrao } = useCidadePadrao();
+  const { data: cidadePadrao, isLoading: cidadeLoading, isError: cidadeError, refetch: refetchCidade } = useCidadePadrao();
   const navigate = useNavigate();
   const { data: categorias = [] } = useCategoriasEventos();
   const [busca, setBusca] = useState('');
+  const [buscaDebounced, setBuscaDebounced] = useState('');
   const [categoria, setCategoria] = useState('todas');
   const [periodo, setPeriodo] = useState('proximos');
   const [preco, setPreco] = useState('todos');
 
-  const { data: eventos, isLoading, refetch } = useQuery({
-    queryKey: ['eventos-publicos', cidadePadrao?.id, busca, categoria, periodo, preco],
+  useEffect(() => {
+    const timer = window.setTimeout(() => setBuscaDebounced(busca.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [busca]);
+
+  const { data: eventos, isLoading, isError, refetch } = useQuery({
+    queryKey: ['eventos-publicos', cidadePadrao?.id, buscaDebounced, categoria, periodo, preco],
     queryFn: async () => {
       const agora = new Date();
       let fim: Date | null = null;
@@ -43,14 +49,14 @@ export const EventosContent = () => {
         .eq('ativo', true)
         .eq('status_aprovacao', 'aprovado')
         .eq('cidade_id', cidadePadrao?.id)
-        .gte('data_inicio', new Date().toISOString())
+        .or(`data_fim.gte.${agora.toISOString()},and(data_fim.is.null,data_inicio.gte.${agora.toISOString()})`)
         .order('data_inicio', { ascending: true });
 
       if (fim) query = query.lte('data_inicio', fim.toISOString());
       if (categoria !== 'todas') query = query.eq('categoria_id', categoria);
       if (preco === 'gratuitos') query = query.eq('gratuito', true);
       if (preco === 'pagos') query = query.eq('gratuito', false);
-      if (busca.trim()) query = query.ilike('titulo', `%${busca.trim()}%`);
+      if (buscaDebounced) query = query.ilike('titulo', `%${buscaDebounced}%`);
 
       const { data, error } = await query;
 
@@ -60,7 +66,7 @@ export const EventosContent = () => {
     enabled: !!cidadePadrao?.id,
   });
 
-  if (isLoading) {
+  if (isLoading || cidadeLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center py-12">
@@ -70,6 +76,13 @@ export const EventosContent = () => {
 
     );
   }
+
+  if (isError || cidadeError) return (
+    <div role="alert" className="container mx-auto space-y-3 px-4 py-10 text-center">
+      <p className="font-semibold">Não foi possível carregar os eventos.</p>
+      <Button variant="outline" onClick={() => { void refetch(); void refetchCidade(); }}>Tentar novamente</Button>
+    </div>
+  );
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -104,7 +117,7 @@ export const EventosContent = () => {
       <div className="mb-8 rounded-2xl border bg-card p-4 shadow-sm">
         <div className="mb-3 flex items-center gap-2 font-semibold"><SlidersHorizontal className="h-4 w-4 text-primary" />Encontre o evento ideal</div>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={busca} onChange={(e) => setBusca(e.target.value)} className="pl-9" placeholder="Buscar evento..." /></div>
+          <div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={busca} onChange={(e) => setBusca(e.target.value)} className="pl-9" aria-label="Buscar eventos por título" placeholder="Buscar evento..." /></div>
           <Select value={categoria} onValueChange={setCategoria}><SelectTrigger><SelectValue placeholder="Categoria" /></SelectTrigger><SelectContent><SelectItem value="todas">Todas as categorias</SelectItem>{categorias.map((item) => <SelectItem key={item.id} value={item.id}>{item.nome}</SelectItem>)}</SelectContent></Select>
           <Select value={periodo} onValueChange={setPeriodo}><SelectTrigger><SelectValue placeholder="Quando" /></SelectTrigger><SelectContent><SelectItem value="proximos">Próximos eventos</SelectItem><SelectItem value="hoje">Hoje</SelectItem><SelectItem value="semana">Próximos 7 dias</SelectItem><SelectItem value="mes">Próximos 30 dias</SelectItem></SelectContent></Select>
           <Select value={preco} onValueChange={setPreco}><SelectTrigger><SelectValue placeholder="Preço" /></SelectTrigger><SelectContent><SelectItem value="todos">Gratuitos e pagos</SelectItem><SelectItem value="gratuitos">Somente gratuitos</SelectItem><SelectItem value="pagos">Somente pagos</SelectItem></SelectContent></Select>
