@@ -48,21 +48,28 @@ export const useAdminEmpresas = () => {
     mutationFn: async ({ id, observacoes }: { id: string; observacoes?: string }) => {
       const { data: { user } } = await supabase.auth.getUser();
       
-      const { error } = await supabase
+      if (!user) throw new Error('Sessão expirada');
+      const { data: updated, error } = await supabase
         .from('empresas')
-        .update({ 
+        .update({
           status_aprovacao: 'aprovado',
-          aprovado_por: user?.id,
+          aprovado_por: user.id,
           observacoes_admin: observacoes,
           data_aprovacao: new Date().toISOString()
         })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('status_aprovacao', 'pendente')
+        .select('id')
+        .maybeSingle();
 
       if (error) throw error;
+      if (!updated) throw new Error('Empresa não encontrada, já analisada ou sem permissão.');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-empresas'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-empresas-pendentes'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin-empresas'] });
+      void queryClient.invalidateQueries({ queryKey: ['empresas'] });
+      void queryClient.invalidateQueries({ queryKey: ['minhas-empresas'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin-empresas-pendentes'] });
       toast({ title: 'Empresa aprovada com sucesso!' });
     },
     onError: () => {
@@ -74,20 +81,28 @@ export const useAdminEmpresas = () => {
     mutationFn: async ({ id, observacoes }: { id: string; observacoes: string }) => {
       const { data: { user } } = await supabase.auth.getUser();
       
-      const { error } = await supabase
+      if (!user) throw new Error('Sessão expirada');
+      if (!observacoes.trim()) throw new Error('Informe o motivo da rejeição');
+      const { data: updated, error } = await supabase
         .from('empresas')
-        .update({ 
+        .update({
           status_aprovacao: 'rejeitado',
-          aprovado_por: user?.id,
-          observacoes_admin: observacoes
+          aprovado_por: user.id,
+          observacoes_admin: observacoes.trim()
         })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('status_aprovacao', 'pendente')
+        .select('id')
+        .maybeSingle();
 
       if (error) throw error;
+      if (!updated) throw new Error('Empresa não encontrada, já analisada ou sem permissão.');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-empresas'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-empresas-pendentes'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin-empresas'] });
+      void queryClient.invalidateQueries({ queryKey: ['empresas'] });
+      void queryClient.invalidateQueries({ queryKey: ['minhas-empresas'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin-empresas-pendentes'] });
       toast({ title: 'Empresa rejeitada' });
     },
     onError: () => {
@@ -97,15 +112,21 @@ export const useAdminEmpresas = () => {
 
   const toggleEmpresaMutation = useMutation({
     mutationFn: async ({ id, field, value }: { id: string; field: string; value: boolean }) => {
-      const { error } = await supabase
+      if (!['ativo', 'verificado', 'destaque'].includes(field)) throw new Error('Campo não permitido');
+      const { data: updated, error } = await supabase
         .from('empresas')
         .update({ [field]: value })
-        .eq('id', id);
+        .eq('id', id)
+        .select('id')
+        .maybeSingle();
 
       if (error) throw error;
+      if (!updated) throw new Error('Empresa não encontrada ou sem permissão.');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-empresas'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin-empresas'] });
+      void queryClient.invalidateQueries({ queryKey: ['empresas'] });
+      void queryClient.invalidateQueries({ queryKey: ['minhas-empresas'] });
       toast({ title: 'Empresa atualizada com sucesso!' });
     },
     onError: () => {
@@ -115,16 +136,21 @@ export const useAdminEmpresas = () => {
 
   const deleteEmpresaMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
+      const { data: removed, error } = await supabase
         .from('empresas')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .select('id')
+        .maybeSingle();
 
       if (error) throw error;
+      if (!removed) throw new Error('Empresa não encontrada ou sem permissão para excluir.');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-empresas'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-empresas-pendentes'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin-empresas'] });
+      void queryClient.invalidateQueries({ queryKey: ['empresas'] });
+      void queryClient.invalidateQueries({ queryKey: ['minhas-empresas'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin-empresas-pendentes'] });
       toast({ title: 'Empresa removida com sucesso!' });
     },
     onError: () => {
@@ -137,6 +163,10 @@ export const useAdminEmpresas = () => {
     empresasPendentes: empresasPendentesQuery.data || [],
     loading: empresasQuery.isLoading,
     loadingPendentes: empresasPendentesQuery.isLoading,
+    error: empresasQuery.error,
+    errorPendentes: empresasPendentesQuery.error,
+    refetchPendentes: empresasPendentesQuery.refetch,
+    isProcessing: aprovarEmpresaMutation.isPending || rejeitarEmpresaMutation.isPending || toggleEmpresaMutation.isPending || deleteEmpresaMutation.isPending,
     aprovarEmpresa: aprovarEmpresaMutation.mutate,
     rejeitarEmpresa: rejeitarEmpresaMutation.mutate,
     toggleEmpresa: toggleEmpresaMutation.mutate,
