@@ -16,7 +16,7 @@ export const ComentariosProblemaSection = () => {
   const [observacoes, setObservacoes] = useState('');
   const queryClient = useQueryClient();
 
-  const { data: comentarios, isLoading } = useQuery({
+  const { data: comentarios, isLoading, isError, refetch } = useQuery({
     queryKey: ['admin-comentarios-problema'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -59,7 +59,7 @@ export const ComentariosProblemaSection = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuário não autenticado');
 
-      const { error } = await supabase
+      const { data: updated, error } = await supabase
         .from('comentarios_problema')
         .update({
           ativo,
@@ -67,12 +67,17 @@ export const ComentariosProblemaSection = () => {
           moderado_por: user.id,
           data_moderacao: new Date().toISOString(),
         })
-        .eq('id', comentarioId);
+        .eq('id', comentarioId)
+        .eq('moderado', false)
+        .select('id')
+        .maybeSingle();
 
       if (error) throw error;
+      if (!updated) throw new Error('Comentário já moderado ou sem permissão.');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-comentarios-problema'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin-comentarios-problema'] });
+      void queryClient.invalidateQueries({ queryKey: ['comentarios-problema'] });
       toast.success('Comentário moderado com sucesso!');
       setSelectedComentario(null);
     },
@@ -86,9 +91,8 @@ export const ComentariosProblemaSection = () => {
     setObservacoes('');
   };
 
-  if (isLoading) {
-    return <div className="flex items-center justify-center p-8">Carregando...</div>;
-  }
+  if (isLoading) return <div role="status" className="flex items-center justify-center p-8">Carregando...</div>;
+  if (isError) return <div role="alert" className="space-y-3 p-6 text-center"><p>Não foi possível carregar a moderação de comentários.</p><Button variant="outline" onClick={() => { void refetch(); }}>Tentar novamente</Button></div>;
 
   return (
     <div className="space-y-6">
@@ -145,7 +149,7 @@ export const ComentariosProblemaSection = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleModerar(comentario)}
+                    onClick={() => handleModerar(comentario)} disabled={moderarComentario.isPending}
                   >
                     <Eye className="w-4 h-4 mr-2" />
                     Moderar
@@ -182,6 +186,7 @@ export const ComentariosProblemaSection = () => {
             <div className="flex gap-2 justify-end">
               <Button
                 variant="outline"
+                disabled={moderarComentario.isPending}
                 onClick={() => moderarComentario.mutate({ 
                   comentarioId: selectedComentario?.id, 
                   ativo: false 
@@ -191,6 +196,7 @@ export const ComentariosProblemaSection = () => {
                 Rejeitar
               </Button>
               <Button
+                disabled={moderarComentario.isPending}
                 onClick={() => moderarComentario.mutate({ 
                   comentarioId: selectedComentario?.id, 
                   ativo: true 
