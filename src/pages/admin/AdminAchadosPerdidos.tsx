@@ -249,8 +249,8 @@ const AdminAchadosPerdidos = () => {
                     </div>
                     <div className="flex items-center gap-2 truncate">
                       <span className="text-purple-400 font-bold uppercase tracking-wider text-[10px]">Zap:</span>
-                      {item.contato_telefone ? (
-                        <a href={getJobApplicationHref("whatsapp", item.contato_telefone) || undefined} target="_blank" rel="noopener noreferrer" className="text-purple-400 font-bold hover:underline">
+                      {getJobApplicationHref("whatsapp", item.contato_telefone || "") ? (
+                        <a href={getJobApplicationHref("whatsapp", item.contato_telefone)!} target="_blank" rel="noopener noreferrer" className="text-purple-400 font-bold hover:underline">
                           {item.contato_telefone}
                         </a>
                       ) : (
