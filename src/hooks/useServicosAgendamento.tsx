@@ -53,7 +53,7 @@ export const useServicosAgendamento = (empresaId?: string) => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['servicos-agendamento'] });
+      void queryClient.invalidateQueries({ queryKey: ['servicos-agendamento'] });
       toast({
         title: 'Serviço criado!',
         description: 'Serviço de agendamento foi criado com sucesso.',
@@ -74,15 +74,20 @@ export const useServicosAgendamento = (empresaId?: string) => {
       id: string; 
       dados: Partial<ServicoAgendamento> 
     }) => {
-      const { error } = await supabase
+      if (!empresaId) throw new Error('Empresa não selecionada.');
+      const { data, error } = await supabase
         .from('servicos_agendamento')
         .update(dados)
-        .eq('id', id);
+        .eq('id', id)
+        .eq('empresa_id', empresaId)
+        .select('id')
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) throw new Error('Serviço não encontrado ou sem permissão para editar.');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['servicos-agendamento'] });
+      void queryClient.invalidateQueries({ queryKey: ['servicos-agendamento'] });
       toast({
         title: 'Serviço atualizado',
         description: 'As informações do serviço foram atualizadas.',
@@ -100,15 +105,20 @@ export const useServicosAgendamento = (empresaId?: string) => {
 
   const excluirServico = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
+      if (!empresaId) throw new Error('Empresa não selecionada.');
+      const { data, error } = await supabase
         .from('servicos_agendamento')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('empresa_id', empresaId)
+        .select('id')
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) throw new Error('Serviço não encontrado ou sem permissão para excluir.');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['servicos-agendamento'] });
+      void queryClient.invalidateQueries({ queryKey: ['servicos-agendamento'] });
       toast({
         title: 'Serviço excluído',
         description: 'O serviço foi removido com sucesso.',
@@ -130,8 +140,11 @@ export const useServicosAgendamento = (empresaId?: string) => {
     isError,
     refetch,
     criarServico: criarServico.mutate,
+    criarServicoAsync: criarServico.mutateAsync,
     atualizarServico: atualizarServico.mutate,
+    atualizarServicoAsync: atualizarServico.mutateAsync,
     excluirServico: excluirServico.mutate,
+    excluirServicoAsync: excluirServico.mutateAsync,
     isCreating: criarServico.isPending,
     isUpdating: atualizarServico.isPending,
     isDeleting: excluirServico.isPending,
