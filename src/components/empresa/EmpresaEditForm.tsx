@@ -45,13 +45,14 @@ export const EmpresaEditForm = ({ empresa, open, onOpenChange }: EmpresaEditForm
   // const isInfluencer = empresa?.categoria_id === 'categoria-influencers';
   const isInfluencer = false;
 
-  const { data: categorias } = useQuery({
+  const { data: categorias, isLoading: categoriasLoading, isError: categoriasError, refetch: refetchCategorias } = useQuery({
     queryKey: ['categorias'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('categorias')
         .select('*')
         .eq('ativo', true)
+        .eq('tipo', 'empresa')
         .order('nome');
       
       if (error) throw error;
@@ -95,6 +96,8 @@ export const EmpresaEditForm = ({ empresa, open, onOpenChange }: EmpresaEditForm
   const isRadioCategory = categorias?.find(cat => cat.id === categoriaAtual)?.nome === 'Rádios';
 
   const onSubmit = async (data: EmpresaFormData) => {
+    if (isUpdating) return;
+    if (categoriasError || categoriasLoading) return;
     try {
       await updateEmpresaAsync({
         nome: data.nome,
@@ -115,7 +118,7 @@ export const EmpresaEditForm = ({ empresa, open, onOpenChange }: EmpresaEditForm
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen && isUpdating) return; onOpenChange(nextOpen); }}>
       <DialogContent className="w-[calc(100vw-1rem)] max-w-[600px] max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-2xl sm:w-full">
         <DialogHeader>
           <DialogTitle>Editar Empresa</DialogTitle>
@@ -145,8 +148,8 @@ export const EmpresaEditForm = ({ empresa, open, onOpenChange }: EmpresaEditForm
                   <FormLabel>Categoria</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione uma categoria" />
+                      <SelectTrigger disabled={categoriasLoading || categoriasError} aria-label="Categoria da empresa">
+                        <SelectValue placeholder={categoriasLoading ? 'Carregando categorias...' : 'Selecione uma categoria'} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -157,6 +160,12 @@ export const EmpresaEditForm = ({ empresa, open, onOpenChange }: EmpresaEditForm
                       ))}
                     </SelectContent>
                   </Select>
+                  {categoriasError && (
+                    <div role="alert" className="space-y-2 text-sm">
+                      <p>Não foi possível carregar as categorias.</p>
+                      <Button type="button" variant="outline" size="sm" onClick={() => { void refetchCategorias(); }}>Tentar novamente</Button>
+                    </div>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}
@@ -267,7 +276,7 @@ export const EmpresaEditForm = ({ empresa, open, onOpenChange }: EmpresaEditForm
               <Button type="button" variant="outline" className="min-h-11" disabled={isUpdating} onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" className="min-h-11" aria-busy={isUpdating} disabled={isUpdating}>
+              <Button type="submit" className="min-h-11" aria-busy={isUpdating} disabled={isUpdating || categoriasLoading || categoriasError}>
                 {isUpdating ? 'Salvando...' : 'Salvar Alterações'}
               </Button>
             </div>
