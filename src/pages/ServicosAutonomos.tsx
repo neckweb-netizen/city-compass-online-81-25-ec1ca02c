@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,15 +30,21 @@ interface Servico {
 
 const ServicosAutonomos = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedCategoria, setSelectedCategoria] = useState('');
 
-  const { data: servicos = [], isLoading } = useQuery({
-    queryKey: ['servicos-autonomos', searchTerm, selectedCategoria],
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebouncedSearch(searchTerm.trim()), 300);
+    return () => window.clearTimeout(timeout);
+  }, [searchTerm]);
+
+  const { data: servicos = [], isLoading, isError, refetch } = useQuery({
+    queryKey: ['servicos-autonomos', debouncedSearch, selectedCategoria],
     queryFn: async () => {
       // Use secure function that conditionally returns contact info
       const { data, error } = await (supabase as any).rpc('get_servicos_with_secure_contact', {
-        search_term: searchTerm || null,
-        categoria_slug: selectedCategoria || null
+        search_term: debouncedSearch || null,
+        categoria_slug: selectedCategoria === 'all' ? null : selectedCategoria || null
       });
       
       if (error) throw error;
@@ -47,10 +53,10 @@ const ServicosAutonomos = () => {
   });
 
   // Usar o hook específico para categorias de serviços
-  const { data: categorias = [] } = useCategoriasServicos();
+  const { data: categorias = [], isError: categoriasError, refetch: refetchCategorias } = useCategoriasServicos();
 
-  const handleVisualizarServico = async (servicoId: string) => {
-    await supabase.rpc('incrementar_visualizacao_servico', { servico_id: servicoId });
+  const handleVisualizarServico = (servicoId: string) => {
+    void supabase.rpc('incrementar_visualizacao_servico', { servico_id: servicoId }).then(() => undefined, () => undefined);
   };
 
   return (
@@ -97,6 +103,7 @@ const ServicosAutonomos = () => {
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
+                  aria-label="Buscar serviços por nome ou descrição"
                   placeholder="Buscar por nome ou serviço..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -104,7 +111,7 @@ const ServicosAutonomos = () => {
                 />
               </div>
               
-              <Select value={selectedCategoria} onValueChange={setSelectedCategoria}>
+              <Select value={selectedCategoria || 'all'} onValueChange={setSelectedCategoria} disabled={categoriasError}>
                 <SelectTrigger className="h-12 border-2 focus:border-primary/50 transition-colors duration-300">
                   <SelectValue placeholder="Selecione a categoria" />
                 </SelectTrigger>
@@ -118,6 +125,7 @@ const ServicosAutonomos = () => {
                 </SelectContent>
               </Select>
             </div>
+            {categoriasError && <div role="alert" className="mt-3 flex flex-wrap items-center gap-2 text-sm"><span>Não foi possível carregar as categorias.</span><Button variant="outline" size="sm" onClick={() => { void refetchCategorias(); }}>Tentar novamente</Button></div>}
           </CardContent>
         </Card>
 
@@ -144,6 +152,8 @@ const ServicosAutonomos = () => {
                 </Card>
               ))}
             </div>
+          ) : isError ? (
+            <Card role="alert" className="shadow-lg"><CardContent className="space-y-3 py-12 text-center"><h3 className="font-semibold">Não foi possível carregar os serviços</h3><p className="text-sm text-muted-foreground">Verifique sua conexão e tente novamente.</p><Button variant="outline" onClick={() => { void refetch(); }}>Tentar novamente</Button></CardContent></Card>
           ) : servicos.length === 0 ? (
             <Card className="shadow-lg">
               <CardContent className="py-16 text-center">
@@ -162,7 +172,7 @@ const ServicosAutonomos = () => {
             <div className="grid gap-6">
               {servicos.map((servico) => (
                 <Card key={servico.id} className="group hover:shadow-2xl transition-all duration-300 border-0 shadow-lg hover:-translate-y-1">
-                  <CardContent className="p-8">
+                  <CardContent className="p-4 sm:p-8">
                     <div className="flex flex-col lg:flex-row items-start gap-6">
                       <Avatar className="w-20 h-20 ring-4 ring-primary/10 group-hover:ring-primary/20 transition-all duration-300">
                         <AvatarImage src={servico.foto_perfil_url || undefined} />
