@@ -50,7 +50,7 @@ export function AdminServicos() {
   const [editingServico, setEditingServico] = useState<Servico | null>(null);
   const queryClient = useQueryClient();
 
-  const { data: servicos, isLoading } = useQuery({
+  const { data: servicos, isLoading, isError, refetch } = useQuery({
     queryKey: ['admin-servicos'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -63,7 +63,7 @@ export function AdminServicos() {
     }
   });
 
-  const { data: categorias = [] } = useQuery({
+  const { data: categorias = [], isLoading: categoriasLoading, isError: categoriasError, refetch: refetchCategorias } = useQuery({
     queryKey: ['categorias-servicos'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -78,7 +78,7 @@ export function AdminServicos() {
     }
   });
 
-  const { data: cidades = [] } = useQuery({
+  const { data: cidades = [], isLoading: cidadesLoading, isError: cidadesError, refetch: refetchCidades } = useQuery({
     queryKey: ['cidades'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -107,7 +107,8 @@ export function AdminServicos() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-servicos'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin-servicos'] });
+      void queryClient.invalidateQueries({ queryKey: ['servicos-autonomos'] });
       toast.success('Serviço criado com sucesso!');
       setIsDialogOpen(false);
       setEditingServico(null);
@@ -130,7 +131,8 @@ export function AdminServicos() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-servicos'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin-servicos'] });
+      void queryClient.invalidateQueries({ queryKey: ['servicos-autonomos'] });
       toast.success('Serviço atualizado com sucesso!');
       setIsDialogOpen(false);
       setEditingServico(null);
@@ -142,15 +144,19 @@ export function AdminServicos() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
+      const { data: removed, error } = await supabase
         .from('servicos_autonomos')
         .delete()
-        .eq('id', id);
-      
+        .eq('id', id)
+        .select('id')
+        .maybeSingle();
+
       if (error) throw error;
+      if (!removed) throw new Error('Serviço não encontrado ou sem permissão para excluir.');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-servicos'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin-servicos'] });
+      void queryClient.invalidateQueries({ queryKey: ['servicos-autonomos'] });
       toast.success('Serviço excluído com sucesso!');
     },
     onError: (error) => {
@@ -160,6 +166,11 @@ export function AdminServicos() {
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (createMutation.isPending || updateMutation.isPending || deleteMutation.isPending) return;
+    if (categoriasLoading || categoriasError || cidadesLoading || cidadesError) {
+      toast.error('Aguarde o carregamento de categorias e cidades.');
+      return;
+    }
     const formData = new FormData(e.currentTarget);
     
     const servico = {
@@ -175,6 +186,16 @@ export function AdminServicos() {
       observacoes_admin: formData.get('observacoes_admin') as string || null,
     };
 
+    if (!servico.nome_prestador.trim() || !servico.descricao_servico.trim() ||
+        !servico.email_prestador.trim() || !servico.categoria_id || !servico.cidade_id ||
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(servico.email_prestador.trim())) {
+      toast.error('Informe nome, e-mail válido, descrição, categoria e cidade.');
+      return;
+    }
+    if (!categorias.some(c => c.id === servico.categoria_id) || !cidades.some(c => c.id === servico.cidade_id)) {
+      toast.error('A categoria ou a cidade selecionada não está disponível.');
+      return;
+    }
     if (editingServico) {
       updateMutation.mutate({ id: editingServico.id, ...servico });
     } else {
@@ -182,9 +203,14 @@ export function AdminServicos() {
     }
   };
 
-  if (isLoading) {
-    return <div className="p-6">Carregando...</div>;
-  }
+  if (isLoading) return <div role="status" className="p-6">Carregando serviços...</div>;
+  if (isError) return (
+    <div role="alert" className="space-y-3 p-6 text-center">
+      <p>Não foi possível carregar os serviços.</p>
+      <Button type="button" variant="outline" onClick={() => { void refetch(); }}>Tentar novamente</Button>
+    </div>
+  );
+  const pending = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
 
   return (
     <div className="space-y-6">
@@ -194,9 +220,9 @@ export function AdminServicos() {
           <p className="text-muted-foreground">Gerencie os serviços autônomos disponíveis</p>
         </div>
         
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={(nextOpen) => { if (!nextOpen && pending) return; setIsDialogOpen(nextOpen); }}>
           <DialogTrigger asChild>
-            <Button onClick={() => setEditingServico(null)}>
+            <Button disabled={pending} onClick={() => setEditingServico(null)}>
               <Plus className="h-4 w-4 mr-2" />
               Novo Serviço
             </Button>
@@ -209,8 +235,8 @@ export function AdminServicos() {
               </DialogDescription>
             </DialogHeader>
             
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <form key={editingServico?.id ?? "novo"} onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="nome_prestador">Nome do Prestador</Label>
                   <Input
@@ -243,7 +269,7 @@ export function AdminServicos() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="telefone_prestador">Telefone</Label>
                   <Input
@@ -264,10 +290,10 @@ export function AdminServicos() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="categoria_id">Categoria</Label>
-                  <Select name="categoria_id" defaultValue={editingServico?.categoria_id || ''}>
+                  <Select name="categoria_id" defaultValue={editingServico?.categoria_id || ''} disabled={categoriasLoading || categoriasError}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione a categoria" />
                     </SelectTrigger>
@@ -282,7 +308,7 @@ export function AdminServicos() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="cidade_id">Cidade</Label>
-                  <Select name="cidade_id" defaultValue={editingServico?.cidade_id || ''}>
+                  <Select name="cidade_id" defaultValue={editingServico?.cidade_id || ''} disabled={cidadesLoading || cidadesError}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione a cidade" />
                     </SelectTrigger>
@@ -296,6 +322,13 @@ export function AdminServicos() {
                   </Select>
                 </div>
               </div>
+
+              {(categoriasError || cidadesError) && (
+                <div role="alert" className="space-y-2 text-sm">
+                  <p>Falha ao carregar categorias ou cidades.</p>
+                  <Button type="button" variant="outline" onClick={() => { void refetchCategorias(); void refetchCidades(); }}>Tentar novamente</Button>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="status_aprovacao">Status</Label>
@@ -327,10 +360,11 @@ export function AdminServicos() {
                   type="button"
                   variant="outline"
                   onClick={() => setIsDialogOpen(false)}
+                  disabled={pending}
                 >
                   Cancelar
                 </Button>
-                <Button type="submit">
+                <Button type="submit" disabled={pending || categoriasLoading || categoriasError || cidadesLoading || cidadesError}>
                   {editingServico ? 'Atualizar' : 'Criar'}
                 </Button>
               </div>
@@ -366,6 +400,8 @@ export function AdminServicos() {
                   <Button
                     variant="ghost"
                     size="sm"
+                    disabled={pending}
+                    aria-label={`Editar serviço de ${servico.nome_prestador}`}
                     onClick={() => {
                       setEditingServico(servico);
                       setIsDialogOpen(true);
@@ -376,7 +412,13 @@ export function AdminServicos() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => deleteMutation.mutate(servico.id)}
+                    disabled={pending}
+                    aria-label={`Excluir serviço de ${servico.nome_prestador}`}
+                    onClick={() => {
+                      if (window.confirm(`Excluir o anúncio de ${servico.nome_prestador}? Esta ação não pode ser desfeita.`)) {
+                        deleteMutation.mutate(servico.id);
+                      }
+                    }}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
