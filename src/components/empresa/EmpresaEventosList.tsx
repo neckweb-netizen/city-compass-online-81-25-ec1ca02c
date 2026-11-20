@@ -1,6 +1,7 @@
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { NeonCard } from '@/components/ui/neon-card';
@@ -8,8 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EventoFormModal } from '@/components/forms/EventoFormModal';
+import { EventoEditModal, type EventoEditavel } from './EventoEditModal';
 import { usePlanoLimites } from '@/hooks/usePlanoLimites';
-import { Plus, Calendar, MapPin, Clock, Users } from 'lucide-react';
+import { Plus, Calendar, MapPin, Clock, Users, Pencil } from 'lucide-react';
 
 interface EmpresaEventosListProps {
   empresaId: string;
@@ -18,6 +20,9 @@ interface EmpresaEventosListProps {
 
 export const EmpresaEventosList = ({ empresaId, isOwner = false }: EmpresaEventosListProps) => {
   const [showForm, setShowForm] = useState(false);
+  const [editingEvento, setEditingEvento] = useState<EventoEditavel | null>(null);
+  const [statusPendingId, setStatusPendingId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   const { verificarLimiteEventos } = usePlanoLimites();
 
   const { data: eventos, isLoading, isError, refetch } = useQuery({
@@ -41,6 +46,34 @@ export const EmpresaEventosList = ({ empresaId, isOwner = false }: EmpresaEvento
     },
     enabled: !!empresaId
   });
+
+  const toggleVisibility = async (evento: { id: string; ativo: boolean; status_aprovacao: string }) => {
+    if (statusPendingId || evento.status_aprovacao !== 'aprovado') return;
+    setStatusPendingId(evento.id);
+    try {
+      const { data: updated, error } = await supabase
+        .from('eventos')
+        .update({ ativo: !evento.ativo })
+        .eq('id', evento.id)
+        .eq('empresa_id', empresaId)
+        .eq('status_aprovacao', 'aprovado')
+        .select('id')
+        .maybeSingle();
+      if (error) throw error;
+      if (!updated) throw new Error('Evento não encontrado ou sem permissão.');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['empresa-eventos'] }),
+        queryClient.invalidateQueries({ queryKey: ['eventos-publicos'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin-eventos'] }),
+      ]);
+      toast.success(evento.ativo ? 'Evento ocultado do público.' : 'Evento publicado novamente.');
+      void refetch();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Não foi possível atualizar a visibilidade.');
+    } finally {
+      setStatusPendingId(null);
+    }
+  };
 
   const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString('pt-BR');
@@ -192,6 +225,21 @@ export const EmpresaEventosList = ({ empresaId, isOwner = false }: EmpresaEvento
                         </span>
                       </div>
                     )}
+                    {isOwner && (
+                      <div className="mt-4 flex flex-wrap gap-2 border-t pt-3">
+                        <Button type="button" variant="outline" size="sm" className="min-h-10"
+                          disabled={!!statusPendingId} onClick={() => setEditingEvento(evento)}>
+                          <Pencil className="mr-2 h-4 w-4" />Editar evento
+                        </Button>
+                        {evento.status_aprovacao === 'aprovado' && (
+                          <Button type="button" variant="outline" size="sm" className="min-h-10"
+                            disabled={!!statusPendingId}
+                            onClick={() => { void toggleVisibility(evento); }}>
+                            {statusPendingId === evento.id ? 'Atualizando...' : evento.ativo ? 'Ocultar evento' : 'Reativar evento'}
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -222,6 +270,17 @@ export const EmpresaEventosList = ({ empresaId, isOwner = false }: EmpresaEvento
             )}
           </CardContent>
         </Card>
+      )}
+
+      {isOwner && editingEvento && (
+        <EventoEditModal
+          key={editingEvento.id}
+          open
+          empresaId={empresaId}
+          evento={editingEvento}
+          onOpenChange={(nextOpen) => { if (!nextOpen) setEditingEvento(null); }}
+          onSaved={() => { void refetch(); }}
+        />
       )}
 
       {isOwner && showForm && (
