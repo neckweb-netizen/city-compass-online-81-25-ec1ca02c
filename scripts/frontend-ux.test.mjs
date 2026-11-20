@@ -561,3 +561,14 @@ test('oportunidades permite abrir publicação pelo teclado e não simula clique
   assert.match(page, /setIsVagaModalOpen\(true\)/);
   assert.doesNotMatch(page, /cursor-pointer hover:bg-primary hover:text-primary-foreground transition-all duration-300 px-4 py-2 text-sm font-medium hover:scale-105 hover:shadow-md/);
 });
+
+test('formulário de vagas distingue consulta, erro e empresa sem aprovação', () => {
+  const form = source('src/components/forms/VagaFormModal.tsx');
+  assert.match(form, /isLoading: empresaLoading, isError: empresaError, refetch: refetchEmpresa/);
+  assert.match(form, /empresaLoading \|\| empresaError \|\| !empresaUsuario/);
+  assert.match(form, /empresaLoading \? \(/);
+  assert.match(form, /empresaError \? \(/);
+  assert.match(form, /Consultando sua empresa/);
+  assert.match(form, /void refetchEmpresa\(\)/);
+  assert.match(form, /Para publicar vagas, você precisa ter uma empresa aprovada/);
+});
