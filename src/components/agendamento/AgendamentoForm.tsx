@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,7 @@ export const AgendamentoForm: React.FC<AgendamentoFormProps> = ({
   empresaNome,
   onSuccess
 }) => {
+  const submittingRef = useRef(false);
   const [formData, setFormData] = useState({
     nome_cliente: '',
     telefone_cliente: '',
@@ -33,9 +34,10 @@ export const AgendamentoForm: React.FC<AgendamentoFormProps> = ({
   });
 
   const { criarAgendamento, isCreating } = useAgendamentos();
-  const { servicos } = useServicosAgendamento(empresaId);
+  const { servicos, isLoading: loadingServicos, isError: erroServicos, refetch: recarregarServicos } = useServicosAgendamento(empresaId);
 
-  const servicoSelecionado = servicos.find((servico) => servico.nome_servico === formData.servico);
+  const servicosAtivos = servicos.filter(servico => servico.ativo);
+  const servicoSelecionado = servicosAtivos.find((servico) => servico.nome_servico === formData.servico);
   const dataMinima = useMemo(() => new Intl.DateTimeFormat('en-CA', {
     timeZone: 'America/Bahia', year: 'numeric', month: '2-digit', day: '2-digit'
   }).format(new Date()), []);
@@ -57,24 +59,25 @@ export const AgendamentoForm: React.FC<AgendamentoFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.nome_cliente || !formData.telefone_cliente || !formData.servico || !formData.horario) {
-      return;
-    }
-
+    if (submittingRef.current || isCreating || loadingServicos || erroServicos || carregandoHorarios || erroHorarios) return;
+    const digits = formData.telefone_cliente.replace(/\D/g, '');
+    if (formData.nome_cliente.trim().length < 3 || digits.length < 10 || digits.length > 11 || !servicoSelecionado || !horarios.some(slot => slot.horario === formData.horario) || new Date(formData.horario).getTime() <= Date.now()) return;
+    submittingRef.current = true;
     try {
       await criarAgendamento({
         empresa_id: empresaId,
-        nome_cliente: formData.nome_cliente,
+        nome_cliente: formData.nome_cliente.trim(),
         telefone_cliente: formData.telefone_cliente,
         servico: formData.servico,
         data_agendamento: formData.horario,
-        observacoes: formData.observacoes,
+        observacoes: formData.observacoes.trim(),
       });
       setFormData({ nome_cliente: '', telefone_cliente: '', servico: '', data: '', horario: '', observacoes: '' });
       onSuccess?.();
     } catch {
       // O hook mantém o formulário aberto e mostra a mensagem retornada pelo servidor.
+    } finally {
+      submittingRef.current = false;
     }
   };
 
@@ -140,21 +143,24 @@ export const AgendamentoForm: React.FC<AgendamentoFormProps> = ({
 
           <div className="space-y-2">
             <Label htmlFor="servico">Serviço</Label>
+            {loadingServicos && <p role="status" className="text-sm text-muted-foreground">Carregando serviços...</p>}
+            {erroServicos && <div role="alert" className="space-y-2 text-sm"><p>Não foi possível consultar os serviços.</p><Button type="button" variant="outline" size="sm" onClick={() => { void recarregarServicos(); }}>Tentar novamente</Button></div>}
             <Select 
               value={formData.servico} 
               onValueChange={(value) => setFormData(prev => ({ ...prev, servico: value, horario: '' }))}
               required
+              disabled={loadingServicos || erroServicos}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione o serviço" />
               </SelectTrigger>
               <SelectContent>
-                {servicos.filter(s => s.ativo).length === 0 ? (
+                {servicosAtivos.length === 0 ? (
                   <SelectItem value="sem-servicos" disabled>
                     Nenhum serviço disponível para agendamento
                   </SelectItem>
                 ) : (
-                  servicos.filter(s => s.ativo).map((servico) => (
+                  servicosAtivos.map((servico) => (
                     <SelectItem key={servico.id} value={servico.nome_servico}>
                       <div className="flex justify-between items-center w-full">
                         <span>{servico.nome_servico}</span>
@@ -209,7 +215,7 @@ export const AgendamentoForm: React.FC<AgendamentoFormProps> = ({
           <Button 
             type="submit" 
             className="w-full" 
-            disabled={isCreating || carregandoHorarios || erroHorarios || !formData.horario}
+            disabled={isCreating || loadingServicos || erroServicos || carregandoHorarios || erroHorarios || !servicoSelecionado || !formData.horario}
           >
             {isCreating ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Reservando...</> : 'Solicitar agendamento'}
           </Button>
