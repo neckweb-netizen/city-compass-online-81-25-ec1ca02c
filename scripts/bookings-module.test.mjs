@@ -66,3 +66,25 @@ test('client booking forms preserve service, slot and timezone validation', () =
   assert.match(simple, /new Date\(formData\.data_agendamento\)\.toISOString\(\)/);
   assert.match(simple, /submittingRef\.current/);
 });
+
+test('client booking access is scoped and clients may only cancel their own reservations', () => {
+  const sql = read('supabase/migrations/20261120224500_client_booking_access_and_cancellation.sql');
+  assert.match(sql, /cliente_usuario_id = \(select auth\.uid\(\)\)/);
+  assert.match(sql, /status in \('pendente','confirmado'\)/);
+  assert.match(sql, /status = 'cancelado'/);
+  assert.match(sql, /not coalesce\(v_is_owner, false\)/);
+  assert.match(sql, /new\.status <> 'cancelado'/);
+  assert.match(sql, /private\.admin_mfa_verified/);
+});
+
+test('profile includes protected booking list and confirms cancel updates', () => {
+  const profile = read('src/components/profile/ProfileContent.tsx');
+  const dialog = read('src/components/profile/MeusAgendamentosDialog.tsx');
+  assert.match(profile, /<MeusAgendamentosDialog/);
+  assert.match(profile, /Meus Agendamentos/);
+  assert.match(dialog, /\.eq\('cliente_usuario_id', user\.id\)/);
+  assert.match(dialog, /\.in\('status', \['pendente', 'confirmado'\]\)/);
+  assert.match(dialog, /if \(!data\) throw new Error/);
+  assert.match(dialog, /window\.confirm/);
+  assert.match(dialog, /America\/Bahia/);
+});
