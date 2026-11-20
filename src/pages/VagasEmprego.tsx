@@ -12,6 +12,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { VagaFormModal } from '@/components/forms/VagaFormModal';
+import { getJobApplicationHref } from '@/lib/jobApplication';
 
 interface Vaga {
   id: string;
@@ -337,6 +338,17 @@ const VagasEmprego = () => {
                 <h3 className="font-semibold">Como se candidatar</h3>
                 <p className="mt-1 whitespace-pre-wrap break-words">{selectedVaga.forma_candidatura}</p>
                 <p className="mt-2 break-all font-medium">{selectedVaga.contato_candidatura}</p>
+                {getJobApplicationHref(selectedVaga.forma_candidatura, selectedVaga.contato_candidatura) && (
+                  <Button asChild className="mt-3 min-h-11 w-full">
+                    <a
+                      href={getJobApplicationHref(selectedVaga.forma_candidatura, selectedVaga.contato_candidatura)!}
+                      target={selectedVaga.forma_candidatura === 'email' ? undefined : '_blank'}
+                      rel="noopener noreferrer"
+                    >
+                      Candidatar-se
+                    </a>
+                  </Button>
+                )}
               </div>
             </div>
           )}
