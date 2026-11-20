@@ -1,5 +1,6 @@
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
+import { useCidadePadrao } from '@/hooks/useCidadePadrao';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -20,6 +21,8 @@ const AnunciarServico = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const submittingRef = useRef(false);
+  const { data: cidadePadrao, isLoading: cidadeLoading, isError: cidadeError, refetch: refetchCidade } = useCidadePadrao();
 
   const [formData, setFormData] = useState({
     nome_prestador: '',
@@ -31,7 +34,7 @@ const AnunciarServico = () => {
     foto_perfil_url: ''
   });
 
-  const { data: categorias = [] } = useQuery({
+  const { data: categorias = [], isLoading: categoriasLoading, isError: categoriasError, refetch: refetchCategorias } = useQuery({
     queryKey: ['categorias-servicos'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -48,15 +51,8 @@ const AnunciarServico = () => {
 
   const criarServico = useMutation({
     mutationFn: async (data: typeof formData) => {
-      // Buscar cidade padrão (primeira cidade ativa)
-      const { data: cidades, error: cidadeError } = await supabase
-        .from('cidades')
-        .select('id')
-        .eq('ativo', true)
-        .limit(1);
-
-      if (cidadeError) throw cidadeError;
-      if (!cidades || cidades.length === 0) throw new Error('Nenhuma cidade encontrada');
+      if (!user?.id) throw new Error('Entre na sua conta para publicar serviços.');
+      if (!cidadePadrao?.id) throw new Error('Cidade padrão indisponível. Tente novamente.');
 
       const { error } = await supabase
         .from('servicos_autonomos')
@@ -68,14 +64,16 @@ const AnunciarServico = () => {
           categoria_id: data.categoria_id,
           descricao_servico: data.descricao_servico,
           bairros_atendimento: [],
-          cidade_id: cidades[0].id,
+          cidade_id: cidadePadrao.id,
           foto_perfil_url: data.foto_perfil_url || null,
-          usuario_id: user?.id || null
+          usuario_id: user.id
         });
 
       if (error) throw error;
     },
     onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['servicos-autonomos'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin-servicos'] });
       toast({
         title: "Serviço enviado com sucesso!",
         description: "Seu anúncio será analisado e, se aprovado, ficará disponível em breve.",
@@ -88,16 +86,24 @@ const AnunciarServico = () => {
         description: error.message,
         variant: "destructive"
       });
-    }
+    },
+    onSettled: () => { submittingRef.current = false; }
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    console.log('Form submitted', formData); // Debug log
-    
-    if (!formData.nome_prestador || !formData.email_prestador || !formData.categoria_id || 
-        !formData.descricao_servico) {
+    if (submittingRef.current || criarServico.isPending) return;
+    if (!user?.id) {
+      toast({ title: 'Faça login', description: 'Entre na sua conta para anunciar um serviço.', variant: 'destructive' });
+      return;
+    }
+    if (cidadeLoading || cidadeError || !cidadePadrao?.id || categoriasLoading || categoriasError) {
+      toast({ title: 'Dados indisponíveis', description: 'Aguarde ou tente carregar a cidade e as categorias novamente.', variant: 'destructive' });
+      return;
+    }
+
+    if (!formData.nome_prestador.trim() || !formData.email_prestador.trim() || !formData.categoria_id ||
+        !formData.descricao_servico.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email_prestador.trim())) {
       toast({
         title: "Campos obrigatórios",
         description: "Por favor, preencha todos os campos obrigatórios.",
@@ -106,8 +112,13 @@ const AnunciarServico = () => {
       return;
     }
 
-    console.log('Validação passou, enviando...'); // Debug log
-    criarServico.mutate(formData);
+    submittingRef.current = true;
+    criarServico.mutate({
+      ...formData,
+      nome_prestador: formData.nome_prestador.trim(),
+      email_prestador: formData.email_prestador.trim(),
+      descricao_servico: formData.descricao_servico.trim(),
+    });
   };
 
   return (
@@ -203,7 +214,7 @@ const AnunciarServico = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="categoria" className="text-base font-medium">Categoria do Serviço *</Label>
-                  <Select value={formData.categoria_id || ''} onValueChange={(value) => setFormData(prev => ({ ...prev, categoria_id: value }))}>
+                  <Select value={formData.categoria_id || ''} disabled={categoriasLoading || categoriasError} onValueChange={(value) => setFormData(prev => ({ ...prev, categoria_id: value }))}>
                     <SelectTrigger className="h-12 border-2 focus:border-primary/50 transition-colors duration-300">
                       <SelectValue placeholder="Selecione a categoria do seu serviço" />
                     </SelectTrigger>
@@ -215,6 +226,8 @@ const AnunciarServico = () => {
                       ))}
                     </SelectContent>
                   </Select>
+                  {categoriasError && <div role="alert" className="space-y-2 text-sm"><p>Não foi possível carregar as categorias.</p><Button type="button" variant="outline" onClick={() => { void refetchCategorias(); }}>Tentar novamente</Button></div>}
+                  {cidadeError && <div role="alert" className="space-y-2 text-sm"><p>Não foi possível consultar a cidade do anúncio.</p><Button type="button" variant="outline" onClick={() => { void refetchCidade(); }}>Tentar novamente</Button></div>}
                 </div>
 
                 <div className="space-y-2">
@@ -249,7 +262,7 @@ const AnunciarServico = () => {
                 <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-border">
                   <Button
                     type="submit"
-                    disabled={criarServico.isPending}
+                    disabled={criarServico.isPending || cidadeLoading || cidadeError || categoriasLoading || categoriasError || !user?.id}
                     size="lg"
                     className="flex-1 h-16 text-lg bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all duration-300 font-semibold"
                   >
