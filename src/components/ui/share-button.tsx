@@ -41,29 +41,13 @@ export const ShareButton = ({
     if (urlToCopy) await copyToClipboard(urlToCopy);
   };
 
-  const handleWhatsAppShare = async () => {
-    const urlToShare = await getOrCreateShortUrl();
-    if (!urlToShare) return;
+  // Links já estão disponíveis no momento do toque, evitando bloqueios de pop-up
+  // no navegador do celular. A URL curta continua disponível na ação de copiar.
+  const shareUrl = shortUrl ?? url;
+  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${title}\\n\\n${description}\\n\\n${shareUrl}`)}`;
+  const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(`${title}\\n\\n${description}`)}`;
+  const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
 
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${title}\n\n${description}\n\n${urlToShare}`)}`;
-    window.open(whatsappUrl, '_blank');
-  };
-
-  const handleTelegramShare = async () => {
-    const urlToShare = await getOrCreateShortUrl();
-    if (!urlToShare) return;
-
-    const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(urlToShare)}&text=${encodeURIComponent(`${title}\n\n${description}`)}`;
-    window.open(telegramUrl, '_blank');
-  };
-
-  const handleFacebookShare = async () => {
-    const urlToShare = await getOrCreateShortUrl();
-    if (!urlToShare) return;
-
-    const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(urlToShare)}`;
-    window.open(facebookUrl, '_blank');
-  };
   return <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant={variant} size={size} className={`group relative overflow-hidden transition-[box-shadow,background-color] duration-200 motion-safe:hover:shadow-md ${className}`} disabled={isLoading}>
@@ -81,17 +65,23 @@ export const ShareButton = ({
         </DropdownMenuItem>
         
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleWhatsAppShare} disabled={isLoading}>
-          <span className="text-green-600 font-medium mr-2">📱</span>
-          WhatsApp
+        <DropdownMenuItem asChild>
+          <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
+            <span className="text-green-600 font-medium mr-2">📱</span>
+            WhatsApp
+          </a>
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleTelegramShare} disabled={isLoading}>
-          <span className="text-blue-500 font-medium mr-2">✈️</span>
-          Telegram
+        <DropdownMenuItem asChild>
+          <a href={telegramUrl} target="_blank" rel="noopener noreferrer">
+            <span className="text-blue-500 font-medium mr-2">✈️</span>
+            Telegram
+          </a>
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleFacebookShare} disabled={isLoading}>
-          <span className="text-blue-600 font-medium mr-2">📘</span>
-          Facebook
+        <DropdownMenuItem asChild>
+          <a href={facebookUrl} target="_blank" rel="noopener noreferrer">
+            <span className="text-blue-600 font-medium mr-2">📘</span>
+            Facebook
+          </a>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>;
