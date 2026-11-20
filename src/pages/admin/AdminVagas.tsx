@@ -363,7 +363,7 @@ export function AdminVagas() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="ativo">Status</Label>
-                  <Select name="ativo" defaultValue={editingVaga?.ativo ? 'true' : 'false'}>
+                  <Select name="ativo" defaultValue={editingVaga ? (editingVaga.ativo ? 'true' : 'false') : 'true'}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
