@@ -93,7 +93,7 @@ export const EmpresaVagas = ({ empresaId }: EmpresaVagasProps) => {
   });
 
   // Buscar vagas da empresa
-  const { data: vagas = [], isLoading, refetch } = useQuery({
+  const { data: vagas = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['empresa-vagas', empresaId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -262,9 +262,23 @@ export const EmpresaVagas = ({ empresaId }: EmpresaVagasProps) => {
     );
   }
 
+  if (isError) {
+    return (
+      <div role="alert" className="space-y-3 rounded-2xl border p-6 text-center">
+        <h3 className="font-semibold">Não foi possível carregar as vagas da empresa</h3>
+        <p className="text-sm text-muted-foreground">Verifique sua conexão e tente novamente.</p>
+        <Button type="button" variant="outline" onClick={() => { void refetch(); }}>
+          Tentar novamente
+        </Button>
+      </div>
+    );
+  }
+
+  const actionPending = toggleStatusMutation.isPending || deleteVagaMutation.isPending;
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-wrap justify-between items-center gap-3">
         <div>
           <h3 className="text-xl font-semibold flex items-center gap-2">
             <Briefcase className="w-5 h-5" />
@@ -452,15 +466,15 @@ export const EmpresaVagas = ({ empresaId }: EmpresaVagasProps) => {
           {vagas.map((vaga) => (
             <NeonCard key={vaga.id} className={`${!vaga.ativo ? 'opacity-60' : ''}`}>
               <CardHeader>
-                <div className="flex justify-between items-start">
+                <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start">
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <CardTitle className="text-lg">{vaga.titulo}</CardTitle>
                       <Badge variant={vaga.ativo ? 'default' : 'secondary'}>
                         {vaga.ativo ? 'Ativa' : 'Inativa'}
                       </Badge>
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                       {vaga.categorias_oportunidades && (
                         <span className="flex items-center gap-1">
                           <Briefcase className="w-4 h-4" />
@@ -478,10 +492,12 @@ export const EmpresaVagas = ({ empresaId }: EmpresaVagasProps) => {
                     </div>
                   </div>
                   
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Button
                       size="sm"
                       variant="outline"
+                      disabled={actionPending}
+                      aria-label={vaga.ativo ? `Pausar vaga ${vaga.titulo}` : `Ativar vaga ${vaga.titulo}`}
                       onClick={() => toggleStatusMutation.mutate({ 
                         id: vaga.id, 
                         ativo: !vaga.ativo 
@@ -492,6 +508,8 @@ export const EmpresaVagas = ({ empresaId }: EmpresaVagasProps) => {
                     <Button
                       size="sm"
                       variant="outline"
+                      disabled={actionPending || createVagaMutation.isPending || updateVagaMutation.isPending}
+                      aria-label={`Editar vaga ${vaga.titulo}`}
                       onClick={() => handleEdit(vaga)}
                     >
                       <Edit2 className="w-4 h-4" />
@@ -499,6 +517,8 @@ export const EmpresaVagas = ({ empresaId }: EmpresaVagasProps) => {
                     <Button
                       size="sm"
                       variant="destructive"
+                      disabled={actionPending}
+                      aria-label={`Excluir vaga ${vaga.titulo}`}
                       onClick={() => {
                         if (confirm('Tem certeza que deseja excluir esta vaga?')) {
                           deleteVagaMutation.mutate(vaga.id);
