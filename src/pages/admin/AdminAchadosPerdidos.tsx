@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { getJobApplicationHref } from "@/lib/jobApplication";
 import { supabase } from "@/integrations/supabase/client";
 import { Check, X, AlertCircle, Trash2, ShieldCheck, Tag, MapPin, Eye, Calendar, RefreshCw } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
@@ -20,11 +21,14 @@ const AdminAchadosPerdidos = () => {
   const { toast } = useToast();
   const [itens, setItens] = useState<ItemOcorrência[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [processingId, setProcessingId] = useState<string | null>(null);
   const [abaAtiva, setAbaAtiva] = useState<"pendentes" | "ativos">("pendentes");
 
   const carregarOcorrencias = async () => {
     try {
       setLoading(true);
+      setLoadError(false);
       
       // Realiza a chamada direta trazendo todas as linhas gravadas na tabela
       const { data, error } = await supabase
@@ -47,6 +51,7 @@ const AdminAchadosPerdidos = () => {
       setItens(dadosFiltrados);
     } catch (error: any) {
       console.error("Erro ao carregar dados no admin:", error);
+      setLoadError(true);
       toast({
         title: "Erro de sincronização",
         description: "Não foi possível carregar os dados de achados e perdidos.",
@@ -62,52 +67,65 @@ const AdminAchadosPerdidos = () => {
   }, [abaAtiva]);
 
   const alterarStatus = async (id: string, novoStatus: "aprovado" | "resolvido" | "rejeitado") => {
+    if (processingId) return;
+    setProcessingId(id);
     try {
-      const { error } = await supabase
+      const { data: updated, error } = await supabase
         .from("achados_perdidos" as any)
         .update({ status: novoStatus } as any)
-        .eq("id", id);
+        .eq("id", id)
+        .eq("status", novoStatus === "resolvido" ? "aprovado" : "pendente")
+        .select("id")
+        .maybeSingle();
 
       if (error) throw error;
+      if (!updated) throw new Error("Ocorrência não encontrada, já analisada ou sem permissão.");
 
       toast({
         title: "Status Atualizado",
         description: `Ocorrência movida para o estado de [${novoStatus}] com sucesso!`,
       });
 
-      setItens(itens.filter((item) => item.id !== id));
+      setItens(current => current.filter((item) => item.id !== id));
     } catch (error: any) {
       toast({
         title: "Erro ao atualizar",
         description: error.message || "Erro de conexão com o banco de dados.",
         variant: "destructive",
       });
+    } finally {
+      setProcessingId(null);
     }
   };
 
   const deletarRegistro = async (id: string) => {
-    if (!window.confirm("Tem certeza absoluta que deseja deletar permanentemente este registro do sistema?")) return;
-    
+    if (processingId || !window.confirm("Tem certeza absoluta que deseja deletar permanentemente este registro do sistema?")) return;
+    setProcessingId(id);
     try {
-      const { error } = await supabase
+      const { data: removed, error } = await supabase
         .from("achados_perdidos" as any)
         .delete()
-        .eq("id", id);
+        .eq("id", id)
+        .select("id")
+        .maybeSingle();
 
       if (error) throw error;
+      if (!removed) throw new Error("Ocorrência não encontrada ou sem permissão para excluir.");
 
       toast({
         title: "Registro Removido",
         description: "O item foi apagado permanentemente do banco de dados.",
       });
 
-      setItens(itens.filter((item) => item.id !== id));
+      setItens(current => current.filter((item) => item.id !== id));
     } catch (error: any) {
       toast({
         title: "Erro ao deletar",
         description: error.message,
         variant: "destructive",
       });
+    } finally {
+      setProcessingId(null);
     }
   };
 
@@ -127,7 +145,8 @@ const AdminAchadosPerdidos = () => {
           </div>
           
           <button
-            onClick={carregarOcorrencias}
+            onClick={() => { void carregarOcorrencias(); }}
+            disabled={loading || !!processingId}
             className="flex items-center gap-2 bg-purple-950/40 hover:bg-purple-900/40 border border-purple-900/40 text-xs font-bold px-4 py-2.5 rounded-xl transition-all"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Atualizar Painel
@@ -163,6 +182,11 @@ const AdminAchadosPerdidos = () => {
           <div className="flex flex-col items-center justify-center py-20 gap-3">
             <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
             <span className="text-xs text-purple-400 font-medium">Buscando ocorrências ativas...</span>
+          </div>
+        ) : loadError ? (
+          <div role="alert" className="space-y-3 rounded-xl border border-red-500/30 p-8 text-center">
+            <p>Não foi possível carregar as ocorrências para moderação.</p>
+            <button type="button" onClick={() => { void carregarOcorrencias(); }} className="rounded-lg bg-purple-600 px-5 py-3 font-semibold">Tentar novamente</button>
           </div>
         ) : itens.length === 0 ? (
           <div className="bg-[#150F22]/30 border border-purple-900/20 rounded-2xl p-16 text-center max-w-xl mx-auto">
@@ -226,7 +250,7 @@ const AdminAchadosPerdidos = () => {
                     <div className="flex items-center gap-2 truncate">
                       <span className="text-purple-400 font-bold uppercase tracking-wider text-[10px]">Zap:</span>
                       {item.contato_telefone ? (
-                        <a href={`https://wa.me/55${item.contato_telefone.replace(/\D/g,"")}`} target="_blank" rel="noreferrer" className="text-purple-400 font-bold hover:underline">
+                        <a href={getJobApplicationHref("whatsapp", item.contato_telefone) || undefined} target="_blank" rel="noopener noreferrer" className="text-purple-400 font-bold hover:underline">
                           {item.contato_telefone}
                         </a>
                       ) : (
@@ -241,13 +265,15 @@ const AdminAchadosPerdidos = () => {
                   {(item.status === undefined || String(item.status).toLowerCase().trim() === "pendente" || String(item.status).toLowerCase().trim() === "") && (
                     <>
                       <button
-                        onClick={() => alterarStatus(item.id, "aprovado")}
+                        onClick={() => { void alterarStatus(item.id, "aprovado"); }}
+                        disabled={!!processingId}
                         className="flex-1 lg:w-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 uppercase tracking-wider transition-all"
                       >
                         <Check className="h-4 w-4" /> Aprovar
                       </button>
                       <button
-                        onClick={() => alterarStatus(item.id, "rejeitado")}
+                        onClick={() => { void alterarStatus(item.id, "rejeitado"); }}
+                        disabled={!!processingId}
                         className="flex-1 lg:w-full bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white border border-red-900/40 font-extrabold text-xs px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 uppercase tracking-wider transition-all"
                       >
                         <X className="h-4 w-4" /> Rejeitar
@@ -257,7 +283,8 @@ const AdminAchadosPerdidos = () => {
 
                   {String(item.status).toLowerCase().trim() === "aprovado" && (
                     <button
-                      onClick={() => alterarStatus(item.id, "resolvido")}
+                      onClick={() => { void alterarStatus(item.id, "resolvido"); }}
+                      disabled={!!processingId}
                       className="flex-1 lg:w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-95 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 uppercase tracking-wider transition-all"
                     >
                       <Check className="h-4 w-4" /> Marcar Devolvido
@@ -265,7 +292,9 @@ const AdminAchadosPerdidos = () => {
                   )}
 
                   <button
-                    onClick={() => deletarRegistro(item.id)}
+                    onClick={() => { void deletarRegistro(item.id); }}
+                    disabled={!!processingId}
+                    aria-label={`Excluir ocorrência ${item.titulo}`}
                     className="p-2.5 bg-transparent border border-purple-950 hover:bg-red-600/10 hover:border-red-900/40 text-gray-500 hover:text-red-400 rounded-xl transition-all"
                     title="Excluir do sistema"
                   >
