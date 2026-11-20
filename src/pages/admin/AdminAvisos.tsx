@@ -75,6 +75,7 @@ export const AdminAvisos = () => {
   const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
   const sendingRef = useRef(false);
   const [loadError, setLoadError] = useState(false);
   const [uploading, setUploading] = useState<'image' | 'icon' | null>(null);
@@ -153,7 +154,6 @@ export const AdminAvisos = () => {
         metadata: { source: testOnly ? 'admin_test' : 'admin_panel' },
       },
     });
-    setSending(false);
     if (error) return toast.error(error.message || 'Não foi possível criar a campanha.');
     toast.success(testOnly ? 'Teste enviado para você.' : data?.scheduled ? 'Notificação agendada.' : 'Notificação enviada para a fila.');
     if (!testOnly) setForm(initialForm);
@@ -167,12 +167,20 @@ export const AdminAvisos = () => {
   };
 
   const cancelCampaign = async (campaignId: string) => {
-    const { error } = await supabase.functions.invoke('admin-notifications', {
-      body: { action: 'cancel', campaignId },
-    });
-    if (error) return toast.error('Esta campanha não pode mais ser cancelada.');
-    toast.success('Campanha cancelada.');
-    await loadData(true);
+    if (cancellingId) return;
+    setCancellingId(campaignId);
+    try {
+      const { error } = await supabase.functions.invoke('admin-notifications', {
+        body: { action: 'cancel', campaignId },
+      });
+      if (error) throw error;
+      toast.success('Campanha cancelada.');
+      await loadData(true);
+    } catch {
+      toast.error('Esta campanha não pôde ser cancelada.');
+    } finally {
+      setCancellingId(null);
+    }
   };
 
   return (
@@ -243,7 +251,7 @@ export const AdminAvisos = () => {
           {loading ? <div className="flex justify-center py-16"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div> : campaigns.length === 0 ? <Card><CardContent className="py-16 text-center"><Megaphone className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" /><p className="font-medium">Nenhuma campanha enviada</p></CardContent></Card> : campaigns.map(campaign => {
             const progress = campaign.total_deliveries ? Math.round(((campaign.total_sent + campaign.total_failed) / campaign.total_deliveries) * 100) : campaign.status === 'completed' ? 100 : 0;
             const cancellable = ['draft', 'scheduled', 'queued'].includes(campaign.status);
-            return <Card key={campaign.id}><CardContent className="p-4 sm:p-5"><div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="font-semibold">{campaign.title}</h2><Badge variant={statusVariant(campaign.status)}>{statusLabel[campaign.status] || campaign.status}</Badge></div><p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{campaign.message}</p><div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground"><span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{campaign.total_recipients} destinatários</span><span className="flex items-center gap-1"><Clock3 className="h-3.5 w-3.5" />{new Date(campaign.scheduled_at || campaign.created_at).toLocaleString('pt-BR')}</span><span>{campaign.channels?.push ? 'Push' : ''}{campaign.channels?.push && campaign.channels?.in_app ? ' + ' : ''}{campaign.channels?.in_app ? 'Aplicativo' : ''}</span></div>{campaign.total_deliveries > 0 && <div className="mt-4 max-w-xl"><Progress value={progress} className="h-2" /><div className="mt-1 flex justify-between text-xs text-muted-foreground"><span>{campaign.total_sent} enviados</span><span>{campaign.total_failed} falhas</span></div></div>}{campaign.last_error && <p className="mt-3 flex items-start gap-1 text-xs text-destructive"><XCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />{campaign.last_error}</p>}{campaign.status === 'completed' && <p className="mt-3 flex items-center gap-1 text-xs text-emerald-600"><CheckCircle2 className="h-3.5 w-3.5" />Processamento concluído</p>}</div>{cancellable && <Button variant="outline" size="sm" onClick={() => void cancelCampaign(campaign.id)}>Cancelar</Button>}</div></CardContent></Card>;
+            return <Card key={campaign.id}><CardContent className="p-4 sm:p-5"><div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="font-semibold">{campaign.title}</h2><Badge variant={statusVariant(campaign.status)}>{statusLabel[campaign.status] || campaign.status}</Badge></div><p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{campaign.message}</p><div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground"><span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{campaign.total_recipients} destinatários</span><span className="flex items-center gap-1"><Clock3 className="h-3.5 w-3.5" />{new Date(campaign.scheduled_at || campaign.created_at).toLocaleString('pt-BR')}</span><span>{campaign.channels?.push ? 'Push' : ''}{campaign.channels?.push && campaign.channels?.in_app ? ' + ' : ''}{campaign.channels?.in_app ? 'Aplicativo' : ''}</span></div>{campaign.total_deliveries > 0 && <div className="mt-4 max-w-xl"><Progress value={progress} className="h-2" /><div className="mt-1 flex justify-between text-xs text-muted-foreground"><span>{campaign.total_sent} enviados</span><span>{campaign.total_failed} falhas</span></div></div>}{campaign.last_error && <p className="mt-3 flex items-start gap-1 text-xs text-destructive"><XCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />{campaign.last_error}</p>}{campaign.status === 'completed' && <p className="mt-3 flex items-center gap-1 text-xs text-emerald-600"><CheckCircle2 className="h-3.5 w-3.5" />Processamento concluído</p>}</div>{cancellable && <Button variant="outline" size="sm" disabled={!!cancellingId} onClick={() => void cancelCampaign(campaign.id)}>{cancellingId === campaign.id ? 'Cancelando...' : 'Cancelar'}</Button>}</div></CardContent></Card>;
           })}
         </TabsContent>
       </Tabs>
