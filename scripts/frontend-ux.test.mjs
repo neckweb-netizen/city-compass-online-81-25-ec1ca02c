@@ -491,3 +491,14 @@ test('compartilhamento de empresas usa gesto nativo antes de operações assínc
   assert.match(share, /copyToClipboard\(result\?\.short_url \?\? originalUrl\)/);
   assert.match(share, /error\.name === 'AbortError'/);
 });
+
+test('compartilhamento social abre links diretamente sem popup assíncrono', () => {
+  const share = source('src/components/ui/share-button.tsx');
+  assert.match(share, /const shareUrl = shortUrl \?\? url/);
+  assert.match(share, /href=\{whatsappUrl\}/);
+  assert.match(share, /href=\{telegramUrl\}/);
+  assert.match(share, /href=\{facebookUrl\}/);
+  assert.match(share, /target="_blank" rel="noopener noreferrer"/);
+  assert.doesNotMatch(share, /window\.open\(/);
+  assert.match(share, /const urlToCopy = await getOrCreateShortUrl\(\)/);
+});
