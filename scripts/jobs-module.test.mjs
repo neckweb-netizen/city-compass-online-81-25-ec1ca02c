@@ -82,3 +82,14 @@ test('admin vacancy management uses real approved companies and compatible categ
   assert.match(admin, /if \(!removed\) throw new Error/);
   assert.match(admin, /queryKey: \['latest-job-coupons'\]/);
 });
+
+test('admin vacancy form distinguishes loading from API failures', () => {
+  const admin = source('src/pages/admin/AdminVagas.tsx');
+  assert.match(admin, /queryKey: \['admin-vagas-categorias'\]/);
+  assert.match(admin, /isLoading: categoriasLoading, isError: categoriasError, refetch: refetchCategorias/);
+  assert.match(admin, /isLoading: empresasLoading, isError: empresasError, refetch: refetchEmpresas/);
+  assert.match(admin, /void refetchCategorias\(\)/);
+  assert.match(admin, /void refetchEmpresas\(\)/);
+  assert.match(admin, /onOpenChange=\{handleDialogOpenChange\}/);
+  assert.match(admin, /disabled=\{pending \|\| categoriasLoading \|\| categoriasError/);
+});
