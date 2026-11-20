@@ -595,3 +595,15 @@ test('publicação de vaga mantém formulário durante envio e recupera falha da
   assert.match(form, /void refetchCategorias\(\)/);
   assert.match(form, /Nenhuma categoria de vaga disponível no momento/);
 });
+
+test('painel de empresa mostra falha de consulta e bloqueia ações repetidas nas vagas', () => {
+  const page = source('src/components/empresa/EmpresaVagas.tsx');
+  assert.match(page, /data: vagas = \[\], isLoading, isError, refetch/);
+  assert.match(page, /if \(isError\)/);
+  assert.match(page, /Não foi possível carregar as vagas da empresa/);
+  assert.match(page, /void refetch\(\)/);
+  assert.match(page, /const actionPending = toggleStatusMutation\.isPending \|\| deleteVagaMutation\.isPending/);
+  assert.match(page, /disabled=\{actionPending\}/);
+  assert.match(page, /aria-label=\{`Excluir vaga \$\{vaga\.titulo\}`\}/);
+  assert.match(page, /aria-label=\{`Editar vaga \$\{vaga\.titulo\}`\}/);
+});
