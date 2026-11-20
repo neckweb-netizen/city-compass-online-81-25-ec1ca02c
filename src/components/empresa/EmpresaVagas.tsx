@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Briefcase, Plus, Edit2, Trash2, Eye, MapPin, Calendar, DollarSign, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { isValidJobApplicationContact } from '@/lib/jobApplication';
 
 interface EmpresaVagasProps {
   empresaId: string;
@@ -272,6 +273,11 @@ export const EmpresaVagas = ({ empresaId }: EmpresaVagasProps) => {
         !formData.categoria_id || !formData.tipo_vaga ||
         !formData.forma_candidatura || !formData.contato_candidatura.trim()) {
       toast.error('Preencha os campos obrigatórios, incluindo o tipo de vaga.');
+      return;
+    }
+
+    if (!isValidJobApplicationContact(formData.forma_candidatura, formData.contato_candidatura)) {
+      toast.error('Informe um contato válido para a forma de candidatura escolhida.');
       return;
     }
 
