@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { getJobApplicationHref } from "@/lib/jobApplication";
 import { supabase } from "@/integrations/supabase/client";
 import { Search, MapPin, Phone, Plus, AlertCircle, CheckCircle2, Tag, Calendar, Sparkles, X, User, Check } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
@@ -23,6 +24,9 @@ const AchadosPerdidos = () => {
   const location = useLocation();
   const [itens, setItens] = useState<ItemItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [resolvendoId, setResolvendoId] = useState<string | null>(null);
+  const submittingRef = useRef(false);
   const [filtroTipo, setFiltroTipo] = useState<string>("todos"); // "todos" | "perdido" | "encontrado" | "meus"
   const [busca, setBusca] = useState<string>("");
   const [isModalAberto, setIsModalAberto] = useState(false);
@@ -69,6 +73,7 @@ const AchadosPerdidos = () => {
   const buscarItens = async () => {
     try {
       setLoading(true);
+      setLoadError(false);
       
       // Se o filtro selecionado for "meus", buscamos TODOS os estados do usuário (incluindo pendentes)
       // Se for os filtros comunitários normais, filtramos apenas os publicados e resolvidos
@@ -89,6 +94,7 @@ const AchadosPerdidos = () => {
       setItens(data || []);
     } catch (error) {
       console.error("Erro ao buscar itens de achados e perdidos:", error);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -101,26 +107,29 @@ const AchadosPerdidos = () => {
 
   const handleCadastrarItem = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!titulo || !descricao || !localFato || !contatoNome || !contatoTelefone) {
+    if (submittingRef.current) return;
+    const whatsapp = getJobApplicationHref("whatsapp", contatoTelefone);
+    if (titulo.trim().length < 3 || titulo.trim().length > 160 || descricao.trim().length < 10 || descricao.trim().length > 4000 || localFato.trim().length < 2 || contatoNome.trim().length < 2 || !whatsapp) {
       toast({
         title: "Campos obrigatórios",
-        description: "Por favor, preencha todos os campos do formulário para podermos ajudar.",
+        description: "Informe título, descrição, local, nome e WhatsApp válidos para publicar a ocorrência.",
         variant: "destructive",
       });
       return;
     }
 
+    submittingRef.current = true;
     try {
       setEnviando(true);
       const { error } = await supabase.from("achados_perdidos" as any).insert([
         {
           tipo,
-          titulo,
-          descricao,
+          titulo: titulo.trim(),
+          descricao: descricao.trim(),
           categoria,
-          local_fato: localFato,
-          contato_nome: contatoNome,
-          contato_telefone: contatoTelefone,
+          local_fato: localFato.trim(),
+          contato_nome: contatoNome.trim(),
+          contato_telefone: contatoTelefone.trim(),
           status: "pendente",
           usuario_id: usuarioLogadoId, // Vincula o post ao usuário se ele estiver logado
         },
@@ -147,19 +156,27 @@ const AchadosPerdidos = () => {
         variant: "destructive",
       });
     } finally {
+      submittingRef.current = false;
       setEnviando(false);
     }
   };
 
   // Função para marcar o item como resolvido diretamente pela tela
   const handleMarcarComoResolvido = async (itemId: string) => {
+    if (resolvendoId) return;
+    setResolvendoId(itemId);
     try {
-      const { error } = await supabase
+      const { data: updated, error } = await supabase
         .from("achados_perdidos" as any)
         .update({ status: "resolvido" } as any)
-        .eq("id", itemId);
+        .eq("id", itemId)
+        .eq("usuario_id", usuarioLogadoId)
+        .eq("status", "aprovado")
+        .select("id")
+        .maybeSingle();
 
       if (error) throw error;
+      if (!updated) throw new Error("Ocorrência já resolvida, inexistente ou sem permissão.");
 
       toast({
         title: "Caso resolvido!",
@@ -173,6 +190,8 @@ const AchadosPerdidos = () => {
         description: error.message || "Não foi possível alterar o status do item.",
         variant: "destructive",
       });
+    } finally {
+      setResolvendoId(null);
     }
   };
 
@@ -286,6 +305,11 @@ const AchadosPerdidos = () => {
             <div className="w-9 h-9 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
             <span className="text-xs text-purple-300 font-medium tracking-wide">Sincronizando com os servidores de SAJ...</span>
           </div>
+        ) : loadError ? (
+          <div role="alert" className="rounded-2xl border border-red-500/30 bg-[#150F22] p-8 text-center space-y-3">
+            <p className="font-semibold">Não foi possível carregar as ocorrências.</p>
+            <button type="button" onClick={() => { void buscarItens(); }} className="rounded-xl bg-purple-600 px-5 py-3 font-bold">Tentar novamente</button>
+          </div>
         ) : itensFiltrados.length === 0 ? (
           <div className="bg-[#150F22]/40 border border-purple-900/20 rounded-2xl p-16 text-center max-w-xl mx-auto backdrop-blur-sm">
             <AlertCircle className="h-12 w-12 text-purple-900 mx-auto mb-4" />
@@ -352,20 +376,24 @@ const AchadosPerdidos = () => {
                     </div>
                   ) : usuarioLogadoId && item.usuario_id === usuarioLogadoId ? (
                     <button
-                      onClick={() => handleMarcarComoResolvido(item.id)}
+                      onClick={() => { void handleMarcarComoResolvido(item.id); }}
+                      disabled={!!resolvendoId || item.status !== "aprovado"}
+                      aria-label={`Marcar ${item.titulo} como resolvido`}
                       className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-extrabold text-xs p-3 rounded-xl flex items-center justify-center gap-1.5 hover:shadow-md hover:shadow-emerald-600/10 hover:opacity-95 active:scale-[0.99] transition-all text-center uppercase tracking-wider mt-2"
                     >
                       <Check className="h-4 w-4" /> Marcar como Achado / Entregue
                     </button>
-                  ) : (
+                  ) : getJobApplicationHref("whatsapp", item.contato_telefone) ? (
                     <a
-                      href={`https://wa.me/55${item.contato_telefone.replace(/\D/g, "")}`}
+                      href={getJobApplicationHref("whatsapp", item.contato_telefone)!}
                       target="_blank"
                       rel="noreferrer"
                       className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-extrabold text-xs p-3 rounded-xl flex items-center justify-center gap-1.5 hover:shadow-md hover:shadow-purple-600/10 hover:opacity-95 active:scale-[0.99] transition-all text-center uppercase tracking-wider mt-2"
                     >
                       <Phone className="h-3.5 w-3.5" /> Entrar em Contato ({item.contato_nome})
                     </a>
+                  ) : (
+                    <p className="rounded-xl border border-purple-900/40 p-3 text-center text-xs text-gray-400">Contato indisponível</p>
                   )}
                 </div>
               </div>
@@ -376,14 +404,16 @@ const AchadosPerdidos = () => {
         {/* Modal de cadastro premium */}
         {isModalAberto && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-            <div className="bg-[#150F22] border border-purple-900/50 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl shadow-purple-950/50 animate-in fade-in zoom-in-95 duration-150 text-white">
+            <div role="dialog" aria-modal="true" aria-label="Notificar ocorrência" className="bg-[#150F22] border border-purple-900/50 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl shadow-purple-950/50 animate-in fade-in zoom-in-95 duration-150 text-white">
               <div className="bg-[#0F0A19] border-b border-purple-950/80 px-5 py-4 flex justify-between items-center">
                 <div className="flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-purple-400" />
                   <h2 className="font-black text-sm uppercase tracking-wider">Notificar Nova Ocorrência</h2>
                 </div>
                 <button
-                  onClick={() => setIsModalAberto(false)}
+                  onClick={() => { if (!enviando) setIsModalAberto(false); }}
+                  disabled={enviando}
+                  aria-label="Fechar cadastro"
                   className="p-1 rounded-lg bg-purple-950/40 text-gray-400 hover:text-white hover:bg-purple-900/40 transition-colors"
                 >
                   <X className="h-4 w-4" />
