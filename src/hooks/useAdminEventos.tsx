@@ -26,15 +26,15 @@ export const useAdminEventos = () => {
 
   const toggleEventoMutation = useMutation({
     mutationFn: async ({ id, ativo }: { id: string; ativo: boolean }) => {
-      const { error } = await supabase
-        .from('eventos')
-        .update({ ativo })
-        .eq('id', id);
-
+      const { data: updated, error } = await supabase
+        .from('eventos').update({ ativo }).eq('id', id).select('id').maybeSingle();
       if (error) throw error;
+      if (!updated) throw new Error('Evento não encontrado ou sem permissão para atualizar.');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-eventos'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin-eventos'] });
+      void queryClient.invalidateQueries({ queryKey: ['empresa-eventos'] });
+      void queryClient.invalidateQueries({ queryKey: ['eventos'] });
       toast({ title: 'Evento atualizado com sucesso!' });
     },
     onError: () => {
@@ -45,6 +45,8 @@ export const useAdminEventos = () => {
   return {
     eventos: eventosQuery.data || [],
     loading: eventosQuery.isLoading,
+    error: eventosQuery.error,
+    isProcessing: toggleEventoMutation.isPending,
     toggleEvento: toggleEventoMutation.mutate,
     refetch: eventosQuery.refetch,
   };
