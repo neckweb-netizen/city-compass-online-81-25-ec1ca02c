@@ -21,17 +21,32 @@ export const InfluencerProfile = ({
   onAvaliacaoClick,
   onEventosClick 
 }: InfluencerProfileProps) => {
-  const parseRedesSociais = (site?: string) => {
-    if (!site) return {};
-    
+  const parseRedesSociais = (site?: string): Record<string, string> => {
+    if (!site || typeof site !== 'string') return {};
+
+    let values: Record<string, unknown>;
     try {
-      if (site.startsWith('{')) {
-        return JSON.parse(site);
-      }
-      return { site };
+      const parsed: unknown = site.trim().startsWith('{') ? JSON.parse(site) : { site };
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+      values = parsed as Record<string, unknown>;
     } catch {
-      return { site };
+      return {};
     }
+
+    return Object.fromEntries(Object.entries(values).flatMap(([platform, value]) => {
+      if (typeof value !== 'string') return [];
+      const raw = value.trim();
+      if (!raw || /[\\s\\u0000-\\u001f]/.test(raw) || raw.startsWith('//')) return [];
+      // Accept ordinary website addresses without a scheme, never executable URLs.
+      if (!/^https?:\\/\\//i.test(raw) && /^[a-z][a-z0-9+.-]*:/i.test(raw)) return [];
+      try {
+        const url = new URL(/^https?:\\/\\//i.test(raw) ? raw : `https://${raw}`);
+        if (!['http:', 'https:'].includes(url.protocol) || !url.hostname.includes('.')) return [];
+        return [[platform, url.toString()]];
+      } catch {
+        return [];
+      }
+    }));
   };
 
   const redesSociais = parseRedesSociais(empresa.site);
@@ -133,7 +148,7 @@ export const InfluencerProfile = ({
               {Object.entries(redesSociais).map(([platform, url]) => (
                 <a
                   key={platform}
-                  href={typeof url === 'string' ? url : '#'}
+                  href={url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
@@ -142,7 +157,7 @@ export const InfluencerProfile = ({
                   <div>
                     <div className="font-medium capitalize">{platform}</div>
                     <div className="text-sm text-muted-foreground truncate">
-                      {typeof url === 'string' ? url : 'N/A'}
+                      {url}
                     </div>
                   </div>
                 </a>
