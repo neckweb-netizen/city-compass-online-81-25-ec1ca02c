@@ -5,6 +5,7 @@ import { Phone, Mail, MessageCircle, Lock, User } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { AuthDialog } from '@/components/auth/AuthDialog';
 import { useState } from 'react';
+import { getJobApplicationHref } from '@/lib/jobApplication';
 
 interface ServicoContactInfoProps {
   servico: {
@@ -37,21 +38,21 @@ export const ServicoContactInfo: React.FC<ServicoContactInfoProps> = ({
 
     // Only allow contact if user is authenticated
     switch (tipo) {
-      case 'whatsapp':
-        if (servico.whatsapp_prestador) {
-          window.open(`https://wa.me/55${servico.whatsapp_prestador.replace(/\D/g, '')}`, '_blank');
-        }
+      case 'whatsapp': {
+        const href = getJobApplicationHref('whatsapp', servico.whatsapp_prestador || '');
+        if (href) window.open(href, '_blank', 'noopener,noreferrer');
         break;
-      case 'telefone':
-        if (servico.telefone_prestador) {
-          window.open(`tel:${servico.telefone_prestador}`, '_blank');
-        }
+      }
+      case 'telefone': {
+        const phone = (servico.telefone_prestador || '').replace(/[^0-9+]/g, '');
+        if (phone.length >= 10 && phone.length <= 16) window.location.href = `tel:${phone}`;
         break;
-      case 'email':
-        if (servico.email_prestador) {
-          window.open(`mailto:${servico.email_prestador}`, '_blank');
-        }
+      }
+      case 'email': {
+        const href = getJobApplicationHref('email', servico.email_prestador || '');
+        if (href) window.location.href = href;
         break;
+      }
     }
     
     // Track contact attempt
@@ -74,7 +75,7 @@ export const ServicoContactInfo: React.FC<ServicoContactInfoProps> = ({
         size="lg"
         onClick={() => handleContactClick(type)}
         className={className}
-        disabled={!user && !isOwner}
+
       >
         {!user ? <Lock className="w-4 h-4 mr-2" /> : icon}
         {!user ? 'Fazer Login' : label}
@@ -97,10 +98,13 @@ export const ServicoContactInfo: React.FC<ServicoContactInfoProps> = ({
         </div>
 
         {!user && (
-          <div className="p-4 bg-muted/50 rounded-lg border border-muted">
-            <p className="text-sm text-muted-foreground text-center">
+          <div className="p-4 bg-muted/50 rounded-lg border border-muted space-y-3 text-center">
+            <p className="text-sm text-muted-foreground">
               Faça login para visualizar informações de contato e entrar em contato com o prestador
             </p>
+            <Button type="button" variant="outline" onClick={() => setShowAuthDialog(true)}>
+              Fazer Login
+            </Button>
           </div>
         )}
 
