@@ -28,7 +28,7 @@ const statusLabels = {
 };
 
 export const AgendamentosEmpresa: React.FC<AgendamentosEmpresaProps> = ({ empresaId }) => {
-  const { agendamentos, isLoading, atualizarStatus } = useAgendamentos(empresaId);
+  const { agendamentos, isLoading, isError, refetch, atualizarStatus, isUpdating } = useAgendamentos(empresaId);
   const [filtro, setFiltro] = useState('ativos');
   const [busca, setBusca] = useState('');
 
@@ -59,13 +59,20 @@ export const AgendamentosEmpresa: React.FC<AgendamentosEmpresaProps> = ({ empres
   }), [agendamentos, hoje]);
 
   const abrirWhatsApp = (telefone: string, nome: string, data: Date) => {
-    const numero = telefone.replace(/\D/g, '');
-    const destino = numero.startsWith('55') ? numero : `55${numero}`;
+    const digits = telefone.replace(/\D/g, '');
+    const local = digits.startsWith('55') && digits.length >= 12 ? digits.slice(2) : digits;
+    if (local.length < 10 || local.length > 11) return;
     const texto = encodeURIComponent(`Olá, ${nome}! Entramos em contato sobre seu agendamento de ${format(data, "dd/MM 'às' HH:mm", { locale: ptBR })}.`);
-    window.open(`https://wa.me/${destino}?text=${texto}`, '_blank', 'noopener,noreferrer');
+    window.open(`https://wa.me/55${local}?text=${texto}`, '_blank', 'noopener,noreferrer');
+  };
+  const contatoValido = (telefone: string) => {
+    const digits = telefone.replace(/\D/g, '');
+    const local = digits.startsWith('55') && digits.length >= 12 ? digits.slice(2) : digits;
+    return local.length >= 10 && local.length <= 11;
   };
 
-  if (isLoading) return <Card><CardHeader><CardTitle>Agendamentos</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">Carregando agendamentos...</p></CardContent></Card>;
+  if (isLoading) return <Card><CardHeader><CardTitle>Agendamentos</CardTitle></CardHeader><CardContent><p role="status" className="text-muted-foreground">Carregando agendamentos...</p></CardContent></Card>;
+  if (isError) return <Card><CardHeader><CardTitle>Agendamentos</CardTitle></CardHeader><CardContent role="alert" className="space-y-3"><p>Não foi possível consultar a agenda.</p><Button type="button" variant="outline" onClick={() => { void refetch(); }}>Tentar novamente</Button></CardContent></Card>;
 
   return (
     <Card>
@@ -84,7 +91,7 @@ export const AgendamentosEmpresa: React.FC<AgendamentosEmpresaProps> = ({ empres
           ['Hoje', resumo.hoje], ['Pendentes', resumo.pendentes], ['Confirmados', resumo.confirmados], ['Concluídos', resumo.concluidos]
         ].map(([label, valor]) => <div key={String(label)} className="rounded-xl border bg-muted/30 p-3"><p className="text-xs text-muted-foreground">{label}</p><b className="text-2xl">{valor}</b></div>)}</div>
 
-        <div className="mb-5 grid gap-3 sm:grid-cols-[1fr_190px]"><div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"/><Input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar cliente, telefone ou serviço" className="pl-9"/></div><Select value={filtro} onValueChange={setFiltro}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="ativos">Próximos ativos</SelectItem><SelectItem value="pendente">Pendentes</SelectItem><SelectItem value="confirmado">Confirmados</SelectItem><SelectItem value="concluido">Concluídos</SelectItem><SelectItem value="cancelado">Cancelados</SelectItem><SelectItem value="todos">Todos</SelectItem></SelectContent></Select></div>
+        <div className="mb-5 grid gap-3 sm:grid-cols-[1fr_190px]"><div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"/><Input value={busca} onChange={e=>setBusca(e.target.value)} aria-label="Buscar agendamentos" placeholder="Buscar cliente, telefone ou serviço" className="pl-9"/></div><Select value={filtro} onValueChange={setFiltro}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="ativos">Próximos ativos</SelectItem><SelectItem value="pendente">Pendentes</SelectItem><SelectItem value="confirmado">Confirmados</SelectItem><SelectItem value="concluido">Concluídos</SelectItem><SelectItem value="cancelado">Cancelados</SelectItem><SelectItem value="todos">Todos</SelectItem></SelectContent></Select></div>
 
         {agendamentosOrdenados.length === 0 ? (
           <div className="text-center py-8">
@@ -104,7 +111,7 @@ export const AgendamentosEmpresa: React.FC<AgendamentosEmpresaProps> = ({ empres
                   key={agendamento.id} 
                   className="p-4 border rounded-lg bg-card hover:bg-accent/50 transition-colors"
                 >
-                  <div className="flex items-start justify-between mb-3">
+                  <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
                     <div className="flex items-center gap-2">
                       <User className="w-4 h-4 text-muted-foreground" />
                       <span className="font-medium">{agendamento.nome_cliente || 'Cliente'}</span>
@@ -149,16 +156,18 @@ export const AgendamentosEmpresa: React.FC<AgendamentosEmpresaProps> = ({ empres
                     <div className="flex flex-wrap gap-2">
                       <Button
                         size="sm"
-                        onClick={() => atualizarStatus({ id: agendamento.id, status: 'confirmado' })}
+                        onClick={() => atualizarStatus({ id: agendamento.id, status: 'confirmado', fromStatus: agendamento.status })}
+                        disabled={isUpdating}
                         className="bg-green-600 hover:bg-green-700"
                       >
                         Confirmar
                       </Button>
-                      <Button size="sm" variant="outline" onClick={()=>abrirWhatsApp(agendamento.telefone_cliente,agendamento.nome_cliente,dataValida)}><MessageCircle className="mr-1 h-4 w-4"/>WhatsApp</Button>
+                      <Button size="sm" variant="outline" disabled={!contatoValido(agendamento.telefone_cliente)} onClick={()=>abrirWhatsApp(agendamento.telefone_cliente,agendamento.nome_cliente,dataValida)}><MessageCircle className="mr-1 h-4 w-4"/>WhatsApp</Button>
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => atualizarStatus({ id: agendamento.id, status: 'cancelado' })}
+                        onClick={() => atualizarStatus({ id: agendamento.id, status: 'cancelado', fromStatus: agendamento.status })}
+                        disabled={isUpdating}
                         className="border-red-200 text-red-600 hover:bg-red-50"
                       >
                         Cancelar
@@ -167,7 +176,7 @@ export const AgendamentosEmpresa: React.FC<AgendamentosEmpresaProps> = ({ empres
                   )}
 
                   {agendamento.status === 'confirmado' && (
-                    <div className="flex flex-wrap gap-2"><Button size="sm" onClick={() => atualizarStatus({ id: agendamento.id, status: 'concluido' })} className="bg-primary hover:bg-primary/90"><CheckCircle2 className="mr-1 h-4 w-4"/>Marcar como concluído</Button><Button size="sm" variant="outline" onClick={()=>abrirWhatsApp(agendamento.telefone_cliente,agendamento.nome_cliente,dataValida)}><MessageCircle className="mr-1 h-4 w-4"/>WhatsApp</Button></div>
+                    <div className="flex flex-wrap gap-2"><Button size="sm" onClick={() => atualizarStatus({ id: agendamento.id, status: 'concluido', fromStatus: agendamento.status })} disabled={isUpdating} className="bg-primary hover:bg-primary/90"><CheckCircle2 className="mr-1 h-4 w-4"/>Marcar como concluído</Button><Button size="sm" variant="outline" disabled={!contatoValido(agendamento.telefone_cliente)} onClick={()=>abrirWhatsApp(agendamento.telefone_cliente,agendamento.nome_cliente,dataValida)}><MessageCircle className="mr-1 h-4 w-4"/>WhatsApp</Button></div>
                   )}
                 </div>
               );
