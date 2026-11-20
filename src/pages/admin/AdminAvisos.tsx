@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { getSafeNotificationPath } from '@/lib/safeNavigation';
 import {
   BellRing, CalendarClock, CheckCircle2, Clock3, ExternalLink, Image as ImageIcon,
   Loader2, Megaphone, RefreshCw, Send, Smartphone, Upload, Users, XCircle,
@@ -74,6 +75,8 @@ export const AdminAvisos = () => {
   const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const sendingRef = useRef(false);
+  const [loadError, setLoadError] = useState(false);
   const [uploading, setUploading] = useState<'image' | 'icon' | null>(null);
 
   const loadData = useCallback(async (silent = false) => {
@@ -83,8 +86,9 @@ export const AdminAvisos = () => {
       (supabase as any).from('usuarios').select('id,nome,email,tipo_conta').order('nome').limit(500),
     ]);
     if (campaignError || userError) {
-      if (!silent) toast.error('Não foi possível carregar a central de notificações.');
+      if (!silent) { setLoadError(true); toast.error('Não foi possível carregar a central de notificações.'); }
     } else {
+      setLoadError(false);
       setCampaigns((campaignData || []) as Campaign[]);
       setRecipients((userData || []) as Recipient[]);
     }
@@ -122,11 +126,16 @@ export const AdminAvisos = () => {
   };
 
   const sendCampaign = async (testOnly = false) => {
+    if (sendingRef.current) return;
     if (!form.title.trim() || !form.message.trim()) return toast.error('Preencha o título e a mensagem.');
     if (!form.inApp && !form.push) return toast.error('Ative pelo menos um canal.');
     if (testOnly && !user?.id) return toast.error('Administrador não identificado.');
     if (!testOnly && form.audienceType === 'specific' && !form.targetUserIds.length) return toast.error('Selecione os destinatários.');
+    if (form.actionUrl && !getSafeNotificationPath(form.actionUrl)) return toast.error('Use somente um link interno do SAJ TEM.');
+    if (form.scheduledAt && (!Number.isFinite(new Date(form.scheduledAt).getTime()) || new Date(form.scheduledAt).getTime() <= Date.now() + 30_000)) return toast.error('Escolha uma data futura para agendar.');
+    sendingRef.current = true;
     setSending(true);
+    try {
     const { data, error } = await supabase.functions.invoke('admin-notifications', {
       body: {
         title: form.title,
@@ -149,6 +158,12 @@ export const AdminAvisos = () => {
     toast.success(testOnly ? 'Teste enviado para você.' : data?.scheduled ? 'Notificação agendada.' : 'Notificação enviada para a fila.');
     if (!testOnly) setForm(initialForm);
     await loadData(true);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Não foi possível enviar a notificação.');
+    } finally {
+      sendingRef.current = false;
+      setSending(false);
+    }
   };
 
   const cancelCampaign = async (campaignId: string) => {
@@ -169,6 +184,8 @@ export const AdminAvisos = () => {
         </div>
         <Button variant="outline" onClick={() => void loadData()} disabled={loading}><RefreshCw className="mr-2 h-4 w-4" />Atualizar</Button>
       </div>
+
+      {loadError && <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/30 p-4 text-sm"><span>Não foi possível carregar o histórico ou os destinatários.</span><Button type="button" variant="outline" onClick={() => { void loadData(); }}>Tentar novamente</Button></div>}
 
       <Tabs defaultValue="compose" className="space-y-5">
         <TabsList><TabsTrigger value="compose">Criar notificação</TabsTrigger><TabsTrigger value="history">Histórico ({campaigns.length})</TabsTrigger></TabsList>
@@ -193,7 +210,7 @@ export const AdminAvisos = () => {
                     <div className="space-y-2"><Label>Imagem grande</Label><div className="flex gap-2"><Input value={form.imageUrl} onChange={event => change('imageUrl', event.target.value)} placeholder="https://..." /><Button variant="outline" size="icon" asChild><label className="cursor-pointer"><input className="hidden" type="file" accept="image/*" onChange={event => void uploadAsset(event, 'image')} />{uploading === 'image' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}</label></Button></div></div>
                     <div className="space-y-2"><Label>Ícone</Label><div className="flex gap-2"><Input value={form.iconUrl} onChange={event => change('iconUrl', event.target.value)} placeholder="https://..." /><Button variant="outline" size="icon" asChild><label className="cursor-pointer"><input className="hidden" type="file" accept="image/*" onChange={event => void uploadAsset(event, 'icon')} />{uploading === 'icon' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}</label></Button></div></div>
                   </div>
-                  <div className="grid gap-4 sm:grid-cols-[1fr_220px]"><div className="space-y-2"><Label htmlFor="action-url">Link ao tocar</Label><Input id="action-url" value={form.actionUrl} onChange={event => change('actionUrl', event.target.value)} placeholder="/eventos ou https://..." /></div><div className="space-y-2"><Label htmlFor="action-label">Texto do botão</Label><Input id="action-label" maxLength={60} value={form.actionLabel} onChange={event => change('actionLabel', event.target.value)} placeholder="Ver detalhes" /></div></div>
+                  <div className="grid gap-4 sm:grid-cols-[1fr_220px]"><div className="space-y-2"><Label htmlFor="action-url">Link ao tocar</Label><Input id="action-url" value={form.actionUrl} onChange={event => change('actionUrl', event.target.value)} placeholder="/eventos" /></div><div className="space-y-2"><Label htmlFor="action-label">Texto do botão</Label><Input id="action-label" maxLength={60} value={form.actionLabel} onChange={event => change('actionLabel', event.target.value)} placeholder="Ver detalhes" /></div></div>
                 </CardContent>
               </Card>
 
@@ -203,7 +220,7 @@ export const AdminAvisos = () => {
                   {form.audienceType === 'specific' && <div className="max-h-56 space-y-1 overflow-y-auto rounded-lg border p-2">{recipients.map(item => <label key={item.id} className="flex cursor-pointer items-center gap-3 rounded-xl p-2 transition-colors hover:bg-primary/10"><Checkbox checked={form.targetUserIds.includes(item.id)} onCheckedChange={checked => change('targetUserIds', checked ? [...form.targetUserIds, item.id] : form.targetUserIds.filter(id => id !== item.id))} /><span className="min-w-0"><span className="block truncate text-sm font-medium">{item.nome || item.email || 'Sem nome'}</span><span className="block truncate text-xs text-muted-foreground">{item.email} · {item.tipo_conta}</span></span></label>)}</div>}
                   {selectedNames.length > 0 && <p className="text-xs text-muted-foreground">{selectedNames.length} pessoa(s) selecionada(s)</p>}
                   <div className="grid gap-3 sm:grid-cols-2"><label className="flex items-center justify-between rounded-lg border p-3"><span><span className="block text-sm font-medium">Dentro do aplicativo</span><span className="text-xs text-muted-foreground">Histórico e sino</span></span><Switch checked={form.inApp} onCheckedChange={value => change('inApp', value)} /></label><label className="flex items-center justify-between rounded-lg border p-3"><span><span className="block text-sm font-medium">Notificação push</span><span className="text-xs text-muted-foreground">Celular e PWA</span></span><Switch checked={form.push} onCheckedChange={value => change('push', value)} /></label></div>
-                  <div className="space-y-2"><Label htmlFor="scheduled-at">Agendar (opcional)</Label><Input id="scheduled-at" type="datetime-local" value={form.scheduledAt} min={new Date(Date.now() + 60_000).toISOString().slice(0, 16)} onChange={event => change('scheduledAt', event.target.value)} /><p className="text-xs text-muted-foreground">Sem data, a campanha entra na fila imediatamente.</p></div>
+                  <div className="space-y-2"><Label htmlFor="scheduled-at">Agendar (opcional)</Label><Input id="scheduled-at" type="datetime-local" value={form.scheduledAt} min={new Date(Date.now() + 60_000 - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 16)} onChange={event => change('scheduledAt', event.target.value)} /><p className="text-xs text-muted-foreground">Sem data, a campanha entra na fila imediatamente.</p></div>
                   <div className="flex flex-col gap-2 sm:flex-row sm:justify-end"><Button variant="outline" onClick={() => void sendCampaign(true)} disabled={sending || uploading !== null}><Smartphone className="mr-2 h-4 w-4" />Enviar teste para mim</Button><Button onClick={() => void sendCampaign(false)} disabled={sending || uploading !== null}>{sending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : form.scheduledAt ? <CalendarClock className="mr-2 h-4 w-4" /> : <Send className="mr-2 h-4 w-4" />}{form.scheduledAt ? 'Agendar campanha' : 'Enviar campanha'}</Button></div>
                 </CardContent>
               </Card>
