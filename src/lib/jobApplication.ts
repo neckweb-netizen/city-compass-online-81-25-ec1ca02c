@@ -5,7 +5,7 @@ export const getJobApplicationHref = (method: string, contact: string): string |
   if (!raw) return null;
 
   if (method === 'email') {
-    return /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(raw) ? `mailto:${raw}` : null;
+    return /^[^\s@]+@[^\s@]+\\.[^\s@]+$/.test(raw) ? `mailto:${raw}` : null;
   }
 
   if (method === 'whatsapp') {
@@ -16,10 +16,10 @@ export const getJobApplicationHref = (method: string, contact: string): string |
   }
 
   if (method === 'site' || method === 'linkedin') {
-    if (raw.startsWith('//') || (/^[a-z][a-z0-9+.-]*:/i.test(raw) && !/^https?:\\/\\//i.test(raw))) return null;
-    if (/\\s/.test(raw)) return null;
+    if (raw.startsWith('//') || (/^[a-z][a-z0-9+.-]*:/i.test(raw) && !/^https?:\/\//i.test(raw))) return null;
+    if (/\s/.test(raw)) return null;
     try {
-      const parsed = new URL(/^https?:\\/\\//i.test(raw) ? raw : `https://${raw}`);
+      const parsed = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`);
       if (!['https:', 'http:'].includes(parsed.protocol) || !parsed.hostname.includes('.') || parsed.username || parsed.password) return null;
       return parsed.href;
     } catch {
