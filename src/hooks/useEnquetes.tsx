@@ -102,7 +102,7 @@ export const useEnquetes = (includeAdminList = false) => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['enquetes'] });
+      void queryClient.invalidateQueries({ queryKey: ['enquetes'] });
       void queryClient.invalidateQueries({ queryKey: ['enquete-ativa'] });
       toast.success('Enquete criada com sucesso!');
     },
@@ -122,12 +122,10 @@ export const useEnquetes = (includeAdminList = false) => {
         .maybeSingle();
       if (error) throw error;
       if (!data) throw new Error('Enquete não encontrada ou sem permissão para editar.');
-      
-      if (error) throw error;
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['enquetes'] });
+      void queryClient.invalidateQueries({ queryKey: ['enquetes'] });
       void queryClient.invalidateQueries({ queryKey: ['enquete-ativa'] });
       toast.success('Enquete atualizada com sucesso!');
     },
@@ -149,7 +147,7 @@ export const useEnquetes = (includeAdminList = false) => {
       if (!removed) throw new Error('Enquete não encontrada ou sem permissão para excluir.');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['enquetes'] });
+      void queryClient.invalidateQueries({ queryKey: ['enquetes'] });
       void queryClient.invalidateQueries({ queryKey: ['enquete-ativa'] });
       toast.success('Enquete excluída com sucesso!');
     },
