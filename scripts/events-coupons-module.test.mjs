@@ -121,3 +121,18 @@ test('company event edits return modified public details to moderation', () => {
   assert.ok(edit.includes('if (!updated) throw new Error'));
   assert.ok(edit.includes('Alterações nas informações públicas serão enviadas novamente para aprovação.'));
 });
+
+test('public event catalog hides company events when the business is suspended', () => {
+  const sql = source('supabase/migrations/20261120204500_event_visibility_requires_approved_business.sql');
+  assert.ok(sql.includes("status_aprovacao = 'aprovado'"));
+  assert.ok(sql.includes('empresa_id is null'));
+  assert.ok(sql.includes("e.status_aprovacao = 'aprovado'"));
+  assert.ok(sql.includes('e.ativo = true'));
+});
+
+test('administrative coupon code is normalized to match validator', () => {
+  for (const path of ['src/components/admin/forms/CupomForm.tsx', 'src/components/admin/forms/EditCupomForm.tsx']) {
+    const form = source(path);
+    assert.ok(form.includes('codigo: data.codigo.trim().toUpperCase()'), path);
+  }
+});
