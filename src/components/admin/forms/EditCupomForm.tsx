@@ -95,7 +95,7 @@ export const EditCupomForm = ({ cupom, onSuccess }: EditCupomFormProps) => {
         .from('cupons')
         .update({
           titulo: data.titulo,
-          codigo: data.codigo,
+          codigo: data.codigo.trim().toUpperCase(),
           descricao: data.descricao || null,
           tipo: data.tipo,
           valor: data.valor,
