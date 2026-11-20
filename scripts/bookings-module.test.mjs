@@ -88,3 +88,12 @@ test('profile includes protected booking list and confirms cancel updates', () =
   assert.match(dialog, /window\.confirm/);
   assert.match(dialog, /America\/Bahia/);
 });
+
+test('client booking cancellations notify the company without changing payment flows', () => {
+  const sql = read('supabase/migrations/20261120230000_notify_company_on_client_booking_cancel.sql');
+  assert.match(sql, /new\.status = 'cancelado'/);
+  assert.match(sql, /old\.cliente_usuario_id = \(select auth\.uid\(\)\)/);
+  assert.match(sql, /'appointment_cancelled_by_client'/);
+  assert.match(sql, /'\/empresa-dashboard'/);
+  assert.doesNotMatch(sql, /pix|pagamento|wallet/i);
+});
