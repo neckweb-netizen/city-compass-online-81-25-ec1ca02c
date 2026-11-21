@@ -45,10 +45,10 @@ export const AuditLogsSection = () => {
 
       if (usuariosError) throw usuariosError;
 
-      const userMap = usuarios?.reduce((acc, user) => {
-        acc[user.id] = user.nome;
-        return acc;
-      }, {} as Record<string, string>) || {};
+      const userMap: Record<string, string> = {};
+      for (const usuario of usuarios || []) {
+        userMap[usuario.id] = usuario.nome;
+      }
 
       return logs?.map(log => ({
         ...log,
