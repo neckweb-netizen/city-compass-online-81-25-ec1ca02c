@@ -67,3 +67,17 @@ test('Entre Nós reports show targets to moderators and give clear duplicate fee
   assert.match(page, /Você já denunciou esta publicação/);
   assert.match(page, /Este comentário não pode ser denunciado/);
 });
+
+
+test('Entre Nós moderation requires MFA and preserves owner/public reads', () => {
+  const sql = read('supabase/migrations/20261121005841_entre_nos_mfa_moderation_policies.sql');
+  for (const policy of [
+    'Admin modera postagem', 'Admin modera comentario',
+    'Admin ve denuncias', 'Admin revisa denuncias',
+  ]) {
+    assert.ok(sql.includes('alter policy "' + policy + '"'), 'Missing MFA policy: ' + policy);
+  }
+  assert.match(sql, /private\.admin_mfa_verified\(null, false\)/);
+  assert.match(sql, /status = 'aprovado' or usuario_id = \(select auth\.uid\(\)\)/);
+  assert.doesNotMatch(sql, /drop table|delete from public\.entre_nos_/i);
+});
