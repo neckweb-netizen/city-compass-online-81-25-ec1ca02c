@@ -80,7 +80,7 @@ export const ProblemasCidadeSection = () => {
       if (authError || !user) throw new Error('Sua sessão expirou.');
       let query = supabase
         .from('problemas_cidade')
-        .update(changes)
+        .update(expectedStatus ? { ...changes, aprovado_por: user.id } : changes)
         .eq('id', problemaModal.id);
       if (expectedStatus) query = query.eq('status_aprovacao', expectedStatus);
       const { data, error } = await query.select('id').maybeSingle();
