@@ -39,6 +39,7 @@ export const VagaFormModal = ({ open, onOpenChange }: VagaFormModalProps) => {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
   const submittingRef = useRef(false);
+  const [selectedEmpresaId, setSelectedEmpresaId] = useState('');
   const [formData, setFormData] = useState({
     titulo: '',
     descricao: '',
@@ -51,24 +52,26 @@ export const VagaFormModal = ({ open, onOpenChange }: VagaFormModalProps) => {
   });
 
   // Buscar empresa do usuário logado
-  const { data: empresaUsuario, isLoading: empresaLoading, isError: empresaError, refetch: refetchEmpresa } = useQuery({
+  const { data: empresasUsuario = [], isLoading: empresaLoading, isError: empresaError, refetch: refetchEmpresa } = useQuery({
     queryKey: ['minha-empresa', profile?.id],
     queryFn: async () => {
       if (!profile?.id) return null;
       
       const { data, error } = await supabase
         .from('empresas')
-        .select('*')
+        .select('id, nome, cidade_id')
         .eq('usuario_id', profile.id)
         .eq('ativo', true)
         .eq('status_aprovacao', 'aprovado')
-        .maybeSingle();
+        .order('criado_em', { ascending: false });
       
       if (error) throw error;
       return data;
     },
     enabled: !!profile?.id && profile?.tipo_conta === 'empresa'
   });
+
+  const empresaUsuario = empresasUsuario.find(empresa => empresa.id === selectedEmpresaId) || (!selectedEmpresaId ? empresasUsuario[0] : undefined);
 
   // Buscar categorias de oportunidades
   const { data: categorias = [], isLoading: categoriasLoading, isError: categoriasError, refetch: refetchCategorias } = useQuery({
@@ -137,6 +140,10 @@ export const VagaFormModal = ({ open, onOpenChange }: VagaFormModalProps) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (submittingRef.current || createVagaMutation.isPending) return;
+    if (empresaLoading || empresaError || !empresaUsuario) {
+      toast.error('Selecione uma empresa aprovada antes de publicar a vaga.');
+      return;
+    }
 
     if (!formData.titulo.trim() || !formData.descricao.trim() ||
         !formData.categoria_id || !formData.tipo_vaga ||
@@ -208,6 +215,21 @@ export const VagaFormModal = ({ open, onOpenChange }: VagaFormModalProps) => {
       </DialogHeader>
       
       <form onSubmit={handleSubmit} className="space-y-4">
+        {empresasUsuario.length > 1 && (
+          <div className="space-y-2">
+            <Label>Empresa responsável *</Label>
+            <Select value={empresaUsuario?.id || ''} onValueChange={setSelectedEmpresaId}>
+              <SelectTrigger aria-label="Empresa responsável pela vaga">
+                <SelectValue placeholder="Selecione uma empresa" />
+              </SelectTrigger>
+              <SelectContent>
+                {empresasUsuario.map(empresa => (
+                  <SelectItem key={empresa.id} value={empresa.id}>{empresa.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="titulo">Título da Vaga *</Label>
@@ -346,7 +368,7 @@ export const VagaFormModal = ({ open, onOpenChange }: VagaFormModalProps) => {
           </Button>
           <Button 
             type="submit"
-            disabled={createVagaMutation.isPending || categoriasLoading || categoriasError || !formData.categoria_id || !formData.tipo_vaga}
+            disabled={createVagaMutation.isPending || empresaLoading || empresaError || !empresaUsuario || categoriasLoading || categoriasError || !formData.categoria_id || !formData.tipo_vaga}
           >
             {createVagaMutation.isPending ? 'Publicando...' : 'Publicar Vaga'}
           </Button>
