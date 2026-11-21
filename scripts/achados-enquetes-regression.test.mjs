@@ -29,3 +29,8 @@ test('poll dates are shown and saved as Bahia wall time', () => {
   assert.match(form, /toBahiaDateTimeLocal\(new Date\(enquete\.data_inicio\)\)/);
   assert.match(form, /toBahiaDateTimeLocal\(new Date\(enquete\.data_fim\)\)/);
 });
+
+test('poll vote state resets after switching accounts', () => {
+  const page = read('src/components/home/EnqueteSection.tsx');
+  assert.match(page, /\[enqueteAtiva\?\.id, user\?\.id\]/);
+});
