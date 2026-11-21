@@ -1,0 +1,33 @@
+name: Lost and found, polls and notifications regression
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/pages/AchadosPerdidos.tsx'
+      - 'src/pages/admin/AdminAchadosPerdidos.tsx'
+      - 'src/components/home/EnqueteSection.tsx'
+      - 'src/components/admin/sections/EnquetesSection.tsx'
+      - 'src/hooks/useEnquetes.tsx'
+      - 'src/contexts/PushNotificationsContext.tsx'
+      - 'src/hooks/useNotifications.tsx'
+      - 'src/pages/Notifications.tsx'
+      - 'src/components/notifications/**'
+      - 'scripts/notifications-module.test.mjs'
+      - 'scripts/achados-enquetes-regression.test.mjs'
+      - '.github/workflows/achados-enquetes-notifications-regression.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: node --test scripts/achados-enquetes-regression.test.mjs scripts/notifications-module.test.mjs
+      - run: npm run typecheck
