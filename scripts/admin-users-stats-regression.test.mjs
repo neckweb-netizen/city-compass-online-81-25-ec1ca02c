@@ -39,3 +39,10 @@ test('admin category updates verify that an actual row changed', () => {
   assert.match(hook, /if \(!updated\) throw new Error\('Categoria não encontrada/);
   assert.match(hook, /description: error instanceof Error \? error\.message/);
 });
+
+test('profile removal is not falsely described as deleting Supabase authentication', () => {
+  const page = read('src/components/admin/sections/UsuariosSection.tsx');
+  const hook = read('src/hooks/useAdminData.tsx');
+  assert.match(page, /não exclui a conta de login do Supabase Auth/);
+  assert.match(hook, /A conta de login continua no provedor de autenticação/);
+});
