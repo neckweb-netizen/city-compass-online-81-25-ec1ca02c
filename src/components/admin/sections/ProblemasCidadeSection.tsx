@@ -39,9 +39,10 @@ export const ProblemasCidadeSection = () => {
   const [bairroEdit, setBairroEdit] = useState('');
   const [prioridadeEdit, setPrioridadeEdit] = useState('');
   const [filtroStatus, setFiltroStatus] = useState<'pendente' | 'aprovado' | 'rejeitado' | 'todos'>('pendente');
+  const [processing, setProcessing] = useState(false);
   
   // Query customizada para admin ver TODAS as reclamações
-  const { data: problemas, isLoading } = useQuery({
+  const { data: problemas, isLoading, isError, refetch } = useQuery({
     queryKey: ['problemas-cidade-admin', filtroStatus],
     queryFn: async () => {
       let query = supabase
@@ -67,101 +68,87 @@ export const ProblemasCidadeSection = () => {
 
   const queryClient = useQueryClient();
   
-  const handleAprovar = async () => {
-    if (!problemaModal) return;
-
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    const { error } = await supabase
-      .from('problemas_cidade')
-      .update({
-        status_aprovacao: 'aprovado',
-        aprovado_por: user?.id,
-        data_aprovacao: new Date().toISOString(),
-        observacoes_moderacao: observacoes,
-      })
-      .eq('id', problemaModal.id);
-
-    if (error) {
-      toast.error('Erro ao aprovar reclamação');
-      return;
+  const saveModeration = async (
+    changes: Record<string, unknown>,
+    successMessage: string,
+    expectedStatus?: 'pendente' | 'aprovado' | 'rejeitado',
+  ) => {
+    if (!problemaModal || processing) return;
+    setProcessing(true);
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) throw new Error('Sua sessão expirou.');
+      let query = supabase
+        .from('problemas_cidade')
+        .update(changes)
+        .eq('id', problemaModal.id);
+      if (expectedStatus) query = query.eq('status_aprovacao', expectedStatus);
+      const { data, error } = await query.select('id').maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error('A reclamação já foi alterada ou você não tem permissão.');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['problemas-cidade-admin'] }),
+        queryClient.invalidateQueries({ queryKey: ['problemas-cidade'] }),
+        queryClient.invalidateQueries({ queryKey: ['problema-detalhes'] }),
+      ]);
+      toast.success(successMessage);
+      setProblemaModal(null);
+      setObservacoes('');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Não foi possível salvar a moderação.');
+    } finally {
+      setProcessing(false);
     }
-
-    queryClient.invalidateQueries({ queryKey: ['problemas-cidade-admin'] });
-    toast.success('Reclamação aprovada com sucesso');
-    setProblemaModal(null);
-    setObservacoes('');
   };
 
-  const handleRejeitar = async () => {
-    if (!problemaModal) return;
+  const handleAprovar = () => void saveModeration({
+    status_aprovacao: 'aprovado',
+    data_aprovacao: new Date().toISOString(),
+    observacoes_moderacao: observacoes,
+  }, 'Reclamação aprovada com sucesso', 'pendente');
 
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    const { error } = await supabase
-      .from('problemas_cidade')
-      .update({
-        status_aprovacao: 'rejeitado',
-        aprovado_por: user?.id,
-        data_aprovacao: new Date().toISOString(),
-        observacoes_moderacao: observacoes,
-      })
-      .eq('id', problemaModal.id);
+  const handleRejeitar = () => void saveModeration({
+    status_aprovacao: 'rejeitado',
+    data_aprovacao: new Date().toISOString(),
+    observacoes_moderacao: observacoes,
+  }, 'Reclamação rejeitada', 'pendente');
 
-    if (error) {
-      toast.error('Erro ao rejeitar reclamação');
-      return;
-    }
-
-    queryClient.invalidateQueries({ queryKey: ['problemas-cidade-admin'] });
-    toast.success('Reclamação rejeitada');
-    setProblemaModal(null);
-    setObservacoes('');
-  };
-
-  const handleAtualizarReclamacao = async () => {
-    if (!problemaModal) return;
-
-    const { error } = await supabase
-      .from('problemas_cidade')
-      .update({
-        titulo: tituloEdit,
-        descricao: descricaoEdit,
-        endereco: enderecoEdit,
-        bairro: bairroEdit,
-        prioridade: prioridadeEdit as 'baixa' | 'media' | 'alta' | 'urgente',
-        status: statusSelecionado as 'aberto' | 'em_analise' | 'resolvido' | 'fechado',
-        moderado: true,
-        data_moderacao: new Date().toISOString(),
-        observacoes_moderacao: observacoes,
-      })
-      .eq('id', problemaModal.id);
-
-    if (error) {
-      toast.error('Erro ao atualizar reclamação');
-      return;
-    }
-
-    queryClient.invalidateQueries({ queryKey: ['problemas-cidade-admin'] });
-    toast.success('Reclamação atualizada com sucesso');
-    setProblemaModal(null);
-    setObservacoes('');
-  };
+  const handleAtualizarReclamacao = () => void saveModeration({
+    titulo: tituloEdit,
+    descricao: descricaoEdit,
+    endereco: enderecoEdit,
+    bairro: bairroEdit,
+    prioridade: prioridadeEdit as 'baixa' | 'media' | 'alta' | 'urgente',
+    status: statusSelecionado as 'aberto' | 'em_analise' | 'resolvido' | 'fechado',
+    moderado: true,
+    data_moderacao: new Date().toISOString(),
+    observacoes_moderacao: observacoes,
+  }, 'Reclamação atualizada com sucesso');
 
   const handleExcluir = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir esta reclamação?')) return;
-
-    const { error } = await supabase
-      .from('problemas_cidade')
-      .update({ ativo: false })
-      .eq('id', id);
-
-    if (error) {
-      toast.error('Erro ao excluir reclamação');
-      return;
+    if (processing || !confirm('Tem certeza que deseja excluir esta reclamação?')) return;
+    setProcessing(true);
+    try {
+      const { data, error } = await supabase
+        .from('problemas_cidade')
+        .update({ ativo: false })
+        .eq('id', id)
+        .eq('ativo', true)
+        .select('id')
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error('Reclamação já removida ou sem permissão.');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['problemas-cidade-admin'] }),
+        queryClient.invalidateQueries({ queryKey: ['problemas-cidade'] }),
+        queryClient.invalidateQueries({ queryKey: ['problema-detalhes'] }),
+      ]);
+      toast.success('Reclamação removida da lista.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Não foi possível remover a reclamação.');
+    } finally {
+      setProcessing(false);
     }
-
-    toast.success('Reclamação excluída');
   };
 
   const statusAprovacaoColors = {
@@ -217,6 +204,8 @@ export const ProblemasCidadeSection = () => {
         <CardContent>
           {isLoading ? (
             <div className="text-center py-8">Carregando...</div>
+          ) : isError ? (
+            <div role="alert" className="space-y-3 py-8 text-center"><p>Não foi possível carregar as reclamações.</p><Button variant="outline" onClick={() => { void refetch(); }}>Tentar novamente</Button></div>
           ) : (
             <Table>
               <TableHeader>
@@ -287,7 +276,7 @@ export const ProblemasCidadeSection = () => {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleExcluir(problema.id)}
+                          onClick={() => { void handleExcluir(problema.id); }} disabled={processing}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -405,16 +394,16 @@ export const ProblemasCidadeSection = () => {
                 </Button>
                 {problemaModal.status_aprovacao === 'pendente' && (
                   <>
-                    <Button variant="destructive" onClick={handleRejeitar}>
+                    <Button variant="destructive" onClick={handleRejeitar} disabled={processing}>
                       Rejeitar
                     </Button>
-                    <Button onClick={handleAprovar}>
+                    <Button onClick={handleAprovar} disabled={processing}>
                       Aprovar
                     </Button>
                   </>
                 )}
                 {problemaModal.status_aprovacao !== 'pendente' && (
-                  <Button onClick={handleAtualizarReclamacao}>
+                  <Button onClick={handleAtualizarReclamacao} disabled={processing}>
                     Salvar Alterações
                   </Button>
                 )}
