@@ -65,3 +65,9 @@ test('push preferences are isolated when the authenticated account changes', () 
   assert.match(push, /setError\('Não foi possível carregar as preferências de notificação\.'\)/);
   assert.match(push, /if \(!active\) return;/);
 });
+
+test('notification preference load failures never opt in to push by default', () => {
+  const push = source('src/contexts/PushNotificationsContext.tsx');
+  assert.match(push, /setPreferences\(\{ \.\.\.defaultPreferences, in_app_enabled: false, push_enabled: false \}\)/);
+  assert.match(push, /\.catch\(\(\) => \{\s*if \(!active\) return;/);
+});
