@@ -14,6 +14,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { PushNotificationsProvider } from "@/contexts/PushNotificationsContext";
 import { PushPermissionPrompt } from "@/components/notifications/PushPermissionPrompt";
 import { AuthProvider } from "@/hooks/useAuth";
+import { PasswordRecoveryHandler } from "@/components/auth/PasswordRecoveryHandler";
 
 // Import critical pages immediately
 import Index from "./pages/Index";
@@ -352,6 +353,7 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
+            <PasswordRecoveryHandler />
             <ScrollToTop />
             <PushNotificationsProvider>
             <PushPermissionPrompt />
