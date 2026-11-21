@@ -27,6 +27,7 @@ const AchadosPerdidos = () => {
   const [loadError, setLoadError] = useState(false);
   const [resolvendoId, setResolvendoId] = useState<string | null>(null);
   const submittingRef = useRef(false);
+  const fetchSequence = useRef(0);
   const [filtroTipo, setFiltroTipo] = useState<string>("todos"); // "todos" | "perdido" | "encontrado" | "meus"
   const [busca, setBusca] = useState<string>("");
   const [isModalAberto, setIsModalAberto] = useState(false);
@@ -71,6 +72,7 @@ const AchadosPerdidos = () => {
   }, [location.state]);
 
   const buscarItens = async () => {
+    const sequence = ++fetchSequence.current;
     try {
       setLoading(true);
       setLoadError(false);
@@ -91,18 +93,19 @@ const AchadosPerdidos = () => {
 
       const { data, error } = await query;
       if (error) throw error;
-      setItens(data || []);
+      if (sequence === fetchSequence.current) setItens(data || []);
     } catch (error) {
       console.error("Erro ao buscar itens de achados e perdidos:", error);
-      setLoadError(true);
+      if (sequence === fetchSequence.current) setLoadError(true);
     } finally {
-      setLoading(false);
+      if (sequence === fetchSequence.current) setLoading(false);
     }
   };
 
   // Recarrega os itens se o tipo de visualização ou o ID do usuário mudar
   useEffect(() => {
-    buscarItens();
+    void buscarItens();
+    return () => { fetchSequence.current += 1; };
   }, [filtroTipo, usuarioLogadoId]);
 
   const handleCadastrarItem = async (e: React.FormEvent) => {
