@@ -33,3 +33,9 @@ test('admin user profile cache stays scoped to authenticated account', () => {
   assert.match(hook, /enabled: !!user\?\.id/);
   assert.match(hook, /\.eq\('id', user\?\.id \|\| ''\)/);
 });
+
+test('admin category updates verify that an actual row changed', () => {
+  const hook = read('src/hooks/useAdminData.tsx');
+  assert.match(hook, /if \(!updated\) throw new Error\('Categoria não encontrada/);
+  assert.match(hook, /description: error instanceof Error \? error\.message/);
+});
