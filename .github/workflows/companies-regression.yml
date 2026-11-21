@@ -1,0 +1,23 @@
+name: Companies module regression
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/components/profile/CadastrarEmpresaDialog.tsx'
+      - 'src/components/empresa/**'
+      - 'src/hooks/useMinhaEmpresa.tsx'
+      - 'src/hooks/useAdminEmpresas.tsx'
+      - 'src/hooks/useEmpresas.tsx'
+      - 'src/pages/CadastroLocal.tsx'
+      - 'scripts/companies-module.test.mjs'
+      - '.github/workflows/companies-regression.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  companies:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: node --test scripts/companies-module.test.mjs
