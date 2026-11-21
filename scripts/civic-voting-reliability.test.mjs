@@ -27,3 +27,13 @@ test('publication retains form after failure and complaint feed has retry state'
   assert.match(feed, /isError \? \(/);
   assert.match(feed, /void refetch\(\)/);
 });
+
+test('civic moderation verifies an affected record and locks conflicting actions', () => {
+  const admin = read('src/components/admin/sections/ProblemasCidadeSection.tsx');
+  assert.match(admin, /\.select\('id'\)\.maybeSingle\(\)/);
+  assert.match(admin, /if \(!data\) throw new Error/);
+  assert.match(admin, /\.eq\('status_aprovacao', expectedStatus\)/);
+  assert.match(admin, /aprovado_por: user\.id/);
+  assert.match(admin, /disabled=\{processing\}/);
+  assert.match(admin, /isError \?/);
+});
