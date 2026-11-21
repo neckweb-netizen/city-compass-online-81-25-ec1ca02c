@@ -11,33 +11,36 @@ export const useAdminStats = () => {
   return useQuery({
     queryKey: ['admin-stats'],
     queryFn: async () => {
-      const { data: empresas } = await supabase
+      const { data: empresas, error: empresasError } = await supabase
         .from('empresas')
         .select('id, ativo, verificado, destaque, status_aprovacao')
         .eq('ativo', true);
 
-      const { data: usuarios } = await supabase
+      const { data: usuarios, error: usuariosError } = await supabase
         .from('usuarios')
         .select('id, tipo_conta');
 
-      const { data: eventos } = await supabase
+      const { data: eventos, error: eventosError } = await supabase
         .from('eventos')
         .select('id, ativo')
         .eq('ativo', true);
 
-      const { data: avaliacoes } = await supabase
+      const { data: avaliacoes, error: avaliacoesError } = await supabase
         .from('avaliacoes')
         .select('id, nota');
 
-      const { data: cupons } = await supabase
+      const { data: cupons, error: cuponsError } = await supabase
         .from('cupons')
         .select('id, ativo')
         .eq('ativo', true);
 
-      const { data: empresasPendentes } = await supabase
+      const { data: empresasPendentes, error: pendentesError } = await supabase
         .from('empresas')
         .select('id')
         .eq('status_aprovacao', 'pendente');
+
+      const queryError = [empresasError, usuariosError, eventosError, avaliacoesError, cuponsError, pendentesError].find(Boolean);
+      if (queryError) throw queryError;
 
       return {
         totalEmpresas: empresas?.length || 0,
@@ -109,12 +112,15 @@ export const useAdminUsuarios = () => {
         throw new Error('Acesso negado: permissões insuficientes');
       }
 
-      const { error } = await supabase
+      const { data: updated, error } = await supabase
         .from('usuarios')
         .update({ tipo_conta })
-        .eq('id', id);
+        .eq('id', id)
+        .select('id')
+        .maybeSingle();
 
       if (error) throw error;
+      if (!updated) throw new Error('Usuário não encontrado ou sem permissão para alterar o perfil.');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-usuarios'] });
@@ -149,12 +155,15 @@ export const useAdminUsuarios = () => {
         throw new Error('Apenas Admin Geral pode excluir outros Admin Geral');
       }
 
-      const { error } = await supabase
+      const { data: removed, error } = await supabase
         .from('usuarios')
         .delete()
-        .eq('id', userId);
+        .eq('id', userId)
+        .select('id')
+        .maybeSingle();
 
       if (error) throw error;
+      if (!removed) throw new Error('Usuário não encontrado ou sem permissão para excluir o perfil.');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-usuarios'] });
@@ -187,8 +196,11 @@ export const useAdminUsuarios = () => {
   return {
     usuarios: usuariosQuery.data || [],
     loading: usuariosQuery.isLoading || currentUserQuery.isLoading,
-    updateUsuario: updateUsuarioMutation.mutate,
-    deleteUsuario: deleteUsuarioMutation.mutate,
+    updateUsuario: updateUsuarioMutation.mutateAsync,
+    deleteUsuario: deleteUsuarioMutation.mutateAsync,
+    isProcessing: updateUsuarioMutation.isPending || deleteUsuarioMutation.isPending,
+    error: usuariosQuery.error || currentUserQuery.error,
+    refetchCurrentUser: currentUserQuery.refetch,
     refetch: usuariosQuery.refetch,
     currentUserRole: currentUserQuery.data?.tipo_conta,
     getAvailableRoles,
