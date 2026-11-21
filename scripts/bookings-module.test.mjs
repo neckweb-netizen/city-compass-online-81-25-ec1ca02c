@@ -63,7 +63,7 @@ test('client booking forms preserve service, slot and timezone validation', () =
   assert.match(form, /submittingRef\.current/);
   assert.match(form, /horarios\.some\(slot => slot\.horario === formData\.horario\)/);
   assert.match(form, /recarregarServicos/);
-  assert.match(simple, /new Date\(formData\.data_agendamento\)\.toISOString\(\)/);
+  assert.match(simple, /toBahiaTimestamp\(formData\.data_agendamento\)\.toISOString\(\)/);
   assert.match(simple, /submittingRef\.current/);
 });
 
@@ -107,4 +107,15 @@ test('booking creation refreshes customer reservation list and simple form valid
   assert.match(simple, /slotAvailable/);
   assert.match(simple, /Horário indisponível/);
   assert.match(simple, /checkingAvailability/);
+});
+
+
+test('booking slot comparison is time-zone independent and prevents double booking in the database', () => {
+  const form = read('src/components/agendamento/FormularioAgendamento.tsx');
+  const sql = read('supabase/migrations/20261120221000_guard_booking_status_changes.sql');
+  assert.match(form, /new Date\(`\$\{localDateTime\}:00-03:00`\)/);
+  assert.match(form, /new Date\(slot\.horario\)\.getTime\(\) === requested/);
+  assert.match(form, /availabilityValidated/);
+  assert.match(form, /America\/Bahia/);
+  assert.match(sql, /private\.guard_booking_status_changes/);
 });
