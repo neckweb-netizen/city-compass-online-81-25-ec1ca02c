@@ -4,24 +4,26 @@ import { useMinhaEmpresa } from './useMinhaEmpresa';
 import { useToast } from '@/hooks/use-toast';
 import { limiteIlimitado } from '@/lib/planos';
 
-export const usePlanoLimites = () => {
-  const { empresa } = useMinhaEmpresa();
+export const usePlanoLimites = (empresaId?: string) => {
+  const { empresa: primeiraEmpresa, empresas } = useMinhaEmpresa();
+  const empresa = empresaId ? empresas.find(item => item.id === empresaId) : primeiraEmpresa;
   const { toast } = useToast();
 
   const { data: planoAtual, isLoading } = useQuery({
-    queryKey: ['plano-limites', empresa?.plano_atual_id, empresa?.plano_data_vencimento],
+    queryKey: ['plano-limites', empresa?.id, empresa?.plano_atual_id, empresa?.plano_data_vencimento],
     queryFn: async () => {
       // Verificar se o plano está expirado
       const planoExpirado = empresa?.plano_data_vencimento && 
         new Date(empresa.plano_data_vencimento) < new Date();
 
       if (!empresa?.plano_atual_id || planoExpirado) {
-        const { data: planoGratuito } = await supabase
+        const { data: planoGratuito, error: planoError } = await supabase
           .from('planos')
           .select('*')
           .eq('ativo', true)
           .ilike('nome', '%gratuito%')
           .maybeSingle();
+        if (planoError) throw planoError;
 
         // Mantém um fallback seguro somente se o plano gratuito não estiver cadastrado.
         return {
@@ -64,11 +66,13 @@ export const usePlanoLimites = () => {
     if (!empresa || !planoAtual) return false;
     if (limiteIlimitado(planoAtual.limite_cupons)) return true;
 
-    const { count } = await supabase
+    const { count, error } = await supabase
       .from('cupons')
       .select('id', { count: 'exact' })
       .eq('empresa_id', empresa.id)
       .eq('ativo', true);
+    if (error) throw error;
+    if (error) throw error;
 
     const limiteAtingido = (count || 0) >= planoAtual.limite_cupons;
     
@@ -99,10 +103,13 @@ export const usePlanoLimites = () => {
   };
 
   const verificarLimiteProdutos = async (): Promise<boolean> => {
-    if (!empresa || !planoAtual) return false;
+    if (!empresa || !planoAtual) {
+      toast({ title: 'Não foi possível consultar os limites desta empresa', variant: 'destructive' });
+      return false;
+    }
     if (limiteIlimitado(planoAtual.limite_produtos)) return true;
 
-    const { count } = await supabase
+    const { count, error } = await supabase
       .from('produtos')
       .select('id', { count: 'exact' })
       .eq('empresa_id', empresa.id)
@@ -125,12 +132,13 @@ export const usePlanoLimites = () => {
     if (!empresa || !planoAtual) return false;
     if (limiteIlimitado(planoAtual.produtos_destaque_permitidos)) return true;
 
-    const { count } = await supabase
+    const { count, error } = await supabase
       .from('produtos')
       .select('id', { count: 'exact' })
       .eq('empresa_id', empresa.id)
       .eq('ativo', true)
       .eq('destaque', true);
+    if (error) throw error;
 
     const limiteAtingido = (count || 0) >= planoAtual.produtos_destaque_permitidos;
     
