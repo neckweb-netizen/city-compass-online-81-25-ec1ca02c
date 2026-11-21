@@ -36,7 +36,7 @@ test('coupon validation rejects listings from suspended businesses', () => {
   const sql = source('supabase/migrations/20261120200500_coupon_validation_consistent.sql');
   assert.ok(sql.includes("e.status_aprovacao = 'aprovado'"));
   assert.ok(sql.includes('c.data_inicio <= now()'));
-  assert.ok(sql.includes('c.quantidade_usada >= c.quantidade_total'));
+  assert.ok(sql.includes('v_cupom.quantidade_usada >= v_cupom.quantidade_total'));
 });
 
 test('company coupon management distinguishes private statuses and confirms deletion', () => {
