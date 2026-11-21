@@ -81,3 +81,13 @@ test('Entre Nós moderation requires MFA and preserves owner/public reads', () =
   assert.match(sql, /status = 'aprovado' or usuario_id = \(select auth\.uid\(\)\)/);
   assert.doesNotMatch(sql, /drop table|delete from public\.entre_nos_/i);
 });
+
+
+test('civic moderation does not fetch emails or dismiss a pending action', () => {
+  const admin = read('src/components/admin/sections/ComentariosProblemaSection.tsx');
+  assert.match(admin, /\.select\('nome'\)/);
+  assert.doesNotMatch(admin, /\.select\('nome, email'\)/);
+  assert.match(admin, /if \(!open && !moderarComentario\.isPending\)/);
+  assert.match(admin, /if \(moderarComentario\.isPending\) event\.preventDefault\(\)/);
+  assert.match(admin, /if \(!updated\) throw new Error/);
+});
