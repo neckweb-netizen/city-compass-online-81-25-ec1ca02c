@@ -18,11 +18,8 @@ test('admin user mutations confirm affected row and expose async status', () => 
   const hook = read('src/hooks/useAdminData.tsx');
   const section = read('src/components/admin/sections/UsuariosSection.tsx');
   assert.match(hook, /if \(!updated\) throw new Error\('Usuário não encontrado/);
-  assert.match(hook, /if \(!removed\) throw new Error\('Usuário não encontrado/);
   assert.match(hook, /updateUsuario: updateUsuarioMutation\.mutateAsync/);
-  assert.match(hook, /deleteUsuario: deleteUsuarioMutation\.mutateAsync/);
   assert.match(section, /await updateUsuario\(\{/);
-  assert.match(section, /await deleteUsuario\(userId\)/);
   assert.match(section, /disabled=\{isProcessing\}/);
 });
 
@@ -40,11 +37,13 @@ test('admin category updates verify that an actual row changed', () => {
   assert.match(hook, /description: error instanceof Error \? error\.message/);
 });
 
-test('profile removal is not falsely described as deleting Supabase authentication', () => {
+test('direct profile deletion is blocked in the database and admin interface', () => {
   const page = read('src/components/admin/sections/UsuariosSection.tsx');
-  const hook = read('src/hooks/useAdminData.tsx');
-  assert.match(page, /não exclui a conta de login do Supabase Auth/);
-  assert.match(hook, /A conta de login continua no provedor de autenticação/);
+  const sql = read('supabase/migrations/20261121190500_disable_unsafe_profile_delete_until_account_deletion_workflow.sql');
+  assert.match(page, /Exclusão de contas temporariamente bloqueada/);
+  assert.doesNotMatch(page, /handleDeleteUser/);
+  assert.match(sql, /drop policy if exists "Somente admin geral com MFA pode excluir usuários"/);
+  assert.match(sql, /revoke delete on public\.usuarios from authenticated/);
 });
 
 test('admin audit and security logs surface read failures instead of an empty report', () => {
