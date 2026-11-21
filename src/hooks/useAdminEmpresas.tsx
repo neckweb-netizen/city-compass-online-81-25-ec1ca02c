@@ -72,8 +72,8 @@ export const useAdminEmpresas = () => {
       void queryClient.invalidateQueries({ queryKey: ['admin-empresas-pendentes'] });
       toast({ title: 'Empresa aprovada com sucesso!' });
     },
-    onError: () => {
-      toast({ title: 'Erro ao aprovar empresa', variant: 'destructive' });
+    onError: (error) => {
+      toast({ title: 'Erro ao aprovar empresa', description: error instanceof Error ? error.message : 'Tente novamente.', variant: 'destructive' });
     },
   });
 
@@ -105,8 +105,8 @@ export const useAdminEmpresas = () => {
       void queryClient.invalidateQueries({ queryKey: ['admin-empresas-pendentes'] });
       toast({ title: 'Empresa rejeitada' });
     },
-    onError: () => {
-      toast({ title: 'Erro ao rejeitar empresa', variant: 'destructive' });
+    onError: (error) => {
+      toast({ title: 'Erro ao rejeitar empresa', description: error instanceof Error ? error.message : 'Tente novamente.', variant: 'destructive' });
     },
   });
 
@@ -129,8 +129,8 @@ export const useAdminEmpresas = () => {
       void queryClient.invalidateQueries({ queryKey: ['minhas-empresas'] });
       toast({ title: 'Empresa atualizada com sucesso!' });
     },
-    onError: () => {
-      toast({ title: 'Erro ao atualizar empresa', variant: 'destructive' });
+    onError: (error) => {
+      toast({ title: 'Erro ao atualizar empresa', description: error instanceof Error ? error.message : 'Tente novamente.', variant: 'destructive' });
     },
   });
 
@@ -153,8 +153,8 @@ export const useAdminEmpresas = () => {
       void queryClient.invalidateQueries({ queryKey: ['admin-empresas-pendentes'] });
       toast({ title: 'Empresa removida com sucesso!' });
     },
-    onError: () => {
-      toast({ title: 'Erro ao remover empresa', variant: 'destructive' });
+    onError: (error) => {
+      toast({ title: 'Erro ao remover empresa', description: error instanceof Error ? error.message : 'Tente novamente.', variant: 'destructive' });
     },
   });
 
