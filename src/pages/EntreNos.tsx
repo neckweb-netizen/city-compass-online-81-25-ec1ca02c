@@ -153,8 +153,9 @@ export default function EntreNos() {
       const {error}=await supabase.from('entre_nos_denuncias' as any).insert({postagem_id:postId,denunciante_id:user!.id,motivo:'outro',detalhes:'Denúncia enviada pelo feed'});
       if (error) throw error;
       toast.success('Denúncia recebida. Obrigado por cuidar da comunidade.');
-    } catch {
-      toast.error('Não foi possível denunciar. Tente novamente.');
+    } catch (error: unknown) {
+      const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : '';
+      toast.error(code === '23505' ? 'Você já denunciou esta publicação.' : code === '42501' ? 'Esta publicação não pode ser denunciada.' : 'Não foi possível denunciar. Tente novamente.');
     } finally {
       setReportingPostId(null);
     }
@@ -168,8 +169,9 @@ export default function EntreNos() {
         .insert({ comentario_id: commentId, denunciante_id: user!.id, motivo: 'outro', detalhes: 'Denúncia de comentário enviada pelo feed' });
       if (error) throw error;
       toast.success('Comentário denunciado à moderação.');
-    } catch (error: any) {
-      toast.error(error?.code === '23505' ? 'Você já denunciou este comentário.' : 'Não foi possível denunciar o comentário.');
+    } catch (error: unknown) {
+      const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : '';
+      toast.error(code === '23505' ? 'Você já denunciou este comentário.' : code === '42501' ? 'Este comentário não pode ser denunciado.' : 'Não foi possível denunciar o comentário.');
     } finally { setReportingCommentId(null); }
   };
 
