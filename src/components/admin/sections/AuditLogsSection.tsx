@@ -35,9 +35,9 @@ export const AuditLogsSection = () => {
 
       // Then get user names separately to avoid relation issues
       const userIds = [...new Set([
-        ...logs?.map(log => log.changed_by).filter(Boolean) || [],
-        ...logs?.map(log => log.record_id).filter(Boolean) || []
-      ])];
+        ...(logs || []).map(log => log.changed_by),
+        ...(logs || []).filter(log => log.table_name === 'usuarios').map(log => log.record_id),
+      ].filter((value): value is string => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)))];
 
       const { data: usuarios, error: usuariosError } = userIds.length
         ? await supabase.from('usuarios').select('id, nome').in('id', userIds)
