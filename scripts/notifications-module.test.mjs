@@ -58,3 +58,10 @@ test('admin notification campaigns reject unsafe links and duplicate sends', () 
   assert.match(admin, /loadError/);
   assert.match(admin, /Tentar novamente/);
 });
+
+test('push preferences are isolated when the authenticated account changes', () => {
+  const push = source('src/contexts/PushNotificationsContext.tsx');
+  assert.match(push, /setPreferencesReady\(false\);\s*setEnabled\(false\);\s*setPreferences\(defaultPreferences\);\s*setPushStateReady\(false\)/);
+  assert.match(push, /setError\('Não foi possível carregar as preferências de notificação\.'\)/);
+  assert.match(push, /if \(!active\) return;/);
+});
