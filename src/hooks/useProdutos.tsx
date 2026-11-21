@@ -127,7 +127,7 @@ export const useCriarProduto = () => {
     },
     onError: (error: any) => {
       console.error('Erro ao criar produto:', error);
-      toast.error('Erro ao criar produto');
+      toast.error(error instanceof Error ? error.message : 'Erro ao criar produto');
     },
   });
 };
@@ -159,7 +159,7 @@ export const useAtualizarProduto = () => {
     },
     onError: (error: any) => {
       console.error('Erro ao atualizar produto:', error);
-      toast.error('Erro ao atualizar produto');
+      toast.error(error instanceof Error ? error.message : 'Erro ao atualizar produto');
     },
   });
 };
@@ -187,7 +187,7 @@ export const useExcluirProduto = () => {
     },
     onError: (error: any) => {
       console.error('Erro ao excluir produto:', error);
-      toast.error('Erro ao excluir produto');
+      toast.error(error instanceof Error ? error.message : 'Erro ao excluir produto');
     },
   });
 };
