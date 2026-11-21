@@ -267,6 +267,7 @@ const useAuthState = () => {
         console.error('❌ Sign out error:', error);
       } else {
         setProfile(null);
+        supabaseCache.clear();
         window.location.href = '/';
       }
       return { error };
