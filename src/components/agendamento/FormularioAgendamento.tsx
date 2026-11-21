@@ -39,6 +39,8 @@ export const FormularioAgendamento: React.FC<FormularioAgendamentoProps> = ({
   });
 
   const servicosAtivos = servicos.filter(s => s.ativo);
+  // O agendamento é feito no horário da empresa em Bahia (UTC-3), não no fuso do navegador.
+  const toBahiaTimestamp = (localDateTime: string) => new Date(`${localDateTime}:00-03:00`);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -55,7 +57,7 @@ export const FormularioAgendamento: React.FC<FormularioAgendamentoProps> = ({
     setServiceError('');
 
     // A data mínima do campo pode envelhecer enquanto o formulário fica aberto.
-    const chosenTime = new Date(formData.data_agendamento).getTime();
+    const chosenTime = toBahiaTimestamp(formData.data_agendamento).getTime();
     if (!Number.isFinite(chosenTime) || chosenTime < Date.now() + 60 * 60 * 1000) {
       setDateError('Escolha um horário com pelo menos 1 hora de antecedência.');
       return;
@@ -72,8 +74,8 @@ export const FormularioAgendamento: React.FC<FormularioAgendamentoProps> = ({
         p_data: day,
       });
       if (slotsError) throw slotsError;
-      const requested = new Date(formData.data_agendamento).toISOString();
-      const slotAvailable = (slots || []).some((slot) => slot.horario === requested);
+      const requested = chosenTime;
+      const slotAvailable = (slots || []).some((slot) => new Date(slot.horario).getTime() === requested);
       if (!slotAvailable) {
         setDateError('Horário indisponível. Escolha uma data e horário livre.');
         return;
@@ -84,7 +86,7 @@ export const FormularioAgendamento: React.FC<FormularioAgendamentoProps> = ({
         nome_cliente: formData.nome_cliente.trim(),
         telefone_cliente: formData.telefone_cliente.trim(),
         servico: formData.servico,
-        data_agendamento: new Date(formData.data_agendamento).toISOString(),
+        data_agendamento: toBahiaTimestamp(formData.data_agendamento).toISOString(),
         observacoes: formData.observacoes.trim() || undefined,
       });
       // Keep the entered information intact if the server rejects the request.
@@ -107,10 +109,13 @@ export const FormularioAgendamento: React.FC<FormularioAgendamentoProps> = ({
   };
 
   const getMinDateTime = () => {
-    // datetime-local expects local wall-clock fields, not UTC (toISOString).
-    const earliest = new Date(Date.now() + 60 * 60 * 1000);
-    const local = new Date(earliest.getTime() - earliest.getTimezoneOffset() * 60_000);
-    return local.toISOString().slice(0, 16);
+    // min precisa representar o fuso de Bahia, independentemente do dispositivo.
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Bahia', year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hour12: false,
+    }).formatToParts(new Date(Date.now() + 60 * 60 * 1000));
+    const part = (type: string) => parts.find(item => item.type === type)?.value || '00';
+    return `${part('year')}-${part('month')}-${part('day')}T${part('hour')}:${part('minute')}`;
   };
 
   return (
