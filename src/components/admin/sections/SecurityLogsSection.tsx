@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, User, Shield, AlertTriangle, LogIn, LogOut, UserPlus } from 'lucide-react';
@@ -35,7 +36,7 @@ interface SecurityDashboardTemp {
 export const SecurityLogsSection = () => {
   const [filterEventType, setFilterEventType] = useState<string>('all');
 
-  const { data: securityLogs, isLoading: logsLoading } = useQuery({
+  const { data: securityLogs, isLoading: logsLoading, isError: logsError, refetch: refetchLogs } = useQuery({
     queryKey: ['security-logs', filterEventType],
     queryFn: async () => {
       let query = supabase
@@ -54,7 +55,7 @@ export const SecurityLogsSection = () => {
     },
   });
 
-  const { data: dashboardData, isLoading: dashboardLoading } = useQuery({
+  const { data: dashboardData, isLoading: dashboardLoading, isError: dashboardError, refetch: refetchDashboard } = useQuery({
     queryKey: ['security-dashboard'],
     queryFn: async () => {
       // Get recent logs from the last 7 days for dashboard
@@ -153,6 +154,13 @@ export const SecurityLogsSection = () => {
       </div>
     );
   }
+
+  if (logsError || dashboardError) return (
+    <div role="alert" className="space-y-3 rounded-xl border p-6 text-center">
+      <p>Não foi possível carregar os registros de segurança.</p>
+      <Button variant="outline" onClick={() => { void refetchLogs(); void refetchDashboard(); }}>Tentar novamente</Button>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
