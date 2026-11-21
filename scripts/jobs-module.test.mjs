@@ -103,3 +103,15 @@ test('company vacancy trigger protects reserved fields without removing admin co
   }
   assert.match(sql, /before insert or update on public\.vagas_emprego/);
 });
+
+test('public job creation chooses among approved companies without exposing another business', () => {
+  const modal = source('src/components/forms/VagaFormModal.tsx');
+  assert.match(modal, /empresasUsuario\.find\(empresa => empresa\.id === selectedEmpresaId\)/);
+  assert.match(modal, /empresasUsuario\.length > 1/);
+  assert.match(modal, /onValueChange=\{setSelectedEmpresaId\}/);
+  assert.match(modal, /\.eq\('usuario_id', profile\.id\)/);
+  assert.match(modal, /\.eq\('status_aprovacao', 'aprovado'\)/);
+  assert.match(modal, /cidade_id: empresaUsuario\.cidade_id/);
+  assert.match(modal, /enabled: open &&/);
+  assert.match(modal, /setSelectedEmpresaId\(''\)/);
+});
