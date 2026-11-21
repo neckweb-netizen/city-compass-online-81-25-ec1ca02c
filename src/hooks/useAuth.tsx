@@ -106,7 +106,7 @@ const useAuthState = () => {
   const redirectAfterInitialLoad = useCallback((userProfile: UserProfile) => {
     // A abertura do site/PWA começa pela home. Navegações internas não remontam
     // o AuthProvider e, portanto, não voltam a executar este redirecionamento.
-    if (window.location.pathname !== '/') return;
+    if (window.location.pathname !== '/' || new URLSearchParams(window.location.search).has('password_recovery')) return;
 
     if (userProfile.tipo_conta === 'empresa') {
       window.location.assign('/empresa-dashboard');
