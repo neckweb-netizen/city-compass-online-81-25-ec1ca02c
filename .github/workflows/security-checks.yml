@@ -25,6 +25,7 @@ jobs:
       - run: node --test scripts/home-sections.test.mjs
       - run: node --test scripts/frontend-ux.test.mjs
       - run: node --test scripts/critical-path.test.mjs
+      - run: node --test scripts/community-comments-module.test.mjs
       - run: node --test scripts/ops-readiness.test.mjs
       - run: node --test scripts/rls-policy-scope.test.mjs
       - run: node --test scripts/rls-ownership-autonomo.test.mjs
