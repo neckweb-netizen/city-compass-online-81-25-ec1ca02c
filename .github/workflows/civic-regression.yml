@@ -1,0 +1,29 @@
+name: Civic community regression
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/hooks/useProblemasCidade.tsx'
+      - 'src/pages/ProblemaDetalhes.tsx'
+      - 'src/pages/ProblemasCidade.tsx'
+      - 'src/components/problemas/**'
+      - 'src/components/admin/sections/ProblemasCidadeSection.tsx'
+      - 'src/components/admin/sections/ComentariosProblemaSection.tsx'
+      - 'src/pages/EntreNos.tsx'
+      - 'src/pages/admin/AdminEntreNos.tsx'
+      - 'scripts/civic-voting-reliability.test.mjs'
+      - 'scripts/community-comments-module.test.mjs'
+      - 'supabase/migrations/*civic*'
+      - 'supabase/migrations/*entre_nos*'
+      - '.github/workflows/civic-regression.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Civic module regression (no dependency install)
+        run: node --test scripts/civic-voting-reliability.test.mjs scripts/community-comments-module.test.mjs
