@@ -1,0 +1,29 @@
+name: Jobs module regression
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/pages/VagasEmprego.tsx'
+      - 'src/pages/admin/AdminVagas.tsx'
+      - 'src/components/forms/VagaFormModal.tsx'
+      - 'src/components/empresa/EmpresaVagas.tsx'
+      - 'src/lib/jobApplication.ts'
+      - 'scripts/jobs-module.test.mjs'
+      - 'supabase/migrations/*jobs*'
+      - '.github/workflows/jobs-regression.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  jobs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: node --test scripts/jobs-module.test.mjs
+      - run: npm run typecheck
