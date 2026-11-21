@@ -1,0 +1,32 @@
+name: Products and services regression
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/hooks/usePlanoLimites.tsx'
+      - 'src/hooks/useProdutos.tsx'
+      - 'src/components/empresa/ProdutoForm.tsx'
+      - 'src/components/empresa/ProdutosList.tsx'
+      - 'src/components/forms/ProdutoFormModal.tsx'
+      - 'src/pages/AnunciarServico.tsx'
+      - 'src/pages/ServicosAutonomos.tsx'
+      - 'src/pages/admin/AdminServicos.tsx'
+      - 'src/components/servicos/**'
+      - 'scripts/products-services-module.test.mjs'
+      - '.github/workflows/products-services-regression.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: node --test scripts/products-services-module.test.mjs
+      - run: npm run typecheck
