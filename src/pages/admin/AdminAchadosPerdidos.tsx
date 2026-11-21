@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { getJobApplicationHref } from "@/lib/jobApplication";
 import { supabase } from "@/integrations/supabase/client";
 import { Check, X, AlertCircle, Trash2, ShieldCheck, Tag, MapPin, Eye, Calendar, RefreshCw } from "lucide-react";
@@ -23,9 +23,11 @@ const AdminAchadosPerdidos = () => {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const fetchSequence = useRef(0);
   const [abaAtiva, setAbaAtiva] = useState<"pendentes" | "ativos">("pendentes");
 
   const carregarOcorrencias = async () => {
+    const sequence = ++fetchSequence.current;
     try {
       setLoading(true);
       setLoadError(false);
@@ -48,22 +50,23 @@ const AdminAchadosPerdidos = () => {
         }
       });
 
-      setItens(dadosFiltrados);
+      if (sequence === fetchSequence.current) setItens(dadosFiltrados);
     } catch (error: any) {
       console.error("Erro ao carregar dados no admin:", error);
-      setLoadError(true);
-      toast({
+      if (sequence === fetchSequence.current) setLoadError(true);
+      if (sequence === fetchSequence.current) toast({
         title: "Erro de sincronização",
         description: "Não foi possível carregar os dados de achados e perdidos.",
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      if (sequence === fetchSequence.current) setLoading(false);
     }
   };
 
   useEffect(() => {
-    carregarOcorrencias();
+    void carregarOcorrencias();
+    return () => { fetchSequence.current += 1; };
   }, [abaAtiva]);
 
   const alterarStatus = async (id: string, novoStatus: "aprovado" | "resolvido" | "rejeitado") => {
