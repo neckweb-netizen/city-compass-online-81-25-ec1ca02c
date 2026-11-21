@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 // Define the tipo_conta enum to match the database
 type TipoConta = 'usuario' | 'empresa' | 'criador_empresa' | 'admin_cidade' | 'admin_geral';
@@ -61,11 +62,13 @@ export const useAdminStats = () => {
 
 // Hook para gerenciar usuários com segurança
 export const useAdminUsuarios = () => {
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const usuariosQuery = useQuery({
-    queryKey: ['admin-usuarios'],
+    queryKey: ['admin-usuarios', user?.id],
+    enabled: !!user?.id,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('usuarios')
@@ -82,12 +85,13 @@ export const useAdminUsuarios = () => {
 
   // Get current user profile to check permissions
   const currentUserQuery = useQuery({
-    queryKey: ['current-user-profile'],
+    queryKey: ['current-user-profile', user?.id],
+    enabled: !!user?.id,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('usuarios')
         .select('tipo_conta, cidade_id')
-        .eq('id', (await supabase.auth.getUser()).data.user?.id || '')
+        .eq('id', user?.id || '')
         .single();
 
       if (error) throw error;
