@@ -231,19 +231,22 @@ export const useAdminCategorias = () => {
 
   const toggleCategoriaMutation = useMutation({
     mutationFn: async ({ id, ativo }: { id: string; ativo: boolean }) => {
-      const { error } = await supabase
+      const { data: updated, error } = await supabase
         .from('categorias')
         .update({ ativo })
-        .eq('id', id);
+        .eq('id', id)
+        .select('id')
+        .maybeSingle();
 
       if (error) throw error;
+      if (!updated) throw new Error('Categoria não encontrada ou sem permissão para alterar.');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-categorias'] });
       toast({ title: 'Categoria atualizada com sucesso!' });
     },
-    onError: () => {
-      toast({ title: 'Erro ao atualizar categoria', variant: 'destructive' });
+    onError: (error) => {
+      toast({ title: 'Erro ao atualizar categoria', description: error instanceof Error ? error.message : 'Tente novamente.', variant: 'destructive' });
     },
   });
 
