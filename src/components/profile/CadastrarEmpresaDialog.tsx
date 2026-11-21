@@ -36,7 +36,7 @@ const empresaSchema = z.object({
 const usuarioSchema = z.object({
   nome: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
   email: z.string().email('Email inválido'),
-  senha: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
+  senha: z.string().min(8, 'Senha deve ter pelo menos 8 caracteres'),
   telefone_usuario: z.string().optional(),
 });
 
@@ -142,7 +142,7 @@ export const CadastrarEmpresaDialog = ({
           if (authError.message === 'User already registered') {
             errorMessage = 'Este e-mail já está cadastrado. Tente fazer login ou use outro e-mail.';
           } else if (authError.message.includes('password')) {
-            errorMessage = 'Senha muito fraca. Use pelo menos 6 caracteres.';
+            errorMessage = 'Senha muito fraca. Use pelo menos 8 caracteres.';
           } else if (authError.message.includes('email')) {
             errorMessage = 'E-mail inválido. Verifique o formato do e-mail.';
           }
@@ -481,7 +481,30 @@ export const CadastrarEmpresaDialog = ({
         )}
 
         {/* Etapa 2: Dados do Usuário */}
-        {currentStep === 2 && (
+        {currentStep === 2 && user && (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              A empresa será vinculada à sua conta atual ({user.email || 'usuário autenticado'}).
+              Não é necessário criar outra conta nem informar sua senha novamente.
+            </p>
+            <div className="flex justify-between gap-2 pt-4">
+              <Button type="button" variant="outline" onClick={handleBack} disabled={isSubmitting}>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Voltar
+              </Button>
+              <Button
+                type="button"
+                disabled={isSubmitting}
+                aria-busy={isSubmitting}
+                onClick={() => { void onUsuarioSubmit({ nome: user.user_metadata?.nome || user.email || 'Responsável', email: user.email || '', senha: '' }); }}
+              >
+                {isSubmitting ? 'Cadastrando...' : 'Finalizar Cadastro'}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {currentStep === 2 && !user && (
           <Form {...usuarioForm}>
             <form onSubmit={usuarioForm.handleSubmit(onUsuarioSubmit)} className="space-y-4">
               <FormField
@@ -519,7 +542,7 @@ export const CadastrarEmpresaDialog = ({
                   <FormItem>
                     <FormLabel>Senha</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="Mínimo 6 caracteres" {...field} />
+                      <Input type="password" placeholder="Mínimo 8 caracteres" autoComplete="new-password" minLength={8} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
