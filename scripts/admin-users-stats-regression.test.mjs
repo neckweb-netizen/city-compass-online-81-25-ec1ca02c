@@ -46,3 +46,14 @@ test('profile removal is not falsely described as deleting Supabase authenticati
   assert.match(page, /não exclui a conta de login do Supabase Auth/);
   assert.match(hook, /A conta de login continua no provedor de autenticação/);
 });
+
+test('admin audit and security logs surface read failures instead of an empty report', () => {
+  const audit = read('src/components/admin/sections/AuditLogsSection.tsx');
+  const security = read('src/components/admin/sections/SecurityLogsSection.tsx');
+  assert.match(audit, /if \(isError\) return/);
+  assert.match(audit, /void refetch\(\)/);
+  assert.match(audit, /if \(usuariosError\) throw usuariosError/);
+  assert.match(audit, /log\.table_name === 'usuarios'/);
+  assert.match(security, /if \(logsError \|\| dashboardError\) return/);
+  assert.match(security, /void refetchLogs\(\); void refetchDashboard\(\)/);
+});
