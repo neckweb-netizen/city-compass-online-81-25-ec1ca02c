@@ -245,8 +245,8 @@ export const UsuariosSection = () => {
                         <AlertDialogHeader>
                           <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Tem certeza que deseja excluir o usuário "{usuario.nome}"? 
-                            Esta ação não pode ser desfeita.
+                            Tem certeza que deseja remover o perfil de "{usuario.nome}"?
+                            Isso não exclui a conta de login do Supabase Auth e pode afetar dados relacionados. Esta ação não pode ser desfeita.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
