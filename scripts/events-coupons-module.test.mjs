@@ -136,3 +136,15 @@ test('administrative coupon code is normalized to match validator', () => {
     assert.ok(form.includes('codigo: data.codigo.trim().toUpperCase()'), path);
   }
 });
+
+test('coupon and event plan checks target the selected business, not the first account business', () => {
+  const coupons = source('src/components/empresa/EmpresaCuponsList.tsx');
+  const events = source('src/components/empresa/EmpresaEventosList.tsx');
+  const quick = source('src/components/forms/CupomFormModal.tsx');
+  assert.match(coupons, /usePlanoLimites\(empresaId\)/);
+  assert.match(events, /usePlanoLimites\(empresaId\)/);
+  assert.match(quick, /usePlanoLimites\(form\.watch\('empresa_id'\) \|\| empresaId\)/);
+  assert.match(coupons, /checkingLimit/);
+  assert.match(events, /checkingLimit/);
+  assert.match(quick, /codigo: data\.codigo\.trim\(\)\.toUpperCase\(\)/);
+});
