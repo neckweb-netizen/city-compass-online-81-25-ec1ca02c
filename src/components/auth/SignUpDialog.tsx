@@ -23,6 +23,11 @@ export const SignUpDialog = ({ open, onOpenChange }: SignUpDialogProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
+    if (password.length < 8) {
+      toast.error('A senha deve ter pelo menos 8 caracteres.');
+      return;
+    }
     setLoading(true);
 
     try {
@@ -33,12 +38,14 @@ export const SignUpDialog = ({ open, onOpenChange }: SignUpDialogProps) => {
           data: {
             nome: name,
           },
+          emailRedirectTo: `${window.location.origin}/`,
         },
       });
       
       if (error) throw error;
       
-      toast.success('Conta criada com sucesso!');
+      setPassword('');
+      toast.success('Cadastro solicitado! Confira seu e-mail para confirmar a conta, se necessário.');
       onOpenChange(false);
     } catch (error: any) {
       toast.error(error.message || 'Erro ao criar conta');
@@ -96,10 +103,15 @@ export const SignUpDialog = ({ open, onOpenChange }: SignUpDialogProps) => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Digite sua senha"
+                  autoComplete="new-password"
+                  minLength={8}
                   required
                 />
                 <button
                   type="button"
+                  type="button"
+                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                  aria-pressed={showPassword}
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
                 >
