@@ -51,7 +51,7 @@ export const ProblemaCard = ({ problema }: ProblemaCardProps) => {
     if (!user) {
       return;
     }
-    await votarProblema.mutateAsync({ problemaId: problema.id, tipoVoto });
+    votarProblema.mutate({ problemaId: problema.id, tipoVoto });
   };
 
   const IconeCategoria = problema.categoria?.icone
@@ -84,7 +84,7 @@ export const ProblemaCard = ({ problema }: ProblemaCardProps) => {
               aria-label="Votar a favor desta reclamação"
               className="h-10 w-10 p-0 rounded-xl"
               onClick={(e) => handleVoto(e, 1)}
-              disabled={!user}
+              disabled={!user || votarProblema.isPending}
             >
               <ArrowUp className="w-4 h-4" />
             </Button>
@@ -98,7 +98,7 @@ export const ProblemaCard = ({ problema }: ProblemaCardProps) => {
               aria-label="Votar contra esta reclamação"
               className="h-10 w-10 p-0 rounded-xl"
               onClick={(e) => handleVoto(e, -1)}
-              disabled={!user}
+              disabled={!user || votarProblema.isPending}
             >
               <ArrowDown className="w-4 h-4" />
             </Button>
