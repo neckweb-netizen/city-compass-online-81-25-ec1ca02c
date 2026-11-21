@@ -2,10 +2,9 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -13,7 +12,6 @@ import { Eye, CheckCircle, XCircle, User, MessageSquare } from 'lucide-react';
 
 export const ComentariosProblemaSection = () => {
   const [selectedComentario, setSelectedComentario] = useState<any>(null);
-  const [observacoes, setObservacoes] = useState('');
   const queryClient = useQueryClient();
 
   const { data: comentarios, isLoading, isError, refetch } = useQuery({
@@ -32,7 +30,7 @@ export const ComentariosProblemaSection = () => {
           const [usuarioRes, problemaRes] = await Promise.all([
             supabase
               .from('usuarios')
-              .select('nome, email')
+              .select('nome')
               .eq('id', comentario.usuario_id)
               .maybeSingle(),
             supabase
@@ -56,8 +54,8 @@ export const ComentariosProblemaSection = () => {
 
   const moderarComentario = useMutation({
     mutationFn: async ({ comentarioId, ativo }: { comentarioId: string; ativo: boolean }) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Usuário não autenticado');
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) throw new Error('Sua sessão expirou. Faça login novamente.');
 
       const { data: updated, error } = await supabase
         .from('comentarios_problema')
@@ -81,14 +79,13 @@ export const ComentariosProblemaSection = () => {
       toast.success('Comentário moderado com sucesso!');
       setSelectedComentario(null);
     },
-    onError: () => {
-      toast.error('Erro ao moderar comentário');
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'Erro ao moderar comentário');
     },
   });
 
   const handleModerar = (comentario: any) => {
     setSelectedComentario(comentario);
-    setObservacoes('');
   };
 
   if (isLoading) return <div role="status" className="flex items-center justify-center p-8">Carregando...</div>;
@@ -169,8 +166,8 @@ export const ComentariosProblemaSection = () => {
         )}
       </div>
 
-      <Dialog open={!!selectedComentario} onOpenChange={() => setSelectedComentario(null)}>
-        <DialogContent>
+      <Dialog open={!!selectedComentario} onOpenChange={(open) => { if (!open && !moderarComentario.isPending) setSelectedComentario(null); }}>
+        <DialogContent onEscapeKeyDown={(event) => { if (moderarComentario.isPending) event.preventDefault(); }} onInteractOutside={(event) => { if (moderarComentario.isPending) event.preventDefault(); }}>
           <DialogHeader>
             <DialogTitle>Moderar Comentário</DialogTitle>
           </DialogHeader>
