@@ -1,0 +1,25 @@
+name: Bookings module regression
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/hooks/useAgendamentos.tsx'
+      - 'src/hooks/useServicosAgendamento.tsx'
+      - 'src/components/agendamento/**'
+      - 'src/components/empresa/AgendamentosEmpresa.tsx'
+      - 'src/components/empresa/ConfiguracaoAgendamentos.tsx'
+      - 'src/components/profile/MeusAgendamentosDialog.tsx'
+      - 'scripts/bookings-module.test.mjs'
+      - 'supabase/migrations/*booking*'
+      - 'supabase/migrations/*agendamento*'
+      - '.github/workflows/bookings-regression.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  bookings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: node --test scripts/bookings-module.test.mjs
