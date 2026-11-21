@@ -22,7 +22,7 @@ const ProblemasCidade = () => {
   const [dialogAberto, setDialogAberto] = useState(false);
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
 
-  const { problemas, isLoading } = useProblemasCidade(cidadePadrao?.id, {
+  const { problemas, isLoading, isError, refetch } = useProblemasCidade(cidadePadrao?.id, {
     categoriaId: categoriaFiltro !== 'all' ? categoriaFiltro : undefined,
     status: statusFiltro !== 'all' ? statusFiltro : undefined,
     ordenacao,
@@ -110,6 +110,8 @@ const ProblemasCidade = () => {
                   <div key={i} className="h-64 bg-muted animate-pulse rounded-lg" />
                 ))}
               </div>
+            ) : isError ? (
+              <div role="alert" className="rounded-2xl border p-8 text-center"><p>Não foi possível carregar as reclamações.</p><Button className="mt-4" onClick={() => { void refetch(); }}>Tentar novamente</Button></div>
             ) : problemasFiltrados && problemasFiltrados.length > 0 ? (
               <div className="grid gap-6 md:grid-cols-2">
                 {problemasFiltrados.map((problema) => (
