@@ -80,3 +80,10 @@ test('moderators can dismiss false reports while retaining the decision', () => 
   assert.match(admin, /Descartar denúncia/);
   assert.match(admin, /\.eq\('status', 'pendente'\)/);
 });
+
+test('admin review moderation refreshes reports and displays server failures', () => {
+  const hook = source('src/hooks/useAvaliacoes.tsx');
+  assert.match(hook, /queryKey: \['admin-denuncias-avaliacoes'\]/);
+  assert.match(hook, /error instanceof Error \? error\.message : 'Erro ao editar avaliação/);
+  assert.match(hook, /error instanceof Error \? error\.message : 'Erro ao remover avaliação/);
+});
