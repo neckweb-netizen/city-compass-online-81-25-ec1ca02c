@@ -40,7 +40,7 @@ export const useProblemasCidade = (cidadeId?: string, filters?: {
 }) => {
   const queryClient = useQueryClient();
 
-  const { data: problemas, isLoading } = useQuery({
+  const { data: problemas, isLoading, isError, refetch } = useQuery({
     queryKey: ['problemas-cidade', cidadeId, filters],
     queryFn: async () => {
       let query = supabase
@@ -118,38 +118,43 @@ export const useProblemasCidade = (cidadeId?: string, filters?: {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuário não autenticado');
 
-      const { data: votoExistente } = await supabase
+      const { data: votoExistente, error: buscaErro } = await supabase
         .from('votos_problema')
         .select('*')
         .eq('problema_id', problemaId)
         .eq('usuario_id', user.id)
         .maybeSingle();
+      if (buscaErro) throw buscaErro;
 
       if (votoExistente) {
         if (votoExistente.tipo_voto === tipoVoto) {
           // Remove o voto
-          await supabase
+          const { error } = await supabase
             .from('votos_problema')
             .delete()
             .eq('id', votoExistente.id);
+          if (error) throw error;
         } else {
           // Atualiza o voto
-          await supabase
+          const { error } = await supabase
             .from('votos_problema')
             .update({ tipo_voto: tipoVoto })
             .eq('id', votoExistente.id);
+          if (error) throw error;
         }
       } else {
         // Cria novo voto
-        await supabase
+        const { error } = await supabase
           .from('votos_problema')
           .insert([{ problema_id: problemaId, tipo_voto: tipoVoto, usuario_id: user.id }]);
+        if (error) throw error;
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['problemas-cidade'] });
       queryClient.invalidateQueries({ queryKey: ['problema-detalhes'] });
     },
+    onError: () => { toast.error('Não foi possível registrar o voto. Tente novamente.'); },
   });
 
   const incrementarVisualizacao = useMutation({
@@ -163,6 +168,8 @@ export const useProblemasCidade = (cidadeId?: string, filters?: {
   return {
     problemas,
     isLoading,
+    isError,
+    refetch,
     criarProblema,
     votarProblema,
     incrementarVisualizacao,
@@ -264,34 +271,39 @@ export const useProblemaDetalhes = (problemaId: string) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuário não autenticado');
 
-      const { data: votoExistente } = await supabase
+      const { data: votoExistente, error: buscaErro } = await supabase
         .from('votos_comentario')
         .select('*')
         .eq('comentario_id', comentarioId)
         .eq('usuario_id', user.id)
         .maybeSingle();
+      if (buscaErro) throw buscaErro;
 
       if (votoExistente) {
         if (votoExistente.tipo_voto === tipoVoto) {
-          await supabase
+          const { error } = await supabase
             .from('votos_comentario')
             .delete()
             .eq('id', votoExistente.id);
+          if (error) throw error;
         } else {
-          await supabase
+          const { error } = await supabase
             .from('votos_comentario')
             .update({ tipo_voto: tipoVoto })
             .eq('id', votoExistente.id);
+          if (error) throw error;
         }
       } else {
-        await supabase
+        const { error } = await supabase
           .from('votos_comentario')
           .insert([{ comentario_id: comentarioId, tipo_voto: tipoVoto, usuario_id: user.id }]);
+        if (error) throw error;
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['comentarios-problema', problemaId] });
     },
+    onError: () => { toast.error('Não foi possível votar neste comentário.'); },
   });
 
   return {
