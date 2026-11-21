@@ -37,3 +37,12 @@ test('civic moderation verifies an affected record and locks conflicting actions
   assert.match(admin, /disabled=\{processing\}/);
   assert.match(admin, /isError \?/);
 });
+
+
+test('civic detail fetch displays retry instead of treating network errors as missing reports', () => {
+  const hook = read('src/hooks/useProblemasCidade.tsx');
+  const page = read('src/pages/ProblemaDetalhes.tsx');
+  assert.match(hook, /isError: problemaError, refetch: refetchProblema/);
+  assert.match(page, /if \(problemaError\)/);
+  assert.match(page, /void refetchProblema\(\)/);
+});
