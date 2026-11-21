@@ -31,9 +31,10 @@ export const EmpresaCuponsList = ({ empresaId, isOwner = false }: EmpresaCuponsL
   const [showForm, setShowForm] = useState(false);
   const [editingCupom, setEditingCupom] = useState<any>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [checkingLimit, setCheckingLimit] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { verificarLimiteCupons } = usePlanoLimites();
+  const { verificarLimiteCupons } = usePlanoLimites(empresaId);
 
   const { data: cupons, isLoading, isError, refetch } = useQuery({
     queryKey: ['empresa-cupons', empresaId, isOwner],
@@ -160,12 +161,18 @@ export const EmpresaCuponsList = ({ empresaId, isOwner = false }: EmpresaCuponsL
         {isOwner && (
           <Button 
             onClick={async () => {
-              const podecriar = await verificarLimiteCupons();
-              if (podecriar) {
-                setShowForm(true);
+              if (checkingLimit) return;
+              setCheckingLimit(true);
+              try {
+                if (await verificarLimiteCupons()) setShowForm(true);
+              } catch {
+                toast({ title: 'Não foi possível conferir o limite de cupons', description: 'Tente novamente.', variant: 'destructive' });
+              } finally {
+                setCheckingLimit(false);
               }
             }} 
             className="w-full sm:w-auto"
+            disabled={checkingLimit}
           >
             <Plus className="w-4 h-4 mr-2" />
             Novo Cupom
