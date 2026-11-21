@@ -22,8 +22,9 @@ export const EmpresaEventosList = ({ empresaId, isOwner = false }: EmpresaEvento
   const [showForm, setShowForm] = useState(false);
   const [editingEvento, setEditingEvento] = useState<EventoEditavel | null>(null);
   const [statusPendingId, setStatusPendingId] = useState<string | null>(null);
+  const [checkingLimit, setCheckingLimit] = useState(false);
   const queryClient = useQueryClient();
-  const { verificarLimiteEventos } = usePlanoLimites();
+  const { verificarLimiteEventos } = usePlanoLimites(empresaId);
 
   const { data: eventos, isLoading, isError, refetch } = useQuery({
     queryKey: ['empresa-eventos', empresaId, isOwner],
@@ -126,12 +127,18 @@ export const EmpresaEventosList = ({ empresaId, isOwner = false }: EmpresaEvento
         {isOwner && (
           <Button 
             onClick={async () => {
-              const podecriar = await verificarLimiteEventos();
-              if (podecriar) {
-                setShowForm(true);
+              if (checkingLimit) return;
+              setCheckingLimit(true);
+              try {
+                if (await verificarLimiteEventos()) setShowForm(true);
+              } catch {
+                toast.error('Não foi possível conferir o plano desta empresa. Tente novamente.');
+              } finally {
+                setCheckingLimit(false);
               }
             }} 
             className="w-full sm:w-auto"
+            disabled={checkingLimit}
           >
             <Plus className="w-4 h-4 mr-2" />
             Novo Evento
