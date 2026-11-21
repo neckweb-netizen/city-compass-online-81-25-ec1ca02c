@@ -42,6 +42,11 @@ export const AuthDialog = ({ open, onOpenChange, defaultTab = 'login' }: AuthDia
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
+    if (!isLogin && password.length < 8) {
+      toast.error('A senha deve ter pelo menos 8 caracteres.');
+      return;
+    }
     setLoading(true);
 
     try {
@@ -50,6 +55,7 @@ export const AuthDialog = ({ open, onOpenChange, defaultTab = 'login' }: AuthDia
         
         if (error) throw error;
         
+        resetForm();
         toast.success('Login realizado com sucesso!');
         onOpenChange(false);
       } else {
@@ -66,7 +72,8 @@ export const AuthDialog = ({ open, onOpenChange, defaultTab = 'login' }: AuthDia
         
         if (error) throw error;
         
-        toast.success('Conta criada com sucesso!');
+        resetForm();
+        toast.success('Cadastro solicitado! Confira seu e-mail para confirmar a conta, se necessário.');
         onOpenChange(false);
       }
     } catch (error: any) {
@@ -97,7 +104,7 @@ export const AuthDialog = ({ open, onOpenChange, defaultTab = 'login' }: AuthDia
     setLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/`,
+        redirectTo: `${window.location.origin}/?password_recovery=1`,
       });
       
       if (error) throw error;
@@ -191,6 +198,8 @@ export const AuthDialog = ({ open, onOpenChange, defaultTab = 'login' }: AuthDia
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Digite sua senha"
+                    autoComplete={isLogin ? "current-password" : "new-password"}
+                    minLength={isLogin ? undefined : 8}
                     required
                   />
                   <button
