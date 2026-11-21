@@ -56,3 +56,14 @@ test('Entre Nós reporting rejects duplicates and self-reports without touching 
   assert.match(sql, /new\.status := 'aberta'/);
   assert.doesNotMatch(sql, /delete from public\.entre_nos_denuncias/i);
 });
+
+
+test('Entre Nós reports show targets to moderators and give clear duplicate feedback', () => {
+  const admin = read('src/pages/admin/AdminEntreNos.tsx');
+  const page = read('src/pages/EntreNos.tsx');
+  assert.match(admin, /const reportTarget=/);
+  assert.match(admin, /Conteúdo removido/);
+  assert.match(admin, /target\?\.conteudo/);
+  assert.match(page, /Você já denunciou esta publicação/);
+  assert.match(page, /Este comentário não pode ser denunciado/);
+});
