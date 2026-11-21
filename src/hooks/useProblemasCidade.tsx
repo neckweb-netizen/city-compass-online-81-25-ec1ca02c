@@ -179,7 +179,7 @@ export const useProblemasCidade = (cidadeId?: string, filters?: {
 export const useProblemaDetalhes = (problemaId: string) => {
   const queryClient = useQueryClient();
 
-  const { data: problema, isLoading } = useQuery({
+  const { data: problema, isLoading, isError: problemaError, refetch: refetchProblema } = useQuery({
     queryKey: ['problema-detalhes', problemaId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -310,6 +310,8 @@ export const useProblemaDetalhes = (problemaId: string) => {
     problema,
     comentarios,
     isLoading,
+    problemaError,
+    refetchProblema,
     comentariosLoading,
     comentariosError,
     refetchComentarios,
