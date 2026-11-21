@@ -66,6 +66,7 @@ export const FormularioAgendamento: React.FC<FormularioAgendamentoProps> = ({
 
     submittingRef.current = true;
     setCheckingAvailability(true);
+    let availabilityValidated = false;
     try {
       const day = formData.data_agendamento.slice(0, 10);
       const { data: slots, error: slotsError } = await supabase.rpc('listar_horarios_agendamento', {
@@ -80,6 +81,7 @@ export const FormularioAgendamento: React.FC<FormularioAgendamentoProps> = ({
         setDateError('Horário indisponível. Escolha uma data e horário livre.');
         return;
       }
+      availabilityValidated = true;
       setCheckingAvailability(false);
       await criarAgendamento({
         empresa_id: empresaId,
@@ -101,7 +103,9 @@ export const FormularioAgendamento: React.FC<FormularioAgendamentoProps> = ({
       });
       onSuccess?.();
     } catch {
-      setDateError('Não foi possível confirmar a disponibilidade. Verifique os dados e tente novamente.');
+      if (!availabilityValidated) {
+        setDateError('Não foi possível confirmar a disponibilidade. Verifique os dados e tente novamente.');
+      }
     } finally {
       setCheckingAvailability(false);
       submittingRef.current = false;
