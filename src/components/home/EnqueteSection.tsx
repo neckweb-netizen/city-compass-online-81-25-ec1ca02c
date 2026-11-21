@@ -21,7 +21,7 @@ export const EnqueteSection = () => {
   useEffect(() => {
     setSelectedOpcoes([]);
     setJaVotou(false);
-  }, [enqueteAtiva?.id]);
+  }, [enqueteAtiva?.id, user?.id]);
 
   const isAdmin = profile?.tipo_conta === 'admin_geral' || profile?.tipo_conta === 'admin_cidade';
 
