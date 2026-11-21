@@ -21,6 +21,7 @@ import { Plus, Edit, Trash2, Star, ShoppingCart, MessageCircle } from 'lucide-re
 import { useMinhaEmpresa } from '@/hooks/useMinhaEmpresa';
 import { usePlanoLimites } from '@/hooks/usePlanoLimites';
 import { getSafeNavigationUrl } from '@/lib/safeNavigation';
+import { toast } from 'sonner';
 
 interface ProdutosListProps {
   empresaId: string;
@@ -65,8 +66,7 @@ export const ProdutosList = ({ empresaId }: ProdutosListProps) => {
         setShowForm(true);
       }
     } catch {
-      // Não libera a criação quando a consulta dos limites falha.
-      // A operação deve ser tentada novamente após a conexão voltar.
+      toast.error('Não foi possível consultar os limites desta empresa. Tente novamente.');
     } finally {
       setCheckingLimit(false);
     }
