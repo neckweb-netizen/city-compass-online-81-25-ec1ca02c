@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Calendar, User, AlertTriangle, Shield } from 'lucide-react';
 
@@ -20,7 +21,7 @@ interface AuditLog {
 }
 
 export const AuditLogsSection = () => {
-  const { data: auditLogs, isLoading } = useQuery({
+  const { data: auditLogs, isLoading, isError, refetch } = useQuery({
     queryKey: ['audit-logs'],
     queryFn: async () => {
       // First get the audit logs
@@ -38,12 +39,11 @@ export const AuditLogsSection = () => {
         ...logs?.map(log => log.record_id).filter(Boolean) || []
       ])];
 
-      const { data: usuarios, error: usuariosError } = await supabase
-        .from('usuarios')
-        .select('id, nome')
-        .in('id', userIds);
+      const { data: usuarios, error: usuariosError } = userIds.length
+        ? await supabase.from('usuarios').select('id, nome').in('id', userIds)
+        : { data: [], error: null };
 
-      if (usuariosError) console.warn('Failed to fetch user names:', usuariosError);
+      if (usuariosError) throw usuariosError;
 
       const userMap = usuarios?.reduce((acc, user) => {
         acc[user.id] = user.nome;
@@ -70,6 +70,13 @@ export const AuditLogsSection = () => {
       </div>
     );
   }
+
+  if (isError) return (
+    <div role="alert" className="space-y-3 rounded-xl border p-6 text-center">
+      <p>Não foi possível carregar os logs de auditoria.</p>
+      <Button variant="outline" onClick={() => { void refetch(); }}>Tentar novamente</Button>
+    </div>
+  );
 
   const getActionBadge = (action: string) => {
     switch (action) {
