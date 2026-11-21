@@ -61,6 +61,11 @@ const AchadosPerdidos = () => {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Nunca trate "Minhas Postagens" como lista pública após o logout.
+  useEffect(() => {
+    if (!usuarioLogadoId && filtroTipo === "meus") setFiltroTipo("todos");
+  }, [usuarioLogadoId, filtroTipo]);
+
   // Intercepta e abre o formulário APENAS se o clique veio do botão "+" (via state)
   useEffect(() => {
     if (location.state && (location.state as any).abrirModal === true) {
@@ -83,6 +88,10 @@ const AchadosPerdidos = () => {
         .from("achados_perdidos" as any)
         .select("*");
 
+      if (filtroTipo === "meus" && !usuarioLogadoId) {
+        if (sequence === fetchSequence.current) setItens([]);
+        return;
+      }
       if (filtroTipo === "meus" && usuarioLogadoId) {
         query = query.eq("usuario_id", usuarioLogadoId);
       } else {
