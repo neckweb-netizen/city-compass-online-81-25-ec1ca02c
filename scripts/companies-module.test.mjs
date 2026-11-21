@@ -54,3 +54,13 @@ test('existing RLS-based controls for company approval and billing remain outsid
   assert.match(hook, /\.eq\('usuario_id', user\.id\)/);
   assert.match(registration, /usuario_id: user\.id/);
 });
+
+test('authenticated business registration reuses current account and never requires its password', () => {
+  const wizard = src('src/components/profile/CadastrarEmpresaDialog.tsx');
+  assert.match(wizard, /currentStep === 2 && user &&/);
+  assert.match(wizard, /currentStep === 2 && !user &&/);
+  assert.match(wizard, /senha: ''/);
+  assert.match(wizard, /senha: z\.string\(\)\.min\(8/);
+  assert.match(wizard, /ownerUserId: string \| null = user\?\.id \?\? null/);
+  assert.match(wizard, /\.from\('empresas'\)\.insert\(/);
+});
