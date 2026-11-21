@@ -209,20 +209,19 @@ export const useEditarAvaliacao = () => {
         .maybeSingle();
       if (error) throw error;
       if (!data) throw new Error('Avaliação não encontrada ou sem permissão para editar.');
-
-      if (error) throw error;
       return data;
     },
     onSuccess: () => {
       toast.success('Avaliação atualizada com sucesso!');
       void queryClient.invalidateQueries({ queryKey: ['admin-avaliacoes'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin-denuncias-avaliacoes'] });
       void queryClient.invalidateQueries({ queryKey: ['empresa-avaliacoes'] });
       void queryClient.invalidateQueries({ queryKey: ['empresa-estatisticas-avaliacoes'] });
       void queryClient.invalidateQueries({ queryKey: ['user-avaliacoes'] });
     },
     onError: (error: any) => {
       console.error('Erro ao editar avaliação:', error);
-      toast.error('Erro ao editar avaliação. Tente novamente.');
+      toast.error(error instanceof Error ? error.message : 'Erro ao editar avaliação. Tente novamente.');
     },
   });
 };
@@ -250,7 +249,7 @@ export const useRemoverAvaliacao = () => {
     },
     onError: (error: any) => {
       console.error('Erro ao remover avaliação:', error);
-      toast.error('Erro ao remover avaliação. Tente novamente.');
+      toast.error(error instanceof Error ? error.message : 'Erro ao remover avaliação. Tente novamente.');
     },
   });
 };
