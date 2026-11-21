@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/alert-dialog';
 
 export const UsuariosSection = () => {
-  const { usuarios, loading, error, refetch, refetchCurrentUser, isProcessing, updateUsuario, deleteUsuario, currentUserRole, getAvailableRoles } = useAdminUsuarios();
+  const { usuarios, loading, error, refetch, refetchCurrentUser, isProcessing, updateUsuario, currentUserRole, getAvailableRoles } = useAdminUsuarios();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTipo, setFilterTipo] = useState<string>('todos');
@@ -57,16 +57,6 @@ export const UsuariosSection = () => {
     } catch (error) {
       // Error is already handled in the hook with proper security message
       console.error('Role update error:', error);
-    }
-  };
-
-  const handleDeleteUser = async (userId: string) => {
-    if (isProcessing) return;
-    try {
-      await deleteUsuario(userId);
-    } catch (error) {
-      // Error is already handled in the hook with proper security message
-      console.error('Delete user error:', error);
     }
   };
 
@@ -231,36 +221,11 @@ export const UsuariosSection = () => {
                       </Select>
                     </div>
 
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Tem certeza que deseja remover o perfil de "{usuario.nome}"?
-                            Isso não exclui a conta de login do Supabase Auth e pode afetar dados relacionados. Esta ação não pode ser desfeita.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction 
-                            onClick={() => { void handleDeleteUser(usuario.id); }}
-                            disabled={isProcessing}
-                            className="bg-red-600 hover:bg-red-700"
-                          >
-                            Excluir
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                    <Button type="button" variant="outline" size="sm" disabled
+                      title="Exclusão de contas temporariamente bloqueada para proteger os dados de empresas e usuários"
+                      aria-label={`Exclusão de ${usuario.nome} indisponível até existir procedimento seguro`}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               </CardContent>
