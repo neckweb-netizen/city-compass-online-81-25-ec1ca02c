@@ -55,7 +55,7 @@ export const VagaFormModal = ({ open, onOpenChange }: VagaFormModalProps) => {
   const { data: empresasUsuario = [], isLoading: empresaLoading, isError: empresaError, refetch: refetchEmpresa } = useQuery({
     queryKey: ['minha-empresa', profile?.id],
     queryFn: async () => {
-      if (!profile?.id) return null;
+      if (!profile?.id) return [];
       
       const { data, error } = await supabase
         .from('empresas')
@@ -68,7 +68,7 @@ export const VagaFormModal = ({ open, onOpenChange }: VagaFormModalProps) => {
       if (error) throw error;
       return data;
     },
-    enabled: !!profile?.id && profile?.tipo_conta === 'empresa'
+    enabled: open && !!profile?.id && profile?.tipo_conta === 'empresa'
   });
 
   const empresaUsuario = empresasUsuario.find(empresa => empresa.id === selectedEmpresaId) || (!selectedEmpresaId ? empresasUsuario[0] : undefined);
@@ -169,6 +169,7 @@ export const VagaFormModal = ({ open, onOpenChange }: VagaFormModalProps) => {
   useEffect(() => {
     if (!open) {
       resetForm();
+      setSelectedEmpresaId('');
     }
   }, [open]);
 
