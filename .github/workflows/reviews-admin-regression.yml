@@ -6,6 +6,8 @@ on:
       - 'src/hooks/useAdminData.tsx'
       - 'src/hooks/useAvaliacoes.tsx'
       - 'src/components/admin/sections/UsuariosSection.tsx'
+      - 'src/components/admin/sections/AuditLogsSection.tsx'
+      - 'src/components/admin/sections/SecurityLogsSection.tsx'
       - 'src/components/admin/sections/DashboardSection.tsx'
       - 'src/components/admin/sections/AvaliacoesSection.tsx'
       - 'src/components/admin/forms/EditAvaliacaoModal.tsx'
