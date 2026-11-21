@@ -35,7 +35,7 @@ export const ProdutosList = ({ empresaId }: ProdutosListProps) => {
   const { data: produtos, isLoading, isError, refetch } = useProdutosPorEmpresa(empresaId);
   const excluirProduto = useExcluirProduto();
   const { podeEditar } = useMinhaEmpresa();
-  const { verificarLimiteProdutos } = usePlanoLimites();
+  const { verificarLimiteProdutos } = usePlanoLimites(empresaId);
   
   // Verificar se o usuário pode editar esta empresa
   const podeEditarEstaEmpresa = podeEditar(empresaId);
@@ -64,6 +64,9 @@ export const ProdutosList = ({ empresaId }: ProdutosListProps) => {
         setEditingProduto(null);
         setShowForm(true);
       }
+    } catch {
+      // Não libera a criação quando a consulta dos limites falha.
+      // A operação deve ser tentada novamente após a conexão voltar.
     } finally {
       setCheckingLimit(false);
     }
