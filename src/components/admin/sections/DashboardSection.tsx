@@ -2,6 +2,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { NeonCard } from '@/components/ui/neon-card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { useAdminStats } from '@/hooks/useAdminData';
 import { 
   Building2, 
@@ -15,7 +16,7 @@ import {
 } from 'lucide-react';
 
 export const DashboardSection = () => {
-  const { data: stats, isLoading } = useAdminStats();
+  const { data: stats, isLoading, isError, refetch } = useAdminStats();
 
   if (isLoading) {
     return (
@@ -29,6 +30,13 @@ export const DashboardSection = () => {
       </div>
     );
   }
+
+  if (isError) return (
+    <div role="alert" className="space-y-3 rounded-xl border p-6 text-center">
+      <p>Não foi possível carregar as estatísticas. Os números não foram zerados.</p>
+      <Button variant="outline" onClick={() => { void refetch(); }}>Tentar novamente</Button>
+    </div>
+  );
 
   const cards = [
     {
