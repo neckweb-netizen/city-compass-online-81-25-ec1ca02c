@@ -32,3 +32,15 @@ Fontes:
 - Ainda não existe monitoramento validado de alertas com entrega externa nem teste real de restauração.
 - Eventuais rotinas de limpeza de logs e contadores só devem ser configuradas após decidir prazo de retenção e verificar requisitos legais.
 - A migração completa de Pix automático/ativação de plano será uma etapa própria de homologação.
+
+## Exclusão de contas e integridade referencial (21/11/2026)
+
+- A exclusão direta de `public.usuarios` foi bloqueada na política RLS e o privilégio `DELETE` foi revogado de `authenticated`. O botão de exclusão do painel administrativo está desativado.
+- **Por quê:** vínculos `ON DELETE CASCADE` podem remover empresas, avaliações e estatísticas; vínculos `RESTRICT/NO ACTION` podem impedir a remoção; e uma exclusão do perfil não remove o usuário de `auth.users`.
+- Antes de implementar a exclusão definitiva: inventariar dependências, definir política de retenção e anonimização, exportar dados necessários, confirmar identidade e MFA do operador, registrar auditoria e criar operação transacional/servidor confiável para Auth + dados + Storage, contemplando falhas parciais. Validar tudo em ambiente isolado.
+- **Nenhuma conta ou dado de produção foi excluído nesta correção.** A exclusão completa de contas ainda **não foi implementada**.
+
+## Teste de restauração ainda pendente
+
+- Este documento é apenas o procedimento; **não é evidência de backup realizado**. É preciso exportar banco e autenticação conforme ferramentas oficiais, inventariar Storage/R2, manter cópias criptografadas e testar restauração num projeto separado.
+- Registrar data, responsável, verificações de integridade, tempo de recuperação e resultado antes de declarar o plano de continuidade aprovado.
