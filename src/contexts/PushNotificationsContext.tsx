@@ -86,6 +86,9 @@ export const PushNotificationsProvider = ({ children }: { children: ReactNode })
       return;
     }
     setPreferencesReady(false);
+    setEnabled(false);
+    setPreferences(defaultPreferences);
+    setPushStateReady(false);
     let active = true;
     (supabase as any)
       .from('notification_preferences')
@@ -94,8 +97,13 @@ export const PushNotificationsProvider = ({ children }: { children: ReactNode })
       .maybeSingle()
       .then(({ data, error: queryError }: any) => {
         if (!active) return;
-        if (queryError) console.warn('Falha ao carregar preferências de notificação:', queryError);
-        if (data) setPreferences({ ...defaultPreferences, ...data });
+        if (queryError) {
+          console.warn('Falha ao carregar preferências de notificação:', queryError);
+          setError('Não foi possível carregar as preferências de notificação.');
+        } else {
+          setError(null);
+          if (data) setPreferences({ ...defaultPreferences, ...data });
+        }
         setPreferencesReady(true);
       });
     return () => { active = false; };
