@@ -72,7 +72,6 @@ export const usePlanoLimites = (empresaId?: string) => {
       .eq('empresa_id', empresa.id)
       .eq('ativo', true);
     if (error) throw error;
-    if (error) throw error;
 
     const limiteAtingido = (count || 0) >= planoAtual.limite_cupons;
     
@@ -114,6 +113,7 @@ export const usePlanoLimites = (empresaId?: string) => {
       .select('id', { count: 'exact' })
       .eq('empresa_id', empresa.id)
       .eq('ativo', true);
+    if (error) throw error;
 
     const limiteAtingido = (count || 0) >= planoAtual.limite_produtos;
     
