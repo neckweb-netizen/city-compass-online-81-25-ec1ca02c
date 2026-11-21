@@ -171,7 +171,7 @@ export const useAdminUsuarios = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-usuarios'] });
-      toast({ title: 'Usuário excluído com sucesso!' });
+      toast({ title: 'Perfil removido', description: 'A conta de login continua no provedor de autenticação.' });
     },
     onError: (error: any) => {
       const errorMessage = error.message || 'Erro ao excluir usuário';
