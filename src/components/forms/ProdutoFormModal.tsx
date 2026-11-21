@@ -41,7 +41,7 @@ export const ProdutoFormModal = ({ open, onOpenChange }: ProdutoFormModalProps) 
   const submittingRef = useRef(false);
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const { verificarLimiteProdutos } = usePlanoLimites();
+
 
   // Buscar empresas do usuário logado
   const { data: empresas, isLoading: empresasLoading, isError: empresasError, refetch: refetchEmpresas } = useQuery({
@@ -67,6 +67,8 @@ export const ProdutoFormModal = ({ open, onOpenChange }: ProdutoFormModalProps) 
       estoque_disponivel: 0,
     },
   });
+
+  const { verificarLimiteProdutos } = usePlanoLimites(form.watch('empresa_id'));
 
   const onSubmit = async (data: ProdutoFormData) => {
     if (submittingRef.current) return;
@@ -107,7 +109,7 @@ export const ProdutoFormModal = ({ open, onOpenChange }: ProdutoFormModalProps) 
       console.error('Erro ao criar produto:', error);
       toast({ 
         title: 'Erro ao criar produto', 
-        description: 'Tente novamente.',
+        description: error instanceof Error ? error.message : 'Tente novamente.',
         variant: 'destructive' 
       });
     } finally {
