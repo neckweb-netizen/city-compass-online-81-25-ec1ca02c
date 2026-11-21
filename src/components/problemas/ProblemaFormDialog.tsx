@@ -62,6 +62,8 @@ export const ProblemaFormDialog = ({ open, onOpenChange }: ProblemaFormDialogPro
       });
       form.reset();
       onOpenChange(false);
+    } catch {
+      // O hook mostra o erro; mantém os campos para nova tentativa.
     } finally {
       setIsSubmitting(false);
     }
