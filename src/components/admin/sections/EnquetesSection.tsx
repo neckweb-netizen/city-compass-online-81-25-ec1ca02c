@@ -42,6 +42,17 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 
+// Enquetes são agendadas no horário oficial da Bahia, independentemente do navegador.
+const toBahiaDateTimeLocal = (value: Date) => {
+  const fields = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Bahia', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(value);
+  const read = (type: string) => fields.find(field => field.type === type)?.value || '00';
+  return `${read('year')}-${read('month')}-${read('day')}T${read('hour')}:${read('minute')}`;
+};
+const fromBahiaDateTimeLocal = (value: string) => new Date(`${value}:00-03:00`);
+
 interface EnqueteForm {
   titulo: string;
   descricao: string;
@@ -63,7 +74,7 @@ export const EnquetesSection = () => {
     opcoes: ['', ''],
     multipla_escolha: false,
     ativo: true,
-    data_inicio: new Date().toISOString().slice(0, 16),
+    data_inicio: toBahiaDateTimeLocal(new Date()),
     data_fim: ''
   });
 
@@ -74,7 +85,7 @@ export const EnquetesSection = () => {
       opcoes: ['', ''],
       multipla_escolha: false,
       ativo: true,
-      data_inicio: new Date().toISOString().slice(0, 16),
+      data_inicio: toBahiaDateTimeLocal(new Date()),
       data_fim: ''
     });
     setEditingEnquete(null);
@@ -83,8 +94,8 @@ export const EnquetesSection = () => {
   const handleSubmit = () => {
     if (submittingRef.current || isProcessing) return;
     const opcoesFiltradas = form.opcoes.map(opcao => opcao.trim()).filter(Boolean);
-    const inicio = new Date(form.data_inicio);
-    const fim = form.data_fim ? new Date(form.data_fim) : null;
+    const inicio = fromBahiaDateTimeLocal(form.data_inicio);
+    const fim = form.data_fim ? fromBahiaDateTimeLocal(form.data_fim) : null;
     if (form.titulo.trim().length < 3 || form.titulo.trim().length > 200 || opcoesFiltradas.length < 2 || opcoesFiltradas.length > 20 || new Set(opcoesFiltradas.map(o => o.toLowerCase())).size !== opcoesFiltradas.length || !Number.isFinite(inicio.getTime()) || (fim && (!Number.isFinite(fim.getTime()) || fim <= inicio))) {
       toast.error('Confira título, opções sem repetição e período da enquete.');
       return;
@@ -120,8 +131,8 @@ export const EnquetesSection = () => {
       opcoes: enquete.opcoes,
       multipla_escolha: enquete.multipla_escolha,
       ativo: enquete.ativo,
-      data_inicio: enquete.data_inicio ? new Date(enquete.data_inicio).toISOString().slice(0, 16) : '',
-      data_fim: enquete.data_fim ? new Date(enquete.data_fim).toISOString().slice(0, 16) : ''
+      data_inicio: enquete.data_inicio ? toBahiaDateTimeLocal(new Date(enquete.data_inicio)) : '',
+      data_fim: enquete.data_fim ? toBahiaDateTimeLocal(new Date(enquete.data_fim)) : ''
     });
     setEditingEnquete(enquete.id);
     setIsDialogOpen(true);
