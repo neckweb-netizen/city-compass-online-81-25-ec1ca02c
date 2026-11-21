@@ -85,3 +85,16 @@ test('service contact actions offer login and validate outbound links', () => {
   assert.match(contact, /getJobApplicationHref\('email'/);
   assert.doesNotMatch(contact, /disabled=\{!user && !isOwner\}/);
 });
+
+
+test('product quotas always use selected business and reject failed database counts', () => {
+  const limits = source('src/hooks/usePlanoLimites.tsx');
+  const list = source('src/components/empresa/ProdutosList.tsx');
+  const quick = source('src/components/forms/ProdutoFormModal.tsx');
+  assert.match(limits, /usePlanoLimites = \(empresaId\?: string\)/);
+  assert.match(limits, /empresas\.find\(item => item\.id === empresaId\)/);
+  assert.match(limits, /queryKey: \['plano-limites', empresa\?\.id/);
+  assert.match(limits, /limite_produtos;[\s\S]*?if \(error\) throw error/);
+  assert.match(list, /usePlanoLimites\(empresaId\)/);
+  assert.match(quick, /usePlanoLimites\(form\.watch\('empresa_id'\)\)/);
+});
