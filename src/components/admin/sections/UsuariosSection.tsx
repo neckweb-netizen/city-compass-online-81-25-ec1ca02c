@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/alert-dialog';
 
 export const UsuariosSection = () => {
-  const { usuarios, loading, updateUsuario, deleteUsuario, currentUserRole, getAvailableRoles } = useAdminUsuarios();
+  const { usuarios, loading, error, refetch, refetchCurrentUser, isProcessing, updateUsuario, deleteUsuario, currentUserRole, getAvailableRoles } = useAdminUsuarios();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTipo, setFilterTipo] = useState<string>('todos');
@@ -40,6 +40,7 @@ export const UsuariosSection = () => {
   }
 
   const handleUpdateTipoConta = async (userId: string, novoTipo: 'admin_geral' | 'admin_cidade' | 'empresa' | 'criador_empresa' | 'usuario') => {
+    if (isProcessing) return;
     // Check if user has permission to assign this role
     const availableRoles = getAvailableRoles();
     if (!availableRoles.includes(novoTipo)) {
@@ -53,10 +54,6 @@ export const UsuariosSection = () => {
 
     try {
       await updateUsuario({ id: userId, tipo_conta: novoTipo });
-      toast({
-        title: "Usuário atualizado",
-        description: `Tipo de conta alterado para ${novoTipo.replace('_', ' ')}.`,
-      });
     } catch (error) {
       // Error is already handled in the hook with proper security message
       console.error('Role update error:', error);
@@ -64,13 +61,21 @@ export const UsuariosSection = () => {
   };
 
   const handleDeleteUser = async (userId: string) => {
+    if (isProcessing) return;
     try {
-      deleteUsuario(userId);
+      await deleteUsuario(userId);
     } catch (error) {
       // Error is already handled in the hook with proper security message
       console.error('Delete user error:', error);
     }
   };
+
+  if (error) {
+    return <div role="alert" className="space-y-3 p-6 text-center">
+      <p>Não foi possível carregar a gestão de usuários.</p>
+      <Button variant="outline" onClick={() => { void refetch(); void refetchCurrentUser(); }}>Tentar novamente</Button>
+    </div>;
+  }
 
   const getTipoContaBadge = (tipo: string) => {
     const variants = {
@@ -198,6 +203,7 @@ export const UsuariosSection = () => {
                       <span className="text-sm font-medium text-blue-900">Tipo:</span>
                       <Select
                         value={usuario.tipo_conta}
+                        disabled={isProcessing}
                         onValueChange={(value: 'admin_geral' | 'admin_cidade' | 'empresa' | 'criador_empresa' | 'usuario') => 
                           handleUpdateTipoConta(usuario.id, value)
                         }
@@ -246,7 +252,8 @@ export const UsuariosSection = () => {
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancelar</AlertDialogCancel>
                           <AlertDialogAction 
-                            onClick={() => handleDeleteUser(usuario.id)}
+                            onClick={() => { void handleDeleteUser(usuario.id); }}
+                            disabled={isProcessing}
                             className="bg-red-600 hover:bg-red-700"
                           >
                             Excluir
