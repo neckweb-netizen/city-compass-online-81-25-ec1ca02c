@@ -109,7 +109,6 @@ export const SignUpDialog = ({ open, onOpenChange }: SignUpDialogProps) => {
                 />
                 <button
                   type="button"
-                  type="button"
                   aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
                   aria-pressed={showPassword}
                   onClick={() => setShowPassword(!showPassword)}
