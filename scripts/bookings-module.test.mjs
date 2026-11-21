@@ -97,3 +97,14 @@ test('client booking cancellations notify the company without changing payment f
   assert.match(sql, /'\/empresa-dashboard'/);
   assert.doesNotMatch(sql, /pix|pagamento|wallet/i);
 });
+
+
+test('booking creation refreshes customer reservation list and simple form validates slots', () => {
+  const hook = read('src/hooks/useAgendamentos.tsx');
+  const simple = read('src/components/agendamento/FormularioAgendamento.tsx');
+  assert.match(hook, /queryKey: \['meus-agendamentos'\]/);
+  assert.match(simple, /supabase\.rpc\('listar_horarios_agendamento'/);
+  assert.match(simple, /slotAvailable/);
+  assert.match(simple, /Horário indisponível/);
+  assert.match(simple, /checkingAvailability/);
+});
