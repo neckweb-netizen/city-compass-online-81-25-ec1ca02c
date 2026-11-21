@@ -52,7 +52,7 @@ export const CupomFormModal = ({ open, onOpenChange, empresaId, cupom, onSuccess
   const submittingRef = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
-  const { verificarLimiteCupons } = usePlanoLimites();
+
 
   // Buscar empresas do usuário logado
   const { data: empresas, isLoading: empresasLoading, isError: empresasError, refetch: refetchEmpresas } = useQuery({
@@ -80,6 +80,8 @@ export const CupomFormModal = ({ open, onOpenChange, empresaId, cupom, onSuccess
     },
   });
 
+  const { verificarLimiteCupons } = usePlanoLimites(form.watch('empresa_id') || empresaId);
+
   const onSubmit = async (data: CupomFormData) => {
     if (submittingRef.current) return;
     if (empresasLoading || empresasError || !empresas?.some(e => e.id === data.empresa_id) ||
@@ -97,7 +99,7 @@ export const CupomFormModal = ({ open, onOpenChange, empresaId, cupom, onSuccess
           .from('cupons')
           .update({
             titulo: data.titulo,
-            codigo: data.codigo.toUpperCase(),
+            codigo: data.codigo.trim().toUpperCase(),
             descricao: data.descricao || null,
             tipo: data.tipo,
             valor: data.valor,
