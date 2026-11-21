@@ -19,7 +19,7 @@ const ProblemaDetalhes = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
-  const { problema, comentarios, isLoading, comentariosLoading, comentariosError, refetchComentarios, votarComentario } = useProblemaDetalhes(id!);
+  const { problema, comentarios, isLoading, problemaError, refetchProblema, comentariosLoading, comentariosError, refetchComentarios, votarComentario } = useProblemaDetalhes(id || '');
   const { votarProblema, incrementarVisualizacao } = useProblemasCidade();
 
   useEffect(() => {
@@ -35,6 +35,15 @@ const ProblemaDetalhes = () => {
           <div className="h-8 w-32 bg-muted animate-pulse rounded" />
           <div className="h-64 bg-muted animate-pulse rounded-lg" />
         </div>
+      </div>
+    );
+  }
+
+  if (problemaError) {
+    return (
+      <div role="alert" className="container mx-auto max-w-4xl space-y-4 px-4 py-12 text-center">
+        <p>Não foi possível carregar esta reclamação.</p>
+        <Button variant="outline" onClick={() => { void refetchProblema(); }}>Tentar novamente</Button>
       </div>
     );
   }
