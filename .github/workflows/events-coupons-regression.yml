@@ -1,0 +1,37 @@
+name: Events and coupons regression
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/components/empresa/EmpresaCuponsList.tsx'
+      - 'src/components/empresa/EmpresaEventosList.tsx'
+      - 'src/components/forms/CupomFormModal.tsx'
+      - 'src/components/forms/EventoFormModal.tsx'
+      - 'src/components/admin/forms/CupomForm.tsx'
+      - 'src/components/admin/forms/EditCupomForm.tsx'
+      - 'src/components/admin/forms/EventoForm.tsx'
+      - 'src/components/admin/sections/CuponsSection.tsx'
+      - 'src/components/admin/sections/EventosSection.tsx'
+      - 'src/hooks/usePlanoLimites.tsx'
+      - 'src/hooks/useAdminCupons.tsx'
+      - 'src/hooks/useAdminEventos.tsx'
+      - 'scripts/events-coupons-module.test.mjs'
+      - 'supabase/migrations/*coupon*'
+      - 'supabase/migrations/*event*'
+      - '.github/workflows/events-coupons-regression.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: node --test scripts/events-coupons-module.test.mjs
+      - run: npm run typecheck
