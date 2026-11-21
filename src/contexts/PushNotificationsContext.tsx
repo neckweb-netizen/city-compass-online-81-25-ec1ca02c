@@ -101,6 +101,7 @@ export const PushNotificationsProvider = ({ children }: { children: ReactNode })
         if (queryError) {
           console.warn('Falha ao carregar preferências de notificação:', queryError);
           setError('Não foi possível carregar as preferências de notificação.');
+          setPreferences({ ...defaultPreferences, in_app_enabled: false, push_enabled: false });
         } else {
           setError(null);
           if (data) setPreferences({ ...defaultPreferences, ...data });
@@ -109,6 +110,7 @@ export const PushNotificationsProvider = ({ children }: { children: ReactNode })
       }).catch(() => {
         if (!active) return;
         setError('Não foi possível consultar as preferências de notificação.');
+          setPreferences({ ...defaultPreferences, in_app_enabled: false, push_enabled: false });
         setPreferencesReady(true);
       });
     return () => { active = false; };
