@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Calendar, Clock, User, Phone, MessageSquare, Loader2 } from 'lucide-react';
 import { useAgendamentos } from '@/hooks/useAgendamentos';
 import { useServicosAgendamento } from '@/hooks/useServicosAgendamento';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
 interface FormularioAgendamentoProps {
@@ -27,6 +28,7 @@ export const FormularioAgendamento: React.FC<FormularioAgendamentoProps> = ({
 
   const submittingRef = useRef(false);
   const [dateError, setDateError] = useState('');
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
   const [serviceError, setServiceError] = useState('');
   const [formData, setFormData] = useState({
     nome_cliente: user?.user_metadata?.nome || '',
@@ -41,7 +43,7 @@ export const FormularioAgendamento: React.FC<FormularioAgendamentoProps> = ({
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (submittingRef.current || isCreating || loadingServicos || servicosError || !formData.nome_cliente.trim() || !formData.telefone_cliente.trim() ||
+    if (submittingRef.current || isCreating || checkingAvailability || loadingServicos || servicosError || !formData.nome_cliente.trim() || !formData.telefone_cliente.trim() ||
         !formData.servico || !formData.data_agendamento) {
       return;
     }
@@ -61,7 +63,22 @@ export const FormularioAgendamento: React.FC<FormularioAgendamentoProps> = ({
     setDateError('');
 
     submittingRef.current = true;
+    setCheckingAvailability(true);
     try {
+      const day = formData.data_agendamento.slice(0, 10);
+      const { data: slots, error: slotsError } = await supabase.rpc('listar_horarios_agendamento', {
+        p_empresa_id: empresaId,
+        p_servico: formData.servico,
+        p_data: day,
+      });
+      if (slotsError) throw slotsError;
+      const requested = new Date(formData.data_agendamento).toISOString();
+      const slotAvailable = (slots || []).some((slot) => slot.horario === requested);
+      if (!slotAvailable) {
+        setDateError('Horário indisponível. Escolha uma data e horário livre.');
+        return;
+      }
+      setCheckingAvailability(false);
       await criarAgendamento({
         empresa_id: empresaId,
         nome_cliente: formData.nome_cliente.trim(),
@@ -82,8 +99,9 @@ export const FormularioAgendamento: React.FC<FormularioAgendamentoProps> = ({
       });
       onSuccess?.();
     } catch {
-      // useAgendamentos already displays the server error; do not claim success.
+      setDateError('Não foi possível confirmar a disponibilidade. Verifique os dados e tente novamente.');
     } finally {
+      setCheckingAvailability(false);
       submittingRef.current = false;
     }
   };
@@ -240,12 +258,12 @@ export const FormularioAgendamento: React.FC<FormularioAgendamentoProps> = ({
             <Button
               type="submit"
               className="w-full min-h-11"
-              aria-busy={isCreating}
-              disabled={isCreating || loadingServicos || servicosError || !formData.nome_cliente.trim() || 
+              aria-busy={isCreating || checkingAvailability}
+              disabled={isCreating || checkingAvailability || loadingServicos || servicosError || !formData.nome_cliente.trim() || 
                        !formData.telefone_cliente.trim() || !formData.servico || 
                        !formData.data_agendamento}
             >
-              {isCreating ? 'Agendando...' : 'Confirmar Agendamento'}
+              {isCreating ? 'Agendando...' : checkingAvailability ? 'Verificando horário...' : 'Confirmar Agendamento'}
             </Button>
 
             <p className="text-xs text-muted-foreground text-center mt-4">
