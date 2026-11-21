@@ -1,0 +1,30 @@
+name: Reviews and admin regression
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/hooks/useAdminData.tsx'
+      - 'src/hooks/useAvaliacoes.tsx'
+      - 'src/components/admin/sections/UsuariosSection.tsx'
+      - 'src/components/admin/sections/DashboardSection.tsx'
+      - 'src/components/admin/sections/AvaliacoesSection.tsx'
+      - 'src/components/admin/forms/EditAvaliacaoModal.tsx'
+      - 'scripts/admin-users-stats-regression.test.mjs'
+      - 'scripts/reviews-moderation-module.test.mjs'
+      - '.github/workflows/reviews-admin-regression.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: node --test scripts/admin-users-stats-regression.test.mjs scripts/reviews-moderation-module.test.mjs
+      - run: npm run typecheck
