@@ -77,7 +77,7 @@ const ProblemaDetalhes = () => {
 
   const handleVoto = async (tipoVoto: 1 | -1) => {
     if (!user) return;
-    await votarProblema.mutateAsync({ problemaId: problema.id, tipoVoto });
+    votarProblema.mutate({ problemaId: problema.id, tipoVoto });
   };
 
   const handleVotarComentario = async (comentarioId: string, tipoVoto: 1 | -1) => {
@@ -197,7 +197,7 @@ const ProblemaDetalhes = () => {
                     variant="outline"
                     size="sm"
                     onClick={() => handleVoto(1)}
-                    disabled={!user}
+                    disabled={!user || votarProblema.isPending}
                     className="gap-2 hover:bg-primary/10 hover:text-primary hover:border-primary transition-colors"
                   >
                     <ArrowUp className="w-4 h-4" />
@@ -207,7 +207,7 @@ const ProblemaDetalhes = () => {
                     variant="outline"
                     size="sm"
                     onClick={() => handleVoto(-1)}
-                    disabled={!user}
+                    disabled={!user || votarProblema.isPending}
                     className="gap-2 hover:bg-destructive/10 hover:text-destructive hover:border-destructive transition-colors"
                   >
                     <ArrowDown className="w-4 h-4" />
