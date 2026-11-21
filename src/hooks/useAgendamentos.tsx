@@ -60,6 +60,7 @@ export const useAgendamentos = (empresaId?: string) => {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['agendamentos'] });
+      void queryClient.invalidateQueries({ queryKey: ['meus-agendamentos'] });
       toast({
         title: 'Agendamento criado!',
         description: 'Seu agendamento foi solicitado com sucesso.',
