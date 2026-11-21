@@ -89,6 +89,7 @@ export const PushNotificationsProvider = ({ children }: { children: ReactNode })
     setEnabled(false);
     setPreferences(defaultPreferences);
     setPushStateReady(false);
+    setError(null);
     let active = true;
     (supabase as any)
       .from('notification_preferences')
@@ -104,6 +105,10 @@ export const PushNotificationsProvider = ({ children }: { children: ReactNode })
           setError(null);
           if (data) setPreferences({ ...defaultPreferences, ...data });
         }
+        setPreferencesReady(true);
+      }).catch(() => {
+        if (!active) return;
+        setError('Não foi possível consultar as preferências de notificação.');
         setPreferencesReady(true);
       });
     return () => { active = false; };
