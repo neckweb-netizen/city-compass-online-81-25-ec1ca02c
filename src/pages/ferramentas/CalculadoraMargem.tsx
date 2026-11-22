@@ -38,8 +38,8 @@ export const CalculadoraMargem = () => {
   const formatarMoeda = (num: number) => num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const custo = parseMoeda(custoProduto);
-  const margemDesejada = parseBrazilianNumber(margemLucroDesejada) ?? -1;
-  const descPix = parseBrazilianNumber(descontoPixPercentual) ?? -1;
+  const margemDesejada = margemLucroDesejada.trim() ? (parseBrazilianNumber(margemLucroDesejada) ?? -1) : 0;
+  const descPix = descontoPixPercentual.trim() ? (parseBrazilianNumber(descontoPixPercentual) ?? -1) : 0;
 
   // DETERMINAR A TAXA DA MAQUININHA APLICADA
   let taxaMaquininha = 0;
