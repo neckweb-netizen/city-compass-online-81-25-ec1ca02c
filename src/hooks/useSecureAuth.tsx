@@ -161,18 +161,16 @@ export const useSecureAuth = () => {
       }
       
       // Log successful login
-      await supabase.functions.invoke('log-security-event', {
+      void supabase.functions.invoke('log-security-event', {
         body: {
           event_type: 'login_success',
           user_id: data.user?.id,
-          metadata: {
-            email,
-            ip_address: securityContext.ipAddress
-          }
+          metadata: { email, ip_address: securityContext.ipAddress }
         }
-      });
+      }).catch(() => { /* Telemetria não bloqueia autenticação. */ });
 
       console.log('✅ Secure sign in successful');
+      setSecurityContext(prev => ({ ...prev, sessionValid: true }));
       updateActivity();
       
       // Buscar perfil do usuário para possível redirecionamento apenas no login explícito
@@ -262,15 +260,13 @@ export const useSecureAuth = () => {
     try {
       // Log logout event
       if (user) {
-        await supabase.functions.invoke('log-security-event', {
+        void supabase.functions.invoke('log-security-event', {
           body: {
             event_type: 'logout',
             user_id: user.id,
-            metadata: {
-              ip_address: securityContext.ipAddress
-            }
+            metadata: { ip_address: securityContext.ipAddress }
           }
-        });
+        }).catch(() => { /* Não bloquear logout por falha nos logs. */ });
       }
 
       const { error } = await supabase.auth.signOut();
@@ -351,6 +347,7 @@ export const useSecureAuth = () => {
           const sequence = ++requestSequence;
           setUser(session?.user ?? null);
           setProfile(null);
+          if (session?.user) setSecurityContext(prev => ({ ...prev, sessionValid: true }));
 
           if (session?.user) {
             const userProfile = await fetchProfile(session.user.id);
@@ -392,6 +389,7 @@ export const useSecureAuth = () => {
         setUser(session?.user ?? null);
         setProfile(null);
         setLoading(!!session?.user);
+        if (session?.user) setSecurityContext(prev => ({ ...prev, sessionValid: true }));
 
         if (session?.user) {
           profileTimer = setTimeout(async () => {

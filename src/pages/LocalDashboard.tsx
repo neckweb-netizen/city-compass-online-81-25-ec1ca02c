@@ -1,5 +1,5 @@
 
-import { useSecureAuth } from '@/hooks/useSecureAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { EmpresaDashboard as EmpresaDashboardComponent } from '@/components/empresa/EmpresaDashboard';
 import { AuthDialog } from '@/components/auth/AuthDialog';
 import { BottomNavigation } from '@/components/layout/BottomNavigation';
@@ -9,8 +9,10 @@ import { Button } from '@/components/ui/button';
 import { User } from 'lucide-react';
 
 export default function EmpresaDashboard() {
-  const { user } = useSecureAuth();
+  const { user, loading } = useAuth();
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
+
+  if (loading) return <div className="min-h-screen grid place-items-center" role="status">Verificando acesso...</div>;
 
   if (!user) {
     return (

@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useSecureAuth } from '@/hooks/useSecureAuth';
 import { Card, CardContent } from '@/components/ui/card';
 import { Shield, AlertTriangle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 type RequiredRole = 'admin_geral' | 'admin_cidade' | 'empresa' | 'usuario';
 
@@ -54,10 +55,7 @@ export const SecureRoute = ({
     }
 
     // Check profile exists
-    if (!profile) {
-      console.log('👤 SecureRoute: No profile found');
-      return;
-    }
+    if (!profile) return;
 
     // Check role-based access
     if (allowedRoles.length > 0 && !allowedRoles.includes(profile.tipo_conta as RequiredRole)) {
@@ -117,7 +115,18 @@ export const SecureRoute = ({
   }
 
   if (!profile) {
-    return null;
+    return (
+      <div role="alert" className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="space-y-4 py-8 text-center">
+            <AlertTriangle className="mx-auto h-8 w-8 text-amber-500" />
+            <h2 className="font-semibold">Perfil indisponível</h2>
+            <p className="text-sm text-muted-foreground">Sua conta foi autenticada, mas não foi possível carregar o perfil. Entre em contato com o suporte para verificar seus dados.</p>
+            <Button variant="outline" onClick={() => navigate('/')}>Voltar ao início</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   if (allowedRoles.length > 0 && !allowedRoles.includes(profile.tipo_conta as RequiredRole)) {

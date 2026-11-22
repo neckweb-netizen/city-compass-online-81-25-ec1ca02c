@@ -67,3 +67,18 @@ test('secure auth ignores old profile lookups after account changes and never le
   assert.match(hook, /setProfile\(null\);\s*setLoading\(!!session\?\.user\)/);
   assert.match(hook, /Falha ao consultar perfil de autenticação/);
 });
+
+
+test('company routes share main session, show missing profiles and keep security telemetry nonblocking', () => {
+  const page = read('src/pages/LocalDashboard.tsx');
+  const route = read('src/components/security/SecureRoute.tsx');
+  const secure = read('src/hooks/useSecureAuth.tsx');
+  assert.match(page, /const \{ user, loading \} = useAuth\(\)/);
+  assert.doesNotMatch(page, /useSecureAuth/);
+  assert.match(page, /if \(loading\) return/);
+  assert.match(route, /Perfil indisponível/);
+  assert.match(route, /role="alert"/);
+  assert.match(secure, /sessionValid: true/);
+  assert.match(secure, /Telemetria não bloqueia autenticação/);
+  assert.match(secure, /Não bloquear logout por falha nos logs/);
+});
