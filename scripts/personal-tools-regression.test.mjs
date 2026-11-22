@@ -41,7 +41,7 @@ test('finance deletion is atomic, limited to authenticated owner and only clears
   assert.match(hook, /supabase\.rpc\('clear_finance_account_data' as any\)/);
   assert.doesNotMatch(hook, /Promise\.all\(\[\s*\(supabase as any\)\.from\('finance_lancamentos'\)\.delete/);
   assert.match(hook, /if \(error\) \{\s*setSyncError\(error\.message\);/);
-  assert.match(hook, /persistLocal\(EMPTY_FINANCE_STATE\);\s*try \{\s*localStorage\.removeItem\(userStorageKey\(user\.id\)\)/);
+  assert.match(hook, /persistLocal\(EMPTY_FINANCE_STATE\);\s*try \{\s*localStorage\.removeItem\(userStorageKey\(requestedUserId\)\)/);
   assert.match(sql, /security invoker/);
   assert.match(sql, /delete from public\.finance_lancamentos where user_id = \(select auth\.uid\(\)\)/);
   assert.match(sql, /delete from public\.finance_configuracoes where user_id = \(select auth\.uid\(\)\)/);
