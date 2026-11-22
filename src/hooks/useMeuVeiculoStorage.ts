@@ -238,19 +238,11 @@ export const useMeuVeiculoStorage = () => {
       veiculos: state.veiculos.map(v => v.id === item.veiculoId && updateKm
         ? { ...v, quilometragemAtual: item.quilometragem } : v),
     };
-    return mutate(next, async accountId => {
-      const result = await (supabase as any).from('veiculo_abastecimentos').upsert({
-        id: item.id, user_id: accountId, veiculo_id: item.veiculoId,
-        data_abastecimento: item.data, quilometragem: item.quilometragem,
-        litros: item.litros, valor_total: item.valorTotal,
-        combustivel: item.combustivel || null, posto: item.posto || null,
-        tanque_completo: item.tanqueCompleto, observacao: item.observacao || null,
-      }, { onConflict: 'id' });
-      if (result.error || !updateKm) return result;
-      // Sem alterar KM via segundo hook; falha aqui é reportada e o usuário pode recarregar.
-      return (supabase as any).from('veiculos_usuario')
-        .update({ quilometragem_atual: item.quilometragem, atualizado_em: new Date().toISOString() })
-        .eq('id', item.veiculoId).eq('user_id', accountId);
+    return mutate(next, async () => {
+      const { error } = await supabase.rpc('save_vehicle_fuel_atomic' as any, {
+        p_fuel: item,
+      });
+      return { error };
     });
   }, [mutate, state]);
 
