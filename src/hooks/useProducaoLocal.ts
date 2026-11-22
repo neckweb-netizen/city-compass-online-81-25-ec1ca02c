@@ -38,21 +38,14 @@ export const useProducaoLocalDisponivel = () => useQuery({
         .abortSignal(controller.signal)
         .maybeSingle();
 
-      if (error) {
-        console.warn('[producao-local] Não foi possível consultar a disponibilidade.', error.message);
-        return true;
-      }
-
-      return data ? (data as any).producao_local_ativa !== false : true;
-    } catch (error) {
-      console.warn('[producao-local] Consulta de disponibilidade interrompida.', error);
-      return true;
+      if (error) throw error;
+      if (!data) throw new Error('Configuração de Produção Local não encontrada.');
+      return (data as any).producao_local_ativa === true;
     } finally {
       window.clearTimeout(timeout);
       signal.removeEventListener('abort', abortRequest);
     }
   },
-  placeholderData: true,
   refetchOnMount: 'always',
   retry: false,
   staleTime: 60_000,
@@ -66,6 +59,7 @@ export const useProdutoresLocais = () => useQuery({
       .select('*')
       .eq('status', 'aprovado')
       .eq('ativo', true)
+      .eq('consentimento_publicacao', true)
       .order('nome_publico');
 
     if (error) throw error;
