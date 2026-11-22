@@ -46,11 +46,12 @@ export const LeitorVoz = () => {
   useEffect(() => {
     carregarVozes();
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.onvoiceschanged = carregarVozes;
+      window.speechSynthesis.addEventListener('voiceschanged', carregarVozes);
     }
 
     return () => {
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.removeEventListener('voiceschanged', carregarVozes);
         window.speechSynthesis.cancel();
       }
     };

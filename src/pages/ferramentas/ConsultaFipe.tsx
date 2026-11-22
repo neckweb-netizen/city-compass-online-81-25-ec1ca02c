@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -84,8 +84,10 @@ export const ConsultaFipe = () => {
   const [result, setResult] = useState<FipeDetails | null>(null);
   const [usage, setUsage] = useState<DailyUsage | null>(null);
   const [loading, setLoading] = useState('initial');
+  const requestSequence = useRef(0);
 
   const loadInitial = useCallback(async () => {
+    const sequence = ++requestSequence.current;
     setLoading('initial');
     setResult(null);
     setBrandId('');
@@ -98,16 +100,17 @@ export const ConsultaFipe = () => {
         queryFipe<Reference[]>({ action: 'references' }),
         queryFipe<DailyUsage>({ action: 'usage' }),
       ]);
+      if (requestSequence.current !== sequence) return;
       setUsage(dailyUsage);
       const latestReference = refs[0]?.code ?? '';
       setReferences(refs.slice(0, 24));
       setReference(latestReference);
       const brandList = await queryFipe<Option[]>({ action: 'brands', vehicleType, reference: latestReference });
-      setBrands(brandList);
+      if (requestSequence.current === sequence) setBrands(brandList);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Erro ao carregar a Tabela FIPE.');
+      if (requestSequence.current === sequence) toast.error(error instanceof Error ? error.message : 'Erro ao carregar a Tabela FIPE.');
     } finally {
-      setLoading('');
+      if (requestSequence.current === sequence) setLoading('');
     }
   }, [vehicleType]);
 
@@ -118,9 +121,11 @@ export const ConsultaFipe = () => {
     setModels([]);
     setYears([]);
     void loadInitial();
+    return () => { requestSequence.current += 1; };
   }, [loadInitial]);
 
   const changeReference = async (value: string) => {
+    const sequence = ++requestSequence.current;
     setReference(value);
     setBrandId('');
     setModelId('');
@@ -130,15 +135,17 @@ export const ConsultaFipe = () => {
     setResult(null);
     setLoading('brands');
     try {
-      setBrands(await queryFipe<Option[]>({ action: 'brands', vehicleType, reference: value }));
+      const items = await queryFipe<Option[]>({ action: 'brands', vehicleType, reference: value });
+      if (requestSequence.current === sequence) setBrands(items);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Erro ao carregar marcas.');
+      if (requestSequence.current === sequence) toast.error(error instanceof Error ? error.message : 'Erro ao carregar marcas.');
     } finally {
-      setLoading('');
+      if (requestSequence.current === sequence) setLoading('');
     }
   };
 
   const changeBrand = async (value: string) => {
+    const sequence = ++requestSequence.current;
     setBrandId(value);
     setModelId('');
     setYearId('');
@@ -147,46 +154,55 @@ export const ConsultaFipe = () => {
     setResult(null);
     setLoading('models');
     try {
-      setModels(await queryFipe<Option[]>({ action: 'models', vehicleType, brandId: value, reference }));
+      const items = await queryFipe<Option[]>({ action: 'models', vehicleType, brandId: value, reference });
+      if (requestSequence.current === sequence) setModels(items);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Erro ao carregar modelos.');
+      if (requestSequence.current === sequence) toast.error(error instanceof Error ? error.message : 'Erro ao carregar modelos.');
     } finally {
-      setLoading('');
+      if (requestSequence.current === sequence) setLoading('');
     }
   };
 
   const changeModel = async (value: string) => {
+    const sequence = ++requestSequence.current;
     setModelId(value);
     setYearId('');
     setYears([]);
     setResult(null);
     setLoading('years');
     try {
-      setYears(await queryFipe<Option[]>({ action: 'years', vehicleType, brandId, modelId: value, reference }));
+      const items = await queryFipe<Option[]>({ action: 'years', vehicleType, brandId, modelId: value, reference });
+      if (requestSequence.current === sequence) setYears(items);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Erro ao carregar anos.');
+      if (requestSequence.current === sequence) toast.error(error instanceof Error ? error.message : 'Erro ao carregar anos.');
     } finally {
-      setLoading('');
+      if (requestSequence.current === sequence) setLoading('');
     }
   };
 
   const consult = async () => {
-    if (!brandId || !modelId || !yearId || !usage?.remaining) return;
+    if (!brandId || !modelId || !yearId || !usage?.remaining || loading) return;
+    const sequence = ++requestSequence.current;
     setLoading('details');
     setResult(null);
     try {
       const response = await queryFipeDetails({ action: 'details', vehicleType, brandId, modelId, yearId, reference });
-      setResult(response.data);
-      setUsage(response.usage);
+      if (requestSequence.current === sequence) {
+        setResult(response.data);
+        setUsage(response.usage);
+      }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Erro ao consultar o veículo.');
-      try {
-        setUsage(await queryFipe<DailyUsage>({ action: 'usage' }));
-      } catch {
-        // Mantém o último estado conhecido se a verificação também falhar.
+      if (requestSequence.current === sequence) {
+        toast.error(error instanceof Error ? error.message : 'Erro ao consultar o veículo.');
+        try {
+          const refreshedUsage = await queryFipe<DailyUsage>({ action: 'usage' });
+          if (requestSequence.current === sequence) setUsage(refreshedUsage);
+        } catch {
+          // Mantém o último estado conhecido se a verificação também falhar.
+        }
       }
     } finally {
-      setLoading('');
+      if (requestSequence.current === sequence) setLoading('');
     }
   };
 
@@ -198,8 +214,12 @@ export const ConsultaFipe = () => {
   const copyResult = async () => {
     if (!result) return;
     const text = `${result.brand} ${result.model} (${result.modelYear})\nValor FIPE: ${result.price}\nCódigo FIPE: ${result.codeFipe}\nReferência: ${result.referenceMonth}`;
-    await navigator.clipboard.writeText(text);
-    toast.success('Dados da consulta copiados.');
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('Dados da consulta copiados.');
+    } catch {
+      toast.error('Não foi possível copiar os dados. Verifique as permissões do navegador.');
+    }
   };
 
   const isBusy = Boolean(loading);

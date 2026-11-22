@@ -7,8 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowLeft, Calculator, Copy, Send, Sparkles, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ToolBanner } from '@/components/ferramentas/ToolBanner';
+import { parseBrazilianNumber } from '@/lib/parseBrazilianNumber';
 
-// BANCO DE DADOS DE TAXAS MÉDIAS ATUAIS DAS TOP 6 OPERADORAS
+// TAXAS ILUSTRATIVAS (não atualizadas automaticamente; confirme no seu contrato)
 const OPERADORAS = {
   ton: { nome: 'Ton (Plano Promocional/Max)', pix: 0.99, debito: 1.45, cred1x: 3.51, cred6x: 11.50, cred12x: 14.79 },
   mercado_pago: { nome: 'Mercado Pago', pix: 0.00, debito: 1.67, cred1x: 3.57, cred6x: 11.00, cred12x: 13.99 },
@@ -33,20 +34,17 @@ export const CalculadoraMargem = () => {
   const [descontoPixPercentual, setDescontoPixPercentual] = useState('');
 
   // PARSER DE MOEDA E VALORES
-  const parseMoeda = (val: string) => {
-    const numero = Number(val.trim().replace(/\./g, '').replace(',', '.'));
-    return Number.isFinite(numero) && numero > 0 ? numero : 0;
-  };
+  const parseMoeda = (val: string) => parseBrazilianNumber(val) ?? 0;
   const formatarMoeda = (num: number) => num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const custo = parseMoeda(custoProduto);
-  const margemDesejada = Number(margemLucroDesejada.replace(',', '.')) || 0;
-  const descPix = Number(descontoPixPercentual.replace(',', '.')) || 0;
+  const margemDesejada = parseBrazilianNumber(margemLucroDesejada) ?? -1;
+  const descPix = parseBrazilianNumber(descontoPixPercentual) ?? -1;
 
   // DETERMINAR A TAXA DA MAQUININHA APLICADA
   let taxaMaquininha = 0;
   if (operadoraSelecionada === 'custom') {
-    taxaMaquininha = Number(taxaManual.replace(',', '.')) || 0;
+    taxaMaquininha = parseBrazilianNumber(taxaManual) ?? -1;
   } else {
     const op = OPERADORAS[operadoraSelecionada as keyof typeof OPERADORAS];
     if (op) {
@@ -58,7 +56,8 @@ export const CalculadoraMargem = () => {
   // Fórmula de Preço de Venda = Custo / (1 - (Margem% + Taxa%) / 100)
   const somaPorcentagens = (margemDesejada + taxaMaquininha) / 100;
   const taxasValidas = margemDesejada >= 0 && margemDesejada < 100 &&
-    taxaMaquininha >= 0 && taxaMaquininha < 100 && somaPorcentagens < 1;
+    taxaMaquininha >= 0 && taxaMaquininha < 100 &&
+    descPix >= 0 && descPix <= 100 && somaPorcentagens < 1;
   const precoVendaIdeal = taxasValidas && custo > 0
     ? custo / (1 - somaPorcentagens)
     : 0;
@@ -69,11 +68,12 @@ export const CalculadoraMargem = () => {
   const lucroLiquidoReal = valorRecebidoLiquido - custo;
 
   // CÁLCULO DO PREÇO À VISTA COM DESCONTO PIX
-  const precoVendaPix = precoVendaIdeal * (1 - descPix / 100);
+  const precoVendaPix = taxasValidas ? precoVendaIdeal * (1 - descPix / 100) : 0;
   const lucroLiquidoPix = precoVendaPix - custo;
 
   // TEXTO DE ORÇAMENTO/RESUMO
   const gerarTextoResumo = () => {
+    if (!taxasValidas || custo <= 0) return 'Informe um custo e percentuais válidos para calcular o preço.';
     let msg = `🛍️ *TABELA DE PREÇO & PRECIFICAÇÃO*\n`;
     if (nomeProduto.trim()) msg += `📦 *Produto/Item:* ${nomeProduto}\n\n`;
     msg += `💳 *Cartão (${modalidadePagamento.toUpperCase()}):* R$ ${formatarMoeda(precoVendaIdeal)}\n`;
@@ -140,7 +140,7 @@ export const CalculadoraMargem = () => {
                 <Calculator className="w-4 h-4 text-primary" /> Dados do Produto & Maquininha
               </CardTitle>
               <CardDescription className="text-xs">
-                Informe os custos e selecione a maquininha usada
+                Informe os custos e selecione a maquininha usada. As taxas exibidas são apenas exemplos: confirme a taxa contratada com sua operadora.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -233,7 +233,7 @@ export const CalculadoraMargem = () => {
 
           {/* PAINEL DE RESULTADOS & PREÇO RECOMENDADO */}
           <div className="space-y-4">
-            {!taxasValidas && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">Margem e taxa da maquininha precisam ser positivas e somar menos de 100% para haver um preço viável.</p>}
+            {!taxasValidas && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">Margem e taxa da maquininha devem ser válidas e somar menos de 100%. O desconto deve ficar entre 0% e 100%.</p>}
             <Card className="border-emerald-500/30 bg-emerald-500/5 shadow-lg">
               <CardContent className="p-6 space-y-4 text-center">
                 <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">
