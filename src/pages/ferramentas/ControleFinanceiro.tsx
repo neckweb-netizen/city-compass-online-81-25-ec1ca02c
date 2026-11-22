@@ -311,6 +311,7 @@ export const ControleFinanceiro = () => {
 
   const saveEntry = (event: FormEvent) => {
     event.preventDefault();
+    if (syncing || financeLoading) return;
     const amount = safeNumber(form.amount);
     if (!form.title.trim()) {
       toast.error('Informe uma descrição para o lançamento.');
@@ -342,13 +343,17 @@ export const ControleFinanceiro = () => {
     };
 
     void saveTransaction(payload).then((result) => {
-      if (result.synced) toast.success(editing ? 'Lançamento atualizado na sua conta.' : 'Lançamento salvo na sua conta.');
-      else if (result.reason === 'remote_error') toast.error(result.error.message);
-      else toast.success('Lançamento salvo neste aparelho.');
+      if (result.reason === 'remote_error') {
+        toast.error(result.error.message);
+        return;
+      }
+      toast.success(result.synced
+        ? (editing ? 'Lançamento atualizado na sua conta.' : 'Lançamento salvo na sua conta.')
+        : 'Lançamento salvo neste aparelho.');
+      setSelectedMonth(parseDate(form.date));
+      setSelectedDay(form.date);
+      setIsEntryOpen(false);
     }).catch(() => toast.error('Falha ao salvar lançamento. Tente novamente.'));
-    setSelectedMonth(parseDate(form.date));
-    setSelectedDay(form.date);
-    setIsEntryOpen(false);
   };
 
   const removeEntry = (id: string) => {
@@ -379,17 +384,20 @@ export const ControleFinanceiro = () => {
   };
 
   const saveSettings = () => {
+    if (syncing || financeLoading) return;
     const nextSettings = {
       monthlyBudget: Math.max(0, safeNumber(settingsForm.monthlyBudget)),
       savingsGoal: Math.max(0, safeNumber(settingsForm.savingsGoal)),
       emergencyFundGoal: Math.max(0, safeNumber(settingsForm.emergencyFundGoal)),
     };
     void persistSettings(nextSettings).then((result) => {
-      if (result.synced) toast.success('Planejamento salvo na sua conta.');
-      else if (result.reason === 'remote_error') toast.error(result.error.message);
-      else toast.success('Planejamento salvo neste aparelho.');
+      if (result.reason === 'remote_error') {
+        toast.error(result.error.message);
+        return;
+      }
+      toast.success(result.synced ? 'Planejamento salvo na sua conta.' : 'Planejamento salvo neste aparelho.');
+      setIsSettingsOpen(false);
     }).catch(() => toast.error('Falha ao salvar planejamento.'));
-    setIsSettingsOpen(false);
   };
 
   const exportData = () => {
