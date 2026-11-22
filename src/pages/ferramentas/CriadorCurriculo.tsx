@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -39,6 +39,7 @@ export const CriadorCurriculo = () => {
   const [resumo, setResumo] = useState('');
   const [informacoesAdicionais, setInformacoesAdicionais] = useState('');
   const [gerandoPdf, setGerandoPdf] = useState(false);
+  const pdfInProgressRef = useRef(false);
 
   const [formacoes, setFormacoes] = useState<Formacao[]>([
     { id: '1', descricao: '' }
@@ -99,9 +100,14 @@ export const CriadorCurriculo = () => {
 
   // 2️⃣ BOTÃO BAIXAR DIRETO: GERADOR DE ARQUIVO E DOWNLOAD AUTOMÁTICO SEM TELA INTERMEDIÁRIA
   const handleBaixarDireto = async () => {
+    if (pdfInProgressRef.current) return;
     const folha = document.getElementById('folha-curriculo');
-    if (!folha) return;
+    if (!folha) {
+      toast.error('A prévia do currículo não está disponível.');
+      return;
+    }
 
+    pdfInProgressRef.current = true;
     setGerandoPdf(true);
 
     try {
@@ -131,6 +137,7 @@ export const CriadorCurriculo = () => {
         },
       });
 
+      if (!canvas.width || !canvas.height) throw new Error('A página do currículo está vazia.');
       const pdf = await PDFDocument.create();
       const larguraPagina = 595.28;
       const alturaPagina = 841.89;
@@ -138,6 +145,10 @@ export const CriadorCurriculo = () => {
 
       let posicaoVertical = 0;
       let pagina = 0;
+      const totalPaginas = Math.ceil(canvas.height / alturaPaginaEmPixels);
+      if (totalPaginas > 20) {
+        throw new Error('Currículo excede 20 páginas. Reduza o conteúdo antes de gerar o PDF.');
+      }
 
       while (posicaoVertical < canvas.height) {
         const alturaFatia = Math.min(alturaPaginaEmPixels, canvas.height - posicaoVertical);
@@ -191,12 +202,13 @@ export const CriadorCurriculo = () => {
       link.href = url;
       link.download = nomeArquivo;
       link.click();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
       toast.success('Currículo baixado em PDF.');
     } catch (error) {
       console.error('Erro ao gerar PDF do currículo:', error);
       toast.error('Não foi possível gerar o PDF. Tente novamente.');
     } finally {
+      pdfInProgressRef.current = false;
       setGerandoPdf(false);
     }
   };
