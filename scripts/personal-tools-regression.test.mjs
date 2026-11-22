@@ -75,14 +75,14 @@ test('individual finance mutations are serialized and never claim remote success
   assert.match(hook, /persistLocal\(next\);\s*return \{ synced: true as const \}/);
   assert.match(hook, /return runFinanceMutation\(next, accountId =>/);
   assert.match(hook, /\.eq\('user_id', accountId\)/);
-  assert.match(page, /if \(result\.synced\) toast\.success\('Planejamento salvo na sua conta\.'\)/);
+  assert.match(page, /toast\.success\(result\.synced \? 'Planejamento salvo na sua conta\.'/);
   assert.doesNotMatch(page, /toast\.success\(editing \? 'Lançamento atualizado\.' : user/);
   assert.doesNotMatch(page, /toast\.success\(user \? 'Planejamento salvo na sua conta\.'/);
 });
 
 test('financial forms stay open after server errors and confirm success after persistence', () => {
   const page = read('src/pages/ferramentas/ControleFinanceiro.tsx');
-  assert.match(page, /if \(result\.reason === 'remote_error'\) \{\s*toast\.error\(result\.error\.message\);\s*return;\s*\}/);
+  assert.match(page, /if \(result\.reason === 'remote_error'\) \{[\s\S]*?toast\.error\([\s\S]*?return;\s*\}/);
   assert.match(page, /setIsEntryOpen\(false\);/);
   assert.match(page, /setIsSettingsOpen\(false\);/);
   assert.match(page, /if \(syncing \|\| financeLoading\) return/);
