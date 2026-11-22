@@ -8,13 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ToolBanner } from '@/components/ferramentas/ToolBanner';
+import { parseBrazilianNumber } from '@/lib/parseBrazilianNumber';
 
 type Product = { name: string; price: string; quantity: string };
 const initialProducts: Product[] = [{ name: 'Produto A', price: '', quantity: '' }, { name: 'Produto B', price: '', quantity: '' }, { name: 'Produto C', price: '', quantity: '' }];
-const numberFrom = (value: string) => {
-  const parsed = Number(value.trim().replace(',', '.'));
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
-};
+const numberFrom = (value: string) => parseBrazilianNumber(value) ?? 0;
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 4 });
 
 export default function ComparadorPrecos() {

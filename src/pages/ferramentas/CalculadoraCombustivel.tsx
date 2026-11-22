@@ -10,11 +10,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { ToolBanner } from '@/components/ferramentas/ToolBanner';
+import { parseBrazilianNumber } from '@/lib/parseBrazilianNumber';
 
-const numberFrom = (value: string) => {
-  const parsed = Number(value.trim().replace(',', '.'));
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
-};
+const numberFrom = (value: string) => parseBrazilianNumber(value) ?? 0;
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const decimal = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 });
 

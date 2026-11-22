@@ -8,11 +8,9 @@ import { ArrowLeft, Calculator, Sparkles, Clock, DollarSign, RefreshCw, FileText
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ToolBanner } from '@/components/ferramentas/ToolBanner';
+import { parseBrazilianNumber } from '@/lib/parseBrazilianNumber';
 
-const numeroNaoNegativo = (value: string) => {
-  const numero = Number(value.trim().replace(',', '.'));
-  return Number.isFinite(numero) ? Math.max(0, numero) : 0;
-};
+const numeroNaoNegativo = (value: string) => parseBrazilianNumber(value) ?? 0;
 
 export const CalculadoraOrcamento = () => {
   const navigate = useNavigate();

@@ -151,7 +151,9 @@ export const useControleFinanceiroStorage = () => {
       setSyncError(null);
 
       const accountCache = loadLocalState(userStorageKey(user.id));
-      if (isMeaningfulState(accountCache)) setState(accountCache);
+      // Sempre descarte o estado da conta anterior antes de qualquer operação remota.
+      // Mesmo um cache vazio é um estado legítimo e não pode mostrar dados de outro usuário.
+      setState(accountCache);
 
       const [transactionsResponse, settingsResponse] = await Promise.all([
         (supabase as any)

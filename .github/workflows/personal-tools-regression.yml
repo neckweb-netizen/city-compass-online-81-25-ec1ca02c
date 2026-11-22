@@ -1,0 +1,28 @@
+name: Personal tools calculations and privacy
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/lib/parseBrazilianNumber.ts'
+      - 'src/hooks/useControleFinanceiroStorage.ts'
+      - 'src/pages/ferramentas/CalculadoraCombustivel.tsx'
+      - 'src/pages/ferramentas/ComparadorPrecos.tsx'
+      - 'src/pages/ferramentas/CalculadoraOrcamento.tsx'
+      - 'scripts/personal-tools-regression.test.mjs'
+      - '.github/workflows/personal-tools-regression.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tools:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: node --test scripts/personal-tools-regression.test.mjs
+      - run: npm run typecheck
