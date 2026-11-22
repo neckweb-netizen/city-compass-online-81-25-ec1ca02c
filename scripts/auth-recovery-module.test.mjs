@@ -33,3 +33,13 @@ test('sign out clears the in-memory profile cache', () => {
   const auth = read('src/hooks/useAuth.tsx');
   assert.match(auth, /supabaseCache\.clear\(\);\s+window\.location\.href = '\/'/);
 });
+
+
+test('auth does not silently recreate missing historical profiles or claim successful login', () => {
+  const auth = read('src/hooks/useAuth.tsx');
+  assert.doesNotMatch(auth, /const createUserProfile =/);
+  assert.doesNotMatch(auth, /\.from\('usuarios'\)\s*\.insert\(/);
+  assert.match(auth, /Conta de Auth sem perfil histórico/);
+  assert.match(auth, /if \(!userProfile\) \{/);
+  assert.match(auth, /Conta autenticada, mas não foi possível carregar seu perfil/);
+});

@@ -33,3 +33,7 @@ Referências oficiais:
 - https://supabase.com/docs/guides/platform/backups
 - https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore
 - https://supabase.com/docs/guides/self-hosting/restore-from-platform
+
+## Contas históricas sem perfil: comportamento seguro (21/11/2026)
+
+As sete contas sem perfil são antigas (2025–janeiro de 2026), têm e-mail confirmado e já registraram login. O gatilho de cadastro atual não repara contas antigas. O frontend tentava inserir um novo perfil com papel `usuario` quando não o encontrava, mas não existe política INSERT para isso; e atribuir um papel básico automaticamente poderia apagar o contexto das permissões históricas. Agora o login explícito informa que não conseguiu carregar o perfil e não declara sucesso nem cria novos dados. Cada recuperação depende de validação individual dos históricos e backup. **Nenhuma conta foi alterada.**

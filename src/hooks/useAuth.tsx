@@ -21,33 +21,7 @@ const useAuthState = () => {
   const [loading, setLoading] = useState(true);
   const initializedRef = useRef(false);
 
-  const createUserProfile = useCallback(async (userId: string, authUser: User, tipoConta: TipoConta = 'usuario', additionalData?: AdditionalSignUpData) => {
-    try {
-      const { data, error } = await supabase
-        .from('usuarios')
-        .insert({
-          id: userId,
-          nome: authUser.user_metadata?.nome || authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'Usuário',
-          email: authUser.email || '',
-          tipo_conta: tipoConta,
-          telefone: additionalData?.telefone || authUser.user_metadata?.telefone
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('❌ Error creating profile:', error);
-        return null;
-      }
-
-      return data;
-    } catch (error) {
-      console.error('💥 Error creating user profile:', error);
-      return null;
-    }
-  }, []);
-
-  const fetchProfile = useCallback(async (userId: string, authUser: User): Promise<UserProfile | null> => {
+  const fetchProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
     try {
       // Check cache first
       const cacheKey = `user-profile-${userId}`;
@@ -72,18 +46,15 @@ const useAuthState = () => {
         // Cache for 30 minutes for better performance
         supabaseCache.set(cacheKey, data, 1800);
         return data;
-      } else {
-        const newProfile = await createUserProfile(userId, authUser);
-        if (newProfile) {
-          supabaseCache.set(cacheKey, newProfile, 1800);
-        }
-        return newProfile;
       }
+      // Conta de Auth sem perfil histórico: não recriar como usuário comum,
+      // pois papéis/relacionamentos anteriores precisam ser auditados.
+      return null;
     } catch (error) {
       console.error('💥 Error in fetchProfile:', error);
       return null;
     }
-  }, [createUserProfile]);
+  }, []);
 
   const redirectAfterLogin = useCallback((userProfile: UserProfile, isExplicitLogin = false) => {
     // Só redireciona se for um login explícito (não automático)
@@ -140,7 +111,7 @@ const useAuthState = () => {
           setUser(session?.user ?? null);
           
           if (session?.user) {
-            const userProfile = await fetchProfile(session.user.id, session.user);
+            const userProfile = await fetchProfile(session.user.id);
             if (mounted) {
               setProfile(userProfile);
               if (userProfile) redirectAfterInitialLoad(userProfile);
@@ -167,6 +138,7 @@ const useAuthState = () => {
         if (event === 'INITIAL_SESSION') return;
 
         setUser(session?.user ?? null);
+        setProfile(null);
         
         if (session?.user) {
           // Debounce profile fetching to avoid multiple rapid requests
@@ -176,7 +148,7 @@ const useAuthState = () => {
           
           fetchTimeoutRef.current = setTimeout(async () => {
             if (mounted) {
-              const userProfile = await fetchProfile(session.user.id, session.user);
+              const userProfile = await fetchProfile(session.user.id);
               if (mounted) {
                 setProfile(userProfile);
                 setLoading(false);
@@ -184,6 +156,7 @@ const useAuthState = () => {
             }
           }, 50); // Reduced debounce time for faster response
         } else {
+          if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
           setProfile(null);
           setLoading(false);
         }
@@ -216,10 +189,14 @@ const useAuthState = () => {
       
       // Buscar perfil do usuário para redirecionamento apenas no login explícito
       if (data.user) {
-        const userProfile = await fetchProfile(data.user.id, data.user);
-        if (userProfile) {
-          redirectAfterLogin(userProfile, true); // true indica login explícito
+        const userProfile = await fetchProfile(data.user.id);
+        if (!userProfile) {
+          setProfile(null);
+          setLoading(false);
+          return { error: new Error('Conta autenticada, mas não foi possível carregar seu perfil. Tente novamente ou entre em contato com o suporte para recuperar seus dados.') };
         }
+        setProfile(userProfile);
+        redirectAfterLogin(userProfile, true); // true indica login explícito
       }
       
       return { error: null };
