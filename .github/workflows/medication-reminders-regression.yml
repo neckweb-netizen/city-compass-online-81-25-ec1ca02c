@@ -1,0 +1,26 @@
+name: Medication reminders regression
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/hooks/useMedicamentosStorage.ts'
+      - 'src/pages/ferramentas/MedicamentosLembretes.tsx'
+      - 'supabase/migrations/*medicine_schedule*'
+      - 'scripts/medication-reminders-regression.test.mjs'
+      - '.github/workflows/medication-reminders-regression.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: node --test scripts/medication-reminders-regression.test.mjs
+      - run: npm run typecheck
