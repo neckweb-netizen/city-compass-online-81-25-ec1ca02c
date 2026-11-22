@@ -376,44 +376,43 @@ export const useControleFinanceiroStorage = () => {
   }, [replaceAll, state, user]);
 
   const clearAll = useCallback(async () => {
-    const previous = state;
-    persistLocal(EMPTY_FINANCE_STATE);
-
     if (!user) {
+      persistLocal(EMPTY_FINANCE_STATE);
       try {
-        localStorage.removeItem(user ? userStorageKey(user.id) : FINANCE_STORAGE_KEY);
+        localStorage.removeItem(FINANCE_STORAGE_KEY);
       } catch {
         // Sem ação.
       }
       return { synced: false, reason: 'not_authenticated' as const };
     }
 
+    // A limpeza das duas tabelas é feita numa única transação pelo servidor.
+    // O cache local só é apagado quando a transação inteira foi confirmada.
     setSyncing(true);
     setSyncError(null);
+    try {
+      const { error } = await supabase.rpc('clear_finance_account_data' as any);
+      if (error) {
+        setSyncError(error.message);
+        return { synced: false, reason: 'remote_error' as const, error };
+      }
 
-    const [transactionsResponse, settingsResponse] = await Promise.all([
-      (supabase as any).from('finance_lancamentos').delete().eq('user_id', user.id),
-      (supabase as any).from('finance_configuracoes').delete().eq('user_id', user.id),
-    ]);
-
-    setSyncing(false);
-
-    const error = transactionsResponse.error || settingsResponse.error;
-    if (error) {
-      persistLocal(previous);
+      persistLocal(EMPTY_FINANCE_STATE);
+      try {
+        localStorage.removeItem(userStorageKey(user.id));
+      } catch {
+        // O cache em memória já foi limpo.
+      }
+      setHasLocalDataToImport(false);
+      return { synced: true as const };
+    } catch (cause) {
+      const error = { message: cause instanceof Error ? cause.message : 'Falha ao apagar dados financeiros.' };
       setSyncError(error.message);
       return { synced: false, reason: 'remote_error' as const, error };
+    } finally {
+      setSyncing(false);
     }
-
-    try {
-      localStorage.removeItem(userStorageKey(user.id));
-    } catch {
-      // Sem ação.
-    }
-
-    setHasLocalDataToImport(false);
-    return { synced: true as const };
-  }, [persistLocal, state, user]);
+  }, [persistLocal, user]);
 
   const storageLabel = useMemo(() => {
     if (authLoading || loading) return 'Carregando dados';
