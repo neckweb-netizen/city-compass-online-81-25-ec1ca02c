@@ -113,81 +113,17 @@ export const useSecureAuth = () => {
     }));
   }, []);
 
-  // Enhanced profile creation with security logging
-  const createUserProfile = useCallback(async (
-    userId: string, 
-    authUser: User, 
-    tipoConta: TipoConta = 'usuario', 
-    additionalData?: AdditionalSignUpData
-  ) => {
-    try {
-      console.log('👤 Creating secure user profile for:', userId, 'Type:', tipoConta);
-      
-      // Log security event
-      await supabase.functions.invoke('log-security-event', {
-        body: {
-          event_type: 'user_creation',
-          user_id: userId,
-          metadata: {
-            account_type: tipoConta,
-            email: authUser.email,
-            ip_address: securityContext.ipAddress
-          }
-        }
-      });
-
-      const { data, error } = await supabase
-        .from('usuarios')
-        .insert({
-          id: userId,
-          nome: authUser.user_metadata?.nome || authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'Usuário',
-          email: authUser.email || '',
-          tipo_conta: tipoConta,
-          telefone: additionalData?.telefone || authUser.user_metadata?.telefone
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('❌ Error creating profile:', error);
-        return null;
-      }
-
-      console.log('✅ Secure profile created successfully:', data.nome);
-      return data;
-    } catch (error) {
-      console.error('💥 Error creating secure user profile:', error);
-      return null;
-    }
-  }, [securityContext.ipAddress]);
-
-  const fetchProfile = useCallback(async (userId: string, authUser: User) => {
-    try {
-      console.log('🔍 Fetching secure profile for user:', userId);
-      
-      const { data, error } = await supabase
-        .from('usuarios')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
-
-      if (error) {
-        console.error('❌ Profile fetch error:', error);
-        return null;
-      }
-
-      if (data) {
-        console.log('✅ Secure profile found:', data.nome);
-        return data;
-      } else {
-        console.log('⚠️ No profile found, creating default...');
-        return await createUserProfile(userId, authUser);
-      }
-    } catch (error) {
-      console.error('💥 Error in fetchProfile:', error);
-      return null;
-    }
-  }, [createUserProfile]);
+  // Perfis são criados pelo gatilho de auth.users. Contas históricas sem
+  // perfil exigem recuperação auditável: nunca sobrescrever o papel anterior.
+  const fetchProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
+    const { data, error } = await supabase
+      .from('usuarios')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  }, []);
 
   // Enhanced sign in with security features
   const signIn = async (email: string, password: string) => {
@@ -236,7 +172,14 @@ export const useSecureAuth = () => {
       
       // Buscar perfil do usuário para possível redirecionamento apenas no login explícito
       if (data.user) {
-        const userProfile = await fetchProfile(data.user.id, data.user);
+        const userProfile = await fetchProfile(data.user.id);
+        if (!userProfile) {
+          await supabase.auth.signOut({ scope: 'local' });
+          setUser(null);
+          setProfile(null);
+          setLoading(false);
+          return { error: new Error('O perfil da conta não foi encontrado. Contate o suporte antes de tentar novamente.') };
+        }
         if (userProfile) {
           // Redirecionar apenas usuários empresa/admin da página inicial
           const currentPath = window.location.pathname;
@@ -401,7 +344,7 @@ export const useSecureAuth = () => {
           setUser(session?.user ?? null);
           
           if (session?.user) {
-            const userProfile = await fetchProfile(session.user.id, session.user);
+            const userProfile = await fetchProfile(session.user.id);
             if (mounted) {
               setProfile(userProfile);
               updateActivity();
@@ -441,7 +384,7 @@ export const useSecureAuth = () => {
         if (session?.user) {
           setTimeout(async () => {
             if (mounted) {
-              const userProfile = await fetchProfile(session.user.id, session.user);
+              const userProfile = await fetchProfile(session.user.id);
               if (mounted) {
                 setProfile(userProfile);
                 setLoading(false);

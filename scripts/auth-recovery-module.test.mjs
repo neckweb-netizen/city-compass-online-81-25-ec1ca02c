@@ -43,3 +43,17 @@ test('auth does not silently recreate missing historical profiles or claim succe
   assert.match(auth, /if \(!userProfile\) \{/);
   assert.match(auth, /Conta autenticada, mas não foi possível carregar seu perfil/);
 });
+
+
+test('all auth entry points deny missing profiles and sign out incomplete sessions', () => {
+  const base = read('src/hooks/useAuth.tsx');
+  const secure = read('src/hooks/useSecureAuth.tsx');
+  const route = read('src/components/auth/ProtectedRoute.tsx');
+  assert.match(base, /await supabase\.auth\.signOut\(\{ scope: 'local' \}\)/);
+  assert.match(secure, /await supabase\.auth\.signOut\(\{ scope: 'local' \}\)/);
+  assert.doesNotMatch(secure, /const createUserProfile =/);
+  assert.doesNotMatch(secure, /\.from\('usuarios'\)\s*\.insert\(/);
+  assert.match(secure, /Contas históricas sem/);
+  assert.match(route, /const \{ user, profile, loading \} = useAuth\(\)/);
+  assert.match(route, /if \(!user \|\| !profile\)/);
+});

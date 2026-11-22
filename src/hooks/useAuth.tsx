@@ -191,9 +191,13 @@ const useAuthState = () => {
       if (data.user) {
         const userProfile = await fetchProfile(data.user.id);
         if (!userProfile) {
+          // Nunca manter uma sessão parcialmente autenticada após falha no perfil.
+          await supabase.auth.signOut({ scope: 'local' });
+          supabaseCache.clear();
+          setUser(null);
           setProfile(null);
           setLoading(false);
-          return { error: new Error('Conta autenticada, mas não foi possível carregar seu perfil. Tente novamente ou entre em contato com o suporte para recuperar seus dados.') };
+          return { error: new Error('Conta autenticada, mas não foi possível carregar seu perfil. Entre em contato com o suporte para recuperar seus dados.') };
         }
         setProfile(userProfile);
         redirectAfterLogin(userProfile, true); // true indica login explícito

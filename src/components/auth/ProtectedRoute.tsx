@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Lock, LogIn, UserPlus, ArrowLeft } from 'lucide-react';
@@ -21,24 +21,7 @@ export const ProtectedRoute = ({
   backLabel = 'Voltar ao Catálogo de Ferramentas',
 }: ProtectedRouteProps) => {
   const navigate = useNavigate();
-  const [session, setSession] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Checar sessão ativa no Supabase
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
-
-    // Escutar mudanças no status de autenticação
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+  const { user, profile, loading } = useAuth();
 
   if (loading) {
     return (
@@ -52,7 +35,7 @@ export const ProtectedRoute = ({
   }
 
   // Se NÃO estiver logado, exibe tela estilizada de aviso de acesso restrito
-  if (!session) {
+  if (!user || !profile) {
     return (
       <div className="min-h-screen bg-background py-12 px-4 flex items-center justify-center">
         <Card className="max-w-md w-full border-primary/20 bg-card shadow-2xl text-center">
@@ -100,6 +83,6 @@ export const ProtectedRoute = ({
     );
   }
 
-  // Se estiver logado, libera o conteúdo da ferramenta
+  // Libera a ferramenta apenas após confirmar sessão e perfil válido.
   return <>{children}</>;
 };
