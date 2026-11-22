@@ -58,6 +58,7 @@ const AcompanhamentoGestacional = () => {
   const {
     user, perfil, eventos, diario, loading, syncing, syncStatus, syncError,
     savePerfil, saveEvento, removeEvento, saveDiario, removeDiario,
+    legacyBackupAvailable, accountBackupAvailable, exportLocalBackup,
   } = useGestacaoStorage();
 
   const [activeTab, setActiveTab] = useState('visao-geral');
@@ -66,7 +67,7 @@ const AcompanhamentoGestacional = () => {
   });
 
   useEffect(() => {
-    if (perfil) setProfileForm(perfil);
+    setProfileForm(perfil || { dum: '', dpp: '', metodoCalculo: 'dum', nomeBebe: '', observacaoMedica: '' });
   }, [perfil]);
 
   const [eventoForm, setEventoForm] = useState({
@@ -79,6 +80,20 @@ const AcompanhamentoGestacional = () => {
     lembreteMinutosAntes: 1440,
   });
   const [diarioForm, setDiarioForm] = useState({ data: format(new Date(), 'yyyy-MM-dd'), humor: '', sintomas: [] as string[], peso: '', observacao: '' });
+
+  // Nenhum rascunho sensível deve passar de uma sessão para outra.
+  useEffect(() => {
+    setProfileForm({ dum: '', dpp: '', metodoCalculo: 'dum', nomeBebe: '', observacaoMedica: '' });
+    setEventoForm({ titulo: '', data: '', hora: '09:00', tipo: 'consulta', observacao: '', notificar: true, lembreteMinutosAntes: 1440 });
+    setDiarioForm({ data: format(new Date(), 'yyyy-MM-dd'), humor: '', sintomas: [], peso: '', observacao: '' });
+  }, [user?.id]);
+
+  const downloadBackup = (legacy: boolean) => {
+    const ok = exportLocalBackup(legacy);
+    toast(ok
+      ? { title: 'Backup local preparado', description: 'O arquivo contém informações de saúde. Guarde-o em um local privado.' }
+      : { title: 'Não foi possível preparar o backup', variant: 'destructive' });
+  };
 
   const calc = useMemo(() => {
     const dpp = perfil?.dpp ? parseISO(perfil.dpp) : (perfil?.dum ? addDays(parseISO(perfil.dum), 280) : null);
@@ -201,7 +216,23 @@ const AcompanhamentoGestacional = () => {
             <AlertDescription>Sem login, os dados ficam apenas neste aparelho. Com login, o histórico é sincronizado com o Supabase.</AlertDescription>
           </Alert>
         )}
-        {syncError && <p className="mb-4 text-sm text-destructive">{syncError}</p>}
+        {syncError && <p role="alert" className="mb-4 text-sm text-destructive">{syncError}</p>}
+        {(legacyBackupAvailable || accountBackupAvailable) && (
+          <Alert className="mb-4">
+            <CloudOff className="h-4 w-4" />
+            <AlertTitle>Backup de acompanhamento disponível neste aparelho</AlertTitle>
+            <AlertDescription className="space-y-3">
+              <p>Você pode exportar uma cópia dos dados locais. Dados antigos não são associados automaticamente a outra conta.
+                O arquivo contém informações de saúde: guarde-o com cuidado. A exportação não apaga o original.</p>
+              <div className="flex flex-wrap gap-2">
+                {legacyBackupAvailable && <Button type="button" size="sm" variant="outline"
+                  onClick={() => downloadBackup(true)}>Baixar dados antigos</Button>}
+                {accountBackupAvailable && <Button type="button" size="sm" variant="outline"
+                  onClick={() => downloadBackup(false)}>Baixar dados desta conta</Button>}
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid h-auto w-full grid-cols-4 gap-2 bg-transparent p-0">
