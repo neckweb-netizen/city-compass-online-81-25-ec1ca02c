@@ -24,12 +24,21 @@ const handler = async (req: Request): Promise<Response> => {
     const contentLength = Number(req.headers.get("content-length") || 0);
     if (contentLength > 20_000) throw new HttpError(413, "Mensagem muito grande");
     const input: ContactEmailRequest = await req.json();
-    const nome = escapeHtml(input.nome, 100);
+    if (!input || typeof input !== "object") throw new HttpError(400, "Dados de contato inválidos");
+    const readText = (value: unknown, label: string, min: number, max: number): string => {
+      if (typeof value !== "string") throw new HttpError(400, `${label} inválido`);
+      const trimmed = value.trim();
+      if (trimmed.length < min || trimmed.length > max) {
+        throw new HttpError(400, `${label} deve conter entre ${min} e ${max} caracteres`);
+      }
+      return trimmed;
+    };
+    const nome = escapeHtml(readText(input.nome, "Nome", 2, 100), 500);
     const email = validateEmail(input.email);
-    const telefone = escapeHtml(input.telefone, 30);
-    const assunto = escapeHtml(input.assunto, 150);
-    const mensagem = escapeHtml(input.mensagem, 5000);
-    if (!nome || !assunto || !mensagem) throw new HttpError(400, "Preencha os campos obrigatórios");
+    const telefone = input.telefone ? escapeHtml(readText(input.telefone, "Telefone", 1, 30), 150) : "";
+    const assunto = escapeHtml(readText(input.assunto, "Assunto", 5, 150), 750);
+    const mensagem = escapeHtml(readText(input.mensagem, "Mensagem", 10, 5000), 25000);
+    if (!Deno.env.get("RESEND_API_KEY")) throw new HttpError(503, "Serviço de envio temporariamente indisponível");
     const contactEmail = Deno.env.get("CONTACT_EMAIL");
     if (!contactEmail) throw new HttpError(500, "Canal de contato não configurado");
 

@@ -92,6 +92,9 @@ export const useEmailService = () => {
       });
 
       if (error) throw error;
+      if (!result || result.success !== true || !result.id) {
+        throw new Error('O servidor não confirmou o envio da mensagem.');
+      }
 
       toast.success('Mensagem enviada com sucesso! Entraremos em contato em breve.');
       return result;

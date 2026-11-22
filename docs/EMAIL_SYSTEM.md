@@ -153,3 +153,6 @@ Para personalizar os templates:
 - [ ] Implementar templates mais avançados com React Email
 - [ ] Adicionar analytics de abertura/clique
 - [ ] Implementar sistema de newsletters
+## Auditoria do formulário (21/11/2026)
+
+Limites coerentes no frontend e no servidor: nome 2–100, assunto 5–150, mensagem 10–5000, telefone opcional até 30 e email válido até 254 caracteres. O servidor **rejeita** valores excessivos, sem truncamento silencioso. O frontend só mostra sucesso com `success: true` e identificador do provedor. O limite existente de 5 tentativas em 10 minutos permanece. Esses testes não comprovam recebimento do email; um envio real de homologação continua pendente. Configuração privada requerida: `RESEND_API_KEY`, `CONTACT_EMAIL` e remetente verificado.

@@ -1,0 +1,26 @@
+name: Contact form regression
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/components/contact/**'
+      - 'src/hooks/useEmailService.tsx'
+      - 'supabase/functions/send-contact-email/**'
+      - 'scripts/contact-form-regression.test.mjs'
+      - '.github/workflows/contact-form-regression.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: node --test scripts/contact-form-regression.test.mjs
+      - run: npm run typecheck
