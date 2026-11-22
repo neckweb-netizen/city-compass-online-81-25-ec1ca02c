@@ -28,20 +28,20 @@ export default function MedicamentosLembretes(){const nav=useNavigate(),push=use
     estoqueMinimo:form.estoqueMinimo===''?null:Number(form.estoqueMinimo)};
   const hs:HorarioMedicamento[]=schedule.map(h=>({id:h.id,medicamentoId:id,hora:h.hora,diasSemana:h.dias,notificar:h.notificar}));
   const r=await saveMedicamento(med,hs);
-  if(r.reason==='remote_error'){toast.error(r.error.message);return;}
+  if(r.reason==='remote_error'){toast.error(('error' in r && r.error ? r.error.message : 'Não foi possível salvar.'));return;}
   toast.success(r.synced?'Medicamento e horários sincronizados.':'Medicamento salvo neste aparelho.');
   reset();
  };
  const registrar=async(medicamentoId:string,horarioId:string,previstaPara:string,status:'tomada'|'ignorada')=>{
    if(syncing)return;
    const result=await registrarDose(medicamentoId,horarioId,previstaPara,status);
-   if(result.reason==='remote_error'){toast.error(result.error.message);return;}
+   if(result.reason==='remote_error'){toast.error(('error' in result && result.error ? result.error.message : 'Não foi possível registrar a dose.'));return;}
    toast.success(result.synced?'Registro de dose salvo na conta.':'Registro de dose salvo neste aparelho.');
  };
  const excluir=async(m:Medicamento)=>{
    if(syncing||!window.confirm(`Excluir ${m.nome} e seu histórico de doses?`))return;
    const r=await removeMedicamento(m.id);
-   if(r.reason==='remote_error'){toast.error(r.error.message);return;}
+   if(r.reason==='remote_error'){toast.error(('error' in r && r.error ? r.error.message : 'Não foi possível salvar.'));return;}
    toast.success('Medicamento excluído.');
  };
  const next=useMemo(()=>{const now=new Date(),out:any[]=[];for(let n=0;n<8;n++){const d=new Date(now);d.setDate(now.getDate()+n);medicamentos.filter(m=>m.ativo&&m.dataInicio<=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`&&(!m.dataFim||m.dataFim>=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`)).forEach(m=>horarios.filter(h=>h.medicamentoId===m.id&&h.diasSemana.includes(d.getDay())).forEach(h=>{const [hh,mm]=h.hora.split(':').map(Number),w=new Date(d);w.setHours(hh,mm,0,0);if(w>=now)out.push({m,h,w})}))}return out.sort((a,b)=>a.w-b.w).slice(0,8)},[medicamentos,horarios]);if(loading)return <div className="min-h-[60vh] grid place-items-center text-muted-foreground">Carregando seus medicamentos...</div>;
