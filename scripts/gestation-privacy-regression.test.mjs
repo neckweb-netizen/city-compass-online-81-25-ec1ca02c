@@ -25,3 +25,17 @@ test('unknown local gestation records are not silently overwritten by empty clou
   assert.match(hook,/setSyncError\('Há dados antigos neste aparelho/);
   assert.match(hook,/if \(accountRef\.current !== accountId\)/);
 });
+
+
+test('gestation private local backups remain available and draft forms reset on account change',()=>{
+ const hook=read('src/hooks/useGestacaoStorage.ts');
+ const page=read('src/pages/ferramentas/AcompanhamentoGestacional.tsx');
+ assert.match(hook,/const exportLocalBackup = \(legacy: boolean\) =>/);
+ assert.match(hook,/if \(!legacy && !user\?\.id\) return false/);
+ assert.match(hook,/const accountBackupAvailable = Boolean\(user\?\.id\)/);
+ assert.match(page,/Baixar dados antigos/);
+ assert.match(page,/Baixar dados desta conta/);
+ assert.match(page,/O arquivo contém informações de saúde/);
+ assert.match(page,/setProfileForm\(\{ dum: '', dpp: '', metodoCalculo: 'dum'/);
+ assert.match(page,/\}, \[user\?\.id\]\)/);
+});
