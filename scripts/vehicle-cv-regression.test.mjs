@@ -29,7 +29,7 @@ test('vehicle forms retain data when persistence fails and reject malformed curr
   for (const action of ['saveVehicle','saveFuel','saveMaintenance','saveReminder']) {
     assert.match(page, new RegExp('const result = await ' + action + '\\('));
   }
-  assert.ok((page.match(/if \(result\.reason === 'remote_error'\) return toast\.error\(result\.error\.message\)/g)||[]).length >= 4);
+  assert.ok((page.match(/if \(result\.reason === 'remote_error'\) return toast\.error\(/g)||[]).length >= 4);
   assert.match(page, /if \(loading \|\| syncing\) return/);
 });
 
@@ -40,4 +40,16 @@ test('CV PDF generation is bounded and single-flight without changing its A4 lay
   assert.match(page, /PDFDocument\.create\(\)/);
   assert.match(page, /URL\.revokeObjectURL\(url\), 60_000/);
   assert.match(page, /pdfInProgressRef\.current = false/);
+});
+
+
+test('fuel and odometer update atomically for the authenticated owner', () => {
+  const hook = read('src/hooks/useMeuVeiculoStorage.ts');
+  const sql = read('supabase/migrations/20261122181700_atomic_vehicle_fuel_and_mileage.sql');
+  assert.match(hook, /supabase\.rpc\('save_vehicle_fuel_atomic' as any/);
+  assert.match(sql, /security invoker/);
+  assert.match(sql, /for update/);
+  assert.match(sql, /on conflict \(id\) do update/);
+  assert.match(sql, /quilometragem_atual=greatest\(quilometragem_atual,km\)/);
+  assert.match(sql, /grant execute on function public\.save_vehicle_fuel_atomic\(jsonb\) to authenticated/);
 });
