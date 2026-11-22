@@ -252,9 +252,10 @@ export const useGestacaoStorage = () => {
     return data.perfil !== null || data.eventos.length > 0 || data.diario.length > 0;
   };
   const legacyBackupAvailable = hasLocalData(STORAGE_PREFIX);
-  const accountBackupAvailable = hasLocalData(keyFor(user?.id));
+  const accountBackupAvailable = Boolean(user?.id) && hasLocalData(keyFor(user?.id));
 
   const exportLocalBackup = (legacy: boolean) => {
+    if (!legacy && !user?.id) return false;
     const key = legacy ? STORAGE_PREFIX : keyFor(user?.id);
     if (!hasLocalData(key)) return false;
     const data = readLocal(key);
