@@ -28,8 +28,8 @@ test('admin producer approval and configuration require an affected database rec
 });
 test('rural submissions block double clicks and tool catalog does not overpromise privacy', () => {
   const form = read('src/components/producao/ProdutorCadastroDialog.tsx');
-  const catalog = read('src/pages/ferramentas/FerramentasCatalog.tsx');
+  const catalog = read('src/pages/FerramentasCatalog.tsx');
   assert.match(form, /if \(!user \|\| !valid \|\| submittingRef\.current\) return/);
   assert.match(form, /submittingRef\.current = false/);
-  assert.match(catalog, /Algumas funções usam armazenamento local ou exigem login/);
+  assert.match(catalog, /algumas guardam dados no seu dispositivo, enquanto outras exigem login/);
 });
