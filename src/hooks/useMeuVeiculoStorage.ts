@@ -80,6 +80,7 @@ const readLocal = (key = LOCAL_KEY): VehicleState => {
 export const useMeuVeiculoStorage = () => {
   const { user, loading: authLoading } = useAuth();
   const [state, setState] = useState<VehicleState>(EMPTY_STATE);
+  const [stateAccountId, setStateAccountId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -91,6 +92,7 @@ export const useMeuVeiculoStorage = () => {
   const persistLocal = useCallback((next: VehicleState, accountId: string | null) => {
     if (accountIdRef.current !== accountId) return;
     setState(next);
+    setStateAccountId(accountId);
     try { localStorage.setItem(accountId ? userStorageKey(accountId) : LOCAL_KEY, JSON.stringify(next)); }
     catch { /* Mantém em memória; não expõe dados de outras contas. */ }
   }, []);
@@ -101,6 +103,7 @@ export const useMeuVeiculoStorage = () => {
     setLoading(true);
     setSyncError(null);
     // Limpa imediatamente qualquer informação da conta anterior.
+    setStateAccountId(accountId);
     setState(accountId ? readLocal(userStorageKey(accountId)) : readLocal());
     if (!accountId) {
       setLoading(false);
@@ -159,6 +162,7 @@ export const useMeuVeiculoStorage = () => {
     if (authLoading) {
       requestSequenceRef.current += 1;
       setState(EMPTY_STATE);
+      setStateAccountId(null);
       return;
     }
     void loadRemote();
@@ -172,7 +176,7 @@ export const useMeuVeiculoStorage = () => {
     next: VehicleState,
     operation: (accountId: string) => Promise<{ error: { message: string } | null }>,
   ) => {
-    if (authLoading || loading || mutationInProgressRef.current) return blocked();
+    if (authLoading || loading || mutationInProgressRef.current || stateAccountId !== (user?.id ?? null)) return blocked();
     const accountId = user?.id ?? null;
     if (!accountId) {
       persistLocal(next, null);
@@ -202,7 +206,7 @@ export const useMeuVeiculoStorage = () => {
       mutationInProgressRef.current = false;
       if (accountIdRef.current === accountId) setSyncing(false);
     }
-  }, [authLoading, loading, persistLocal, user?.id]);
+  }, [authLoading, loading, persistLocal, stateAccountId, user?.id]);
 
   const saveVehicle = useCallback(async (item: Veiculo) => {
     const next = { ...state, veiculos: state.veiculos.some(v => v.id === item.id)
@@ -293,8 +297,10 @@ export const useMeuVeiculoStorage = () => {
     return 'Sincronizado na conta';
   }, [authLoading, loading, syncError, syncing, user]);
 
+  const visibleState = stateAccountId === (user?.id ?? null) ? state : EMPTY_STATE;
+
   return {
-    ...state, user, loading: authLoading || loading, syncing, syncError, storageLabel,
+    ...visibleState, user, loading: authLoading || loading || stateAccountId !== (user?.id ?? null), syncing, syncError, storageLabel,
     saveVehicle, removeVehicle, saveFuel, removeFuel, saveMaintenance, removeMaintenance,
     saveReminder, removeReminder, reload: loadRemote,
   };
