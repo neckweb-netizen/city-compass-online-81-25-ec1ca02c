@@ -218,88 +218,98 @@ export const useControleFinanceiroStorage = () => {
     };
   }, [authLoading, persistLocal, user]);
 
+  // Serializa mudanças de lançamentos, metas, restauração e limpeza para
+  // impedir gravações fora de ordem e exclusões concorrentes.
+  const accountOperationRef = useRef(false);
+  const operationBlocked = () => ({
+    synced: false as const,
+    reason: 'remote_error' as const,
+    error: { message: 'Outra operação financeira está em andamento. Aguarde a conclusão.' },
+  });
+
+  const runFinanceMutation = useCallback(async (
+    next: FinanceState,
+    mutate: (accountId: string) => Promise<{ error: { message: string } | null }>,
+  ) => {
+    if (accountOperationRef.current) return operationBlocked();
+    if (!user) {
+      persistLocal(next);
+      return { synced: false as const, reason: 'not_authenticated' as const };
+    }
+
+    const accountId = user.id;
+    if (authLoading || loading || activeUserIdRef.current !== accountId) {
+      return {
+        synced: false as const,
+        reason: 'remote_error' as const,
+        error: { message: 'Aguarde o carregamento da conta antes de editar os dados.' },
+      };
+    }
+    accountOperationRef.current = true;
+    setSyncing(true);
+    setSyncError(null);
+    try {
+      const { error } = await mutate(accountId);
+      if (error) {
+        if (activeUserIdRef.current === accountId) setSyncError(error.message);
+        return { synced: false as const, reason: 'remote_error' as const, error };
+      }
+      if (activeUserIdRef.current !== accountId) {
+        return {
+          synced: false as const,
+          reason: 'remote_error' as const,
+          error: { message: 'A sessão mudou. Atualize o Controle Financeiro antes de continuar.' },
+        };
+      }
+      // Salva no dispositivo apenas depois da confirmação do Supabase.
+      persistLocal(next);
+      return { synced: true as const };
+    } catch (cause) {
+      const error = { message: cause instanceof Error ? cause.message : 'Falha de conexão ao sincronizar dados.' };
+      if (activeUserIdRef.current === accountId) setSyncError(error.message);
+      return { synced: false as const, reason: 'remote_error' as const, error };
+    } finally {
+      accountOperationRef.current = false;
+      if (activeUserIdRef.current === accountId) setSyncing(false);
+    }
+  }, [authLoading, loading, persistLocal, user]);
+
   const saveTransaction = useCallback(async (transaction: FinanceTransaction) => {
     const next: FinanceState = {
       ...state,
       transactions: state.transactions.some((item) => item.id === transaction.id)
-        ? state.transactions.map((item) => (item.id === transaction.id ? transaction : item))
+        ? state.transactions.map((item) => item.id === transaction.id ? transaction : item)
         : [...state.transactions, transaction],
     };
-
-    persistLocal(next);
-
-    if (!user) return { synced: false, reason: 'not_authenticated' as const };
-
-    setSyncing(true);
-    setSyncError(null);
-    const { error } = await (supabase as any)
-      .from('finance_lancamentos')
-      .upsert(toTransactionRow(user.id, transaction), { onConflict: 'id' });
-    setSyncing(false);
-
-    if (error) {
-      setSyncError(error.message);
-      return { synced: false, reason: 'remote_error' as const, error };
-    }
-
-    return { synced: true as const };
-  }, [persistLocal, state, user]);
+    return runFinanceMutation(next, accountId =>
+      (supabase as any).from('finance_lancamentos')
+        .upsert(toTransactionRow(accountId, transaction), { onConflict: 'id' }));
+  }, [runFinanceMutation, state]);
 
   const removeTransaction = useCallback(async (id: string) => {
     const next: FinanceState = {
       ...state,
-      transactions: state.transactions.filter((item) => item.id !== id),
+      transactions: state.transactions.filter(item => item.id !== id),
     };
-    persistLocal(next);
-
-    if (!user) return { synced: false, reason: 'not_authenticated' as const };
-
-    setSyncing(true);
-    setSyncError(null);
-    const { error } = await (supabase as any)
-      .from('finance_lancamentos')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', user.id);
-    setSyncing(false);
-
-    if (error) {
-      setSyncError(error.message);
-      return { synced: false, reason: 'remote_error' as const, error };
-    }
-
-    return { synced: true as const };
-  }, [persistLocal, state, user]);
+    return runFinanceMutation(next, accountId =>
+      (supabase as any).from('finance_lancamentos')
+        .delete().eq('id', id).eq('user_id', accountId));
+  }, [runFinanceMutation, state]);
 
   const saveSettings = useCallback(async (settings: FinanceSettings) => {
-    const next = { ...state, settings };
-    persistLocal(next);
-
-    if (!user) return { synced: false, reason: 'not_authenticated' as const };
-
-    setSyncing(true);
-    setSyncError(null);
-    const { error } = await (supabase as any)
-      .from('finance_configuracoes')
-      .upsert({
-        user_id: user.id,
+    const next: FinanceState = { ...state, settings };
+    return runFinanceMutation(next, accountId =>
+      (supabase as any).from('finance_configuracoes').upsert({
+        user_id: accountId,
         orcamento_mensal: settings.monthlyBudget,
         meta_economia: settings.savingsGoal,
         meta_reserva_emergencia: settings.emergencyFundGoal,
         atualizado_em: new Date().toISOString(),
-      }, { onConflict: 'user_id' });
-    setSyncing(false);
-
-    if (error) {
-      setSyncError(error.message);
-      return { synced: false, reason: 'remote_error' as const, error };
-    }
-
-    return { synced: true as const };
-  }, [persistLocal, state, user]);
+      }, { onConflict: 'user_id' }));
+  }, [runFinanceMutation, state]);
 
   const replaceAll = useCallback(async (next: FinanceState) => {
-    if (restoreInProgressRef.current) {
+    if (restoreInProgressRef.current || accountOperationRef.current) {
       return { synced: false, reason: 'remote_error' as const, error: { message: 'Já existe uma restauração em andamento.' } };
     }
     if (!user) {
@@ -310,6 +320,7 @@ export const useControleFinanceiroStorage = () => {
     // Nunca substituir o cache local antes da confirmação da transação remota.
     // Se o servidor falhar, os dados existentes do usuário permanecem intactos.
     restoreInProgressRef.current = true;
+    accountOperationRef.current = true;
     setSyncing(true);
     setSyncError(null);
     const requestedUserId = user.id;
@@ -337,6 +348,7 @@ export const useControleFinanceiroStorage = () => {
       return { synced: false, reason: 'remote_error' as const, error };
     } finally {
       restoreInProgressRef.current = false;
+      accountOperationRef.current = false;
       if (activeUserIdRef.current === requestedUserId) setSyncing(false);
     }
   }, [persistLocal, user]);
@@ -349,6 +361,7 @@ export const useControleFinanceiroStorage = () => {
   }, [replaceAll, state, user]);
 
   const clearAll = useCallback(async () => {
+    if (accountOperationRef.current) return operationBlocked();
     if (!user) {
       persistLocal(EMPTY_FINANCE_STATE);
       try {
@@ -361,6 +374,8 @@ export const useControleFinanceiroStorage = () => {
 
     // A limpeza das duas tabelas é feita numa única transação pelo servidor.
     // O cache local só é apagado quando a transação inteira foi confirmada.
+    const requestedUserId = user.id;
+    accountOperationRef.current = true;
     setSyncing(true);
     setSyncError(null);
     try {
@@ -370,9 +385,12 @@ export const useControleFinanceiroStorage = () => {
         return { synced: false, reason: 'remote_error' as const, error };
       }
 
+      if (activeUserIdRef.current !== requestedUserId) {
+        return { synced: false, reason: 'remote_error' as const, error: { message: 'A sessão mudou durante a exclusão. Atualize os dados.' } };
+      }
       persistLocal(EMPTY_FINANCE_STATE);
       try {
-        localStorage.removeItem(userStorageKey(user.id));
+        localStorage.removeItem(userStorageKey(requestedUserId));
       } catch {
         // O cache em memória já foi limpo.
       }
@@ -383,7 +401,8 @@ export const useControleFinanceiroStorage = () => {
       setSyncError(error.message);
       return { synced: false, reason: 'remote_error' as const, error };
     } finally {
-      setSyncing(false);
+      accountOperationRef.current = false;
+      if (activeUserIdRef.current === requestedUserId) setSyncing(false);
     }
   }, [persistLocal, user]);
 
