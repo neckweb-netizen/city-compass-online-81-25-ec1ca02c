@@ -32,3 +32,18 @@ test('medicine UI reports real server errors and avoids duplicate dose logging',
   assert.match(page,/m\.dataInicio<=/);
   assert.match(s,/Este horário já possui uma dose registrada/);
 });
+
+
+test('legacy medicine records can be exported privately and are not auto-linked to a new account',()=>{
+  const hook=read('src/hooks/useMedicamentosStorage.ts');
+  const page=read('src/pages/ferramentas/MedicamentosLembretes.tsx');
+  assert.match(hook,/const legacyData = readLocal\(KEY\)/);
+  assert.match(hook,/const exportBackup = \(legacy:boolean\) =>/);
+  assert.match(hook,/if \(!legacy && !user\?\.id\) return false/);
+  assert.match(hook,/if\(!hasRemote&&hasCached\)\{/);
+  assert.match(hook,/setSyncError\('Existem dados locais não confirmados na conta/);
+  assert.match(page,/Baixar dados antigos/);
+  assert.match(page,/Baixar dados da conta/);
+  assert.match(page,/O arquivo contém informações de saúde/);
+  assert.doesNotMatch(hook,/localStorage\.removeItem\(KEY\)/);
+});
