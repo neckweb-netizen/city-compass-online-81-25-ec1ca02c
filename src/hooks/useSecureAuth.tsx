@@ -116,13 +116,18 @@ export const useSecureAuth = () => {
   // Perfis são criados pelo gatilho de auth.users. Contas históricas sem
   // perfil exigem recuperação auditável: nunca sobrescrever o papel anterior.
   const fetchProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
-    const { data, error } = await supabase
-      .from('usuarios')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle();
-    if (error) throw error;
-    return data;
+    try {
+      const { data, error } = await supabase
+        .from('usuarios')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Falha ao consultar perfil de autenticação:', error);
+      return null;
+    }
   }, []);
 
   // Enhanced sign in with security features
@@ -320,6 +325,8 @@ export const useSecureAuth = () => {
   useEffect(() => {
     let mounted = true;
     let isInitializing = false;
+    let requestSequence = 0;
+    let profileTimer: ReturnType<typeof setTimeout> | null = null;
 
     const initializeSecureAuth = async () => {
       if (initialized || isInitializing) return;
@@ -341,18 +348,22 @@ export const useSecureAuth = () => {
         }
 
         if (mounted) {
+          const sequence = ++requestSequence;
           setUser(session?.user ?? null);
-          
+          setProfile(null);
+
           if (session?.user) {
             const userProfile = await fetchProfile(session.user.id);
-            if (mounted) {
+            if (mounted && requestSequence === sequence) {
               setProfile(userProfile);
               updateActivity();
             }
           }
-          
-          setLoading(false);
-          setInitialized(true);
+
+          if (mounted && requestSequence === sequence) {
+            setLoading(false);
+            setInitialized(true);
+          }
         }
       } catch (error) {
         console.error('💥 Initialize secure auth error:', error);
@@ -374,27 +385,25 @@ export const useSecureAuth = () => {
         
         if (!mounted) return;
 
-        if (event === 'INITIAL_SESSION' && initialized) {
-          console.log('⏭️ Skipping duplicate INITIAL_SESSION');
-          return;
-        }
+        if (event === 'INITIAL_SESSION') return;
 
+        const sequence = ++requestSequence;
+        if (profileTimer) clearTimeout(profileTimer);
         setUser(session?.user ?? null);
-        
+        setProfile(null);
+        setLoading(!!session?.user);
+
         if (session?.user) {
-          setTimeout(async () => {
-            if (mounted) {
-              const userProfile = await fetchProfile(session.user.id);
-              if (mounted) {
-                setProfile(userProfile);
-                setLoading(false);
-                updateActivity();
-              }
+          profileTimer = setTimeout(async () => {
+            if (!mounted || requestSequence !== sequence) return;
+            const userProfile = await fetchProfile(session.user.id);
+            if (mounted && requestSequence === sequence) {
+              setProfile(userProfile);
+              setLoading(false);
+              updateActivity();
             }
           }, 0);
         } else {
-          setProfile(null);
-          setLoading(false);
           setSecurityContext(prev => ({
             ...prev,
             sessionValid: false
@@ -405,6 +414,8 @@ export const useSecureAuth = () => {
 
     return () => {
       mounted = false;
+      requestSequence++;
+      if (profileTimer) clearTimeout(profileTimer);
       subscription.unsubscribe();
     };
   }, [initialized, fetchProfile, updateActivity]);

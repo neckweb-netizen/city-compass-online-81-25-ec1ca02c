@@ -57,3 +57,13 @@ test('all auth entry points deny missing profiles and sign out incomplete sessio
   assert.match(route, /const \{ user, profile, loading \} = useAuth\(\)/);
   assert.match(route, /if \(!user \|\| !profile\)/);
 });
+
+
+test('secure auth ignores old profile lookups after account changes and never leaks uncaught fetch errors', () => {
+  const hook = read('src/hooks/useSecureAuth.tsx');
+  assert.match(hook, /let requestSequence = 0/);
+  assert.match(hook, /requestSequence === sequence/);
+  assert.match(hook, /if \(profileTimer\) clearTimeout\(profileTimer\)/);
+  assert.match(hook, /setProfile\(null\);\s*setLoading\(!!session\?\.user\)/);
+  assert.match(hook, /Falha ao consultar perfil de autenticação/);
+});
