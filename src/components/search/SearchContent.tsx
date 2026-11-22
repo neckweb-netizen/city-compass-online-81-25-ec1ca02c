@@ -15,20 +15,33 @@ const normalizeText = (text: string) => {
   return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // Remove diacríticos (acentos)
 };
 export const SearchContent = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || '');
   const [selectedCategory, setSelectedCategory] = useState<string>(searchParams.get('categoria') || '');
   const [selectedCity, setSelectedCity] = useState<string>(searchParams.get('cidade') || '');
   const {
     data: empresas,
-    isLoading: empresasLoading
+    isLoading: empresasLoading,
+    isError: empresasError,
+    refetch: refetchEmpresas,
   } = useEmpresas();
   const {
-    data: categorias
-  } = useCategorias();
+    data: categorias,
+    isError: categoriasError,
+    refetch: refetchCategorias,
+  } = useCategorias('empresa');
   const {
-    data: cidades
+    data: cidades,
+    isError: cidadesError,
+    refetch: refetchCidades,
   } = useCidades();
+
+  const setFilter = (key: 'q' | 'categoria' | 'cidade', value: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (value && value !== 'all') next.set(key, value);
+    else next.delete(key);
+    setSearchParams(next, { replace: true });
+  };
 
   // Atualizar estados quando os parâmetros de URL mudarem
   useEffect(() => {
@@ -72,7 +85,7 @@ export const SearchContent = () => {
       <div className="space-y-6 mb-8">
         <div className="relative max-w-2xl mx-auto">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
-          <Input type="text" placeholder="Digite o nome do local ou serviço..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-12 h-12 text-lg" />
+          <Input type="search" aria-label="Buscar locais" placeholder="Digite o nome do local ou serviço..." value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setFilter('q', e.target.value); }} className="pl-12 h-12 text-lg" />
         </div>
 
         <div className="flex flex-col md:flex-row gap-4 max-w-4xl mx-auto">
@@ -82,21 +95,39 @@ export const SearchContent = () => {
               <span className="text-sm font-medium">Categorias</span>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Badge variant={selectedCategory === '' ? "default" : "outline"} className="cursor-pointer" onClick={() => setSelectedCategory('')}>
-                Todas
-              </Badge>
-              {categorias?.map(categoria => <Badge key={categoria.id} variant={selectedCategory === categoria.id ? "default" : "outline"} className="cursor-pointer flex items-center gap-1" onClick={() => setSelectedCategory(categoria.id)}>
+              <button type="button" aria-pressed={!selectedCategory} aria-label="Todas as categorias" onClick={() => { setSelectedCategory(''); setFilter('categoria', ''); }}>
+                <Badge variant={selectedCategory === '' ? "default" : "outline"} className="cursor-pointer">Todas</Badge>
+              </button>
+              {categorias?.map(categoria => <button key={categoria.id} type="button" aria-pressed={selectedCategory === categoria.id} onClick={() => { setSelectedCategory(categoria.id); setFilter('categoria', categoria.id); }} className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <Badge variant={selectedCategory === categoria.id ? "default" : "outline"} className="cursor-pointer flex items-center gap-1">
                   {renderCategoryIcon(categoria)}
                   {categoria.nome}
-                </Badge>)}
+                </Badge>
+              </button>)}
             </div>
           </div>
 
-          
+          <div className="w-full md:max-w-xs">
+            <label htmlFor="search-city" className="mb-2 block text-sm font-medium">Cidade</label>
+            <Select value={selectedCity || 'all'} onValueChange={value => { setSelectedCity(value === 'all' ? '' : value); setFilter('cidade', value); }}>
+              <SelectTrigger id="search-city" aria-label="Filtrar por cidade">
+                <SelectValue placeholder="Todas as cidades" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as cidades</SelectItem>
+                {cidades?.map(cidade => <SelectItem key={cidade.id} value={cidade.id}>{cidade.nome}, {cidade.estado}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
-      {empresasLoading ? <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      {(empresasError || categoriasError || cidadesError) ? (
+        <div role="alert" className="mx-auto max-w-xl space-y-3 rounded-xl border p-6 text-center">
+          <p>Não foi possível carregar a busca. Verifique sua conexão e tente novamente.</p>
+          <button type="button" className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => { void refetchEmpresas(); void refetchCategorias(); void refetchCidades(); }}>Tentar novamente</button>
+        </div>
+      ) : empresasLoading ? <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {[...Array(6)].map((_, i) => <div key={i} className="h-64 bg-muted animate-pulse rounded-lg"></div>)}
         </div> : <>
           <div className="flex justify-between items-center mb-6">
