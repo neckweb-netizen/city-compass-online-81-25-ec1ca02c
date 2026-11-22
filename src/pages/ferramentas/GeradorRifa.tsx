@@ -119,18 +119,27 @@ export const GeradorRifa = () => {
           return;
         }
 
+        // Para criador/admin, a leitura privada autorizada pela RLS mantém
+        // os contatos necessários à gestão. Visitantes recebem apenas status.
+        let dadosVisiveis = data;
+        const { data: { session: sessaoDaRifa } } = await supabase.auth.getSession();
+        if (sessaoDaRifa?.user?.id) {
+          const { data: privada } = await supabase.from('rifas_usuarios' as any)
+            .select('*').eq('id', idRifaPublica).maybeSingle();
+          if (privada) dadosVisiveis = privada;
+        }
         const rifaPub: RifaDados = {
-          id: data.id,
-          user_id: data.user_id,
-          titulo: data.titulo,
-          premio: data.premio,
-          valor_numero: data.valor_numero,
-          chave_pix: data.chave_pix,
-          data_sorteio: data.data_sorteio,
-          hora_sorteio: data.hora_sorteio,
-          tipo_rifa: data.tipo_rifa || 'fazendinha',
-          qtd_numeros: data.qtd_numeros,
-          numeros: data.numeros || []
+          id: dadosVisiveis.id,
+          user_id: dadosVisiveis.user_id,
+          titulo: dadosVisiveis.titulo,
+          premio: dadosVisiveis.premio,
+          valor_numero: dadosVisiveis.valor_numero,
+          chave_pix: dadosVisiveis.chave_pix,
+          data_sorteio: dadosVisiveis.data_sorteio,
+          hora_sorteio: dadosVisiveis.hora_sorteio,
+          tipo_rifa: dadosVisiveis.tipo_rifa || 'fazendinha',
+          qtd_numeros: dadosVisiveis.qtd_numeros,
+          numeros: dadosVisiveis.numeros || []
         };
 
         selecionarRifaParaExibir(rifaPub);
@@ -218,13 +227,14 @@ export const GeradorRifa = () => {
   // Atualiza apenas os estados dos números, sem expor dados de compradores.
   useEffect(() => {
     const id = rifaAtiva?.id;
-    if (!id || !isModoComprador) return;
+    if (!id || !isModoComprador ||
+      (user?.id === rifaAtiva?.user_id ||
+        profile?.tipo_conta === 'admin_geral' || profile?.tipo_conta === 'admin_cidade')) return;
     let active = true;
     const refresh = async () => {
       if (document.visibilityState === 'hidden') return;
       const { data, error } = await supabase.rpc('get_public_raffle' as any, { p_id: id });
       if (!active || error || !Array.isArray(data?.numeros)) return;
-      if (user?.id === rifaAtiva?.user_id) return; // Proprietário usa a visão privada.
       const sanitized = data.numeros as NumeroRifa[];
       setNumeros(sanitized);
       setRifaAtiva(prev => prev?.id === id ? { ...prev, numeros: sanitized } : prev);
@@ -235,7 +245,7 @@ export const GeradorRifa = () => {
       active = false;
       window.clearInterval(interval);
     };
-  }, [rifaAtiva?.id, rifaAtiva?.user_id, isModoComprador, user?.id]);
+  }, [rifaAtiva?.id, rifaAtiva?.user_id, isModoComprador, user?.id, profile?.tipo_conta]);
 
   const selecionarRifaParaExibir = (rifa: RifaDados) => {
     setRifaAtiva(rifa);
