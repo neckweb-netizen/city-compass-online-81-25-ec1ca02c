@@ -281,6 +281,46 @@ export const useMeuVeiculoStorage = () => {
       (supabase as any).from('veiculo_lembretes').delete().eq('id', id).eq('user_id', accountId)),
   [mutate, state]);
 
+  // O armazenamento legado não tem identificação de dono. Jamais importá-lo
+  // automaticamente; exige consentimento expresso do usuário conectado.
+  const legacyBackup = readLocal();
+  const legacyCount = legacyBackup.veiculos.length + legacyBackup.abastecimentos.length +
+    legacyBackup.manutencoes.length + legacyBackup.lembretes.length;
+
+  const importLegacyBackup = useCallback(async () => {
+    const accountId = user?.id ?? null;
+    if (!accountId || authLoading || loading || mutationInProgressRef.current ||
+        stateAccountId !== accountId) return blocked();
+    const legacy = readLocal();
+    const count = legacy.veiculos.length + legacy.abastecimentos.length +
+      legacy.manutencoes.length + legacy.lembretes.length;
+    if (!count) return { synced: false as const, reason: 'remote_error' as const,
+      error: { message: 'Nenhum dado antigo foi encontrado neste aparelho.' } };
+
+    mutationInProgressRef.current = true;
+    setSyncing(true);
+    setSyncError(null);
+    try {
+      const { error } = await supabase.rpc('import_legacy_vehicle_backup' as any, { p_backup: legacy });
+      if (error) {
+        if (accountIdRef.current === accountId) setSyncError(error.message);
+        return { synced: false as const, reason: 'remote_error' as const, error };
+      }
+      if (accountIdRef.current !== accountId) return { synced: false as const,
+        reason: 'remote_error' as const, error: { message: 'A conta mudou durante a importação.' } };
+      // O backup original nunca é apagado. Recarrega a mescla confirmada pelo servidor.
+      await loadRemote();
+      return { synced: true as const };
+    } catch (cause) {
+      const error = { message: cause instanceof Error ? cause.message : 'Não foi possível importar os dados antigos.' };
+      if (accountIdRef.current === accountId) setSyncError(error.message);
+      return { synced: false as const, reason: 'remote_error' as const, error };
+    } finally {
+      mutationInProgressRef.current = false;
+      if (accountIdRef.current === accountId) setSyncing(false);
+    }
+  }, [authLoading, loadRemote, loading, stateAccountId, user?.id]);
+
   const storageLabel = useMemo(() => {
     if (authLoading || loading) return 'Carregando';
     if (!user) return 'Salvo neste aparelho';
@@ -294,7 +334,7 @@ export const useMeuVeiculoStorage = () => {
   return {
     ...visibleState, user, loading: authLoading || loading || stateAccountId !== (user?.id ?? null), syncing, syncError, storageLabel,
     saveVehicle, removeVehicle, saveFuel, removeFuel, saveMaintenance, removeMaintenance,
-    saveReminder, removeReminder, reload: loadRemote,
+    saveReminder, removeReminder, reload: loadRemote, legacyBackup, legacyCount, importLegacyBackup,
   };
 };
 
