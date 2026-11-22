@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -61,9 +61,10 @@ type VehicleState = {
 const LOCAL_KEY = 'sajtem:meu-veiculo:v1';
 const EMPTY_STATE: VehicleState = { veiculos: [], abastecimentos: [], manutencoes: [], lembretes: [] };
 
-const readLocal = (): VehicleState => {
+const userStorageKey = (id: string) => `${LOCAL_KEY}:user:${id}`;
+const readLocal = (key = LOCAL_KEY): VehicleState => {
   try {
-    const parsed = JSON.parse(localStorage.getItem(LOCAL_KEY) || 'null');
+    const parsed = JSON.parse(localStorage.getItem(key) || 'null');
     if (!parsed) return EMPTY_STATE;
     return {
       veiculos: Array.isArray(parsed.veiculos) ? parsed.veiculos : [],
@@ -78,174 +79,211 @@ const readLocal = (): VehicleState => {
 
 export const useMeuVeiculoStorage = () => {
   const { user, loading: authLoading } = useAuth();
-  const [state, setState] = useState<VehicleState>(readLocal);
+  const [state, setState] = useState<VehicleState>(EMPTY_STATE);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const accountIdRef = useRef(user?.id ?? null);
+  accountIdRef.current = user?.id ?? null;
+  const requestSequenceRef = useRef(0);
+  const mutationInProgressRef = useRef(false);
 
-  const persistLocal = useCallback((next: VehicleState) => {
+  const persistLocal = useCallback((next: VehicleState, accountId: string | null) => {
+    if (accountIdRef.current !== accountId) return;
     setState(next);
-    try { localStorage.setItem(LOCAL_KEY, JSON.stringify(next)); } catch { /* mantém em memória */ }
+    try { localStorage.setItem(accountId ? userStorageKey(accountId) : LOCAL_KEY, JSON.stringify(next)); }
+    catch { /* Mantém em memória; não expõe dados de outras contas. */ }
   }, []);
 
   const loadRemote = useCallback(async () => {
-    if (!user) {
-      setState(readLocal());
-      setLoading(false);
-      setSyncError(null);
-      return;
-    }
-
+    const sequence = ++requestSequenceRef.current;
+    const accountId = user?.id ?? null;
     setLoading(true);
     setSyncError(null);
-
-    const [v, a, m, l] = await Promise.all([
-      (supabase as any).from('veiculos_usuario').select('*').eq('user_id', user.id).order('criado_em'),
-      (supabase as any).from('veiculo_abastecimentos').select('*').eq('user_id', user.id).order('data_abastecimento', { ascending: false }),
-      (supabase as any).from('veiculo_manutencoes').select('*').eq('user_id', user.id).order('data_manutencao', { ascending: false }),
-      (supabase as any).from('veiculo_lembretes').select('*').eq('user_id', user.id).order('criado_em', { ascending: false }),
-    ]);
-
-    const error = v.error || a.error || m.error || l.error;
-    if (error) {
-      setSyncError(error.message);
+    // Limpa imediatamente qualquer informação da conta anterior.
+    setState(accountId ? readLocal(userStorageKey(accountId)) : readLocal());
+    if (!accountId) {
       setLoading(false);
       return;
     }
 
-    persistLocal({
-      veiculos: (v.data || []).map((r: any) => ({
-        id: r.id, apelido: r.apelido || '', marca: r.marca || '', modelo: r.modelo || '',
-        ano: r.ano == null ? null : Number(r.ano), placa: r.placa || '', combustivel: r.combustivel || '',
-        quilometragemAtual: Number(r.quilometragem_atual || 0), ativo: Boolean(r.ativo),
-      })),
-      abastecimentos: (a.data || []).map((r: any) => ({
-        id: r.id, veiculoId: r.veiculo_id, data: r.data_abastecimento,
-        quilometragem: Number(r.quilometragem || 0), litros: Number(r.litros || 0),
-        valorTotal: Number(r.valor_total || 0), combustivel: r.combustivel || '',
-        posto: r.posto || '', tanqueCompleto: Boolean(r.tanque_completo), observacao: r.observacao || '',
-      })),
-      manutencoes: (m.data || []).map((r: any) => ({
-        id: r.id, veiculoId: r.veiculo_id, data: r.data_manutencao, tipo: r.tipo,
-        quilometragem: r.quilometragem == null ? null : Number(r.quilometragem),
-        valor: Number(r.valor || 0), oficina: r.oficina || '', observacao: r.observacao || '',
-      })),
-      lembretes: (l.data || []).map((r: any) => ({
-        id: r.id, veiculoId: r.veiculo_id, titulo: r.titulo, tipo: r.tipo,
-        dataVencimento: r.data_vencimento, quilometragemAlvo: r.quilometragem_alvo == null ? null : Number(r.quilometragem_alvo),
-        lembrarDiasAntes: Number(r.lembrar_dias_antes ?? 1),
-        lembrarHora: r.lembrar_hora ? String(r.lembrar_hora).slice(0, 5) : '09:00',
-        notificar: Boolean(r.notificar), concluido: Boolean(r.concluido),
-      })),
-    });
-    setLoading(false);
-  }, [persistLocal, user]);
+    try {
+      const [v, a, m, l] = await Promise.all([
+        (supabase as any).from('veiculos_usuario').select('*').eq('user_id', accountId).order('criado_em'),
+        (supabase as any).from('veiculo_abastecimentos').select('*').eq('user_id', accountId).order('data_abastecimento', { ascending: false }),
+        (supabase as any).from('veiculo_manutencoes').select('*').eq('user_id', accountId).order('data_manutencao', { ascending: false }),
+        (supabase as any).from('veiculo_lembretes').select('*').eq('user_id', accountId).order('criado_em', { ascending: false }),
+      ]);
+      if (sequence !== requestSequenceRef.current || accountIdRef.current !== accountId) return;
+      const error = v.error || a.error || m.error || l.error;
+      if (error) {
+        setSyncError(error.message);
+        return;
+      }
+
+      persistLocal({
+        veiculos: (v.data || []).map((r: any) => ({
+          id: r.id, apelido: r.apelido || '', marca: r.marca || '', modelo: r.modelo || '',
+          ano: r.ano == null ? null : Number(r.ano), placa: r.placa || '', combustivel: r.combustivel || '',
+          quilometragemAtual: Number(r.quilometragem_atual || 0), ativo: Boolean(r.ativo),
+        })),
+        abastecimentos: (a.data || []).map((r: any) => ({
+          id: r.id, veiculoId: r.veiculo_id, data: r.data_abastecimento,
+          quilometragem: Number(r.quilometragem || 0), litros: Number(r.litros || 0),
+          valorTotal: Number(r.valor_total || 0), combustivel: r.combustivel || '',
+          posto: r.posto || '', tanqueCompleto: Boolean(r.tanque_completo), observacao: r.observacao || '',
+        })),
+        manutencoes: (m.data || []).map((r: any) => ({
+          id: r.id, veiculoId: r.veiculo_id, data: r.data_manutencao, tipo: r.tipo,
+          quilometragem: r.quilometragem == null ? null : Number(r.quilometragem),
+          valor: Number(r.valor || 0), oficina: r.oficina || '', observacao: r.observacao || '',
+        })),
+        lembretes: (l.data || []).map((r: any) => ({
+          id: r.id, veiculoId: r.veiculo_id, titulo: r.titulo, tipo: r.tipo,
+          dataVencimento: r.data_vencimento, quilometragemAlvo: r.quilometragem_alvo == null ? null : Number(r.quilometragem_alvo),
+          lembrarDiasAntes: Number(r.lembrar_dias_antes ?? 1),
+          lembrarHora: r.lembrar_hora ? String(r.lembrar_hora).slice(0, 5) : '09:00',
+          notificar: Boolean(r.notificar), concluido: Boolean(r.concluido),
+        })),
+      }, accountId);
+    } catch (cause) {
+      if (sequence === requestSequenceRef.current && accountIdRef.current === accountId)
+        setSyncError(cause instanceof Error ? cause.message : 'Falha ao consultar seus veículos.');
+    } finally {
+      if (sequence === requestSequenceRef.current && accountIdRef.current === accountId)
+        setLoading(false);
+    }
+  }, [persistLocal, user?.id]);
 
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading) {
+      requestSequenceRef.current += 1;
+      setState(EMPTY_STATE);
+      return;
+    }
     void loadRemote();
+    return () => { requestSequenceRef.current += 1; };
   }, [authLoading, loadRemote]);
 
-  const saveVehicle = useCallback(async (item: Veiculo) => {
-    const next = {
-      ...state,
-      veiculos: state.veiculos.some((v) => v.id === item.id)
-        ? state.veiculos.map((v) => v.id === item.id ? item : v)
-        : [...state.veiculos, item],
-    };
-    persistLocal(next);
-    if (!user) return { synced: false as const, reason: 'not_authenticated' as const };
+  const blocked = () => ({ synced: false as const, reason: 'remote_error' as const,
+    error: { message: 'Outra operação ou carregamento está em andamento. Tente novamente.' } });
 
+  const mutate = useCallback(async (
+    next: VehicleState,
+    operation: (accountId: string) => Promise<{ error: { message: string } | null }>,
+  ) => {
+    if (authLoading || loading || mutationInProgressRef.current) return blocked();
+    const accountId = user?.id ?? null;
+    if (!accountId) {
+      persistLocal(next, null);
+      return { synced: false as const, reason: 'not_authenticated' as const };
+    }
+
+    mutationInProgressRef.current = true;
     setSyncing(true);
     setSyncError(null);
-    const { error } = await (supabase as any).from('veiculos_usuario').upsert({
-      id: item.id, user_id: user.id, apelido: item.apelido || null, marca: item.marca || null,
-      modelo: item.modelo, ano: item.ano, placa: item.placa || null, combustivel: item.combustivel || null,
-      quilometragem_atual: item.quilometragemAtual, ativo: item.ativo, atualizado_em: new Date().toISOString(),
-    }, { onConflict: 'id' });
-    setSyncing(false);
-    if (error) { setSyncError(error.message); return { synced: false as const, reason: 'remote_error' as const }; }
-    return { synced: true as const };
-  }, [persistLocal, state, user]);
+    try {
+      const { error } = await operation(accountId);
+      if (error) {
+        if (accountIdRef.current === accountId) setSyncError(error.message);
+        return { synced: false as const, reason: 'remote_error' as const, error };
+      }
+      if (accountIdRef.current !== accountId)
+        return { synced: false as const, reason: 'remote_error' as const,
+          error: { message: 'A conta mudou durante a operação. Atualize seus dados.' } };
+      // Não declarar sucesso nem atualizar cache antes de confirmar a gravação.
+      persistLocal(next, accountId);
+      return { synced: true as const };
+    } catch (cause) {
+      const error = { message: cause instanceof Error ? cause.message : 'Falha ao sincronizar o veículo.' };
+      if (accountIdRef.current === accountId) setSyncError(error.message);
+      return { synced: false as const, reason: 'remote_error' as const, error };
+    } finally {
+      mutationInProgressRef.current = false;
+      if (accountIdRef.current === accountId) setSyncing(false);
+    }
+  }, [authLoading, loading, persistLocal, user?.id]);
+
+  const saveVehicle = useCallback(async (item: Veiculo) => {
+    const next = { ...state, veiculos: state.veiculos.some(v => v.id === item.id)
+      ? state.veiculos.map(v => v.id === item.id ? item : v) : [...state.veiculos, item] };
+    return mutate(next, accountId =>
+      (supabase as any).from('veiculos_usuario').upsert({
+        id: item.id, user_id: accountId, apelido: item.apelido || null, marca: item.marca || null,
+        modelo: item.modelo, ano: item.ano, placa: item.placa || null, combustivel: item.combustivel || null,
+        quilometragem_atual: item.quilometragemAtual, ativo: item.ativo, atualizado_em: new Date().toISOString(),
+      }, { onConflict: 'id' }));
+  }, [mutate, state]);
 
   const removeVehicle = useCallback(async (id: string) => {
-    persistLocal({
-      veiculos: state.veiculos.filter((v) => v.id !== id),
-      abastecimentos: state.abastecimentos.filter((a) => a.veiculoId !== id),
-      manutencoes: state.manutencoes.filter((m) => m.veiculoId !== id),
-      lembretes: state.lembretes.filter((l) => l.veiculoId !== id),
-    });
-    if (!user) return;
-    const { error } = await (supabase as any).from('veiculos_usuario').delete().eq('id', id).eq('user_id', user.id);
-    if (error) setSyncError(error.message);
-  }, [persistLocal, state, user]);
+    const next = {
+      veiculos: state.veiculos.filter(v => v.id !== id),
+      abastecimentos: state.abastecimentos.filter(a => a.veiculoId !== id),
+      manutencoes: state.manutencoes.filter(m => m.veiculoId !== id),
+      lembretes: state.lembretes.filter(l => l.veiculoId !== id),
+    };
+    return mutate(next, accountId =>
+      (supabase as any).from('veiculos_usuario').delete().eq('id', id).eq('user_id', accountId));
+  }, [mutate, state]);
 
   const saveFuel = useCallback(async (item: Abastecimento) => {
-    const next = { ...state, abastecimentos: [item, ...state.abastecimentos.filter((a) => a.id !== item.id)] };
-    persistLocal(next);
-    if (!user) return;
-    setSyncing(true);
-    const { error } = await (supabase as any).from('veiculo_abastecimentos').upsert({
-      id: item.id, user_id: user.id, veiculo_id: item.veiculoId, data_abastecimento: item.data,
-      quilometragem: item.quilometragem, litros: item.litros, valor_total: item.valorTotal,
-      combustivel: item.combustivel || null, posto: item.posto || null, tanque_completo: item.tanqueCompleto,
-      observacao: item.observacao || null,
-    }, { onConflict: 'id' });
-    if (!error) {
-      const vehicle = state.veiculos.find((v) => v.id === item.veiculoId);
-      if (vehicle && item.quilometragem > vehicle.quilometragemAtual) {
-        await saveVehicle({ ...vehicle, quilometragemAtual: item.quilometragem });
-      }
-    } else setSyncError(error.message);
-    setSyncing(false);
-  }, [persistLocal, saveVehicle, state, user]);
+    const vehicle = state.veiculos.find(v => v.id === item.veiculoId);
+    const updateKm = Boolean(vehicle && item.quilometragem > vehicle.quilometragemAtual);
+    const next = { ...state,
+      abastecimentos: [item, ...state.abastecimentos.filter(a => a.id !== item.id)],
+      veiculos: state.veiculos.map(v => v.id === item.veiculoId && updateKm
+        ? { ...v, quilometragemAtual: item.quilometragem } : v),
+    };
+    return mutate(next, async accountId => {
+      const result = await (supabase as any).from('veiculo_abastecimentos').upsert({
+        id: item.id, user_id: accountId, veiculo_id: item.veiculoId,
+        data_abastecimento: item.data, quilometragem: item.quilometragem,
+        litros: item.litros, valor_total: item.valorTotal,
+        combustivel: item.combustivel || null, posto: item.posto || null,
+        tanque_completo: item.tanqueCompleto, observacao: item.observacao || null,
+      }, { onConflict: 'id' });
+      if (result.error || !updateKm) return result;
+      // Sem alterar KM via segundo hook; falha aqui é reportada e o usuário pode recarregar.
+      return (supabase as any).from('veiculos_usuario')
+        .update({ quilometragem_atual: item.quilometragem, atualizado_em: new Date().toISOString() })
+        .eq('id', item.veiculoId).eq('user_id', accountId);
+    });
+  }, [mutate, state]);
 
-  const removeFuel = useCallback(async (id: string) => {
-    persistLocal({ ...state, abastecimentos: state.abastecimentos.filter((a) => a.id !== id) });
-    if (user) {
-      const { error } = await (supabase as any).from('veiculo_abastecimentos').delete().eq('id', id).eq('user_id', user.id);
-      if (error) setSyncError(error.message);
-    }
-  }, [persistLocal, state, user]);
+  const removeFuel = useCallback(async (id: string) =>
+    mutate({ ...state, abastecimentos: state.abastecimentos.filter(a => a.id !== id) }, accountId =>
+      (supabase as any).from('veiculo_abastecimentos').delete().eq('id', id).eq('user_id', accountId)),
+  [mutate, state]);
 
-  const saveMaintenance = useCallback(async (item: Manutencao) => {
-    persistLocal({ ...state, manutencoes: [item, ...state.manutencoes.filter((m) => m.id !== item.id)] });
-    if (!user) return;
-    const { error } = await (supabase as any).from('veiculo_manutencoes').upsert({
-      id: item.id, user_id: user.id, veiculo_id: item.veiculoId, data_manutencao: item.data,
-      tipo: item.tipo, quilometragem: item.quilometragem, valor: item.valor,
-      oficina: item.oficina || null, observacao: item.observacao || null,
-    }, { onConflict: 'id' });
-    if (error) setSyncError(error.message);
-  }, [persistLocal, state, user]);
+  const saveMaintenance = useCallback(async (item: Manutencao) =>
+    mutate({ ...state, manutencoes: [item, ...state.manutencoes.filter(m => m.id !== item.id)] }, accountId =>
+      (supabase as any).from('veiculo_manutencoes').upsert({
+        id: item.id, user_id: accountId, veiculo_id: item.veiculoId,
+        data_manutencao: item.data, tipo: item.tipo, quilometragem: item.quilometragem,
+        valor: item.valor, oficina: item.oficina || null, observacao: item.observacao || null,
+      }, { onConflict: 'id' })),
+  [mutate, state]);
 
-  const removeMaintenance = useCallback(async (id: string) => {
-    persistLocal({ ...state, manutencoes: state.manutencoes.filter((m) => m.id !== id) });
-    if (user) {
-      const { error } = await (supabase as any).from('veiculo_manutencoes').delete().eq('id', id).eq('user_id', user.id);
-      if (error) setSyncError(error.message);
-    }
-  }, [persistLocal, state, user]);
+  const removeMaintenance = useCallback(async (id: string) =>
+    mutate({ ...state, manutencoes: state.manutencoes.filter(m => m.id !== id) }, accountId =>
+      (supabase as any).from('veiculo_manutencoes').delete().eq('id', id).eq('user_id', accountId)),
+  [mutate, state]);
 
-  const saveReminder = useCallback(async (item: LembreteVeiculo) => {
-    persistLocal({ ...state, lembretes: [item, ...state.lembretes.filter((l) => l.id !== item.id)] });
-    if (!user) return;
-    const { error } = await (supabase as any).from('veiculo_lembretes').upsert({
-      id: item.id, user_id: user.id, veiculo_id: item.veiculoId, titulo: item.titulo,
-      tipo: item.tipo, data_vencimento: item.dataVencimento, quilometragem_alvo: item.quilometragemAlvo,
-      lembrar_dias_antes: item.lembrarDiasAntes, lembrar_hora: item.lembrarHora,
-      notificar: item.notificar, concluido: item.concluido, atualizado_em: new Date().toISOString(),
-    }, { onConflict: 'id' });
-    if (error) setSyncError(error.message);
-  }, [persistLocal, state, user]);
+  const saveReminder = useCallback(async (item: LembreteVeiculo) =>
+    mutate({ ...state, lembretes: [item, ...state.lembretes.filter(l => l.id !== item.id)] }, accountId =>
+      (supabase as any).from('veiculo_lembretes').upsert({
+        id: item.id, user_id: accountId, veiculo_id: item.veiculoId, titulo: item.titulo,
+        tipo: item.tipo, data_vencimento: item.dataVencimento, quilometragem_alvo: item.quilometragemAlvo,
+        lembrar_dias_antes: item.lembrarDiasAntes, lembrar_hora: item.lembrarHora,
+        notificar: item.notificar, concluido: item.concluido,
+        atualizado_em: new Date().toISOString(),
+      }, { onConflict: 'id' })),
+  [mutate, state]);
 
-  const removeReminder = useCallback(async (id: string) => {
-    persistLocal({ ...state, lembretes: state.lembretes.filter((l) => l.id !== id) });
-    if (user) {
-      const { error } = await (supabase as any).from('veiculo_lembretes').delete().eq('id', id).eq('user_id', user.id);
-      if (error) setSyncError(error.message);
-    }
-  }, [persistLocal, state, user]);
+  const removeReminder = useCallback(async (id: string) =>
+    mutate({ ...state, lembretes: state.lembretes.filter(l => l.id !== id) }, accountId =>
+      (supabase as any).from('veiculo_lembretes').delete().eq('id', id).eq('user_id', accountId)),
+  [mutate, state]);
 
   const storageLabel = useMemo(() => {
     if (authLoading || loading) return 'Carregando';
