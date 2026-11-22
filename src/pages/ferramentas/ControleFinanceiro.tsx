@@ -409,7 +409,7 @@ export const ControleFinanceiro = () => {
   };
 
   const importData = (file?: File) => {
-    if (!file) return;
+    if (!file || syncing || financeLoading) return;
     if (file.size > 5 * 1024 * 1024) {
       toast.error('O backup excede o limite de 5 MB.');
       return;
@@ -467,7 +467,7 @@ export const ControleFinanceiro = () => {
 
         void replaceAll(nextState).then((result) => {
           if (result.synced) toast.success('Backup importado e sincronizado com sua conta.');
-          else if (result.reason === 'remote_error') toast.warning('Backup importado localmente; a sincronização com o servidor falhou. Verifique seus dados antes de tentar novamente.');
+          else if (result.reason === 'remote_error') toast.error('Restauração não concluída. Seus dados anteriores foram preservados; verifique a conexão antes de tentar novamente.');
           else toast.success('Backup importado neste aparelho.');
         }).catch(() => toast.error('Falha ao importar o backup. Verifique seus dados.'));
       } catch {
@@ -546,6 +546,7 @@ export const ControleFinanceiro = () => {
             <Button
               disabled={syncing}
               onClick={() => {
+                if (financeLoading || syncing) return;
                 void importLocalToAccount().then((result) => {
                   if (result.synced) toast.success('Dados deste aparelho salvos na sua conta.');
                   else toast.error('Não foi possível sincronizar agora. Seus dados continuam salvos neste aparelho.');
