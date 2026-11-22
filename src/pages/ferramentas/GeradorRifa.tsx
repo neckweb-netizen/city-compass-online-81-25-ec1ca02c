@@ -105,13 +105,19 @@ export const GeradorRifa = () => {
   const [gerandoLink, setGerandoLink] = useState(false);
   const cartelaRef = useRef<HTMLDivElement | null>(null);
   const linksCurtosRef = useRef<Record<string, string>>({});
+  const initSequenceRef = useRef(0);
 
   const inicializarRifas = async () => {
+    const request = ++initSequenceRef.current;
+    setCarregando(true);
+    setRifasUsuario([]);
+    setRifaAtiva(null);
+    setNumeros([]);
     try {
-      setCarregando(true);
       if (idRifaPublica) {
         setIsModoComprador(true);
         const { data, error } = await supabase.rpc('get_public_raffle' as any, { p_id: idRifaPublica });
+        if (request !== initSequenceRef.current) return;
 
         if (error || !data) {
           toast.error('Rifa não encontrada ou encerrada.');
@@ -123,9 +129,11 @@ export const GeradorRifa = () => {
         // os contatos necessários à gestão. Visitantes recebem apenas status.
         let dadosVisiveis = data;
         const { data: { session: sessaoDaRifa } } = await supabase.auth.getSession();
+        if (request !== initSequenceRef.current) return;
         if (sessaoDaRifa?.user?.id) {
           const { data: privada } = await supabase.from('rifas_usuarios' as any)
             .select('*').eq('id', idRifaPublica).maybeSingle();
+          if (request !== initSequenceRef.current) return;
           if (privada) dadosVisiveis = privada;
         }
         const rifaPub: RifaDados = {
@@ -149,6 +157,7 @@ export const GeradorRifa = () => {
       }
 
       const { data: { session } } = await supabase.auth.getSession();
+      if (request !== initSequenceRef.current) return;
       const userId = session?.user?.id;
       if (!userId) {
         // A lista "Minhas Rifas" nunca pode mostrar dados de terceiros.
@@ -161,6 +170,7 @@ export const GeradorRifa = () => {
       const { data, error } = await supabase.from('rifas_usuarios' as any)
         .select('*').eq('user_id', userId)
         .order('created_at', { ascending: false });
+      if (request !== initSequenceRef.current) return;
       if (error) throw error;
 
       if (data && data.length > 0) {
@@ -188,15 +198,16 @@ export const GeradorRifa = () => {
         setAbaExibicao('criar');
       }
     } catch (err) {
-      console.error('Erro ao buscar rifa:', err);
+      if (request === initSequenceRef.current) console.error('Erro ao buscar rifa:', err);
     } finally {
-      setCarregando(false);
+      if (request === initSequenceRef.current) setCarregando(false);
     }
   };
 
   useEffect(() => {
-    inicializarRifas();
-  }, [idRifaPublica]);
+    void inicializarRifas();
+    return () => { initSequenceRef.current += 1; };
+  }, [idRifaPublica, user?.id]);
 
   useEffect(() => {
     const rifaId = rifaAtiva?.id;
