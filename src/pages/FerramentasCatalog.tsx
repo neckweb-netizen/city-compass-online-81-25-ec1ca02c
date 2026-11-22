@@ -441,7 +441,7 @@ const FerramentasCatalogInternal = () => {
 
         <div className="p-4 bg-muted/30 border border-border/60 rounded-2xl text-center flex flex-col sm:flex-row items-center justify-center gap-2 text-xs text-muted-foreground">
           <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
-          <span>Todas as suas informações registradas nas ferramentas são 100% privadas e armazenadas com segurança.</span>
+          <span>Cada ferramenta tem sua própria política de armazenamento: algumas guardam dados no seu dispositivo, enquanto outras exigem login. Evite inserir informações sensíveis sem verificar como serão armazenadas.</span>
         </div>
 
       </div>
