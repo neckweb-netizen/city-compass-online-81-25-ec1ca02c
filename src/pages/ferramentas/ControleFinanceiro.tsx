@@ -344,7 +344,7 @@ export const ControleFinanceiro = () => {
 
     void saveTransaction(payload).then((result) => {
       if (result.reason === 'remote_error') {
-        toast.error(result.error.message);
+        toast.error('error' in result && result.error ? result.error.message : 'Falha ao sincronizar os dados.');
         return;
       }
       toast.success(result.synced
@@ -359,7 +359,7 @@ export const ControleFinanceiro = () => {
   const removeEntry = (id: string) => {
     void removeTransaction(id).then((result) => {
       if (result.synced) toast.success('Lançamento removido da sua conta.');
-      else if (result.reason === 'remote_error') toast.error(result.error.message);
+      else if (result.reason === 'remote_error') toast.error('error' in result && result.error ? result.error.message : 'Falha ao sincronizar os dados.');
       else toast.success('Lançamento removido deste aparelho.');
     }).catch(() => toast.error('Falha ao remover lançamento.'));
   };
@@ -370,7 +370,7 @@ export const ControleFinanceiro = () => {
       status: item.status === 'pago' ? 'pendente' : 'pago',
     };
     void saveTransaction(updated).then((result) => {
-      if (!result.synced && result.reason === 'remote_error') toast.error(result.error.message);
+      if (!result.synced && result.reason === 'remote_error') toast.error('error' in result && result.error ? result.error.message : 'Falha ao sincronizar os dados.');
     }).catch(() => toast.error('Falha ao atualizar status do lançamento.'));
   };
 
@@ -392,7 +392,7 @@ export const ControleFinanceiro = () => {
     };
     void persistSettings(nextSettings).then((result) => {
       if (result.reason === 'remote_error') {
-        toast.error(result.error.message);
+        toast.error('error' in result && result.error ? result.error.message : 'Falha ao sincronizar os dados.');
         return;
       }
       toast.success(result.synced ? 'Planejamento salvo na sua conta.' : 'Planejamento salvo neste aparelho.');
