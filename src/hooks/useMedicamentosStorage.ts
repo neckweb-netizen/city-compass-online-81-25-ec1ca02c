@@ -42,7 +42,8 @@ export const useMedicamentosStorage=()=>{
     const accountId=user?.id??null;
     setLoading(true);setSyncError(null);
     setStateAccountId(accountId);
-    setState(readLocal(keyFor(accountId??undefined)));
+    const cached = readLocal(keyFor(accountId??undefined));
+    setState(cached);
     if(!accountId){setLoading(false);return;}
     try{
       const [m,h,d]=await Promise.all([
@@ -53,11 +54,18 @@ export const useMedicamentosStorage=()=>{
       if(request!==requestRef.current||activeAccountRef.current!==accountId)return;
       const error=m.error||h.error||d.error;
       if(error){setSyncError(error.message);return;}
-      persist({
+      const remote:State={
         medicamentos:(m.data||[]).map((r:any)=>({id:r.id,nome:r.nome,dose:r.dose||'',instrucoes:r.instrucoes||'',dataInicio:r.data_inicio,dataFim:r.data_fim,ativo:r.ativo,estoqueAtual:r.estoque_atual==null?null:Number(r.estoque_atual),estoqueMinimo:r.estoque_minimo==null?null:Number(r.estoque_minimo)})),
         horarios:(h.data||[]).map((r:any)=>({id:r.id,medicamentoId:r.medicamento_id,hora:String(r.hora).slice(0,5),diasSemana:r.dias_semana||[0,1,2,3,4,5,6],notificar:r.notificar})),
         doses:(d.data||[]).map((r:any)=>({id:r.id,medicamentoId:r.medicamento_id,horarioId:r.horario_id,previstaPara:r.prevista_para,status:r.status,registradaEm:r.registrada_em})),
-      },accountId);
+      };
+      const hasCached=cached.medicamentos.length>0||cached.horarios.length>0||cached.doses.length>0;
+      const hasRemote=remote.medicamentos.length>0||remote.horarios.length>0||remote.doses.length>0;
+      if(!hasRemote&&hasCached){
+        setSyncError('Existem dados locais não confirmados na conta. Faça backup antes de alterá-los.');
+        return;
+      }
+      persist(remote,accountId);
     }catch(cause){
       if(request===requestRef.current&&activeAccountRef.current===accountId)
         setSyncError(cause instanceof Error?cause.message:'Erro ao carregar medicamentos.');
@@ -79,7 +87,7 @@ export const useMedicamentosStorage=()=>{
   const blocked=()=>({synced:false as const,reason:'remote_error' as const,
     error:{message:'Aguarde a operação atual ou o carregamento dos medicamentos.'}});
   const mutate=useCallback(async(next:State,operation:(accountId:string)=>Promise<{error:{message:string}|null}>)=>{
-    if(authLoading||loading||mutationRef.current||stateAccountId!==(user?.id??null))return blocked();
+    if(authLoading||loading||mutationRef.current||stateAccountId!==(user?.id??null)||syncError?.startsWith('Existem dados locais'))return blocked();
     const accountId=user?.id??null;
     if(!accountId){
       persist(next,null);
@@ -104,7 +112,7 @@ export const useMedicamentosStorage=()=>{
       mutationRef.current=false;
       if(activeAccountRef.current===accountId)setSyncing(false);
     }
-  },[authLoading,loading,persist,stateAccountId,user?.id]);
+  },[authLoading,loading,persist,stateAccountId,syncError,user?.id]);
 
   const saveMedicamento=useCallback(async(med:Medicamento,hs:HorarioMedicamento[])=>{
     const next={...state,
@@ -136,8 +144,29 @@ export const useMedicamentosStorage=()=>{
         horario_id:horarioId,prevista_para:previstaPara,status,registrada_em:dose.registradaEm}));
   },[mutate,state]);
 
+  const legacyData = readLocal(KEY);
+  const legacyCount=legacyData.medicamentos.length+legacyData.horarios.length+legacyData.doses.length;
+  const accountCache = user?.id ? readLocal(keyFor(user.id)) : empty;
+  const accountBackupCount = user?.id ? accountCache.medicamentos.length+
+    accountCache.horarios.length+accountCache.doses.length : 0;
+  const exportBackup = (legacy:boolean) => {
+    if (!legacy && !user?.id) return false;
+    const source=legacy?readLocal(KEY):readLocal(keyFor(user?.id));
+    if(!source.medicamentos.length&&!source.horarios.length&&!source.doses.length)return false;
+    try{
+      const data={format:'sajtem-medicamentos-v1',exportedAt:new Date().toISOString(),
+        source:legacy?'legacy-local':'account-local',...source};
+      const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
+      const link=document.createElement('a');
+      link.href=url;
+      link.download=legacy?'backup-medicamentos-antigos.json':'backup-medicamentos-conta.json';
+      link.click();
+      window.setTimeout(()=>URL.revokeObjectURL(url),60_000);
+      return true;
+    }catch{return false}
+  };
   const storageLabel=useMemo(()=>authLoading||loading?'Carregando':!user?'Salvo neste aparelho':syncing?'Sincronizando':syncError?'Falha ao sincronizar':'Sincronizado na conta',[authLoading,loading,syncError,syncing,user]);
   const visible=stateAccountId===(user?.id??null)?state:empty;
   return{...visible,user,loading:authLoading||loading||stateAccountId!==(user?.id??null),
-    syncing,syncError,storageLabel,saveMedicamento,removeMedicamento,registrarDose,reload};
+    syncing,syncError,storageLabel,saveMedicamento,removeMedicamento,registrarDose,reload,legacyCount,accountBackupCount,exportBackup};
 };
