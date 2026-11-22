@@ -8,6 +8,7 @@ on:
       - 'src/pages/admin/AdminProducaoLocal.tsx'
       - 'src/components/producao/**'
       - 'src/pages/ferramentas/**'
+      - 'src/pages/FerramentasCatalog.tsx'
       - 'scripts/production-utilities-regression.test.mjs'
       - '.github/workflows/production-utilities-regression.yml'
   workflow_dispatch:
