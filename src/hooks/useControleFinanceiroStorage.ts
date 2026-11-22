@@ -118,6 +118,9 @@ export const useControleFinanceiroStorage = () => {
   const [syncError, setSyncError] = useState<string | null>(null);
   const [hasLocalDataToImport, setHasLocalDataToImport] = useState(false);
   const loadedUserRef = useRef<string | null>(null);
+  const restoreInProgressRef = useRef(false);
+  const activeUserIdRef = useRef(user?.id ?? null);
+  activeUserIdRef.current = user?.id ?? null;
 
   const persistLocal = useCallback((next: FinanceState) => {
     setState(next);
@@ -296,75 +299,45 @@ export const useControleFinanceiroStorage = () => {
   }, [persistLocal, state, user]);
 
   const replaceAll = useCallback(async (next: FinanceState) => {
-    // Keep the requested import in the local backup even if the network fails.
-    // Never delete the existing remote transactions before saving replacements.
-    persistLocal(next);
+    if (restoreInProgressRef.current) {
+      return { synced: false, reason: 'remote_error' as const, error: { message: 'Já existe uma restauração em andamento.' } };
+    }
+    if (!user) {
+      persistLocal(next);
+      return { synced: false, reason: 'not_authenticated' as const };
+    }
 
-    if (!user) return { synced: false, reason: 'not_authenticated' as const };
-
+    // Nunca substituir o cache local antes da confirmação da transação remota.
+    // Se o servidor falhar, os dados existentes do usuário permanecem intactos.
+    restoreInProgressRef.current = true;
     setSyncing(true);
     setSyncError(null);
-
-    const fail = (error: { message: string }) => {
-      setSyncing(false);
-      setSyncError(error.message);
-      return { synced: false, reason: 'remote_error' as const, error };
-    };
-
+    const requestedUserId = user.id;
     try {
-      // Save the incoming records first, in bounded batches. A failed upload
-      // leaves the pre-existing remote records intact rather than wiping them.
-      for (let offset = 0; offset < next.transactions.length; offset += 200) {
-        const batch = next.transactions.slice(offset, offset + 200);
-        const { error } = await (supabase as any)
-          .from('finance_lancamentos')
-          .upsert(batch.map((item) => toTransactionRow(user.id, item)), { onConflict: 'id' });
-        if (error) return fail(error);
+      const { error } = await supabase.rpc('restore_finance_account_data' as any, {
+        p_transactions: next.transactions,
+        p_settings: next.settings,
+      });
+      if (error) {
+        setSyncError(error.message);
+        return { synced: false, reason: 'remote_error' as const, error };
       }
 
-      const settingsResponse = await (supabase as any)
-        .from('finance_configuracoes')
-        .upsert({
-          user_id: user.id,
-          orcamento_mensal: next.settings.monthlyBudget,
-          meta_economia: next.settings.savingsGoal,
-          meta_reserva_emergencia: next.settings.emergencyFundGoal,
-          atualizado_em: new Date().toISOString(),
-        }, { onConflict: 'user_id' });
-      if (settingsResponse.error) return fail(settingsResponse.error);
-
-      // Remove old records only after all replacement writes have succeeded.
-      // Page through IDs to avoid PostgREST's default 1,000-row response limit.
-      const storedIds: string[] = [];
-      for (let offset = 0; ; offset += 500) {
-        const { data, error } = await (supabase as any)
-          .from('finance_lancamentos')
-          .select('id')
-          .eq('user_id', user.id)
-          .order('id', { ascending: true })
-          .range(offset, offset + 499);
-        if (error) return fail(error);
-        const page = (data || []) as Array<{ id: string }>;
-        storedIds.push(...page.map((item) => item.id));
-        if (page.length < 500) break;
+      if (activeUserIdRef.current !== requestedUserId) {
+        // Outra conta iniciou sessão: não mostrar nem gravar backup alheio.
+        return { synced: false, reason: 'remote_error' as const, error: { message: 'A sessão mudou durante a restauração. Atualize os dados.' } };
       }
 
-      const importedIds = new Set(next.transactions.map((item) => item.id));
-      const obsoleteIds = storedIds.filter((id) => !importedIds.has(id));
-      for (let offset = 0; offset < obsoleteIds.length; offset += 200) {
-        const { error } = await (supabase as any)
-          .from('finance_lancamentos')
-          .delete()
-          .eq('user_id', user.id)
-          .in('id', obsoleteIds.slice(offset, offset + 200));
-        if (error) return fail(error);
-      }
-
-      setSyncing(false);
+      persistLocal(next);
       setHasLocalDataToImport(false);
       return { synced: true as const };
-    } catch (error) {
-      return fail({ message: error instanceof Error ? error.message : 'Falha ao sincronizar backup.' });
+    } catch (cause) {
+      const error = { message: cause instanceof Error ? cause.message : 'Falha ao restaurar backup financeiro.' };
+      setSyncError(error.message);
+      return { synced: false, reason: 'remote_error' as const, error };
+    } finally {
+      restoreInProgressRef.current = false;
+      if (activeUserIdRef.current === requestedUserId) setSyncing(false);
     }
   }, [persistLocal, user]);
 
