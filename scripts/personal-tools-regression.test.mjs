@@ -64,3 +64,18 @@ test('backup restore is one authenticated transaction and never deletes prior da
   assert.match(sql, /revoke all on function public\.restore_finance_account_data\(jsonb,jsonb\) from public, anon/);
   assert.match(page, /Restauração não concluída\. Seus dados anteriores foram preservados/);
 });
+
+test('individual finance mutations are serialized and never claim remote success before confirmation', () => {
+  const hook = read('src/hooks/useControleFinanceiroStorage.ts');
+  const page = read('src/pages/ferramentas/ControleFinanceiro.tsx');
+  assert.match(hook, /const accountOperationRef = useRef\(false\)/);
+  assert.match(hook, /if \(accountOperationRef\.current\) return operationBlocked\(\)/);
+  assert.match(hook, /if \(activeUserIdRef\.current !== accountId\)/);
+  assert.match(hook, /const \{ error \} = await mutate\(accountId\)/);
+  assert.match(hook, /persistLocal\(next\);\s*return \{ synced: true as const \}/);
+  assert.match(hook, /return runFinanceMutation\(next, accountId =>/);
+  assert.match(hook, /\.eq\('user_id', accountId\)/);
+  assert.match(page, /if \(result\.synced\) toast\.success\('Planejamento salvo na sua conta\.'\)/);
+  assert.doesNotMatch(page, /toast\.success\(editing \? 'Lançamento atualizado\.' : user/);
+  assert.doesNotMatch(page, /toast\.success\(user \? 'Planejamento salvo na sua conta\.'/);
+});
