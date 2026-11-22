@@ -1,0 +1,23 @@
+name: Backup inventory safeguards
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/verify-backup-bundle.mjs'
+      - 'scripts/verify-backup-bundle.test.mjs'
+      - 'scripts/sql/auth-profile-integrity.sql'
+      - 'docs/RECOVERY_AND_IDENTITY_AUDIT.md'
+      - '.github/workflows/backup-readiness.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test scripts/verify-backup-bundle.test.mjs
