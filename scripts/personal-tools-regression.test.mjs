@@ -47,3 +47,20 @@ test('finance deletion is atomic, limited to authenticated owner and only clears
   assert.match(sql, /delete from public\.finance_configuracoes where user_id = \(select auth\.uid\(\)\)/);
   assert.match(sql, /revoke all on function public\.clear_finance_account_data\(\) from public, anon/);
 });
+
+test('backup restore is one authenticated transaction and never deletes prior data on a failed request', () => {
+  const hook = read('src/hooks/useControleFinanceiroStorage.ts');
+  const sql = read('supabase/migrations/20261122163000_atomic_finance_backup_restore.sql');
+  const page = read('src/pages/ferramentas/ControleFinanceiro.tsx');
+  assert.match(hook, /supabase\.rpc\('restore_finance_account_data' as any/);
+  assert.doesNotMatch(hook, /const obsoleteIds =/);
+  assert.match(hook, /if \(restoreInProgressRef\.current\)/);
+  assert.match(hook, /if \(activeUserIdRef\.current !== requestedUserId\)/);
+  assert.match(hook, /persistLocal\(next\);\s*setHasLocalDataToImport\(false\)/);
+  assert.match(sql, /security invoker/);
+  assert.match(sql, /create or replace function public\.restore_finance_account_data/);
+  assert.match(sql, /on conflict \(id\) do update/);
+  assert.match(sql, /delete from public\.finance_lancamentos/);
+  assert.match(sql, /revoke all on function public\.restore_finance_account_data\(jsonb,jsonb\) from public, anon/);
+  assert.match(page, /Restauração não concluída\. Seus dados anteriores foram preservados/);
+});
