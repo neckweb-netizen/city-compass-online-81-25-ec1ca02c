@@ -1,4 +1,5 @@
 import { FormEvent, useMemo, useState } from 'react';
+import { parseBrazilianNumber } from '@/lib/parseBrazilianNumber';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, BellRing, CalendarClock, CarFront, CheckCircle2, Cloud, CloudOff,
@@ -22,13 +23,13 @@ import {
 
 const todayKey = () => new Date().toISOString().slice(0, 10);
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
-const num = (value: string) => Number(String(value).replace(',', '.')) || 0;
+const num = (value: string) => parseBrazilianNumber(value) ?? 0;
 
 const MeuVeiculo = () => {
   const navigate = useNavigate();
   const push = usePushNotifications();
   const {
-    veiculos, abastecimentos, manutencoes, lembretes, user, loading, storageLabel, syncError,
+    veiculos, abastecimentos, manutencoes, lembretes, user, loading, syncing, storageLabel, syncError,
     saveVehicle, removeVehicle, saveFuel, removeFuel, saveMaintenance, removeMaintenance,
     saveReminder, removeReminder,
   } = useMeuVeiculoStorage();
@@ -62,20 +63,23 @@ const MeuVeiculo = () => {
 
   const saveVehicleForm = async (e: FormEvent) => {
     e.preventDefault();
+    if (loading || syncing) return;
     if (!vehicleForm.modelo.trim()) return toast.error('Informe pelo menos o modelo do veículo.');
     const id = crypto.randomUUID();
-    await saveVehicle({
+    const result = await saveVehicle({
       id, apelido: vehicleForm.apelido.trim(), marca: vehicleForm.marca.trim(), modelo: vehicleForm.modelo.trim(),
       ano: vehicleForm.ano ? Number(vehicleForm.ano) : null, placa: vehicleForm.placa.toUpperCase().trim(),
       combustivel: vehicleForm.combustivel, quilometragemAtual: num(vehicleForm.km), ativo: true,
     });
+    if (result.reason === 'remote_error') return toast.error(result.error.message);
     setSelectedVehicleId(id);
     setVehicleForm({ apelido: '', marca: '', modelo: '', ano: '', placa: '', combustivel: 'Flex', km: '' });
-    toast.success(user ? 'Veículo salvo na sua conta.' : 'Veículo salvo neste aparelho.');
+    toast.success(result.synced ? 'Veículo salvo na sua conta.' : 'Veículo salvo neste aparelho.');
   };
 
   const saveFuelForm = async (e: FormEvent) => {
     e.preventDefault();
+    if (loading || syncing) return;
     if (!currentVehicleId) return toast.error('Cadastre um veículo primeiro.');
     const item: Abastecimento = {
       id: crypto.randomUUID(), veiculoId: currentVehicleId, data: fuelForm.data,
@@ -84,26 +88,30 @@ const MeuVeiculo = () => {
       observacao: fuelForm.observacao.trim(),
     };
     if (item.litros <= 0 || item.valorTotal <= 0) return toast.error('Informe litros e valor do abastecimento.');
-    await saveFuel(item);
+    const result = await saveFuel(item);
+    if (result.reason === 'remote_error') return toast.error(result.error.message);
     setFuelForm({ data: todayKey(), km: '', litros: '', valor: '', combustivel: fuelForm.combustivel, posto: '', tanqueCompleto: true, observacao: '' });
-    toast.success('Abastecimento registrado.');
+    toast.success(result.synced ? 'Abastecimento salvo na sua conta.' : 'Abastecimento salvo neste aparelho.');
   };
 
   const saveMaintenanceForm = async (e: FormEvent) => {
     e.preventDefault();
+    if (loading || syncing) return;
     if (!currentVehicleId) return toast.error('Cadastre um veículo primeiro.');
     const item: Manutencao = {
       id: crypto.randomUUID(), veiculoId: currentVehicleId, data: maintenanceForm.data,
       tipo: maintenanceForm.tipo, quilometragem: maintenanceForm.km ? num(maintenanceForm.km) : null,
       valor: num(maintenanceForm.valor), oficina: maintenanceForm.oficina.trim(), observacao: maintenanceForm.observacao.trim(),
     };
-    await saveMaintenance(item);
+    const result = await saveMaintenance(item);
+    if (result.reason === 'remote_error') return toast.error(result.error.message);
     setMaintenanceForm({ data: todayKey(), tipo: 'Troca de óleo', km: '', valor: '', oficina: '', observacao: '' });
-    toast.success('Manutenção registrada.');
+    toast.success(result.synced ? 'Manutenção salva na sua conta.' : 'Manutenção salva neste aparelho.');
   };
 
   const saveReminderForm = async (e: FormEvent) => {
     e.preventDefault();
+    if (loading || syncing) return;
     if (!currentVehicleId) return toast.error('Cadastre um veículo primeiro.');
     if (!reminderForm.titulo.trim()) return toast.error('Informe o nome do lembrete.');
     if (!reminderForm.data && !reminderForm.km) return toast.error('Informe uma data ou quilometragem alvo.');
@@ -114,9 +122,10 @@ const MeuVeiculo = () => {
       lembrarDiasAntes: Number(reminderForm.diasAntes), lembrarHora: reminderForm.hora,
       notificar: reminderForm.notificar && Boolean(user), concluido: false,
     };
-    await saveReminder(item);
+    const result = await saveReminder(item);
+    if (result.reason === 'remote_error') return toast.error(result.error.message);
     setReminderForm({ titulo: '', tipo: 'manutencao', data: '', km: '', diasAntes: '7', hora: '09:00', notificar: true });
-    toast.success(user ? 'Lembrete salvo e integrado às notificações.' : 'Lembrete salvo localmente.');
+    toast.success(result.synced ? 'Lembrete salvo na sua conta.' : 'Lembrete salvo neste aparelho.');
   };
 
   if (loading) return <div className="min-h-[60vh] grid place-items-center text-muted-foreground">Carregando seus veículos...</div>;
@@ -176,7 +185,7 @@ const MeuVeiculo = () => {
             </form></CardContent></Card>
 
             <Card className="rounded-3xl"><CardHeader><CardTitle>Meus veículos</CardTitle></CardHeader><CardContent className="space-y-3">
-              {veiculos.length === 0 ? <p className="text-sm text-muted-foreground">Cadastre seu primeiro carro, moto ou outro veículo.</p> : veiculos.map((v)=><div key={v.id} className="flex items-center justify-between rounded-2xl border p-4"><div><p className="font-black">{v.apelido || `${v.marca} ${v.modelo}`}</p><p className="text-sm text-muted-foreground">{[v.marca,v.modelo,v.ano,v.placa].filter(Boolean).join(' • ')} • {v.quilometragemAtual.toLocaleString('pt-BR')} km</p></div><Button size="icon" variant="ghost" onClick={()=>{if(confirm(`Excluir ${v.apelido || v.modelo}?`)) void removeVehicle(v.id)}}><Trash2 className="h-4 w-4 text-destructive" /></Button></div>)}
+              {veiculos.length === 0 ? <p className="text-sm text-muted-foreground">Cadastre seu primeiro carro, moto ou outro veículo.</p> : veiculos.map((v)=><div key={v.id} className="flex items-center justify-between rounded-2xl border p-4"><div><p className="font-black">{v.apelido || `${v.marca} ${v.modelo}`}</p><p className="text-sm text-muted-foreground">{[v.marca,v.modelo,v.ano,v.placa].filter(Boolean).join(' • ')} • {v.quilometragemAtual.toLocaleString('pt-BR')} km</p></div><Button size="icon" variant="ghost" onClick={()=>{if(confirm(`Excluir ${v.apelido || v.modelo}?`)) void removeVehicle(v.id).then(result => { if (result.reason === 'remote_error') toast.error(result.error.message); else toast.success('Veículo excluído.'); })}}><Trash2 className="h-4 w-4 text-destructive" /></Button></div>)}
             </CardContent></Card>
           </TabsContent>
 
