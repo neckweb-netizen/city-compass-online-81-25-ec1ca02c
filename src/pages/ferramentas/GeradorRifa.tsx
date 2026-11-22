@@ -113,6 +113,11 @@ export const GeradorRifa = () => {
     setRifasUsuario([]);
     setRifaAtiva(null);
     setNumeros([]);
+    setNumeroSelecionado(null);
+    setNomeComprador('');
+    setTelefoneComprador('');
+    setModalReservaOpen(false);
+    setIsModoComprador(Boolean(idRifaPublica));
     try {
       if (idRifaPublica) {
         setIsModoComprador(true);
