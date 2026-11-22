@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -15,7 +15,7 @@ interface ShortUrlResponse {
 const getInternalPath = (url: string): string => {
   const parsedUrl = new URL(url, window.location.origin);
 
-  if (parsedUrl.origin !== window.location.origin || url.includes('\\')) {
+  if (parsedUrl.origin !== window.location.origin || url.includes('\\') || /[\u0000-\u001f\u007f]/.test(url) || /^\/s\//i.test(parsedUrl.pathname)) {
     throw new Error('Apenas páginas do Saj Tem podem ser encurtadas');
   }
 
@@ -24,18 +24,21 @@ const getInternalPath = (url: string): string => {
 
 export const useShortUrls = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const requestRef = useRef<Promise<ShortUrlResponse | null> | null>(null);
   const { toast } = useToast();
 
-  const createShortUrl = async (params: CreateShortUrlParams): Promise<ShortUrlResponse | null> => {
+  const createShortUrl = (params: CreateShortUrlParams): Promise<ShortUrlResponse | null> => {
+    if (requestRef.current) return requestRef.current;
+    const request = (async () => {
     setIsLoading(true);
-    
+
     try {
       const originalPath = getInternalPath(params.original_url);
       const { data: shortCode, error } = await supabase.rpc('create_short_url', {
         p_original_url: originalPath,
       });
 
-      if (error || !shortCode) {
+      if (error || typeof shortCode !== 'string' || !/^[A-Za-z0-9_-]{3,32}$/.test(shortCode)) {
         console.error('Erro ao criar URL curta:', error);
         toast({
           title: "Erro",
@@ -63,6 +66,10 @@ export const useShortUrls = () => {
     } finally {
       setIsLoading(false);
     }
+    })();
+    requestRef.current = request;
+    void request.finally(() => { if (requestRef.current === request) requestRef.current = null; });
+    return request;
   };
 
   const getShortUrl = (shortCode: string): string => {

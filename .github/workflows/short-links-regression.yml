@@ -1,0 +1,26 @@
+name: Short links regression
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/pages/ShortUrlRedirect.tsx'
+      - 'src/hooks/useShortUrls.tsx'
+      - 'src/components/ui/share-button.tsx'
+      - 'scripts/short-links-regression.test.mjs'
+      - '.github/workflows/short-links-regression.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  short-links:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: node --test scripts/short-links-regression.test.mjs
+      - run: npm run typecheck

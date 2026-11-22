@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Share2, Copy } from 'lucide-react';
 import { Button } from './button';
 import { useShortUrls } from '@/hooks/useShortUrls';
@@ -20,6 +20,7 @@ export const ShareButton = ({
   className
 }: ShareButtonProps) => {
   const [shortLinkCache, setShortLinkCache] = useState<{ sourceUrl: string; shortUrl: string } | null>(null);
+  const copyingRef = useRef(false);
   const shortUrl = shortLinkCache?.sourceUrl === url ? shortLinkCache.shortUrl : null;
   const {
     createShortUrl,
@@ -38,8 +39,14 @@ export const ShareButton = ({
   };
 
   const handleCreateShortUrl = async () => {
-    const urlToCopy = await getOrCreateShortUrl();
-    if (urlToCopy) await copyToClipboard(urlToCopy);
+    if (copyingRef.current) return;
+    copyingRef.current = true;
+    try {
+      const urlToCopy = await getOrCreateShortUrl();
+      if (urlToCopy) await copyToClipboard(urlToCopy);
+    } finally {
+      copyingRef.current = false;
+    }
   };
 
   // Links já estão disponíveis no momento do toque, evitando bloqueios de pop-up

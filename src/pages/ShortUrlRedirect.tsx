@@ -12,7 +12,7 @@ export default function ShortUrlRedirect() {
     setErrorMessage('');
 
     const redirectToOriginalUrl = async () => {
-      if (!shortCode) {
+      if (!shortCode || !/^[A-Za-z0-9_-]{3,32}$/.test(shortCode)) {
         if (active) setErrorMessage('Este link não possui um código válido.');
         return;
       }
@@ -28,12 +28,21 @@ export default function ShortUrlRedirect() {
           return;
         }
 
+        if (typeof data !== 'string' || !data.startsWith('/') || data.startsWith('//') || data.includes('\\')) {
+          if (active) setErrorMessage('O destino deste link não é permitido.');
+          return;
+        }
         const destination = new URL(data, window.location.origin);
         if (!['http:', 'https:'].includes(destination.protocol) || destination.origin !== window.location.origin) {
           if (active) setErrorMessage('O destino deste link não é permitido.');
           return;
         }
 
+        // Não redirecionar para outro encurtador: evita ciclos e cadeias de links.
+        if (/^\/s\//i.test(destination.pathname) || destination.pathname === '/s') {
+          if (active) setErrorMessage('O destino deste link não é permitido.');
+          return;
+        }
         if (active) window.location.replace(destination.toString());
       } catch {
         if (active) setErrorMessage('Não foi possível abrir este link. Verifique sua conexão e tente novamente.');
