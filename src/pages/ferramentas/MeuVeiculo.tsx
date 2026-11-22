@@ -31,7 +31,7 @@ const MeuVeiculo = () => {
   const {
     veiculos, abastecimentos, manutencoes, lembretes, user, loading, syncing, storageLabel, syncError,
     saveVehicle, removeVehicle, saveFuel, removeFuel, saveMaintenance, removeMaintenance,
-    saveReminder, removeReminder,
+    saveReminder, removeReminder, legacyBackup, legacyCount, importLegacyBackup,
   } = useMeuVeiculoStorage();
 
   const [selectedVehicleId, setSelectedVehicleId] = useState('');
@@ -128,6 +128,32 @@ const MeuVeiculo = () => {
     toast.success(result.synced ? 'Lembrete salvo na sua conta.' : 'Lembrete salvo neste aparelho.');
   };
 
+  const downloadLegacyBackup = () => {
+    if (!legacyCount) return;
+    const url = URL.createObjectURL(new Blob([JSON.stringify({
+      format: 'sajtem-veiculo-legacy-v1', exportedAt: new Date().toISOString(),
+      ...legacyBackup,
+    }, null, 2)], { type: 'application/json' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'backup-meu-veiculo-antigo.json';
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    toast.success('Arquivo de backup antigo preparado neste aparelho.');
+  };
+
+  const handleImportLegacy = async () => {
+    if (!user || syncing || loading || !legacyCount) return;
+    if (!window.confirm(
+      'Os dados antigos deste aparelho não identificam qual usuário os criou. ' +
+      'Confirme apenas se são seus e se deseja associá-los à conta atual. ' +
+      'Os dados existentes serão preservados e o backup original não será apagado.'
+    )) return;
+    const result = await importLegacyBackup();
+    if (result.synced) toast.success('Dados antigos importados para sua conta com segurança.');
+    else toast.error('error' in result && result.error ? result.error.message : 'A importação não foi concluída.');
+  };
+
   if (loading) return <div className="min-h-[60vh] grid place-items-center text-muted-foreground">Carregando seus veículos...</div>;
 
   return (
@@ -154,6 +180,28 @@ const MeuVeiculo = () => {
         {!user && <Card className="mb-4 border-amber-300 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30"><CardContent className="p-4 text-sm">Sem login, os dados ficam apenas neste aparelho. Entre na conta para sincronizar e receber notificações.</CardContent></Card>}
         {user && push.permission !== 'granted' && <Card className="mb-4 border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/30"><CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-bold">Ative notificações do veículo</p><p className="text-sm text-muted-foreground">Para receber IPVA, licenciamento, seguro e manutenção.</p></div><Button className="rounded-xl" onClick={() => void push.enable()}><BellRing className="mr-2 h-4 w-4" />Ativar</Button></CardContent></Card>}
         {syncError && <Card className="mb-4 border-red-300"><CardContent className="p-4 text-sm text-red-700 dark:text-red-300">Sincronização pendente: {syncError}</CardContent></Card>}
+        {legacyCount > 0 && (
+          <Card className="mb-4 border-amber-300">
+            <CardContent className="space-y-3 p-4">
+              <p className="font-bold">Dados antigos encontrados neste aparelho</p>
+              <p className="text-sm text-muted-foreground">
+                Foram encontrados {legacyCount} registros no armazenamento antigo, sem identificação de proprietário.
+                Guarde um backup antes de importar. A importação é opcional, não apaga o arquivo original
+                e não substitui registros já salvos na sua conta.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" onClick={downloadLegacyBackup}>
+                  Baixar backup antigo
+                </Button>
+                {user && <Button type="button" disabled={syncing || loading}
+                  onClick={() => { void handleImportLegacy(); }}>
+                  Importar para minha conta
+                </Button>}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
 
         <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
           {veiculos.map((v) => <Button key={v.id} variant={currentVehicleId === v.id ? 'default' : 'outline'} className="shrink-0 rounded-2xl" onClick={() => setSelectedVehicleId(v.id)}><CarFront className="mr-2 h-4 w-4" />{v.apelido || `${v.marca} ${v.modelo}`.trim()}</Button>)}
