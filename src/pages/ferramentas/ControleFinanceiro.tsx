@@ -342,23 +342,21 @@ export const ControleFinanceiro = () => {
     };
 
     void saveTransaction(payload).then((result) => {
-      if (!result.synced && result.reason === 'remote_error') {
-        toast.warning('Salvo neste aparelho, mas a sincronização com sua conta ficou pendente.');
-      }
-    });
+      if (result.synced) toast.success(editing ? 'Lançamento atualizado na sua conta.' : 'Lançamento salvo na sua conta.');
+      else if (result.reason === 'remote_error') toast.error(result.error.message);
+      else toast.success('Lançamento salvo neste aparelho.');
+    }).catch(() => toast.error('Falha ao salvar lançamento. Tente novamente.'));
     setSelectedMonth(parseDate(form.date));
     setSelectedDay(form.date);
     setIsEntryOpen(false);
-    toast.success(editing ? 'Lançamento atualizado.' : user ? 'Lançamento salvo na sua conta.' : 'Lançamento salvo neste aparelho.');
   };
 
   const removeEntry = (id: string) => {
     void removeTransaction(id).then((result) => {
-      if (!result.synced && result.reason === 'remote_error') {
-        toast.warning('Removido deste aparelho, mas a sincronização com sua conta ficou pendente.');
-      }
-    });
-    toast.success('Lançamento removido.');
+      if (result.synced) toast.success('Lançamento removido da sua conta.');
+      else if (result.reason === 'remote_error') toast.error(result.error.message);
+      else toast.success('Lançamento removido deste aparelho.');
+    }).catch(() => toast.error('Falha ao remover lançamento.'));
   };
 
   const togglePaid = (item: Transaction) => {
@@ -367,10 +365,8 @@ export const ControleFinanceiro = () => {
       status: item.status === 'pago' ? 'pendente' : 'pago',
     };
     void saveTransaction(updated).then((result) => {
-      if (!result.synced && result.reason === 'remote_error') {
-        toast.warning('Alteração salva localmente; sincronização pendente.');
-      }
-    });
+      if (!result.synced && result.reason === 'remote_error') toast.error(result.error.message);
+    }).catch(() => toast.error('Falha ao atualizar status do lançamento.'));
   };
 
   const openSettings = () => {
@@ -389,12 +385,11 @@ export const ControleFinanceiro = () => {
       emergencyFundGoal: Math.max(0, safeNumber(settingsForm.emergencyFundGoal)),
     };
     void persistSettings(nextSettings).then((result) => {
-      if (!result.synced && result.reason === 'remote_error') {
-        toast.warning('Metas salvas neste aparelho; sincronização pendente.');
-      }
-    });
+      if (result.synced) toast.success('Planejamento salvo na sua conta.');
+      else if (result.reason === 'remote_error') toast.error(result.error.message);
+      else toast.success('Planejamento salvo neste aparelho.');
+    }).catch(() => toast.error('Falha ao salvar planejamento.'));
     setIsSettingsOpen(false);
-    toast.success(user ? 'Planejamento salvo na sua conta.' : 'Planejamento salvo neste aparelho.');
   };
 
   const exportData = () => {
@@ -544,7 +539,7 @@ export const ControleFinanceiro = () => {
               </div>
             </div>
             <Button
-              disabled={syncing}
+              disabled={syncing || financeLoading}
               onClick={() => {
                 if (financeLoading || syncing) return;
                 void importLocalToAccount().then((result) => {
