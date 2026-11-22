@@ -50,32 +50,33 @@ export function ProdutorCadastroDialog() {
     if (!user || !valid || submittingRef.current) return;
     submittingRef.current = true;
     setSaving(true);
-    const { error } = await supabase.from('produtores_locais' as any).insert({
-      usuario_id: user.id,
-      nome_publico: form.nome_publico.trim(),
-      tipo: form.tipo,
-      descricao: form.descricao.trim() || null,
-      comunidade: form.comunidade.trim() || null,
-      telefone_whatsapp: form.telefone_whatsapp.replace(/\D/g, '') || null,
-      produtos: listFromText(form.produtos),
-      certificacoes: listFromText(form.certificacoes),
-      entrega: form.entrega,
-      varejo: form.varejo,
-      atacado: form.atacado,
-      consentimento_publicacao: form.consentimento,
-      status: 'pendente',
-    });
-    submittingRef.current = false;
-    setSaving(false);
-
-    if (error) {
-      toast.error(error.message.includes('duplicate') ? 'Você já possui um cadastro de produtor em análise.' : 'Não foi possível enviar o cadastro.');
-      return;
+    try {
+      const { error } = await supabase.from('produtores_locais' as any).insert({
+        usuario_id: user.id,
+        nome_publico: form.nome_publico.trim(),
+        tipo: form.tipo,
+        descricao: form.descricao.trim() || null,
+        comunidade: form.comunidade.trim() || null,
+        telefone_whatsapp: form.telefone_whatsapp.replace(/\\D/g, '') || null,
+        produtos: listFromText(form.produtos),
+        certificacoes: listFromText(form.certificacoes),
+        entrega: form.entrega,
+        varejo: form.varejo,
+        atacado: form.atacado,
+        consentimento_publicacao: form.consentimento,
+        status: 'pendente',
+      });
+      if (error) throw error;
+      toast.success('Cadastro enviado para análise.');
+      setForm(initialForm);
+      setOpen(false);
+    } catch (error) {
+      const duplicate = error instanceof Error && /duplicate|unique/i.test(error.message);
+      toast.error(duplicate ? 'Você já possui um cadastro de produtor em análise.' : 'Não foi possível enviar o cadastro. Tente novamente.');
+    } finally {
+      submittingRef.current = false;
+      setSaving(false);
     }
-
-    toast.success('Cadastro enviado para análise.');
-    setForm(initialForm);
-    setOpen(false);
   };
 
   return (
