@@ -171,7 +171,7 @@ export const useGestacaoStorage = () => {
     next: GestacaoState,
     action: (accountId: string) => Promise<{ error: { message: string } | null }>,
   ) => {
-    if (authLoading || loading || operationRef.current || stateAccountId !== (user?.id ?? null) || syncError) return blocked();
+    if (authLoading || loading || operationRef.current || stateAccountId !== (user?.id ?? null) || syncError?.startsWith('Há dados antigos')) return blocked();
     const accountId = user?.id ?? null;
     if (!accountId) {
       persist(next, null);
