@@ -1,0 +1,30 @@
+name: Search and catalog regression
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/components/search/**'
+      - 'src/pages/Busca.tsx'
+      - 'src/pages/Search.tsx'
+      - 'src/pages/Locais.tsx'
+      - 'src/hooks/useEmpresas.tsx'
+      - 'src/hooks/useCategorias.tsx'
+      - 'src/hooks/useCidades.tsx'
+      - 'scripts/search-catalog-regression.test.mjs'
+      - '.github/workflows/search-catalog-regression.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: node --test scripts/search-catalog-regression.test.mjs
+      - run: npm run typecheck
