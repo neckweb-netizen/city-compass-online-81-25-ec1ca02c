@@ -1,0 +1,27 @@
+name: FIPE, margin and speech reader regression
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/pages/ferramentas/ConsultaFipe.tsx'
+      - 'src/pages/ferramentas/CalculadoraMargem.tsx'
+      - 'src/pages/ferramentas/LeitorVoz.tsx'
+      - 'src/lib/parseBrazilianNumber.ts'
+      - 'scripts/fipe-margin-speech-regression.test.mjs'
+      - '.github/workflows/fipe-margin-speech-regression.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: node --test scripts/fipe-margin-speech-regression.test.mjs
+      - run: npm run typecheck
