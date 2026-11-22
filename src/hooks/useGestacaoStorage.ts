@@ -247,11 +247,40 @@ export const useGestacaoStorage = () => {
     return 'synced' as const;
   }, [syncError, syncing, user]);
 
+  const hasLocalData = (key: string) => {
+    const data = readLocal(key);
+    return data.perfil !== null || data.eventos.length > 0 || data.diario.length > 0;
+  };
+  const legacyBackupAvailable = hasLocalData(STORAGE_PREFIX);
+  const accountBackupAvailable = hasLocalData(keyFor(user?.id));
+
+  const exportLocalBackup = (legacy: boolean) => {
+    const key = legacy ? STORAGE_PREFIX : keyFor(user?.id);
+    if (!hasLocalData(key)) return false;
+    const data = readLocal(key);
+    const backup = {
+      format: 'sajtem-gestacao-v1', exportedAt: new Date().toISOString(),
+      source: legacy ? 'legacy-local' : 'account-local', ...data,
+    };
+    try {
+      const url = URL.createObjectURL(new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' }));
+      const element = document.createElement('a');
+      element.href = url;
+      element.download = legacy ? 'backup-gestacao-antigo.json' : 'backup-gestacao-conta.json';
+      element.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const visible = stateAccountId === (user?.id ?? null) ? state : EMPTY_STATE;
   return {
     user, perfil: visible.perfil, eventos: visible.eventos, diario: visible.diario,
     loading: authLoading || loading || stateAccountId !== (user?.id ?? null),
     syncing, syncStatus, syncError,
     savePerfil, saveEvento, removeEvento, saveDiario, removeDiario,
+    legacyBackupAvailable, accountBackupAvailable, exportLocalBackup,
   };
 };
