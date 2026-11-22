@@ -79,3 +79,11 @@ test('individual finance mutations are serialized and never claim remote success
   assert.doesNotMatch(page, /toast\.success\(editing \? 'Lançamento atualizado\.' : user/);
   assert.doesNotMatch(page, /toast\.success\(user \? 'Planejamento salvo na sua conta\.'/);
 });
+
+test('financial forms stay open after server errors and confirm success after persistence', () => {
+  const page = read('src/pages/ferramentas/ControleFinanceiro.tsx');
+  assert.match(page, /if \(result\.reason === 'remote_error'\) \{\s*toast\.error\(result\.error\.message\);\s*return;\s*\}/);
+  assert.match(page, /setIsEntryOpen\(false\);/);
+  assert.match(page, /setIsSettingsOpen\(false\);/);
+  assert.match(page, /if \(syncing \|\| financeLoading\) return/);
+});
