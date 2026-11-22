@@ -54,7 +54,7 @@ test('backup restore is one authenticated transaction and never deletes prior da
   const page = read('src/pages/ferramentas/ControleFinanceiro.tsx');
   assert.match(hook, /supabase\.rpc\('restore_finance_account_data' as any/);
   assert.doesNotMatch(hook, /const obsoleteIds =/);
-  assert.match(hook, /if \(restoreInProgressRef\.current\)/);
+  assert.match(hook, /if \(restoreInProgressRef\.current \|\| accountOperationRef\.current\)/);
   assert.match(hook, /if \(activeUserIdRef\.current !== requestedUserId\)/);
   assert.match(hook, /persistLocal\(next\);\s*setHasLocalDataToImport\(false\)/);
   assert.match(sql, /security invoker/);
