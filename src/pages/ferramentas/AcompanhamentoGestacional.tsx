@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { addDays, differenceInCalendarDays, format, isBefore, parseISO, startOfDay } from 'date-fns';
+import { addDays, differenceInCalendarDays, format, isBefore, isValid, parseISO, startOfDay } from 'date-fns';
+import { parseBrazilianNumber } from '@/lib/parseBrazilianNumber';
 import { ptBR } from 'date-fns/locale';
 import {
   Baby,
@@ -55,7 +56,7 @@ const AcompanhamentoGestacional = () => {
   const { toast } = useToast();
   const push = usePushNotifications();
   const {
-    user, perfil, eventos, diario, loading, syncStatus, syncError,
+    user, perfil, eventos, diario, loading, syncing, syncStatus, syncError,
     savePerfil, saveEvento, removeEvento, saveDiario, removeDiario,
   } = useGestacaoStorage();
 
@@ -82,7 +83,7 @@ const AcompanhamentoGestacional = () => {
   const calc = useMemo(() => {
     const dpp = perfil?.dpp ? parseISO(perfil.dpp) : (perfil?.dum ? addDays(parseISO(perfil.dum), 280) : null);
     const reference = perfil?.dum ? parseISO(perfil.dum) : (dpp ? addDays(dpp, -280) : null);
-    if (!reference || !dpp) return null;
+    if (!reference || !dpp || !isValid(reference) || !isValid(dpp)) return null;
 
     const today = startOfDay(new Date());
     const elapsed = Math.max(0, differenceInCalendarDays(today, reference));
@@ -94,50 +95,74 @@ const AcompanhamentoGestacional = () => {
     return { dpp, weeks, days, remaining, progress, trimester };
   }, [perfil]);
 
+  const reportFailure = (result: { reason?: string; error?: { message: string } }) => {
+    if (result.reason !== 'remote_error') return false;
+    toast({ title: 'Não foi possível salvar', description: result.error?.message || 'Verifique a conexão e tente novamente.', variant: 'destructive' });
+    return true;
+  };
   const saveProfile = async () => {
-    if (!profileForm.dum && !profileForm.dpp) {
-      toast({ title: 'Informe uma data', description: 'Use a DUM ou uma DPP definida pelo profissional de saúde.', variant: 'destructive' });
+    if (loading || syncing) return;
+    const required = profileForm.metodoCalculo === 'dum' ? profileForm.dum : profileForm.dpp;
+    if (!required || !isValid(parseISO(required))) {
+      toast({ title: 'Informe uma data válida', description: 'Use a DUM ou uma DPP definida pelo profissional de saúde.', variant: 'destructive' });
       return;
     }
-
-    let next = { ...profileForm };
-    if (profileForm.metodoCalculo === 'dum' && profileForm.dum) {
+    const next = { ...profileForm };
+    if (profileForm.metodoCalculo === 'dum') {
       next.dpp = format(addDays(parseISO(profileForm.dum), 280), 'yyyy-MM-dd');
     }
-    await savePerfil(next);
+    const result = await savePerfil(next);
+    if (reportFailure(result)) return;
     setProfileForm(next);
-    toast({ title: 'Gestação atualizada', description: user ? 'Dados salvos na sua conta.' : 'Dados salvos neste aparelho. Entre na conta para sincronizar.' });
+    toast({ title: 'Gestação atualizada', description: result.synced ? 'Dados salvos na sua conta.' : 'Dados salvos neste aparelho. Entre na conta para sincronizar.' });
   };
 
   const addEvento = async () => {
-    if (!eventoForm.titulo.trim() || !eventoForm.data) return;
-    await saveEvento({
-      id: crypto.randomUUID(),
-      titulo: eventoForm.titulo.trim(),
-      data: eventoForm.data,
-      tipo: eventoForm.tipo,
-      concluido: false,
-      observacao: eventoForm.observacao.trim(),
-      hora: eventoForm.hora,
-      notificar: Boolean(user && eventoForm.notificar),
+    if (loading || syncing) return;
+    if (!eventoForm.titulo.trim() || !eventoForm.data || !isValid(parseISO(eventoForm.data))) {
+      toast({ title: 'Preencha título e data válida', variant: 'destructive' });
+      return;
+    }
+    const result = await saveEvento({
+      id: crypto.randomUUID(), titulo: eventoForm.titulo.trim(), data: eventoForm.data,
+      tipo: eventoForm.tipo, concluido: false, observacao: eventoForm.observacao.trim(),
+      hora: eventoForm.hora, notificar: Boolean(user && eventoForm.notificar),
       lembreteMinutosAntes: eventoForm.lembreteMinutosAntes,
     });
+    if (reportFailure(result)) return;
     setEventoForm({ titulo: '', data: '', hora: '09:00', tipo: 'consulta', observacao: '', notificar: true, lembreteMinutosAntes: 1440 });
-    if (eventoForm.notificar && !user) {
-      toast({ title: 'Compromisso salvo', description: 'Entre na sua conta para receber o lembrete automático no celular.' });
-    }
+    toast({ title: 'Compromisso salvo', description: result.synced ? 'Confirmado na sua conta.' : 'Salvo neste aparelho. Faça login para sincronizar.' });
   };
 
   const addDiario = async () => {
-    await saveDiario({
-      id: crypto.randomUUID(),
-      data: diarioForm.data,
-      humor: diarioForm.humor,
-      sintomas: diarioForm.sintomas,
-      peso: diarioForm.peso ? Number(diarioForm.peso.replace(',', '.')) : null,
-      observacao: diarioForm.observacao.trim(),
+    if (loading || syncing) return;
+    const peso = diarioForm.peso.trim() ? parseBrazilianNumber(diarioForm.peso) : null;
+    if (!diarioForm.data || !isValid(parseISO(diarioForm.data)) || (diarioForm.peso.trim() && (peso === null || peso <= 0))) {
+      toast({ title: 'Verifique a data e o peso', description: 'Informe uma data válida e peso positivo, se preenchido.', variant: 'destructive' });
+      return;
+    }
+    const result = await saveDiario({
+      id: crypto.randomUUID(), data: diarioForm.data, humor: diarioForm.humor,
+      sintomas: diarioForm.sintomas, peso, observacao: diarioForm.observacao.trim(),
     });
+    if (reportFailure(result)) return;
     setDiarioForm({ data: format(new Date(), 'yyyy-MM-dd'), humor: '', sintomas: [], peso: '', observacao: '' });
+    toast({ title: 'Diário atualizado', description: result.synced ? 'Registro salvo na sua conta.' : 'Registro salvo neste aparelho.' });
+  };
+
+  const toggleEvento = async (evento: GestacaoEvento, concluido: boolean) => {
+    if (loading || syncing) return;
+    reportFailure(await saveEvento({ ...evento, concluido }));
+  };
+
+  const deleteEvento = async (id: string) => {
+    if (loading || syncing || !window.confirm('Excluir este compromisso?')) return;
+    reportFailure(await removeEvento(id));
+  };
+
+  const deleteDiario = async (id: string) => {
+    if (loading || syncing || !window.confirm('Excluir este registro do diário?')) return;
+    reportFailure(await removeDiario(id));
   };
 
   const toggleSintoma = (sintoma: string) => {
@@ -308,7 +333,7 @@ const AcompanhamentoGestacional = () => {
                   <Textarea value={eventoForm.observacao} onChange={(e) => setEventoForm({ ...eventoForm, observacao: e.target.value })} />
                 </div>
 
-                <Button className="w-full bg-rose-600 hover:bg-rose-700" onClick={addEvento}><Plus className="mr-2 h-4 w-4" />Adicionar</Button>
+                <Button className="w-full bg-rose-600 hover:bg-rose-700" onClick={() => { void addEvento(); }} disabled={loading || syncing}><Plus className="mr-2 h-4 w-4" />Adicionar</Button>
               </CardContent>
             </Card>
 
@@ -317,14 +342,14 @@ const AcompanhamentoGestacional = () => {
               <CardContent className="space-y-2">
                 {eventos.length === 0 ? <p className="text-sm text-muted-foreground">Nenhum compromisso cadastrado.</p> : eventos.map((evento) => (
                   <div key={evento.id} className="flex items-start gap-3 rounded-2xl border p-3">
-                    <Checkbox checked={evento.concluido} onCheckedChange={(checked) => saveEvento({ ...evento, concluido: Boolean(checked) })} className="mt-1" />
+                    <Checkbox checked={evento.concluido} onCheckedChange={(checked) => { void toggleEvento(evento, Boolean(checked)); }} className="mt-1" />
                     <div className="min-w-0 flex-1">
                       <p className={`font-bold ${evento.concluido ? 'line-through opacity-60' : ''}`}>{evento.titulo}</p>
                       <p className="text-xs text-muted-foreground">{formatDate(evento.data)}{evento.hora ? ` às ${evento.hora}` : ''} • {evento.tipo}</p>
                       {evento.notificar && !evento.concluido && <Badge variant="secondary" className="mt-2"><BellRing className="mr-1 h-3 w-3" /> Lembrete ativo</Badge>}
                       {evento.observacao && <p className="mt-1 text-sm text-muted-foreground">{evento.observacao}</p>}
                     </div>
-                    <Button size="icon" variant="ghost" onClick={() => removeEvento(evento.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                    <Button size="icon" variant="ghost" onClick={() => { void deleteEvento(evento.id); }}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                   </div>
                 ))}
               </CardContent>
@@ -332,12 +357,12 @@ const AcompanhamentoGestacional = () => {
           </TabsContent>
 
           <TabsContent value="diario" className="mt-4 grid gap-4 lg:grid-cols-[420px_1fr]">
-            <Card><CardHeader><CardTitle>Registrar meu dia</CardTitle></CardHeader><CardContent className="space-y-3"><div><Label>Data</Label><Input type="date" value={diarioForm.data} onChange={(e) => setDiarioForm({ ...diarioForm, data: e.target.value })} /></div><div><Label>Como você está se sentindo?</Label><Input value={diarioForm.humor} onChange={(e) => setDiarioForm({ ...diarioForm, humor: e.target.value })} placeholder="Ex.: tranquila, cansada..." /></div><div><Label>Sintomas / sensações</Label><div className="mt-2 flex flex-wrap gap-2">{sintomasDisponiveis.map((item) => <button key={item} type="button" onClick={() => toggleSintoma(item)} className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${diarioForm.sintomas.includes(item) ? 'border-rose-600 bg-rose-600 text-white' : 'bg-card hover:border-rose-400'}`}>{item}</button>)}</div></div><div><Label>Peso (kg, opcional)</Label><Input inputMode="decimal" value={diarioForm.peso} onChange={(e) => setDiarioForm({ ...diarioForm, peso: e.target.value })} /></div><div><Label>Anotações</Label><Textarea value={diarioForm.observacao} onChange={(e) => setDiarioForm({ ...diarioForm, observacao: e.target.value })} placeholder="Dúvidas para a próxima consulta, acontecimentos do dia..." /></div><Button className="w-full bg-rose-600 hover:bg-rose-700" onClick={addDiario}><Save className="mr-2 h-4 w-4" />Salvar no diário</Button></CardContent></Card>
-            <Card><CardHeader><CardTitle>Histórico</CardTitle></CardHeader><CardContent className="space-y-3">{diario.length === 0 ? <p className="text-sm text-muted-foreground">Ainda não há registros.</p> : diario.map((registro) => <div key={registro.id} className="rounded-2xl border p-3"><div className="flex items-start justify-between"><div><p className="font-bold">{formatDate(registro.data)}</p><p className="text-sm text-muted-foreground">{registro.humor || 'Sem humor informado'}{registro.peso ? ` • ${registro.peso} kg` : ''}</p></div><Button size="icon" variant="ghost" onClick={() => removeDiario(registro.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></div>{registro.sintomas.length > 0 && <div className="mt-2 flex flex-wrap gap-1">{registro.sintomas.map((s) => <Badge key={s} variant="secondary">{s}</Badge>)}</div>}{registro.observacao && <p className="mt-2 text-sm">{registro.observacao}</p>}</div>)}</CardContent></Card>
+            <Card><CardHeader><CardTitle>Registrar meu dia</CardTitle></CardHeader><CardContent className="space-y-3"><div><Label>Data</Label><Input type="date" value={diarioForm.data} onChange={(e) => setDiarioForm({ ...diarioForm, data: e.target.value })} /></div><div><Label>Como você está se sentindo?</Label><Input value={diarioForm.humor} onChange={(e) => setDiarioForm({ ...diarioForm, humor: e.target.value })} placeholder="Ex.: tranquila, cansada..." /></div><div><Label>Sintomas / sensações</Label><div className="mt-2 flex flex-wrap gap-2">{sintomasDisponiveis.map((item) => <button key={item} type="button" onClick={() => toggleSintoma(item)} className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${diarioForm.sintomas.includes(item) ? 'border-rose-600 bg-rose-600 text-white' : 'bg-card hover:border-rose-400'}`}>{item}</button>)}</div></div><div><Label>Peso (kg, opcional)</Label><Input inputMode="decimal" value={diarioForm.peso} onChange={(e) => setDiarioForm({ ...diarioForm, peso: e.target.value })} /></div><div><Label>Anotações</Label><Textarea value={diarioForm.observacao} onChange={(e) => setDiarioForm({ ...diarioForm, observacao: e.target.value })} placeholder="Dúvidas para a próxima consulta, acontecimentos do dia..." /></div><Button className="w-full bg-rose-600 hover:bg-rose-700" onClick={() => { void addDiario(); }} disabled={loading || syncing}><Save className="mr-2 h-4 w-4" />Salvar no diário</Button></CardContent></Card>
+            <Card><CardHeader><CardTitle>Histórico</CardTitle></CardHeader><CardContent className="space-y-3">{diario.length === 0 ? <p className="text-sm text-muted-foreground">Ainda não há registros.</p> : diario.map((registro) => <div key={registro.id} className="rounded-2xl border p-3"><div className="flex items-start justify-between"><div><p className="font-bold">{formatDate(registro.data)}</p><p className="text-sm text-muted-foreground">{registro.humor || 'Sem humor informado'}{registro.peso ? ` • ${registro.peso} kg` : ''}</p></div><Button size="icon" variant="ghost" onClick={() => { void deleteDiario(registro.id); }}><Trash2 className="h-4 w-4 text-destructive" /></Button></div>{registro.sintomas.length > 0 && <div className="mt-2 flex flex-wrap gap-1">{registro.sintomas.map((s) => <Badge key={s} variant="secondary">{s}</Badge>)}</div>}{registro.observacao && <p className="mt-2 text-sm">{registro.observacao}</p>}</div>)}</CardContent></Card>
           </TabsContent>
 
           <TabsContent value="configurar" className="mt-4">
-            <Card className="mx-auto max-w-2xl"><CardHeader><CardTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-rose-500" /> Dados da gestação</CardTitle></CardHeader><CardContent className="space-y-4"><div><Label>Como deseja definir a DPP?</Label><div className="mt-2 grid grid-cols-2 gap-2"><Button type="button" variant={profileForm.metodoCalculo === 'dum' ? 'default' : 'outline'} onClick={() => setProfileForm({ ...profileForm, metodoCalculo: 'dum' })}>Calcular pela DUM</Button><Button type="button" variant={profileForm.metodoCalculo === 'ultrassom' ? 'default' : 'outline'} onClick={() => setProfileForm({ ...profileForm, metodoCalculo: 'ultrassom' })}>DPP por ultrassom</Button></div></div><div><Label>Primeiro dia da última menstruação (DUM)</Label><Input type="date" value={profileForm.dum} onChange={(e) => setProfileForm({ ...profileForm, dum: e.target.value })} /><p className="mt-1 text-xs text-muted-foreground">Se usar a DUM, o app estima a DPP em 280 dias. Ciclos irregulares podem reduzir a precisão.</p></div>{profileForm.metodoCalculo === 'ultrassom' && <div><Label>DPP informada pelo profissional</Label><Input type="date" value={profileForm.dpp} onChange={(e) => setProfileForm({ ...profileForm, dpp: e.target.value })} /></div>}<div><Label>Nome/apelido do bebê (opcional)</Label><Input value={profileForm.nomeBebe} onChange={(e) => setProfileForm({ ...profileForm, nomeBebe: e.target.value })} /></div><div><Label>Observação médica (opcional)</Label><Textarea value={profileForm.observacaoMedica} onChange={(e) => setProfileForm({ ...profileForm, observacaoMedica: e.target.value })} placeholder="Ex.: DPP ajustada no ultrassom de primeiro trimestre" /></div><Button className="w-full bg-rose-600 hover:bg-rose-700" onClick={saveProfile} disabled={loading}><Save className="mr-2 h-4 w-4" />Salvar gestação</Button></CardContent></Card>
+            <Card className="mx-auto max-w-2xl"><CardHeader><CardTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-rose-500" /> Dados da gestação</CardTitle></CardHeader><CardContent className="space-y-4"><div><Label>Como deseja definir a DPP?</Label><div className="mt-2 grid grid-cols-2 gap-2"><Button type="button" variant={profileForm.metodoCalculo === 'dum' ? 'default' : 'outline'} onClick={() => setProfileForm({ ...profileForm, metodoCalculo: 'dum' })}>Calcular pela DUM</Button><Button type="button" variant={profileForm.metodoCalculo === 'ultrassom' ? 'default' : 'outline'} onClick={() => setProfileForm({ ...profileForm, metodoCalculo: 'ultrassom' })}>DPP por ultrassom</Button></div></div><div><Label>Primeiro dia da última menstruação (DUM)</Label><Input type="date" value={profileForm.dum} onChange={(e) => setProfileForm({ ...profileForm, dum: e.target.value })} /><p className="mt-1 text-xs text-muted-foreground">Se usar a DUM, o app estima a DPP em 280 dias. Ciclos irregulares podem reduzir a precisão.</p></div>{profileForm.metodoCalculo === 'ultrassom' && <div><Label>DPP informada pelo profissional</Label><Input type="date" value={profileForm.dpp} onChange={(e) => setProfileForm({ ...profileForm, dpp: e.target.value })} /></div>}<div><Label>Nome/apelido do bebê (opcional)</Label><Input value={profileForm.nomeBebe} onChange={(e) => setProfileForm({ ...profileForm, nomeBebe: e.target.value })} /></div><div><Label>Observação médica (opcional)</Label><Textarea value={profileForm.observacaoMedica} onChange={(e) => setProfileForm({ ...profileForm, observacaoMedica: e.target.value })} placeholder="Ex.: DPP ajustada no ultrassom de primeiro trimestre" /></div><Button className="w-full bg-rose-600 hover:bg-rose-700" onClick={() => { void saveProfile(); }} disabled={loading || syncing}><Save className="mr-2 h-4 w-4" />Salvar gestação</Button></CardContent></Card>
           </TabsContent>
         </Tabs>
 
