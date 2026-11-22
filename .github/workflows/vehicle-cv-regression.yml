@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - 'src/hooks/useMeuVeiculoStorage.ts'
+      - 'supabase/migrations/*vehicle_legacy*'
       - 'src/pages/ferramentas/MeuVeiculo.tsx'
       - 'src/pages/ferramentas/CriadorCurriculo.tsx'
       - 'src/lib/parseBrazilianNumber.ts'

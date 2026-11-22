@@ -53,3 +53,23 @@ test('fuel and odometer update atomically for the authenticated owner', () => {
   assert.match(sql, /quilometragem_atual=greatest\(quilometragem_atual,km\)/);
   assert.match(sql, /grant execute on function public\.save_vehicle_fuel_atomic\(jsonb\) to authenticated/);
 });
+
+
+test('legacy vehicle recovery requires confirmation and preserves old backup', () => {
+  const hook = read('src/hooks/useMeuVeiculoStorage.ts');
+  const page = read('src/pages/ferramentas/MeuVeiculo.tsx');
+  const sql = read('supabase/migrations/20261122183000_vehicle_legacy_opt_in_import.sql');
+  assert.match(hook, /const legacyBackup = readLocal\(\)/);
+  assert.match(hook, /const importLegacyBackup = useCallback\(async/);
+  assert.match(hook, /supabase\.rpc\('import_legacy_vehicle_backup' as any/);
+  assert.doesNotMatch(hook, /localStorage\.removeItem\(LOCAL_KEY\)/);
+  assert.match(page, /window\.confirm\(/);
+  assert.match(page, /Baixar backup antigo/);
+  assert.match(page, /Importar para minha conta/);
+  assert.match(page, /if \(!user \|\| syncing \|\| loading \|\| !legacyCount\) return/);
+  assert.match(sql, /security invoker/);
+  assert.match(sql, /on conflict \(id\) do nothing/g);
+  assert.match(sql, /revoke all on function public\.import_legacy_vehicle_backup\(jsonb\) from public,anon/);
+  assert.doesNotMatch(sql, /\bdelete from public\./);
+  assert.doesNotMatch(sql, /on conflict \(id\) do update/);
+});
