@@ -23,6 +23,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ToolBanner } from '@/components/ferramentas/ToolBanner';
+import { parseBrazilianNumber } from '@/lib/parseBrazilianNumber';
 
 type MotivoRescisao = 'sem_justa_causa' | 'com_justa_causa' | 'pedido_demissao' | 'acordo';
 type TipoAvisoPrevio = 'indenizado' | 'trabalhado' | 'nao_cumprido';
@@ -56,21 +57,17 @@ interface ResultadoRescisao {
 const formatarMoeda = (valor: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
 
-const parseMoeda = (valor: string) => {
-  const normalizado = valor.trim().replace(/\s/g, '').replace(/R\$/gi, '');
-  if (!normalizado) return 0;
+const parseMoeda = (valor: string): number | null =>
+  parseBrazilianNumber(valor.trim().replace(/^R\$\s*/i, ''));
 
-  const usaVirgulaDecimal = normalizado.includes(',');
-  const numero = usaVirgulaDecimal
-    ? normalizado.replace(/\./g, '').replace(',', '.')
-    : normalizado;
-
-  return Number.parseFloat(numero) || 0;
-};
-
-const parseDataLocal = (valor: string) => {
-  const [ano, mes, dia] = valor.split('-').map(Number);
-  return new Date(ano, mes - 1, dia);
+// Rejeita datas inexistentes (ex.: 31/02), sem permitir normalização silenciosa.
+const parseDataLocal = (valor: string): Date | null => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(valor);
+  if (!match) return null;
+  const [, year, month, day] = match.map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year && date.getMonth() === month - 1 &&
+    date.getDate() === day ? date : null;
 };
 
 const diferencaEmDias = (inicio: Date, fim: Date) =>
@@ -208,12 +205,17 @@ export const SimuladorRescisao = () => {
     const salario = parseMoeda(salarioBruto);
     const fgts = parseMoeda(saldoFgts);
 
-    if (salario <= 0) {
+    if (salario === null || salario <= 0) {
       toast.error('Informe um valor de salário bruto válido.');
       return;
     }
 
-    if (fgts < 0) {
+    if (fgts === null && saldoFgts.trim()) {
+      toast.error('Informe um saldo do FGTS válido ou deixe o campo vazio.');
+      return;
+    }
+
+    if (fgts !== null && fgts < 0) {
       toast.error('O saldo do FGTS não pode ser negativo.');
       return;
     }
@@ -225,6 +227,14 @@ export const SimuladorRescisao = () => {
 
     const admissao = parseDataLocal(dataAdmissao);
     const demissao = parseDataLocal(dataDemissao);
+    if (!admissao || !demissao) {
+      toast.error('Informe datas de admissão e demissão válidas.');
+      return;
+    }
+    if (demissao.getFullYear() !== 2026) {
+      toast.error('Esta estimativa utiliza as faixas de INSS de 2026. Selecione desligamento em 2026.');
+      return;
+    }
 
     if (demissao < admissao) {
       toast.error('A data de demissão não pode ser anterior à data de admissão.');
@@ -286,11 +296,12 @@ export const SimuladorRescisao = () => {
     }
 
     // 5. MULTA DO FGTS (40% OU 20% NO ACORDO)
+    const fgtsInformado = fgts ?? 0;
     let valorMultaFgts = 0;
     if (motivoRescisao === 'sem_justa_causa') {
-      valorMultaFgts = fgts * 0.40;
+      valorMultaFgts = fgtsInformado * 0.40;
     } else if (motivoRescisao === 'acordo') {
-      valorMultaFgts = fgts * 0.20;
+      valorMultaFgts = fgtsInformado * 0.20;
     }
 
     // 6. ESTIMATIVA DE DESCONTOS (INSS PROGRESSIVO 2026)
@@ -324,7 +335,7 @@ export const SimuladorRescisao = () => {
       valorTercoFeriasProporcionais,
       valorFeriasVencidas,
       valorTercoFeriasVencidas,
-      saldoFgtsInformado: fgts,
+      saldoFgtsInformado: fgtsInformado,
       percentualMultaFgts: motivoRescisao === 'sem_justa_causa' ? 40 : motivoRescisao === 'acordo' ? 20 : 0,
       valorMultaFgts,
       descontoInssSaldo,
@@ -757,7 +768,7 @@ export const SimuladorRescisao = () => {
                 <AlertCircle className="w-3.5 h-3.5 text-amber-500" /> Nota Informativa
               </span>
               <p className="leading-relaxed">
-                Estimativa informativa baseada nas regras gerais da CLT e nas faixas progressivas do INSS de 2026. Não inclui IRRF, médias de adicionais, faltas, adiantamentos, pensão, férias em dobro ou regras de convenção coletiva. Confirme o TRCT com o RH, sindicato ou profissional habilitado.
+                Estimativa informativa para rescisões de 2026, não é um cálculo oficial. As regras trabalhistas podem depender do tipo de contrato, da projeção do aviso e do histórico de pagamentos. Não inclui IRRF, médias de adicionais, faltas, adiantamentos, pensão, férias em dobro ou regras de convenção coletiva. Confirme o TRCT com o RH, sindicato ou profissional habilitado.
               </p>
             </div>
           </div>

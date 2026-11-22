@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, DollarSign, Copy, Check, Send, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { ToolBanner } from '@/components/ferramentas/ToolBanner';
+import { parseBrazilianNumber } from '@/lib/parseBrazilianNumber';
 
 export const GeradorCobranca = () => {
   const navigate = useNavigate();
@@ -19,8 +20,12 @@ export const GeradorCobranca = () => {
   const [tom, setTipoTom] = useState<'amigavel' | 'formal' | 'urgente'>('amigavel');
   const [copiado, setCopiado] = useState(false);
 
+  const valorNumerico = valor.trim() ? parseBrazilianNumber(valor) : null;
+  const valorInvalido = valor.trim().length > 0 && (valorNumerico === null || valorNumerico <= 0);
   const gerarMensagem = () => {
-    const valorFmt = valor ? `R$ ${valor}` : 'o valor pendente';
+    const valorFmt = valorNumerico !== null && valorNumerico > 0
+      ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorNumerico)
+      : 'o valor pendente';
     const descFmt = descricao ? ` referente a: ${descricao}` : '';
     const pixFmt = chavePix ? `\n\n🔑 *Chave PIX:* ${chavePix}` : '';
 
@@ -35,16 +40,28 @@ export const GeradorCobranca = () => {
 
   const mensagemFinal = gerarMensagem();
 
-  const handleCopiar = () => {
-    navigator.clipboard.writeText(mensagemFinal);
-    setCopiado(true);
-    toast.success('Mensagem de cobrança copiada!');
-    setTimeout(() => setCopiado(false), 2000);
+  const handleCopiar = async () => {
+    if (valorInvalido) {
+      toast.error('Informe um valor válido ou deixe o campo vazio.');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(mensagemFinal);
+      setCopiado(true);
+      toast.success('Mensagem de cobrança copiada!');
+      setTimeout(() => setCopiado(false), 2000);
+    } catch {
+      toast.error('Não foi possível copiar a mensagem. Verifique as permissões do navegador.');
+    }
   };
 
   const handleEnviarWhatsApp = () => {
+    if (valorInvalido) {
+      toast.error('Informe um valor válido ou deixe o campo vazio.');
+      return;
+    }
     const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(mensagemFinal)}`;
-    window.open(url, '_blank');
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -83,7 +100,8 @@ export const GeradorCobranca = () => {
 
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold">Valor (R$)</Label>
-                <Input placeholder="Ex: 150,00" value={valor} onChange={e => setValor(e.target.value)} />
+                <Input placeholder="Ex: 150,00" inputMode="decimal" aria-invalid={valorInvalido} value={valor} onChange={e => setValor(e.target.value)} />
+                {valorInvalido && <p role="alert" className="text-xs text-destructive">Digite um valor maior que zero, como 150,00, ou deixe o campo em branco.</p>}
               </div>
 
               <div className="space-y-1.5">
@@ -122,12 +140,12 @@ export const GeradorCobranca = () => {
               <Textarea value={mensagemFinal} readOnly className="font-sans text-xs leading-relaxed min-h-[200px] bg-muted/30 resize-none p-3" />
 
               <div className="flex gap-2 pt-2">
-                <Button onClick={handleCopiar} variant="outline" className="flex-1 gap-2 text-xs font-bold h-10">
+                <Button onClick={() => { void handleCopiar(); }} disabled={valorInvalido} variant="outline" className="flex-1 gap-2 text-xs font-bold h-10">
                   {copiado ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
                   <span>{copiado ? 'Copiado!' : 'Copiar'}</span>
                 </Button>
 
-                <Button onClick={handleEnviarWhatsApp} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white gap-2 text-xs font-bold h-10">
+                <Button onClick={handleEnviarWhatsApp} disabled={valorInvalido} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white gap-2 text-xs font-bold h-10">
                   <Send className="w-4 h-4" />
                   <span>Enviar WhatsApp</span>
                 </Button>
