@@ -1,0 +1,28 @@
+name: Local production and utilities regression
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/hooks/useProducaoLocal.ts'
+      - 'src/pages/ProducaoLocal.tsx'
+      - 'src/pages/admin/AdminProducaoLocal.tsx'
+      - 'src/components/producao/**'
+      - 'src/pages/ferramentas/**'
+      - 'scripts/production-utilities-regression.test.mjs'
+      - '.github/workflows/production-utilities-regression.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: node --test scripts/production-utilities-regression.test.mjs
+      - run: npm run typecheck
