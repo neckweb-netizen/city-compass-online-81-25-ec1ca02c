@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useEmpresas } from '@/hooks/useEmpresas';
 import { useCategorias } from '@/hooks/useCategorias';
@@ -58,7 +58,7 @@ export const SearchContent = () => {
       return matchesSearch && matchesCategory && matchesCity;
     });
   }, [empresas, searchTerm, selectedCategory, selectedCity]);
-  const renderCategoryIcon = (categoria: any) => {
+  const renderCategoryIcon = (categoria: { icone_url?: string | null }) => {
     if (!categoria.icone_url) {
       return null;
     }
@@ -95,7 +95,7 @@ export const SearchContent = () => {
               <span className="text-sm font-medium">Categorias</span>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button type="button" aria-pressed={!selectedCategory} aria-label="Todas as categorias" onClick={() => { setSelectedCategory(''); setFilter('categoria', ''); }}>
+              <button type="button" className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-pressed={!selectedCategory} aria-label="Todas as categorias" onClick={() => { setSelectedCategory(''); setFilter('categoria', ''); }}>
                 <Badge variant={selectedCategory === '' ? "default" : "outline"} className="cursor-pointer">Todas</Badge>
               </button>
               {categorias?.map(categoria => <button key={categoria.id} type="button" aria-pressed={selectedCategory === categoria.id} onClick={() => { setSelectedCategory(categoria.id); setFilter('categoria', categoria.id); }} className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
