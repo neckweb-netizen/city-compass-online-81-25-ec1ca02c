@@ -71,7 +71,7 @@ const MeuVeiculo = () => {
       ano: vehicleForm.ano ? Number(vehicleForm.ano) : null, placa: vehicleForm.placa.toUpperCase().trim(),
       combustivel: vehicleForm.combustivel, quilometragemAtual: num(vehicleForm.km), ativo: true,
     });
-    if (result.reason === 'remote_error') return toast.error(result.error.message);
+    if (result.reason === 'remote_error') return toast.error(('error' in result && result.error ? result.error.message : 'Falha ao sincronizar. Tente novamente.'));
     setSelectedVehicleId(id);
     setVehicleForm({ apelido: '', marca: '', modelo: '', ano: '', placa: '', combustivel: 'Flex', km: '' });
     toast.success(result.synced ? 'Veículo salvo na sua conta.' : 'Veículo salvo neste aparelho.');
@@ -89,7 +89,7 @@ const MeuVeiculo = () => {
     };
     if (item.litros <= 0 || item.valorTotal <= 0) return toast.error('Informe litros e valor do abastecimento.');
     const result = await saveFuel(item);
-    if (result.reason === 'remote_error') return toast.error(result.error.message);
+    if (result.reason === 'remote_error') return toast.error(('error' in result && result.error ? result.error.message : 'Falha ao sincronizar. Tente novamente.'));
     setFuelForm({ data: todayKey(), km: '', litros: '', valor: '', combustivel: fuelForm.combustivel, posto: '', tanqueCompleto: true, observacao: '' });
     toast.success(result.synced ? 'Abastecimento salvo na sua conta.' : 'Abastecimento salvo neste aparelho.');
   };
@@ -104,7 +104,7 @@ const MeuVeiculo = () => {
       valor: num(maintenanceForm.valor), oficina: maintenanceForm.oficina.trim(), observacao: maintenanceForm.observacao.trim(),
     };
     const result = await saveMaintenance(item);
-    if (result.reason === 'remote_error') return toast.error(result.error.message);
+    if (result.reason === 'remote_error') return toast.error(('error' in result && result.error ? result.error.message : 'Falha ao sincronizar. Tente novamente.'));
     setMaintenanceForm({ data: todayKey(), tipo: 'Troca de óleo', km: '', valor: '', oficina: '', observacao: '' });
     toast.success(result.synced ? 'Manutenção salva na sua conta.' : 'Manutenção salva neste aparelho.');
   };
@@ -123,7 +123,7 @@ const MeuVeiculo = () => {
       notificar: reminderForm.notificar && Boolean(user), concluido: false,
     };
     const result = await saveReminder(item);
-    if (result.reason === 'remote_error') return toast.error(result.error.message);
+    if (result.reason === 'remote_error') return toast.error(('error' in result && result.error ? result.error.message : 'Falha ao sincronizar. Tente novamente.'));
     setReminderForm({ titulo: '', tipo: 'manutencao', data: '', km: '', diasAntes: '7', hora: '09:00', notificar: true });
     toast.success(result.synced ? 'Lembrete salvo na sua conta.' : 'Lembrete salvo neste aparelho.');
   };
@@ -185,7 +185,7 @@ const MeuVeiculo = () => {
             </form></CardContent></Card>
 
             <Card className="rounded-3xl"><CardHeader><CardTitle>Meus veículos</CardTitle></CardHeader><CardContent className="space-y-3">
-              {veiculos.length === 0 ? <p className="text-sm text-muted-foreground">Cadastre seu primeiro carro, moto ou outro veículo.</p> : veiculos.map((v)=><div key={v.id} className="flex items-center justify-between rounded-2xl border p-4"><div><p className="font-black">{v.apelido || `${v.marca} ${v.modelo}`}</p><p className="text-sm text-muted-foreground">{[v.marca,v.modelo,v.ano,v.placa].filter(Boolean).join(' • ')} • {v.quilometragemAtual.toLocaleString('pt-BR')} km</p></div><Button size="icon" variant="ghost" onClick={()=>{if(confirm(`Excluir ${v.apelido || v.modelo}?`)) void removeVehicle(v.id).then(result => { if (result.reason === 'remote_error') toast.error(result.error.message); else toast.success('Veículo excluído.'); })}}><Trash2 className="h-4 w-4 text-destructive" /></Button></div>)}
+              {veiculos.length === 0 ? <p className="text-sm text-muted-foreground">Cadastre seu primeiro carro, moto ou outro veículo.</p> : veiculos.map((v)=><div key={v.id} className="flex items-center justify-between rounded-2xl border p-4"><div><p className="font-black">{v.apelido || `${v.marca} ${v.modelo}`}</p><p className="text-sm text-muted-foreground">{[v.marca,v.modelo,v.ano,v.placa].filter(Boolean).join(' • ')} • {v.quilometragemAtual.toLocaleString('pt-BR')} km</p></div><Button size="icon" variant="ghost" onClick={()=>{if(confirm(`Excluir ${v.apelido || v.modelo}?`)) void removeVehicle(v.id).then(result => { if (result.reason === 'remote_error') toast.error(('error' in result && result.error ? result.error.message : 'Falha ao sincronizar. Tente novamente.')); else toast.success('Veículo excluído.'); })}}><Trash2 className="h-4 w-4 text-destructive" /></Button></div>)}
             </CardContent></Card>
           </TabsContent>
 
