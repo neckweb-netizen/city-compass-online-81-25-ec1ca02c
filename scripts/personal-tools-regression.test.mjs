@@ -13,7 +13,7 @@ test('Brazilian numeric parsing handles thousands, decimal commas and rejects in
   const directory = mkdtempSync(path.join(tmpdir(), 'saj-number-'));
   try {
     const output = path.join(directory, 'parser.mjs');
-    writeFileSync(output, source.replace('export const parseBrazilianNumber = (input: string): number | null =>', 'const parseBrazilianNumber = (input) =>') + '\nconsole.log(JSON.stringify(["1.234,56","1234,56","6.19","1.000","abc","-2","1.2.3"].map(parseBrazilianNumber)));');
+    writeFileSync(output, source.replace('export const parseBrazilianNumber = (input: string): number | null =>', 'const parseBrazilianNumber = (input) =>').replace('let normalized: string;', 'let normalized;') + '\nconsole.log(JSON.stringify(["1.234,56","1234,56","6.19","1.000","abc","-2","1.2.3"].map(parseBrazilianNumber)));');
     const values = JSON.parse(execFileSync(process.execPath, [output], { encoding: 'utf8' }));
     assert.deepEqual(values, [1234.56,1234.56,6.19,1000,null,null,null]);
   } finally {
