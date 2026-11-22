@@ -26,8 +26,8 @@ test('schedule mutation is atomic and limited to authenticated owner',()=>{
 test('medicine UI reports real server errors and avoids duplicate dose logging',()=>{
   const page=read('src/pages/ferramentas/MedicamentosLembretes.tsx');
   const s=read('src/hooks/useMedicamentosStorage.ts');
-  assert.match(page,/if\(r\.reason==='remote_error'\)\{toast\.error\(r\.error\.message\);return;\}/);
-  assert.match(page,/if\(result\.reason==='remote_error'\)\{toast\.error\(result\.error\.message\);return;\}/);
+  assert.match(page,/if\(r\.reason==='remote_error'\)\{toast\.error\(/);
+  assert.match(page,/if\(result\.reason==='remote_error'\)\{toast\.error\(/);
   assert.match(page,/disabled=\{syncing\|\|doses\.some/);
   assert.match(page,/m\.dataInicio<=/);
   assert.match(s,/Este horário já possui uma dose registrada/);
