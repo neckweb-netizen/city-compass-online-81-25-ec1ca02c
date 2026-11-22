@@ -30,3 +30,17 @@ test('raffle creation validates Brazilian prices before writing or estimating re
   assert.match(page, /totalPagos \* \(parseBrazilianNumber\(valorNumero\) \?\? 0\)/);
   assert.match(page, /if \(!numeroSelecionado \|\| !rifaAtiva\?\.id \|\| salvandoReserva\) return/);
 });
+
+
+test('raffle session switches erase buyer contact state and ignore previous requests', () => {
+  const page = read('src/pages/ferramentas/GeradorRifa.tsx');
+  assert.match(page, /const initSequenceRef = useRef\(0\)/);
+  assert.match(page, /const request = \+\+initSequenceRef\.current/);
+  assert.match(page, /setNomeComprador\(''\)/);
+  assert.match(page, /setTelefoneComprador\(''\)/);
+  assert.match(page, /setModalReservaOpen\(false\)/);
+  assert.match(page, /setIsModoComprador\(Boolean\(idRifaPublica\)\)/);
+  assert.match(page, /if \(request !== initSequenceRef\.current\) return/);
+  assert.match(page, /\[idRifaPublica, user\?\.id\]/);
+  assert.match(page, /return \(\) => \{ initSequenceRef\.current \+= 1; \}/);
+});
