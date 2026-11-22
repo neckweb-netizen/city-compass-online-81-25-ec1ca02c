@@ -1,0 +1,26 @@
+name: Rescisao and manual billing regression
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/pages/ferramentas/SimuladorRescisao.tsx'
+      - 'src/pages/ferramentas/GeradorCobranca.tsx'
+      - 'src/lib/parseBrazilianNumber.ts'
+      - 'scripts/rescisao-cobranca-regression.test.mjs'
+      - '.github/workflows/rescisao-cobranca-regression.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: node --test scripts/rescisao-cobranca-regression.test.mjs
+      - run: npm run typecheck
