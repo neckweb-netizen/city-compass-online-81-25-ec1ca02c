@@ -478,13 +478,14 @@ export const ControleFinanceiro = () => {
   };
 
   const clearData = () => {
+    if (syncing || financeLoading) return;
     const target = user ? 'da sua conta e deste aparelho' : 'deste aparelho';
     if (!window.confirm(`Apagar todos os lançamentos e metas ${target}? Essa ação não pode ser desfeita.`)) return;
     void clearAll().then((result) => {
       if (result.synced) toast.success('Dados financeiros apagados da sua conta.');
       else if (result.reason === 'remote_error') toast.error('Não foi possível apagar os dados do servidor. Nada foi removido definitivamente.');
       else toast.success('Dados financeiros apagados deste aparelho.');
-    });
+    }).catch(() => toast.error('Não foi possível confirmar a exclusão. Atualize seus dados antes de tentar novamente.'));
   };
 
   const calendarDays = useMemo(() => getCalendarDays(selectedMonth), [selectedMonth]);

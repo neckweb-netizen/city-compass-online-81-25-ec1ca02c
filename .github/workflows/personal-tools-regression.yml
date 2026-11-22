@@ -5,6 +5,8 @@ on:
     paths:
       - 'src/lib/parseBrazilianNumber.ts'
       - 'src/hooks/useControleFinanceiroStorage.ts'
+      - 'supabase/migrations/*finance*'
+      - 'src/pages/ferramentas/ControleFinanceiro.tsx'
       - 'src/pages/ferramentas/CalculadoraCombustivel.tsx'
       - 'src/pages/ferramentas/ComparadorPrecos.tsx'
       - 'src/pages/ferramentas/CalculadoraOrcamento.tsx'

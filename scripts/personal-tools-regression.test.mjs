@@ -34,3 +34,16 @@ test('finance storage resets on account switch even when new account has empty c
   assert.doesNotMatch(storage, /if \(isMeaningfulState\(accountCache\)\) setState\(accountCache\)/);
   assert.match(storage, /if \(!user\) \{\s*loadedUserRef\.current = null;\s*setState\(loadLocalState\(FINANCE_STORAGE_KEY\)\)/);
 });
+
+test('finance deletion is atomic, limited to authenticated owner and only clears cache after success', () => {
+  const hook = read('src/hooks/useControleFinanceiroStorage.ts');
+  const sql = read('supabase/migrations/20261122151000_atomic_finance_account_clear.sql');
+  assert.match(hook, /supabase\.rpc\('clear_finance_account_data' as any\)/);
+  assert.doesNotMatch(hook, /Promise\.all\(\[\s*\(supabase as any\)\.from\('finance_lancamentos'\)\.delete/);
+  assert.match(hook, /if \(error\) \{\s*setSyncError\(error\.message\);/);
+  assert.match(hook, /persistLocal\(EMPTY_FINANCE_STATE\);\s*try \{\s*localStorage\.removeItem\(userStorageKey\(user\.id\)\)/);
+  assert.match(sql, /security invoker/);
+  assert.match(sql, /delete from public\.finance_lancamentos where user_id = \(select auth\.uid\(\)\)/);
+  assert.match(sql, /delete from public\.finance_configuracoes where user_id = \(select auth\.uid\(\)\)/);
+  assert.match(sql, /revoke all on function public\.clear_finance_account_data\(\) from public, anon/);
+});
