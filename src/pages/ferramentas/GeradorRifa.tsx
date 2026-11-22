@@ -214,6 +214,29 @@ export const GeradorRifa = () => {
     return () => { void supabase.removeChannel(channel); };
   }, [rifaAtiva?.id]);
 
+  // Consultas públicas não recebem eventos Realtime da tabela protegida.
+  // Atualiza apenas os estados dos números, sem expor dados de compradores.
+  useEffect(() => {
+    const id = rifaAtiva?.id;
+    if (!id || !isModoComprador) return;
+    let active = true;
+    const refresh = async () => {
+      if (document.visibilityState === 'hidden') return;
+      const { data, error } = await supabase.rpc('get_public_raffle' as any, { p_id: id });
+      if (!active || error || !Array.isArray(data?.numeros)) return;
+      if (user?.id === rifaAtiva?.user_id) return; // Proprietário usa a visão privada.
+      const sanitized = data.numeros as NumeroRifa[];
+      setNumeros(sanitized);
+      setRifaAtiva(prev => prev?.id === id ? { ...prev, numeros: sanitized } : prev);
+      setNumeroSelecionado(prev => prev ? sanitized.find(item => item.numero === prev.numero) || prev : prev);
+    };
+    const interval = window.setInterval(() => { void refresh(); }, 20_000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [rifaAtiva?.id, rifaAtiva?.user_id, isModoComprador, user?.id]);
+
   const selecionarRifaParaExibir = (rifa: RifaDados) => {
     setRifaAtiva(rifa);
     setNumeros(rifa.numeros || []);
