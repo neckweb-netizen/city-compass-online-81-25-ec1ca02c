@@ -9,7 +9,7 @@ test('medicine account caches are isolated, and stale remote requests cannot ove
   assert.match(s,/const activeAccountRef=useRef\(user\?\.id\?\?null\)/);
   assert.match(s,/if\(request!==requestRef\.current\|\|activeAccountRef\.current!==accountId\)return/);
   assert.match(s,/const visible=stateAccountId===\(user\?\.id\?\?null\)\?state:empty/);
-  assert.match(s,/if\(authLoading\|\|loading\|\|mutationRef\.current\|\|stateAccountId!==\(user\?\.id\?\?null\)\)return blocked\(\)/);
+  assert.match(s,/if\(authLoading\|\|loading\|\|mutationRef\.current\|\|stateAccountId!==\(user\?\.id\?\?null\)\|\|syncError\?\.startsWith\('Existem dados locais'\)\)return blocked\(\)/);
 });
 test('schedule mutation is atomic and limited to authenticated owner',()=>{
   const s=read('src/hooks/useMedicamentosStorage.ts');
