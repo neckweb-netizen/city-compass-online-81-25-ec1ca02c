@@ -11,6 +11,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ToolBanner } from '@/components/ferramentas/ToolBanner';
+import { parseBrazilianNumber } from '@/lib/parseBrazilianNumber';
 import { useAuth } from '@/hooks/useAuth';
 
 // LISTA OFICIAL DOS 25 ANIMAIS DA FAZENDINHA
@@ -108,15 +109,9 @@ export const GeradorRifa = () => {
   const inicializarRifas = async () => {
     try {
       setCarregando(true);
-      await supabase.rpc('deletar_rifas_expiradas' as any);
-
       if (idRifaPublica) {
         setIsModoComprador(true);
-        const { data, error } = await supabase
-          .from('rifas_usuarios' as any)
-          .select('*')
-          .eq('id', idRifaPublica)
-          .single();
+        const { data, error } = await supabase.rpc('get_public_raffle' as any, { p_id: idRifaPublica });
 
         if (error || !data) {
           toast.error('Rifa não encontrada ou encerrada.');
@@ -146,11 +141,17 @@ export const GeradorRifa = () => {
 
       const { data: { session } } = await supabase.auth.getSession();
       const userId = session?.user?.id;
+      if (!userId) {
+        // A lista "Minhas Rifas" nunca pode mostrar dados de terceiros.
+        setRifasUsuario([]);
+        setRifaAtiva(null);
+        setAbaExibicao('criar');
+        return;
+      }
 
-      let query = supabase.from('rifas_usuarios' as any).select('*').order('created_at', { ascending: false });
-      if (userId) query = query.eq('user_id', userId);
-
-      const { data, error } = await query;
+      const { data, error } = await supabase.from('rifas_usuarios' as any)
+        .select('*').eq('user_id', userId)
+        .order('created_at', { ascending: false });
       if (error) throw error;
 
       if (data && data.length > 0) {
@@ -234,6 +235,11 @@ export const GeradorRifa = () => {
       return;
     }
 
+    if ((parseBrazilianNumber(valorNumero) ?? 0) <= 0) {
+      toast.error('Informe um valor por número maior que zero.');
+      return;
+    }
+
     try {
       setSalvando(true);
       const { data: { session } } = await supabase.auth.getSession();
@@ -295,7 +301,7 @@ export const GeradorRifa = () => {
   };
 
   const handleSalvarReserva = async (novoStatus: 'reservado' | 'pago') => {
-    if (!numeroSelecionado || !rifaAtiva?.id) return;
+    if (!numeroSelecionado || !rifaAtiva?.id || salvandoReserva) return;
     if (!nomeComprador.trim()) {
       toast.error('Informe o nome do comprador.');
       return;
@@ -318,16 +324,29 @@ export const GeradorRifa = () => {
       if (error) throw error;
 
       const novosNumeros = (data || []) as unknown as NumeroRifa[];
-      setNumeros(novosNumeros);
-      setRifaAtiva(prev => prev ? { ...prev, numeros: novosNumeros } : null);
+      if (!Array.isArray(novosNumeros)) throw new Error('Resposta inválida ao atualizar reserva.');
+      if (podeGerenciarRifa) {
+        // A RPC pública oculta nomes: o dono pode recarregar dados completos via RLS.
+        const { data: privada, error: privadaError } = await supabase
+          .from('rifas_usuarios' as any).select('numeros').eq('id', rifaAtiva.id).maybeSingle();
+        if (!privadaError && Array.isArray(privada?.numeros)) {
+          setNumeros(privada.numeros as NumeroRifa[]);
+          setRifaAtiva(prev => prev ? { ...prev, numeros: privada.numeros as NumeroRifa[] } : null);
+        } else {
+          setNumeros(novosNumeros);
+          setRifaAtiva(prev => prev ? { ...prev, numeros: novosNumeros } : null);
+        }
+      } else {
+        setNumeros(novosNumeros);
+        setRifaAtiva(prev => prev ? { ...prev, numeros: novosNumeros } : null);
+      }
       setModalReservaOpen(false);
       toast.success(`Grupo ${numeroSelecionado.numero} marcado como ${novoStatus.toUpperCase()}!`);
     } catch (err: any) {
-      const { data } = await supabase
-        .from('rifas_usuarios' as any)
-        .select('numeros')
-        .eq('id', rifaAtiva.id)
-        .maybeSingle();
+      const { data } = isModoComprador && !podeGerenciarRifa
+        ? await supabase.rpc('get_public_raffle' as any, { p_id: rifaAtiva.id })
+        : await supabase.from('rifas_usuarios' as any)
+          .select('numeros').eq('id', rifaAtiva.id).maybeSingle();
       if (Array.isArray(data?.numeros)) {
         setNumeros(data.numeros as NumeroRifa[]);
         setRifaAtiva(prev => prev ? { ...prev, numeros: data.numeros as NumeroRifa[] } : null);
@@ -361,8 +380,22 @@ export const GeradorRifa = () => {
       if (error) throw error;
 
       const novosNumeros = (data || []) as unknown as NumeroRifa[];
-      setNumeros(novosNumeros);
-      setRifaAtiva(prev => prev ? { ...prev, numeros: novosNumeros } : null);
+      if (!Array.isArray(novosNumeros)) throw new Error('Resposta inválida ao atualizar reserva.');
+      if (podeGerenciarRifa) {
+        // A RPC pública oculta nomes: o dono pode recarregar dados completos via RLS.
+        const { data: privada, error: privadaError } = await supabase
+          .from('rifas_usuarios' as any).select('numeros').eq('id', rifaAtiva.id).maybeSingle();
+        if (!privadaError && Array.isArray(privada?.numeros)) {
+          setNumeros(privada.numeros as NumeroRifa[]);
+          setRifaAtiva(prev => prev ? { ...prev, numeros: privada.numeros as NumeroRifa[] } : null);
+        } else {
+          setNumeros(novosNumeros);
+          setRifaAtiva(prev => prev ? { ...prev, numeros: novosNumeros } : null);
+        }
+      } else {
+        setNumeros(novosNumeros);
+        setRifaAtiva(prev => prev ? { ...prev, numeros: novosNumeros } : null);
+      }
       setModalReservaOpen(false);
       toast.info(`Grupo ${numeroSelecionado.numero} liberado novamente.`);
     } catch (err: any) {
@@ -573,7 +606,7 @@ export const GeradorRifa = () => {
   const totalPagos = numeros.filter(n => n.status === 'pago').length;
   const totalReservados = numeros.filter(n => n.status === 'reservado').length;
   const totalLivres = numeros.filter(n => n.status === 'livre').length;
-  const arrecadacaoTotal = totalPagos * (parseFloat(valorNumero.replace(',', '.')) || 0);
+  const arrecadacaoTotal = totalPagos * (parseBrazilianNumber(valorNumero) ?? 0);
   const isAdmin = profile?.tipo_conta === 'admin_geral' || profile?.tipo_conta === 'admin_cidade';
   const isCriadorRifa = Boolean(user?.id && rifaAtiva?.user_id === user.id);
   const podeGerenciarRifa = isCriadorRifa || isAdmin;
