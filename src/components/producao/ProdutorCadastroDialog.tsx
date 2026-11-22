@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Loader2, Tractor } from 'lucide-react';
 import { toast } from 'sonner';
 import { AuthDialog } from '@/components/auth/AuthDialog';
@@ -33,6 +33,7 @@ export function ProdutorCadastroDialog() {
   const [open, setOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const submittingRef = useRef(false);
   const [form, setForm] = useState(initialForm);
   const valid = useMemo(() => form.nome_publico.trim().length >= 3 && listFromText(form.produtos).length > 0 && form.consentimento, [form]);
 
@@ -46,7 +47,8 @@ export function ProdutorCadastroDialog() {
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!user || !valid || saving) return;
+    if (!user || !valid || submittingRef.current) return;
+    submittingRef.current = true;
     setSaving(true);
     const { error } = await supabase.from('produtores_locais' as any).insert({
       usuario_id: user.id,
@@ -63,6 +65,7 @@ export function ProdutorCadastroDialog() {
       consentimento_publicacao: form.consentimento,
       status: 'pendente',
     });
+    submittingRef.current = false;
     setSaving(false);
 
     if (error) {

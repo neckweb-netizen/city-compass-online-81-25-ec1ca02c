@@ -79,7 +79,7 @@ export const FerramentasCatalog = () => {
           </Badge>
 
           <h1 className="text-3xl sm:text-5xl font-black text-foreground tracking-tight">
-            Ferramentas Gratuitas para o Seu Dia a Dia
+            Ferramentas e Utilitários para o Seu Dia a Dia
           </h1>
 
           <p className="text-muted-foreground text-sm sm:text-base leading-relaxed">
@@ -150,10 +150,12 @@ export const FerramentasCatalog = () => {
           })}
         </div>
 
+        {ferramentasFiltradas.length === 0 && <p role="status" className="py-8 text-center text-sm text-muted-foreground">Nenhuma ferramenta encontrada. Tente outro termo de busca.</p>}
+
         {/* RODAPÉ E INFORMATIVO DE SEGURANÇA */}
         <div className="p-4 bg-muted/30 border border-border/60 rounded-2xl text-center flex flex-col sm:flex-row items-center justify-center gap-2 text-xs text-muted-foreground">
           <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
-          <span>Todas as suas informações registradas nas ferramentas são 100% privadas e armazenadas com segurança.</span>
+          <span>Confira as informações de privacidade de cada ferramenta antes de registrar dados pessoais. Algumas funções usam armazenamento local ou exigem login.</span>
         </div>
 
       </div>

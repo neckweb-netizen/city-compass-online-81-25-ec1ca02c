@@ -16,6 +16,7 @@ type FilterStatus = 'pendente' | 'aprovado' | 'rejeitado';
 
 export default function AdminProducaoLocal() {
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [enabled, setEnabled] = useState(true);
@@ -25,12 +26,14 @@ export default function AdminProducaoLocal() {
 
   const load = async () => {
     setLoading(true);
+    setLoadError(false);
     const [configResult, produtoresResult] = await Promise.all([
       supabase.from('configuracoes_sistema' as any).select('id,producao_local_ativa').limit(1).maybeSingle(),
       supabase.from('produtores_locais' as any).select('*').order('criado_em', { ascending: false }),
     ]);
     setLoading(false);
     if (configResult.error || produtoresResult.error) {
+      setLoadError(true);
       toast.error('Não foi possível carregar a gestão da produção local.');
       return;
     }
@@ -47,9 +50,9 @@ export default function AdminProducaoLocal() {
       return;
     }
     setSavingConfig(true);
-    const { error } = await supabase.from('configuracoes_sistema' as any).update({ producao_local_ativa: next }).eq('id', configId);
+    const { data: updated, error } = await supabase.from('configuracoes_sistema' as any).update({ producao_local_ativa: next }).eq('id', configId).select('id').maybeSingle();
     setSavingConfig(false);
-    if (error) {
+    if (error || !updated) {
       toast.error('Não foi possível alterar a disponibilidade da página.');
       return;
     }
@@ -60,14 +63,19 @@ export default function AdminProducaoLocal() {
   const moderate = async (id: string, status: FilterStatus) => {
     setUpdatingId(id);
     const { data: authData } = await supabase.auth.getUser();
-    const { error } = await supabase.from('produtores_locais' as any).update({
+    if (!authData.user?.id) {
+      setUpdatingId(null);
+      toast.error('Sua sessão expirou. Entre novamente para revisar este cadastro.');
+      return;
+    }
+    const { data: updated, error } = await supabase.from('produtores_locais' as any).update({
       status,
       ativo: status === 'aprovado',
-      revisado_por: authData.user?.id ?? null,
+      revisado_por: authData.user.id,
       revisado_em: new Date().toISOString(),
-    }).eq('id', id);
+    }).eq('id', id).select('id').maybeSingle();
     setUpdatingId(null);
-    if (error) {
+    if (error || !updated) {
       toast.error('Não foi possível revisar este cadastro.');
       return;
     }
@@ -108,7 +116,9 @@ export default function AdminProducaoLocal() {
 
       <div className="flex flex-wrap gap-3"><Input value={search} onChange={event => setSearch(event.target.value)} className="max-w-md" placeholder="Buscar produtor, comunidade ou produto" /><Button variant="outline" onClick={() => void load()} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Atualizar</Button></div>
 
-      {loading ? <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin" /></div> : <Tabs defaultValue="pendente"><TabsList className="h-auto flex-wrap"><TabsTrigger value="pendente">Pendentes ({list('pendente').length})</TabsTrigger><TabsTrigger value="aprovado">Aprovados ({list('aprovado').length})</TabsTrigger><TabsTrigger value="rejeitado">Rejeitados ({list('rejeitado').length})</TabsTrigger></TabsList><TabsContent value="pendente" className="mt-5">{renderProducerList('pendente')}</TabsContent><TabsContent value="aprovado" className="mt-5">{renderProducerList('aprovado')}</TabsContent><TabsContent value="rejeitado" className="mt-5">{renderProducerList('rejeitado')}</TabsContent></Tabs>}
+      {loadError && <div role="alert" className="rounded-xl border p-4 text-sm">Não foi possível carregar os cadastros. <Button size="sm" variant="outline" onClick={() => { void load(); }}>Tentar novamente</Button></div>}
+
+      {loading ? <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin" /></div> : loadError ? null : <Tabs defaultValue="pendente"><TabsList className="h-auto flex-wrap"><TabsTrigger value="pendente">Pendentes ({list('pendente').length})</TabsTrigger><TabsTrigger value="aprovado">Aprovados ({list('aprovado').length})</TabsTrigger><TabsTrigger value="rejeitado">Rejeitados ({list('rejeitado').length})</TabsTrigger></TabsList><TabsContent value="pendente" className="mt-5">{renderProducerList('pendente')}</TabsContent><TabsContent value="aprovado" className="mt-5">{renderProducerList('aprovado')}</TabsContent><TabsContent value="rejeitado" className="mt-5">{renderProducerList('rejeitado')}</TabsContent></Tabs>}
     </div>
   );
 }
