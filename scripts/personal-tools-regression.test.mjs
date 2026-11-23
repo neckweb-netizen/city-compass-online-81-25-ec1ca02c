@@ -76,7 +76,7 @@ test('individual finance mutations are serialized and never claim remote success
   const hook = read('src/hooks/useControleFinanceiroStorage.ts');
   const page = read('src/pages/ferramentas/ControleFinanceiro.tsx');
   assert.match(hook, /const accountOperationRef = useRef\(false\)/);
-  assert.match(hook, /if \(accountOperationRef\.current\) return operationBlocked\(\)/);
+  assert.match(hook, /if \(accountOperationRef\.current \|\| authLoading \|\| loading \|\| stateAccountId !== \(user\?\.id \?\? null\)\) return operationBlocked\(\)/);
   assert.match(hook, /if \(activeUserIdRef\.current !== accountId\)/);
   assert.match(hook, /const \{ error \} = await mutate\(accountId\)/);
   assert.match(hook, /persistLocal\(next\);\s*return \{ synced: true as const \}/);
