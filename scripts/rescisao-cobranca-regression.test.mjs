@@ -77,3 +77,14 @@ test('CRM allows explicit reload after version conflicts and across devices', ()
   assert.match(page, /window\.location\.reload\(\)/);
   assert.match(page, /if \(activeAccountRef\.current !== account\) return false/);
 });
+
+
+test('CRM preserves the rejected snapshot as a downloadable file before resolving a conflict', () => {
+  const page = read('src/pages/ferramentas/GestaoCobrancas.tsx');
+  assert.match(page, /setConflictDraft\(\{ account, snapshot: next \}\)/);
+  assert.match(page, /const exportConflict = \(\) => \{/);
+  assert.match(page, /conflictDraft\?\.account !== uid/);
+  assert.match(page, /downloadSnapshot\(conflictDraft\.snapshot, 'sajtem-cobrancas-alteracoes-nao-salvas-'/);
+  assert.match(page, /Baixar alterações não salvas/);
+  assert.match(page, /setConflictDraft\(null\)/);
+});
