@@ -100,7 +100,7 @@ const FerramentasCatalogInternal = () => {
     {
       id: 'gestao-cobrancas',
       titulo: 'Caderno de Cobranças & Micro CRM',
-      descricao: 'Cadastre clientes e cobranças, acompanhe vencimentos e pagamentos manuais e envie lembretes pelo WhatsApp. Dados neste aparelho, com backup JSON, sem sincronização entre dispositivos.',
+      descricao: 'Cadastre clientes e cobranças, acompanhe vencimentos e pagamentos manuais e envie lembretes pelo WhatsApp. Com login, os registros sincronizam entre dispositivos pelo Supabase. Os dados antigos do aparelho só são importados com sua autorização.',
       icone: NotebookPen,
       rota: '/ferramentas/gestao-cobrancas',
       categoria: 'Gestão',
