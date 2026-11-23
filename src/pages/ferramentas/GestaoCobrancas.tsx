@@ -30,6 +30,7 @@ export const GestaoCobrancas = () => {
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
   const [legacy, setLegacy] = useState<CobrancaDados | null>(null);
+  const [legacyWarning, setLegacyWarning] = useState('');
   const [authOpen, setAuthOpen] = useState(false);
   const [client, setClient] = useState(blankClient);
   const [clientEditing, setClientEditing] = useState<string | null>(null);
@@ -39,7 +40,7 @@ export const GestaoCobrancas = () => {
   const [search, setSearch] = useState('');
   useEffect(() => {
     let cancelled = false;
-    setOwner(null); setData(EMPTY_COBRANCAS); setFailure(''); setLegacy(null); setRevision(0);
+    setOwner(null); setData(EMPTY_COBRANCAS); setFailure(''); setLegacy(null); setLegacyWarning(''); setRevision(0);
     setClient(blankClient); setClientEditing(null); setBill(blankBill()); setBillEditing(null);
     if (!uid) return;
     const account = uid;
@@ -119,7 +120,7 @@ export const GestaoCobrancas = () => {
   };
   const removeClient = async (c: CobrancaCliente) => {
     if (current.cobrancas.some(b => b.clienteId === c.id)) return toast.error('Exclua as cobranças deste cliente antes de removê-lo.');
-    if (window.confirm('Excluir o cliente ' + c.nome + '?') && persist({ ...current, clientes: current.clientes.filter(x => x.id !== c.id) })) toast.success('Cliente excluído.');
+    if (window.confirm('Excluir o cliente ' + c.nome + '?') && await persist({ ...current, clientes: current.clientes.filter(x => x.id !== c.id) })) toast.success('Cliente excluído.');
   };
   const saveBill = async (e: FormEvent) => {
     e.preventDefault();
@@ -141,7 +142,7 @@ export const GestaoCobrancas = () => {
     if (await persist({ ...current, cobrancas: current.cobrancas.map(x => x.id === c.id ? { ...x, status: paid ? 'paga' : 'pendente', pagoEm: paid ? new Date().toISOString() : null } : x) })) toast.success(paid ? 'Pagamento registrado.' : 'Cobrança reaberta.');
   };
   const removeBill = async (c: CobrancaRegistro) => {
-    if (window.confirm('Excluir esta cobrança e seu histórico?') && persist({ ...current, cobrancas: current.cobrancas.filter(x => x.id !== c.id) })) toast.success('Cobrança removida.');
+    if (window.confirm('Excluir esta cobrança e seu histórico?') && await persist({ ...current, cobrancas: current.cobrancas.filter(x => x.id !== c.id) })) toast.success('Cobrança removida.');
   };
   const exportBackup = () => {
     if (blocked) return;
@@ -157,11 +158,9 @@ export const GestaoCobrancas = () => {
     const requestedAccount = uid;
     const file = e.target.files?.[0]; e.target.value = '';
     if (!file || blocked) return;
-    const requestedAccount = uid;
     if (file.size > 2_000_000) return toast.error('Backup acima do limite de 2 MB.');
     try {
       const parsed = validarBackupCobrancas(JSON.parse(await file.text()));
-      if (activeAccountRef.current !== requestedAccount) return;
       if (activeAccountRef.current !== requestedAccount) return;
       if (!parsed) return toast.error('Arquivo de backup inválido.');
       if (!window.confirm('Substituir TODOS os clientes e cobranças locais? Exporte uma cópia antes de continuar.')) return;
