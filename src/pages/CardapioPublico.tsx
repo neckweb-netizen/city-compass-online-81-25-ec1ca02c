@@ -19,9 +19,10 @@ export default function CardapioPublico() {
   const cardapio = query.data;
   const [category, setCategory] = useState('Todos');
   const [search, setSearch] = useState('');
-  const [cart, setCart] = useState<Record<string, number>>({});
+  const [cartState, setCartState] = useState<{ slug?: string; quantities: Record<string, number> }>({ slug, quantities: {} });
+  const cart = cartState.slug === slug ? cartState.quantities : {};
 
-  const items = useMemo(() => cardapio?.cardapio_itens ?? [], [cardapio?.cardapio_itens]);
+  const items = useMemo(() => (cardapio?.cardapio_itens ?? []).filter(item => item.disponivel), [cardapio?.cardapio_itens]);
   const categories = useMemo(() => ['Todos', ...Array.from(new Set(items.map(item => item.categoria)))], [items]);
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -32,29 +33,34 @@ export default function CardapioPublico() {
   const totalItems = cartItems.reduce((sum, item) => sum + cart[item.id], 0);
   const total = cartItems.reduce((sum, item) => sum + Number(item.preco) * cart[item.id], 0);
 
-  const updateCart = (item: CardapioItem, delta: number) => setCart(current => {
-    const quantity = Math.max(0, (current[item.id] ?? 0) + delta);
-    if (quantity === 0) {
-      const next = { ...current };
-      delete next[item.id];
-      return next;
-    }
-    return { ...current, [item.id]: quantity };
+  const updateCart = (item: CardapioItem, delta: number) => setCartState(current => {
+    const quantities = current.slug === slug ? current.quantities : {};
+    const quantity = Math.min(99, Math.max(0, (quantities[item.id] ?? 0) + delta));
+    const next = { ...quantities };
+    if (quantity === 0) delete next[item.id];
+    else next[item.id] = quantity;
+    return { slug, quantities: next };
   });
 
   const orderUrl = useMemo(() => {
-    if (!cardapio?.whatsapp || cartItems.length === 0) return '';
+    const phone = normalizeWhatsApp(cardapio?.whatsapp ?? '');
+    if (!cardapio?.aceita_pedidos || !/^55\d{10,11}$/.test(phone) || cartItems.length === 0) return '';
     const lines = cartItems.map(item => `${cart[item.id]}x ${item.nome} — ${money.format(Number(item.preco) * cart[item.id])}`);
     const message = [`Olá, ${cardapio.nome}! Gostaria de fazer este pedido:`, '', ...lines, '', `Total estimado: ${money.format(total)}`, '', `Cardápio: ${window.location.href}`].join('\n');
-    return `https://wa.me/${normalizeWhatsApp(cardapio.whatsapp)}?text=${encodeURIComponent(message)}`;
+    return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
   }, [cardapio, cart, cartItems, total]);
 
   const share = async () => {
     const data = { title: cardapio?.nome ?? 'Cardápio digital', text: `Veja o cardápio de ${cardapio?.nome}.`, url: window.location.href };
-    if (navigator.share) await navigator.share(data);
-    else {
-      await navigator.clipboard.writeText(window.location.href);
-      toast.success('Link copiado.');
+    try {
+      if (navigator.share) await navigator.share(data);
+      else {
+        await navigator.clipboard.writeText(window.location.href);
+        toast.success('Link copiado.');
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      toast.error('Não foi possível compartilhar. Copie o endereço do navegador.');
     }
   };
 
