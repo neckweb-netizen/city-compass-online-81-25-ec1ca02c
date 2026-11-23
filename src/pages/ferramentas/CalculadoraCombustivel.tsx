@@ -39,18 +39,19 @@ export default function CalculadoraCombustivel() {
       precoUnitario !== null && precoUnitario > 0 &&
       custosExtras !== null && custosExtras >= 0 &&
       pessoas !== null && Number.isInteger(pessoas) && pessoas >= 1 && pessoas <= 20;
-    const km = valido ? kmIda * (idaVolta ? 2 : 1) : 0;
-    const quantidade = valido ? km / rendimento : 0;
-    const combustivelTotal = valido ? quantidade * precoUnitario : 0;
-    const total = valido ? combustivelTotal + custosExtras : 0;
-    return { km, quantidade, combustivelTotal, total, porPessoa: valido ? total / pessoas : 0, valido };
+    // Valores anuláveis são protegidos mesmo em verificadores de tipo mais antigos.
+    const km = valido ? (kmIda ?? 0) * (idaVolta ? 2 : 1) : 0;
+    const quantidade = valido ? km / (rendimento ?? 1) : 0;
+    const combustivelTotal = valido ? quantidade * (precoUnitario ?? 0) : 0;
+    const total = valido ? combustivelTotal + (custosExtras ?? 0) : 0;
+    return { km, quantidade, combustivelTotal, total, porPessoa: valido ? total / (pessoas ?? 1) : 0, valido };
   }, [consumo, distancia, idaVolta, passageiros, pedagios, preco]);
 
   const comparacao = useMemo(() => {
     const gas = numberFrom(gasolina);
     const eta = numberFrom(etanol);
     const valido = gas !== null && gas > 0 && eta !== null && eta > 0;
-    const percentual = valido ? (eta / gas) * 100 : 0;
+    const percentual = valido ? ((eta ?? 0) / (gas ?? 1)) * 100 : 0;
     return { percentual, recomendado: percentual > 0 && percentual <= 70 ? 'Etanol' : 'Gasolina', valido };
   }, [etanol, gasolina]);
   const unidadeCombustivel = combustivel === 'GNV' ? 'm³' : 'litros';
