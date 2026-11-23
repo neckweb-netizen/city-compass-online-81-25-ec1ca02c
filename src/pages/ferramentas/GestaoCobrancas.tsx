@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { GeradorCobranca } from './GeradorCobranca';
-import { EMPTY_COBRANCAS, cobrancasStorageKey, cobrancasSyncCacheKey, formatCobrancaMoney, hojeLocal, parseCobrancaCentavos, telefoneWhatsapp, validarBackupCobrancas, type CobrancaCliente, type CobrancaDados, type CobrancaRegistro } from '@/features/cobrancas/microCrm';
+import { EMPTY_COBRANCAS, cobrancasStorageKey, cobrancasSyncCacheKey, cobrancasImportedLegacyKey, legacyBackupFingerprint, formatCobrancaMoney, hojeLocal, parseCobrancaCentavos, telefoneWhatsapp, validarBackupCobrancas, type CobrancaCliente, type CobrancaDados, type CobrancaRegistro } from '@/features/cobrancas/microCrm';
 
 const blankClient = { nome: '', telefone: '' };
 const blankBill = () => ({ clienteId: '', descricao: '', valor: '', vencimento: hojeLocal() });
@@ -48,6 +48,7 @@ export const GestaoCobrancas = () => {
     const load = async () => {
       let backup: CobrancaDados | null = null;
       let previousSynced: CobrancaDados | null = null;
+      let alreadyImported = false;
       try {
         // Uma cópia local ilegível não deve impedir a leitura do caderno remoto.
         // Preserve a chave antiga e não sobrescreva dados que não puderam ser lidos.
@@ -62,6 +63,10 @@ export const GestaoCobrancas = () => {
             previousSynced = validarBackupCobrancas(JSON.parse(syncedRaw));
             if (!previousSynced) throw new Error('O cache sincronizado está ilegível.');
           }
+          if (backup) {
+            const importedFingerprint = localStorage.getItem(cobrancasImportedLegacyKey(account));
+            alreadyImported = importedFingerprint !== null && importedFingerprint === await legacyBackupFingerprint(backup);
+          }
         } catch {
           if (!cancelled && activeAccountRef.current === account)
             setLocalStorageWarning('A cópia deste aparelho não pôde ser lida. Ela será preservada sem alterações. Exporte o caderno remoto e verifique o armazenamento do navegador.');
@@ -74,7 +79,7 @@ export const GestaoCobrancas = () => {
         if (cancelled || activeAccountRef.current !== account) return;
         setData(remote);
         setRevision(row ? Number((row as any).revision) : 0);
-        if (backup && (backup.clientes.length || backup.cobrancas.length) &&
+        if (backup && !alreadyImported && (backup.clientes.length || backup.cobrancas.length) &&
             JSON.stringify(backup) !== JSON.stringify(remote) &&
             JSON.stringify(backup) !== JSON.stringify(previousSynced))
           setLegacy(backup);
@@ -126,7 +131,17 @@ export const GestaoCobrancas = () => {
   const importLocal = async () => {
     if (!legacy || blocked) return;
     if (!window.confirm('Importar este backup local para sua conta? Isso substituirá o caderno atualmente sincronizado. Faça backup da versão remota antes de continuar.')) return;
-    if (await persist(legacy)) toast.success('Histórico deste aparelho sincronizado.');
+    const snapshot = legacy;
+    if (await persist(snapshot)) {
+      try {
+        const fingerprint = await legacyBackupFingerprint(snapshot);
+        if (activeAccountRef.current === uid)
+          localStorage.setItem(cobrancasImportedLegacyKey(uid!), fingerprint);
+      } catch {
+        toast.warning('Histórico sincronizado, mas a marca de importação não pôde ser gravada neste navegador.');
+      }
+      if (activeAccountRef.current === uid) toast.success('Histórico deste aparelho sincronizado.');
+    }
   };
   const saveClient = async (e: FormEvent) => {
     e.preventDefault();
