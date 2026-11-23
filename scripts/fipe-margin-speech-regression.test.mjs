@@ -12,6 +12,10 @@ test('FIPE requests discard outdated responses across vehicle, reference, brand 
   assert.match(page, /return \(\) => \{ requestSequence\.current \+= 1; \}/);
   assert.match(page, /if \(!brandId \|\| !modelId \|\| !yearId \|\| !usage\?\.remaining \|\| loading\) return/);
   assert.match(page, /Não foi possível copiar os dados/);
+  assert.match(page, /setBrands\(\[\]\);/);
+  assert.match(page, /if \(!latestReference\) throw new Error/);
+  assert.match(page, /Você já utilizou suas \{usage\.limit\} consultas de hoje/);
+  assert.match(page, /disabled=\{isBusy \|\| !yearId \|\| !usage\?\.remaining\}/);
 });
 
 test('sales calculator treats bank fees as illustrative and validates Brazilian costs and discounts', () => {
@@ -29,8 +33,8 @@ test('sales calculator treats bank fees as illustrative and validates Brazilian 
 
 test('text reader registers and removes voiceschanged listener', () => {
   const page = read('src/pages/ferramentas/LeitorVoz.tsx');
-  assert.match(page, /speechSynthesis\.addEventListener\('voiceschanged', carregarVozes\)/);
-  assert.match(page, /speechSynthesis\.removeEventListener\('voiceschanged', carregarVozes\)/);
+  assert.match(page, /engine\.addEventListener\('voiceschanged', carregarVozes\)/);
+  assert.match(page, /engine\.removeEventListener\('voiceschanged', carregarVozes\)/);
   assert.doesNotMatch(page, /speechSynthesis\.onvoiceschanged\s*=/);
   assert.match(page, /const generationRef = useRef\(0\)/);
   assert.match(page, /generationRef\.current \+= 1/);
