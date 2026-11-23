@@ -10,6 +10,8 @@ export interface CobrancaDados { versao: 1; clientes: CobrancaCliente[]; cobranc
 
 export const EMPTY_COBRANCAS: CobrancaDados = { versao: 1, clientes: [], cobrancas: [] };
 export const cobrancasStorageKey = (userId: string) => 'sajtem:microcrm:v1:' + userId;
+// A cópia de sincronização não deve sobrescrever a chave histórica de backups locais.
+export const cobrancasSyncCacheKey = (userId: string) => 'sajtem:microcrm:sync:v1:' + userId;
 
 export const formatCobrancaMoney = (centavos: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(centavos / 100);
