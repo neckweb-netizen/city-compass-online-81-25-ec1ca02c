@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const page = readFileSync(new URL('../src/pages/ferramentas/CicloMenstrual.tsx', import.meta.url), 'utf8');
 
 test('cycle diary never overwrites unreadable stored records', () => {
-  assert.match(page, /setStorageError\(true\);\s*\/\/ Não sobrescreva dados antigos/);
+  assert.match(page, /setStorageError\(true\);\s*setStorageReadFailed\(true\);\s*\/\/ Não sobrescreva dados antigos/);
   assert.match(page, /if \(!loaded \|\| storageReadFailed\) return/);
   assert.match(page, /setStorageReadFailed\(true\)/);
 });
