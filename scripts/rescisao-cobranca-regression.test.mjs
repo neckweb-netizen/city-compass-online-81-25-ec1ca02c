@@ -34,7 +34,7 @@ test('billing management reuses validated manual billing without losing its own 
   assert.match(billing, /<ToolBanner secao=\{bannerSecao\} \/>/);
   assert.match(management, /<GeradorCobranca bannerSecao="gestao_cobrancas"\s*\/>/);
   assert.match(management, /cobrancasStorageKey\(account\)/);
-  assert.match(management, /localStorage\.setItem\(cobrancasStorageKey\(account\), JSON\.stringify\(next\)\)/);
+  assert.match(management, /localStorage\.setItem\(cobrancasSyncCacheKey\(account\), JSON\.stringify\(next\)\)/);
   assert.match(management, /supabase\.rpc\('save_crm_caderno' as any/);
   assert.match(management, /p_expected_revision: revision, p_dados: next/);
   assert.match(management, /if \(!nextRevision \|\| Number\(nextRevision\) <= 0\)/);
@@ -87,4 +87,17 @@ test('CRM preserves the rejected snapshot as a downloadable file before resolvin
   assert.match(page, /downloadSnapshot\(conflictDraft\.snapshot, 'sajtem-cobrancas-alteracoes-nao-salvas-'/);
   assert.match(page, /Baixar alterações não salvas/);
   assert.match(page, /setConflictDraft\(null\)/);
+});
+
+
+test('legacy records are never overwritten by synced cache data', () => {
+  const page = read('src/pages/ferramentas/GestaoCobrancas.tsx');
+  const model = read('src/features/cobrancas/microCrm.ts');
+  assert.match(model, /export const cobrancasStorageKey =/);
+  assert.match(model, /export const cobrancasSyncCacheKey =/);
+  assert.match(page, /localStorage\.getItem\(cobrancasStorageKey\(account\)\)/);
+  assert.match(page, /localStorage\.getItem\(cobrancasSyncCacheKey\(account\)\)/);
+  assert.match(page, /JSON\.stringify\(backup\) !== JSON\.stringify\(previousSynced\)/);
+  assert.match(page, /localStorage\.setItem\(cobrancasSyncCacheKey\(account\), JSON\.stringify\(next\)\)/);
+  assert.doesNotMatch(page, /localStorage\.setItem\(cobrancasStorageKey\(account\)/);
 });
