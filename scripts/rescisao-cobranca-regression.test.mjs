@@ -32,6 +32,12 @@ test('billing management reuses validated manual billing without losing its own 
   const management = read('src/pages/ferramentas/GestaoCobrancas.tsx');
   assert.match(billing, /bannerSecao = 'gerador_cobranca'/);
   assert.match(billing, /<ToolBanner secao=\{bannerSecao\} \/>/);
-  assert.match(management, /<GeradorCobranca bannerSecao="gestao_cobrancas" \/>/);
+  assert.match(management, /<GeradorCobranca bannerSecao="gestao_cobrancas"\s*\/>/);
+  assert.match(management, /cobrancasStorageKey\(uid\)/);
+  assert.match(management, /localStorage\.setItem\(cobrancasStorageKey\(uid\), JSON\.stringify\(next\)\)/);
+  assert.match(management, /activeAccountRef\.current !== requestedAccount/);
+  assert.match(management, /validarBackupCobrancas\(JSON\.parse\(await file\.text\(\)\)\)/);
+  assert.match(management, /status: paid \? 'paga' : 'pendente'/);
+  assert.match(management, /telefoneWhatsapp\(customer\?\.telefone \?\? ''\)/);
   assert.doesNotMatch(management, /navigator\.clipboard\.writeText/);
 });
