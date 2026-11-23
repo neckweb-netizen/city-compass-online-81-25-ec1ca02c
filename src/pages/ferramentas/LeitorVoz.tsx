@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -13,6 +13,8 @@ import { ToolBanner } from '@/components/ferramentas/ToolBanner';
 
 export const LeitorVoz = () => {
   const navigate = useNavigate();
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const generationRef = useRef(0);
 
   // ESTADOS DO TEXTO E DA LEITURA
   const [texto, setTexto] = useState('');
@@ -26,108 +28,106 @@ export const LeitorVoz = () => {
   const [tom, setTom] = useState<number>(1); // 0.5 até 1.5
   const [volume, setVolume] = useState<number>(1); // 0 até 1
 
-  // CARREGAR VOZES SUPORTADAS PELO NAVEGADOR
-  const carregarVozes = () => {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      const lista = window.speechSynthesis.getVoices();
-      if (lista.length > 0) {
-        setVozesDisponiveis(lista);
-        // Tenta selecionar uma voz em Português como padrão
-        const vozPt = lista.find(v => v.lang.includes('pt') || v.lang.includes('PT'));
-        if (vozPt) {
-          setVozSelecionada(vozPt.name);
-        } else if (lista[0]) {
-          setVozSelecionada(lista[0].name);
-        }
-      }
-    }
-  };
+  // O navegador pode disponibilizar as vozes depois do primeiro carregamento.
+  const carregarVozes = useCallback(() => {
+    if (!('speechSynthesis' in window)) return;
+    const lista = window.speechSynthesis.getVoices();
+    setVozesDisponiveis(lista);
+    setVozSelecionada(current => {
+      if (current && lista.some(voice => voice.name === current)) return current;
+      return (lista.find(voice => voice.lang.toLowerCase().startsWith('pt-br'))
+        ?? lista.find(voice => voice.lang.toLowerCase().startsWith('pt'))
+        ?? lista[0])?.name ?? '';
+    });
+  }, []);
 
   useEffect(() => {
     carregarVozes();
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.addEventListener('voiceschanged', carregarVozes);
-    }
-
+    if (!('speechSynthesis' in window)) return;
+    const engine = window.speechSynthesis;
+    engine.addEventListener('voiceschanged', carregarVozes);
     return () => {
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.removeEventListener('voiceschanged', carregarVozes);
-        window.speechSynthesis.cancel();
-      }
+      generationRef.current += 1;
+      utteranceRef.current = null;
+      engine.removeEventListener('voiceschanged', carregarVozes);
+      engine.cancel();
     };
-  }, []);
+  }, [carregarVozes]);
 
-  // INICIAR OU RETOMAR A LEITURA
+  // Retomar apenas a fala atual; novas leituras invalidam callbacks antigos.
   const handleIniciarLeitura = () => {
     if (!texto.trim()) {
       toast.error('Digite ou cole um texto antes de iniciar a leitura.');
       return;
     }
-
-    if (!('speechSynthesis' in window)) {
+    if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) {
       toast.error('Seu navegador não suporta a funcionalidade de conversão de texto em voz.');
       return;
     }
-
-    if (pausado) {
-      window.speechSynthesis.resume();
+    const engine = window.speechSynthesis;
+    if (pausado && utteranceRef.current) {
+      engine.resume();
       setLendo(true);
       setPausado(false);
       return;
     }
 
-    // CANCELA QUALQUER FALA ANTERIOR PENDENTE
-    window.speechSynthesis.cancel();
-
+    const generation = ++generationRef.current;
+    engine.cancel();
     const utterance = new SpeechSynthesisUtterance(texto);
-
-    if (vozSelecionada) {
-      const vozEncontrada = vozesDisponiveis.find(v => v.name === vozSelecionada);
-      if (vozEncontrada) {
-        utterance.voice = vozEncontrada;
-      }
-    }
-
+    utteranceRef.current = utterance;
+    utterance.lang = 'pt-BR';
+    const selectedVoice = vozesDisponiveis.find(v => v.name === vozSelecionada);
+    if (selectedVoice) utterance.voice = selectedVoice;
     utterance.rate = velocidade;
     utterance.pitch = tom;
     utterance.volume = volume;
-
     utterance.onstart = () => {
+      if (generation !== generationRef.current) return;
       setLendo(true);
       setPausado(false);
     };
-
     utterance.onend = () => {
+      if (generation !== generationRef.current) return;
+      utteranceRef.current = null;
       setLendo(false);
       setPausado(false);
     };
-
-    utterance.onerror = (e) => {
-      console.error('Erro na síntese de voz:', e);
+    utterance.onerror = event => {
+      if (generation !== generationRef.current) return;
+      utteranceRef.current = null;
       setLendo(false);
       setPausado(false);
-      toast.error('Ocorreu um erro ao reproduzir o áudio.');
+      if (event.error !== 'canceled' && event.error !== 'interrupted') {
+        toast.error('Ocorreu um erro ao reproduzir o áudio.');
+      }
     };
-
-    window.speechSynthesis.speak(utterance);
+    try {
+      engine.speak(utterance);
+    } catch {
+      utteranceRef.current = null;
+      setLendo(false);
+      setPausado(false);
+      toast.error('Não foi possível iniciar a leitura neste navegador.');
+    }
   };
 
-  // PAUSAR A LEITURA
   const handlePausarLeitura = () => {
-    if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
-      window.speechSynthesis.pause();
+    if (!('speechSynthesis' in window)) return;
+    const engine = window.speechSynthesis;
+    if (engine.speaking && !engine.paused) {
+      engine.pause();
       setLendo(false);
       setPausado(true);
     }
   };
 
-  // PARAR COMPLETAMENTE A LEITURA
   const handlePararLeitura = () => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      setLendo(false);
-      setPausado(false);
-    }
+    generationRef.current += 1;
+    utteranceRef.current = null;
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    setLendo(false);
+    setPausado(false);
   };
 
   // LIMPAR O TEXTO
@@ -201,7 +201,10 @@ export const LeitorVoz = () => {
                 <Textarea 
                   placeholder="Cole aqui seu texto completo para ouvir a narração..." 
                   value={texto} 
-                  onChange={e => setTexto(e.target.value)} 
+                  onChange={e => {
+                    if (lendo || pausado) handlePararLeitura();
+                    setTexto(e.target.value);
+                  }} 
                   className="min-h-[260px] text-sm sm:text-base leading-relaxed p-4 bg-muted/20 border-border resize-y"
                 />
 
