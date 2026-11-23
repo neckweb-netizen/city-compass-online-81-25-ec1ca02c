@@ -5,6 +5,7 @@ on:
     paths:
       - 'src/pages/ferramentas/SimuladorRescisao.tsx'
       - 'src/pages/ferramentas/GeradorCobranca.tsx'
+      - 'src/pages/ferramentas/GestaoCobrancas.tsx'
       - 'src/lib/parseBrazilianNumber.ts'
       - 'scripts/rescisao-cobranca-regression.test.mjs'
       - '.github/workflows/rescisao-cobranca-regression.yml'
