@@ -25,7 +25,11 @@ test('calculators use localized number parsing without masking bad budget or com
   const fuel = read('src/pages/ferramentas/CalculadoraCombustivel.tsx');
   const comparison = read('src/pages/ferramentas/ComparadorPrecos.tsx');
   const budget = read('src/pages/ferramentas/CalculadoraOrcamento.tsx');
-  assert.match(fuel, /parseBrazilianNumber\(value\) \?\? 0/);
+  assert.match(fuel, /parseBrazilianNumber\(value\)/);
+  assert.match(fuel, /Number\.isInteger\(pessoas\)/);
+  assert.match(fuel, /custosExtras !== null && custosExtras >= 0/);
+  assert.match(fuel, /combustivel === 'GNV' \? 'm³' : 'litros'/);
+  assert.match(fuel, /Consumo médio \(km\/m³\)/);
   assert.match(comparison, /parseBrazilianNumber\(value\)/);
   assert.match(comparison, /const valid = price !== null && price > 0 && quantity !== null && quantity > 0/);
   assert.match(comparison, /bestItems\.length > 1/);
