@@ -7,6 +7,7 @@ on:
       - 'src/pages/ferramentas/GeradorCobranca.tsx'
       - 'src/pages/ferramentas/GestaoCobrancas.tsx'
       - 'src/features/cobrancas/**'
+      - 'supabase/migrations/*crm_cadernos*'
       - 'src/lib/parseBrazilianNumber.ts'
       - 'scripts/rescisao-cobranca-regression.test.mjs'
       - '.github/workflows/rescisao-cobranca-regression.yml'
