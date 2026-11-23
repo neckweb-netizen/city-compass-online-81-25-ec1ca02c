@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent, type ChangeEvent 
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Check, Download, MessageCircle, Pencil, Plus, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import { AuthDialog } from '@/components/auth/AuthDialog';
 import { ToolBanner } from '@/components/ferramentas/ToolBanner';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,10 @@ export const GestaoCobrancas = () => {
   const [owner, setOwner] = useState<string | null>(null);
   const [data, setData] = useState<CobrancaDados>(EMPTY_COBRANCAS);
   const [failure, setFailure] = useState('');
+  const [revision, setRevision] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+  const [legacy, setLegacy] = useState<CobrancaDados | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
   const [client, setClient] = useState(blankClient);
   const [clientEditing, setClientEditing] = useState<string | null>(null);
@@ -33,46 +38,90 @@ export const GestaoCobrancas = () => {
   const [filter, setFilter] = useState('todas');
   const [search, setSearch] = useState('');
   useEffect(() => {
-    setOwner(null); setData(EMPTY_COBRANCAS); setFailure('');
+    let cancelled = false;
+    setOwner(null); setData(EMPTY_COBRANCAS); setFailure(''); setLegacy(null); setRevision(0);
     setClient(blankClient); setClientEditing(null); setBill(blankBill()); setBillEditing(null);
     if (!uid) return;
-    try {
-      const raw = localStorage.getItem(cobrancasStorageKey(uid));
-      const parsed = raw ? validarBackupCobrancas(JSON.parse(raw)) : EMPTY_COBRANCAS;
-      if (!parsed) throw new Error('Histórico ilegível ou incompatível. Não sobrescreva os dados do navegador.');
-      setData(parsed);
-    } catch (error) {
-      setFailure(error instanceof Error ? error.message : 'Não foi possível acessar o armazenamento.');
-    }
-    setOwner(uid);
+    const account = uid;
+    const load = async () => {
+      let backup: CobrancaDados | null = null;
+      try {
+        const raw = localStorage.getItem(cobrancasStorageKey(account));
+        if (raw) {
+          backup = validarBackupCobrancas(JSON.parse(raw));
+          if (!backup) throw new Error('O histórico local está ilegível. Preserve o armazenamento antes de continuar.');
+        }
+        const { data: row, error } = await supabase.from('crm_cadernos' as any)
+          .select('dados, revision').eq('user_id', account).maybeSingle();
+        if (error) throw error;
+        const remote = row ? validarBackupCobrancas((row as any).dados) : EMPTY_COBRANCAS;
+        if (!remote) throw new Error('Os dados remotos estão incompatíveis. Nenhum registro será alterado.');
+        if (cancelled || activeAccountRef.current !== account) return;
+        setData(remote);
+        setRevision(row ? Number((row as any).revision) : 0);
+        if (backup && (backup.clientes.length || backup.cobrancas.length) && JSON.stringify(backup) !== JSON.stringify(remote))
+          setLegacy(backup);
+      } catch (error) {
+        if (cancelled || activeAccountRef.current !== account) return;
+        setFailure(error instanceof Error ? error.message : 'Não foi possível carregar o caderno.');
+      } finally {
+        if (!cancelled && activeAccountRef.current === account) setOwner(account);
+      }
+    };
+    void load();
+    return () => { cancelled = true; };
   }, [uid]);
   const current = uid && owner === uid ? data : EMPTY_COBRANCAS;
-  const blocked = authLoading || !uid || uid !== owner || Boolean(failure);
-  const persist = (next: CobrancaDados) => {
-    if (!uid || blocked) return false;
+  const blocked = authLoading || !uid || uid !== owner || Boolean(failure) || saving;
+  const persist = async (next: CobrancaDados): Promise<boolean> => {
+    if (!uid || blocked || savingRef.current) return false;
+    const account = uid;
+    savingRef.current = true; setSaving(true);
     try {
-      localStorage.setItem(cobrancasStorageKey(uid), JSON.stringify(next));
-      setData(next); return true;
-    } catch {
-      setFailure('Falha ao salvar. O histórico anterior foi preservado.');
-      toast.error('Não foi possível salvar neste aparelho.'); return false;
+      if (!validarBackupCobrancas(next)) throw new Error('Dados inválidos; nenhuma alteração enviada.');
+      const { data: nextRevision, error } = await supabase.rpc('save_crm_caderno' as any,
+        { p_expected_revision: revision, p_dados: next } as any);
+      if (activeAccountRef.current !== account) return false;
+      if (error) throw error;
+      if (!nextRevision || Number(nextRevision) <= 0) {
+        setFailure('Outro dispositivo alterou o caderno. Exporte um backup local, depois recarregue a página para obter a versão mais recente.');
+        toast.error('Conflito de sincronização. Nenhum dado foi sobrescrito.');
+        return false;
+      }
+      setRevision(Number(nextRevision)); setData(next);
+      try { localStorage.setItem(cobrancasStorageKey(account), JSON.stringify(next)); } catch {
+        toast.warning('Salvo na conta, mas a cópia local não pôde ser atualizada.');
+      }
+      setLegacy(null);
+      return true;
+    } catch (error) {
+      if (activeAccountRef.current === account)
+        toast.error(error instanceof Error ? error.message : 'Falha na sincronização.');
+      return false;
+    } finally {
+      savingRef.current = false; setSaving(false);
     }
   };
-  const saveClient = (e: FormEvent) => {
+  const importLocal = async () => {
+    if (!legacy || blocked) return;
+    if (!window.confirm('Importar este backup local para sua conta? Isso substituirá o caderno atualmente sincronizado. Faça backup da versão remota antes de continuar.')) return;
+    if (await persist(legacy)) toast.success('Histórico deste aparelho sincronizado.');
+  };
+  const saveClient = async (e: FormEvent) => {
     e.preventDefault();
     const name = client.nome.trim(), phone = client.telefone.trim();
     if (name.length < 2 || name.length > 120 || phone.length > 25) return toast.error('Nome ou telefone inválido.');
     const previous = current.clientes.find(c => c.id === clientEditing);
     const item: CobrancaCliente = { id: previous?.id ?? crypto.randomUUID(), nome: name, telefone: phone, criadoEm: previous?.criadoEm ?? new Date().toISOString() };
-    if (persist({ ...current, clientes: previous ? current.clientes.map(c => c.id === previous.id ? item : c) : [...current.clientes, item] })) {
+    if (await persist({ ...current, clientes: previous ? current.clientes.map(c => c.id === previous.id ? item : c) : [...current.clientes, item] })) {
       setClient(blankClient); setClientEditing(null); toast.success('Cliente salvo.');
     }
   };
-  const removeClient = (c: CobrancaCliente) => {
+  const removeClient = async (c: CobrancaCliente) => {
     if (current.cobrancas.some(b => b.clienteId === c.id)) return toast.error('Exclua as cobranças deste cliente antes de removê-lo.');
     if (window.confirm('Excluir o cliente ' + c.nome + '?') && persist({ ...current, clientes: current.clientes.filter(x => x.id !== c.id) })) toast.success('Cliente excluído.');
   };
-  const saveBill = (e: FormEvent) => {
+  const saveBill = async (e: FormEvent) => {
     e.preventDefault();
     const cents = parseCobrancaCentavos(bill.valor);
     const desc = bill.descricao.trim();
@@ -82,16 +131,16 @@ export const GestaoCobrancas = () => {
       day.toISOString().slice(0, 10) !== bill.vencimento) return toast.error('Confira cliente, valor, descrição e vencimento.');
     const previous = current.cobrancas.find(c => c.id === billEditing);
     const item: CobrancaRegistro = { id: previous?.id ?? crypto.randomUUID(), clienteId: bill.clienteId, descricao: desc, valorCentavos: cents, vencimento: bill.vencimento, status: previous?.status ?? 'pendente', pagoEm: previous?.pagoEm ?? null, criadoEm: previous?.criadoEm ?? new Date().toISOString() };
-    if (persist({ ...current, cobrancas: previous ? current.cobrancas.map(c => c.id === previous.id ? item : c) : [...current.cobrancas, item] })) {
+    if (await persist({ ...current, cobrancas: previous ? current.cobrancas.map(c => c.id === previous.id ? item : c) : [...current.cobrancas, item] })) {
       setBill(blankBill()); setBillEditing(null); toast.success('Cobrança salva.');
     }
   };
-  const togglePaid = (c: CobrancaRegistro) => {
+  const togglePaid = async (c: CobrancaRegistro) => {
     const paid = c.status !== 'paga';
     if (!paid && !window.confirm('Reabrir cobrança paga?')) return;
-    if (persist({ ...current, cobrancas: current.cobrancas.map(x => x.id === c.id ? { ...x, status: paid ? 'paga' : 'pendente', pagoEm: paid ? new Date().toISOString() : null } : x) })) toast.success(paid ? 'Pagamento registrado.' : 'Cobrança reaberta.');
+    if (await persist({ ...current, cobrancas: current.cobrancas.map(x => x.id === c.id ? { ...x, status: paid ? 'paga' : 'pendente', pagoEm: paid ? new Date().toISOString() : null } : x) })) toast.success(paid ? 'Pagamento registrado.' : 'Cobrança reaberta.');
   };
-  const removeBill = (c: CobrancaRegistro) => {
+  const removeBill = async (c: CobrancaRegistro) => {
     if (window.confirm('Excluir esta cobrança e seu histórico?') && persist({ ...current, cobrancas: current.cobrancas.filter(x => x.id !== c.id) })) toast.success('Cobrança removida.');
   };
   const exportBackup = () => {
@@ -105,6 +154,7 @@ export const GestaoCobrancas = () => {
     } catch { toast.error('Não foi possível exportar o backup.'); }
   };
   const importBackup = async (e: ChangeEvent<HTMLInputElement>) => {
+    const requestedAccount = uid;
     const file = e.target.files?.[0]; e.target.value = '';
     if (!file || blocked) return;
     const requestedAccount = uid;
@@ -112,10 +162,11 @@ export const GestaoCobrancas = () => {
     try {
       const parsed = validarBackupCobrancas(JSON.parse(await file.text()));
       if (activeAccountRef.current !== requestedAccount) return;
+      if (activeAccountRef.current !== requestedAccount) return;
       if (!parsed) return toast.error('Arquivo de backup inválido.');
       if (!window.confirm('Substituir TODOS os clientes e cobranças locais? Exporte uma cópia antes de continuar.')) return;
       if (activeAccountRef.current !== requestedAccount) return;
-      if (persist(parsed)) { setClient(blankClient); setBill(blankBill()); setClientEditing(null); setBillEditing(null); toast.success('Backup restaurado.'); }
+      if (await persist(parsed)) { setClient(blankClient); setBill(blankBill()); setClientEditing(null); setBillEditing(null); toast.success('Backup restaurado.'); }
     } catch { toast.error('Não foi possível ler o backup.'); }
   };
   const today = hojeLocal();
@@ -143,11 +194,12 @@ export const GestaoCobrancas = () => {
     <Tabs defaultValue="caderno"><TabsList className="mb-4 h-auto"><TabsTrigger value="caderno">Caderno</TabsTrigger><TabsTrigger value="gerador">Gerador de mensagens</TabsTrigger></TabsList>
       <TabsContent value="gerador"><GeradorCobranca bannerSecao="gestao_cobrancas"/></TabsContent>
       <TabsContent value="caderno" className="space-y-5"><ToolBanner secao="gestao_cobrancas"/>
-        <Card><CardContent className="p-4 text-sm"><b>Armazenamento local:</b> os dados deste caderno ficam neste navegador, separados por conta. Não sincronizam com outros aparelhos nem com o Supabase. Quem usa este dispositivo pode acessar dados locais. Faça backups: limpar dados do navegador pode apagar seus registros. Pagamentos são confirmados manualmente, sem Pix automático.</CardContent></Card>
+        <Card><CardContent className="p-4 text-sm"><b>Sincronização:</b> clientes e cobranças são guardados na sua conta e sincronizam entre aparelhos após carregar novamente. O navegador mantém uma cópia local para backup; faça exportações regularmente. Nunca compartilhe esses arquivos com terceiros. Pagamentos são confirmados manualmente, sem Pix automático.</CardContent></Card>
         {authLoading || (uid && owner !== uid) ? <p role="status">Carregando...</p> : !user ?
           <Card><CardContent className="space-y-3 p-6"><p>Entre na sua conta para usar o caderno. O gerador de mensagens funciona sem login.</p><Button onClick={() => setAuthOpen(true)}>Entrar</Button><AuthDialog open={authOpen} onOpenChange={setAuthOpen} defaultTab="login"/></CardContent></Card> :
           failure ? <Card><CardContent role="alert" className="p-5 text-destructive">{failure} Nenhum registro será sobrescrito até corrigir o problema. Preserve uma cópia dos dados do navegador.</CardContent></Card> :
           <>
+            {legacy && <Card><CardContent className="space-y-2 p-4"><p className="text-sm">Encontramos dados antigos deste aparelho. Eles não foram enviados automaticamente à sua conta.</p><Button type="button" variant="outline" disabled={blocked} onClick={() => void importLocal()}>Importar dados locais para minha conta</Button></CardContent></Card>}
             <div className="grid gap-3 sm:grid-cols-3">{[['A receber',pendingAmount],['Vencidas',overdueAmount],['Pagas',paidAmount]].map(([label,value]) => <Card key={String(label)}><CardContent className="p-5"><p className="text-sm text-muted-foreground">{label}</p><b className="text-2xl">{formatCobrancaMoney(Number(value))}</b></CardContent></Card>)}</div>
             <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={exportBackup}><Download className="mr-2 h-4 w-4"/>Exportar backup</Button><label className="inline-flex cursor-pointer items-center rounded-md border px-4 py-2 text-sm font-medium"><Upload className="mr-2 h-4 w-4"/>Importar backup<input type="file" accept=".json,application/json" className="sr-only" aria-label="Importar arquivo JSON" onChange={e => void importBackup(e)}/></label></div>
             <div className="grid gap-5 lg:grid-cols-2">
