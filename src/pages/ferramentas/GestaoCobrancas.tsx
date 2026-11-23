@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { GeradorCobranca } from './GeradorCobranca';
-import { EMPTY_COBRANCAS, cobrancasStorageKey, formatCobrancaMoney, hojeLocal, parseCobrancaCentavos, telefoneWhatsapp, validarBackupCobrancas, type CobrancaCliente, type CobrancaDados, type CobrancaRegistro } from '@/features/cobrancas/microCrm';
+import { EMPTY_COBRANCAS, cobrancasStorageKey, cobrancasSyncCacheKey, formatCobrancaMoney, hojeLocal, parseCobrancaCentavos, telefoneWhatsapp, validarBackupCobrancas, type CobrancaCliente, type CobrancaDados, type CobrancaRegistro } from '@/features/cobrancas/microCrm';
 
 const blankClient = { nome: '', telefone: '' };
 const blankBill = () => ({ clienteId: '', descricao: '', valor: '', vencimento: hojeLocal() });
@@ -47,6 +47,7 @@ export const GestaoCobrancas = () => {
     const account = uid;
     const load = async () => {
       let backup: CobrancaDados | null = null;
+      let previousSynced: CobrancaDados | null = null;
       try {
         // Uma cópia local ilegível não deve impedir a leitura do caderno remoto.
         // Preserve a chave antiga e não sobrescreva dados que não puderam ser lidos.
@@ -55,6 +56,11 @@ export const GestaoCobrancas = () => {
           if (raw) {
             backup = validarBackupCobrancas(JSON.parse(raw));
             if (!backup) throw new Error('O backup local está ilegível.');
+          }
+          const syncedRaw = localStorage.getItem(cobrancasSyncCacheKey(account));
+          if (syncedRaw) {
+            previousSynced = validarBackupCobrancas(JSON.parse(syncedRaw));
+            if (!previousSynced) throw new Error('O cache sincronizado está ilegível.');
           }
         } catch {
           if (!cancelled && activeAccountRef.current === account)
@@ -68,7 +74,9 @@ export const GestaoCobrancas = () => {
         if (cancelled || activeAccountRef.current !== account) return;
         setData(remote);
         setRevision(row ? Number((row as any).revision) : 0);
-        if (backup && (backup.clientes.length || backup.cobrancas.length) && JSON.stringify(backup) !== JSON.stringify(remote))
+        if (backup && (backup.clientes.length || backup.cobrancas.length) &&
+            JSON.stringify(backup) !== JSON.stringify(remote) &&
+            JSON.stringify(backup) !== JSON.stringify(previousSynced))
           setLegacy(backup);
       } catch (error) {
         if (cancelled || activeAccountRef.current !== account) return;
@@ -101,7 +109,7 @@ export const GestaoCobrancas = () => {
       setRevision(Number(nextRevision)); setData(next);
       // Não substitua um backup legado ainda não importado; o usuário decide quando migrar.
       if (!localStorageWarning && (!legacy || JSON.stringify(legacy) === JSON.stringify(next))) {
-        try { localStorage.setItem(cobrancasStorageKey(account), JSON.stringify(next)); } catch {
+        try { localStorage.setItem(cobrancasSyncCacheKey(account), JSON.stringify(next)); } catch {
           toast.warning('Salvo na conta, mas a cópia local não pôde ser atualizada.');
         }
         setLegacy(null);
