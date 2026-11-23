@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { ToolBanner } from '@/components/ferramentas/ToolBanner';
 import { parseBrazilianNumber } from '@/lib/parseBrazilianNumber';
 
-export const GeradorCobranca = () => {
+export const GeradorCobranca = ({ bannerSecao = 'gerador_cobranca' }: { bannerSecao?: 'gerador_cobranca' | 'gestao_cobrancas' }) => {
   const navigate = useNavigate();
   const [nomeCliente, setNomeCliente] = useState('');
   const [valor, setValor] = useState('');
@@ -76,7 +76,7 @@ export const GeradorCobranca = () => {
           </Badge>
         </div>
 
-        <ToolBanner secao="gerador_cobranca" />
+        <ToolBanner secao={bannerSecao} />
 
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-extrabold text-foreground flex items-center justify-center gap-2">
