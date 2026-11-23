@@ -21,11 +21,18 @@ test('Brazilian numeric parsing handles thousands, decimal commas and rejects in
   }
 });
 
-test('calculators share the same localized number parser', () => {
-  for (const file of ['CalculadoraCombustivel.tsx', 'ComparadorPrecos.tsx', 'CalculadoraOrcamento.tsx']) {
-    const page = read('src/pages/ferramentas/' + file);
-    assert.match(page, /parseBrazilianNumber\(value\) \?\? 0/);
-  }
+test('calculators use localized number parsing without masking bad budget or comparison input', () => {
+  const fuel = read('src/pages/ferramentas/CalculadoraCombustivel.tsx');
+  const comparison = read('src/pages/ferramentas/ComparadorPrecos.tsx');
+  const budget = read('src/pages/ferramentas/CalculadoraOrcamento.tsx');
+  assert.match(fuel, /parseBrazilianNumber\(value\) \?\? 0/);
+  assert.match(comparison, /parseBrazilianNumber\(value\)/);
+  assert.match(comparison, /const valid = price !== null && price > 0 && quantity !== null && quantity > 0/);
+  assert.match(comparison, /bestItems\.length > 1/);
+  assert.match(budget, /parseBrazilianNumber\(value\)/);
+  assert.match(budget, /const entradasValidas =/);
+  assert.match(budget, /impostosLidos !== null && impostosLidos >= 0 && impostosLidos < 100/);
+  assert.match(budget, /precoTotalProjeto = entradasValidas/);
 });
 
 test('finance storage resets on account switch even when new account has empty cache', () => {
