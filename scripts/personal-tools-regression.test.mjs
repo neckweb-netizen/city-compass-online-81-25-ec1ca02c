@@ -114,3 +114,12 @@ test('finance mutations, restore and deletion wait for current account to finish
   assert.match(hook, /restoreInProgressRef\.current \|\| accountOperationRef\.current \|\| authLoading \|\| loading \|\| stateAccountId !== \(user\?\.id \?\? null\)/);
   assert.match(hook, /if \(activeUserIdRef\.current === requestedUserId\) setSyncError\(error\.message\)/);
 });
+
+
+test('unexpected finance loading errors do not leave the interface stuck', () => {
+  const hook = read('src/hooks/useControleFinanceiroStorage.ts');
+  assert.match(hook, /void loadRemote\(\)\.catch\(\(cause\) => \{/);
+  assert.match(hook, /if \(cancelled \|\| activeUserIdRef\.current !== user\.id\) return/);
+  assert.match(hook, /setSyncError\(cause instanceof Error \? cause\.message : 'Falha de conexão ao carregar dados financeiros\.'\)/);
+  assert.match(hook, /setLoading\(false\)/);
+});
