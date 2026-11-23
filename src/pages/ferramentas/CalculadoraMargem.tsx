@@ -34,7 +34,6 @@ export const CalculadoraMargem = () => {
   const [descontoPixPercentual, setDescontoPixPercentual] = useState('');
 
   // PARSER DE MOEDA E VALORES
-  const parseMoeda = (val: string) => parseBrazilianNumber(val) ?? 0;
   const formatarMoeda = (num: number) => num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const custoInformado = custoProduto.trim() ? parseBrazilianNumber(custoProduto) : null;
