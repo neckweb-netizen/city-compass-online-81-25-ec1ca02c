@@ -33,7 +33,7 @@ test('billing management reuses validated manual billing without losing its own 
   assert.match(billing, /bannerSecao = 'gerador_cobranca'/);
   assert.match(billing, /<ToolBanner secao=\{bannerSecao\} \/>/);
   assert.match(management, /<GeradorCobranca bannerSecao="gestao_cobrancas"\s*\/>/);
-  assert.match(management, /cobrancasStorageKey\(uid\)/);
+  assert.match(management, /cobrancasStorageKey\(account\)/);
   assert.match(management, /localStorage\.setItem\(cobrancasStorageKey\(account\), JSON\.stringify\(next\)\)/);
   assert.match(management, /supabase\.rpc\('save_crm_caderno' as any/);
   assert.match(management, /p_expected_revision: revision, p_dados: next/);
