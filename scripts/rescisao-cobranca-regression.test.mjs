@@ -26,3 +26,12 @@ test('manual billing normalizes Brazilian amounts and never claims clipboard suc
   assert.match(source, /disabled=\{valorInvalido\}/);
   assert.match(source, /window\.open\(url, '_blank', 'noopener,noreferrer'\)/);
 });
+
+test('billing management reuses validated manual billing without losing its own banner', () => {
+  const billing = read('src/pages/ferramentas/GeradorCobranca.tsx');
+  const management = read('src/pages/ferramentas/GestaoCobrancas.tsx');
+  assert.match(billing, /bannerSecao = 'gerador_cobranca'/);
+  assert.match(billing, /<ToolBanner secao=\{bannerSecao\} \/>/);
+  assert.match(management, /<GeradorCobranca bannerSecao="gestao_cobrancas" \/>/);
+  assert.doesNotMatch(management, /navigator\.clipboard\.writeText/);
+});
