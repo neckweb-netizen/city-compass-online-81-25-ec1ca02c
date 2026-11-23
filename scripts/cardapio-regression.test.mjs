@@ -26,3 +26,25 @@ test('menu mutations are constrained to their parent and session owner', () => {
   assert.match(source, /\.eq\('id', editingItemId\)\.eq\('cardapio_id', cardapio\.id\)/);
   assert.match(source, /\.delete\(\)\.eq\('id', item\.id\)\.eq\('cardapio_id', cardapio\.id\)/);
 });
+
+
+test('public menu cart is isolated per slug, with available products only', () => {
+  const publicPage = readFileSync(new URL('../src/pages/CardapioPublico.tsx', import.meta.url), 'utf8');
+  assert.match(publicPage, /cartState\.slug === slug \? cartState\.quantities : \{\}/);
+  assert.match(publicPage, /filter\(item => item\.disponivel\)/);
+  assert.match(publicPage, /Math\.min\(99, Math\.max\(0,/);
+});
+
+test('WhatsApp order only appears when accepting orders and phone is valid', () => {
+  const publicPage = readFileSync(new URL('../src/pages/CardapioPublico.tsx', import.meta.url), 'utf8');
+  assert.match(publicPage, /!cardapio\?\.aceita_pedidos/);
+  assert.match(publicPage, /normalizeWhatsApp\(cardapio\?\.whatsapp \?\? ''\)/);
+  assert.match(publicPage, /!\/\^55\\d\{10,11\}\$\/\.test\(phone\)/);
+  assert.match(publicPage, /encodeURIComponent\(message\)/);
+});
+
+test('public menu share reports unexpected errors without treating cancellation as failure', () => {
+  const publicPage = readFileSync(new URL('../src/pages/CardapioPublico.tsx', import.meta.url), 'utf8');
+  assert.match(publicPage, /error instanceof DOMException && error\.name === 'AbortError'/);
+  assert.match(publicPage, /Não foi possível compartilhar/);
+});
