@@ -5,6 +5,7 @@ on:
     paths:
       - 'src/hooks/useMeuVeiculoStorage.ts'
       - 'supabase/migrations/*vehicle_legacy*'
+      - 'supabase/migrations/*atomic_vehicle_fuel*'
       - 'src/pages/ferramentas/MeuVeiculo.tsx'
       - 'src/pages/ferramentas/CriadorCurriculo.tsx'
       - 'src/lib/parseBrazilianNumber.ts'
