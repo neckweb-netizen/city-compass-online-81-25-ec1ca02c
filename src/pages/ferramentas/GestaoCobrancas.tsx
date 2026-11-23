@@ -30,7 +30,6 @@ export const GestaoCobrancas = () => {
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
   const [legacy, setLegacy] = useState<CobrancaDados | null>(null);
-  const [legacyWarning, setLegacyWarning] = useState('');
   const [authOpen, setAuthOpen] = useState(false);
   const [client, setClient] = useState(blankClient);
   const [clientEditing, setClientEditing] = useState<string | null>(null);
@@ -40,7 +39,7 @@ export const GestaoCobrancas = () => {
   const [search, setSearch] = useState('');
   useEffect(() => {
     let cancelled = false;
-    setOwner(null); setData(EMPTY_COBRANCAS); setFailure(''); setLegacy(null); setLegacyWarning(''); setRevision(0);
+    setOwner(null); setData(EMPTY_COBRANCAS); setFailure(''); setLegacy(null); setRevision(0);
     setClient(blankClient); setClientEditing(null); setBill(blankBill()); setBillEditing(null);
     if (!uid) return;
     const account = uid;
@@ -85,7 +84,7 @@ export const GestaoCobrancas = () => {
       if (activeAccountRef.current !== account) return false;
       if (error) throw error;
       if (!nextRevision || Number(nextRevision) <= 0) {
-        setFailure('Outro dispositivo alterou o caderno. Exporte um backup local, depois recarregue a página para obter a versão mais recente.');
+        setFailure('Outro dispositivo alterou o caderno. Recarregue a página para obter a versão mais recente. O servidor preservou os dados.');
         toast.error('Conflito de sincronização. Nenhum dado foi sobrescrito.');
         return false;
       }
@@ -139,7 +138,7 @@ export const GestaoCobrancas = () => {
   const togglePaid = async (c: CobrancaRegistro) => {
     const paid = c.status !== 'paga';
     if (!paid && !window.confirm('Reabrir cobrança paga?')) return;
-    if (await persist({ ...current, cobrancas: current.cobrancas.map(x => x.id === c.id ? { ...x, status: paid ? 'paga' : 'pendente', pagoEm: paid ? new Date().toISOString() : null } : x) })) toast.success(paid ? 'Pagamento registrado.' : 'Cobrança reaberta.');
+    if (await persist({ ...current, cobrancas: current.cobrancas.map(x => x.id === c.id ? { ...x, status: paid ? ('paga' as const) : ('pendente' as const), pagoEm: paid ? new Date().toISOString() : null } : x) })) toast.success(paid ? 'Pagamento registrado.' : 'Cobrança reaberta.');
   };
   const removeBill = async (c: CobrancaRegistro) => {
     if (window.confirm('Excluir esta cobrança e seu histórico?') && await persist({ ...current, cobrancas: current.cobrancas.filter(x => x.id !== c.id) })) toast.success('Cobrança removida.');
@@ -163,9 +162,9 @@ export const GestaoCobrancas = () => {
       const parsed = validarBackupCobrancas(JSON.parse(await file.text()));
       if (activeAccountRef.current !== requestedAccount) return;
       if (!parsed) return toast.error('Arquivo de backup inválido.');
-      if (!window.confirm('Substituir TODOS os clientes e cobranças locais? Exporte uma cópia antes de continuar.')) return;
+      if (!window.confirm('Substituir TODOS os clientes e cobranças sincronizados na conta? Exporte uma cópia antes de continuar.')) return;
       if (activeAccountRef.current !== requestedAccount) return;
-      if (await persist(parsed)) { setClient(blankClient); setBill(blankBill()); setClientEditing(null); setBillEditing(null); toast.success('Backup restaurado.'); }
+      if (await persist(parsed)) { setClient(blankClient); setBill(blankBill()); setClientEditing(null); setBillEditing(null); toast.success('Backup restaurado e sincronizado.'); }
     } catch { toast.error('Não foi possível ler o backup.'); }
   };
   const today = hojeLocal();
