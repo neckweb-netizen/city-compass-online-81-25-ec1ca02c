@@ -35,8 +35,8 @@ test('billing management reuses validated manual billing without losing its own 
   assert.match(management, /<GeradorCobranca bannerSecao="gestao_cobrancas"\s*\/>/);
   assert.match(management, /cobrancasStorageKey\(account\)/);
   assert.match(management, /localStorage\.setItem\(cobrancasSyncCacheKey\(account\), JSON\.stringify\(next\)\)/);
-  assert.match(management, /supabase\.rpc\('save_crm_caderno' as any/);
-  assert.match(management, /p_expected_revision: revision, p_dados: next/);
+  assert.match(management, /supabase\.rpc\('save_crm_caderno_for_user' as any/);
+  assert.match(management, /p_expected_revision: revision, p_dados: next, p_expected_user: account/);
   assert.match(management, /if \(!nextRevision \|\| Number\(nextRevision\) <= 0\)/);
   assert.match(management, /if \(await persist\(/);
   assert.match(management, /activeAccountRef\.current !== requestedAccount/);
@@ -112,4 +112,17 @@ test('CRM writes require owner-scoped versioned RPC, never direct authenticated 
   assert.match(sql, /revoke insert, update, delete on public\.crm_cadernos from authenticated, anon, public/);
   assert.match(sql, /revoke all on function public\.save_crm_caderno\(bigint,jsonb\) from public, anon/);
   assert.match(sql, /grant execute on function public\.save_crm_caderno\(bigint,jsonb\) to authenticated/);
+});
+
+
+test('CRM RPC binds writes to the same account from which the operation started', () => {
+  const page = read('src/pages/ferramentas/GestaoCobrancas.tsx');
+  const sql = read('supabase/migrations/20261123224000_crm_bind_save_to_account.sql');
+  const revoke = read('supabase/migrations/20261123225500_crm_revoke_legacy_save_rpc.sql');
+  assert.match(page, /p_expected_user: account/);
+  assert.match(sql, /v_user <> p_expected_user/);
+  assert.match(sql, /where user_id=v_user and revision=p_expected_revision/);
+  assert.match(sql, /on conflict\(user_id\) do nothing/);
+  assert.match(sql, /revoke all on function public\.save_crm_caderno_for_user\(bigint,jsonb,uuid\) from public,anon/);
+  assert.match(revoke, /revoke execute on function public\.save_crm_caderno\(bigint,jsonb\) from authenticated/);
 });
