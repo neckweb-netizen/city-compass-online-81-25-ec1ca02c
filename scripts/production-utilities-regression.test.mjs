@@ -37,8 +37,8 @@ test('rural submissions block double clicks and tool catalog does not overpromis
 
 test('active catalog keeps tool cards in place and describes actual billing capabilities', () => {
   const catalog = read('src/pages/FerramentasCatalog.tsx');
-  assert.match(catalog, /Gestão de Cobranças — Mensagens/);
-  assert.match(catalog, /não mantém cadastro de clientes nem histórico de dívidas/);
+  assert.match(catalog, /Caderno de Cobranças & Micro CRM/);
+  assert.match(catalog, /Dados neste aparelho, com backup JSON, sem sincronização entre dispositivos/);
   assert.match(catalog, /requiresLogin\.has\(item\.id\) \? 'Login para criar' : 'Acesso livre'/);
   assert.match(catalog, /getSafeNavigationUrl\(b\.link_destino\)/);
   assert.match(catalog, /return safeUrl \?/);
