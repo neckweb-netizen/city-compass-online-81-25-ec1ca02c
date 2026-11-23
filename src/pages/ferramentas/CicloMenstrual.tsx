@@ -157,6 +157,7 @@ const CicloMenstrual = () => {
   const [periods, setPeriods] = useState<PeriodRecord[]>([]);
   const [logs, setLogs] = useState<Record<string, DailyLog>>({});
   const [loaded, setLoaded] = useState(false);
+  const [storageError, setStorageError] = useState(false);
   const [activeTab, setActiveTab] = useState('visao-geral');
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -189,6 +190,7 @@ const CicloMenstrual = () => {
       }
     } catch (error) {
       console.error('Erro ao carregar dados do ciclo menstrual:', error);
+      setStorageError(true);
     } finally {
       setLoaded(true);
     }
@@ -198,7 +200,13 @@ const CicloMenstrual = () => {
     if (!loaded) return;
 
     const payload: StoredData = { settings, periods, logs };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      setStorageError(false);
+    } catch (error) {
+      console.error('Erro ao salvar dados do ciclo menstrual:', error);
+      setStorageError(true);
+    }
   }, [loaded, settings, periods, logs]);
 
   const sortedPeriods = useMemo(
@@ -398,7 +406,7 @@ const CicloMenstrual = () => {
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
-    URL.revokeObjectURL(url);
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
   };
 
   const clearAllData = () => {
@@ -407,7 +415,14 @@ const CicloMenstrual = () => {
     );
     if (!confirmed) return;
 
-    localStorage.removeItem(STORAGE_KEY);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (error) {
+      console.error('Erro ao remover dados do ciclo menstrual:', error);
+      setStorageError(true);
+      toast({ title: 'Não foi possível apagar os dados', description: 'O navegador bloqueou a exclusão. Nenhum registro foi alterado.', variant: 'destructive' });
+      return;
+    }
     setSettings(DEFAULT_SETTINGS);
     setPeriods([]);
     setLogs({});
@@ -440,6 +455,11 @@ const CicloMenstrual = () => {
 
       <main className="mx-auto max-w-6xl space-y-5 px-3 py-4 sm:space-y-6 sm:px-6 sm:py-6">
         <ToolBanner secao="ferramentas" />
+        {storageError && (
+          <div role="alert" className="rounded-2xl border border-amber-400/60 bg-amber-50 p-4 text-sm text-amber-950 dark:bg-amber-950/30 dark:text-amber-100">
+            O navegador não conseguiu acessar ou salvar os dados do ciclo neste aparelho. As alterações podem não estar protegidas. Faça uma cópia pela opção de exportação antes de sair desta página.
+          </div>
+        )}
 
         <section className="relative overflow-hidden rounded-[28px] border border-rose-200 bg-gradient-to-br from-rose-50 via-white to-fuchsia-50 p-4 shadow-[0_12px_40px_rgba(190,24,93,0.08)] dark:border-rose-900/50 dark:from-rose-950/35 dark:via-card dark:to-fuchsia-950/25 sm:p-7 lg:p-8">
           <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-rose-200/35 blur-3xl dark:bg-rose-700/10" />
