@@ -26,6 +26,7 @@ export const GestaoCobrancas = () => {
   const [owner, setOwner] = useState<string | null>(null);
   const [data, setData] = useState<CobrancaDados>(EMPTY_COBRANCAS);
   const [failure, setFailure] = useState('');
+  const [conflictDraft, setConflictDraft] = useState<{ account: string; snapshot: CobrancaDados } | null>(null);
   const [revision, setRevision] = useState(0);
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
@@ -40,7 +41,7 @@ export const GestaoCobrancas = () => {
   const [search, setSearch] = useState('');
   useEffect(() => {
     let cancelled = false;
-    setOwner(null); setData(EMPTY_COBRANCAS); setFailure(''); setLegacy(null); setRevision(0); setLocalStorageWarning('');
+    setOwner(null); setData(EMPTY_COBRANCAS); setFailure(''); setLegacy(null); setRevision(0); setLocalStorageWarning(''); setConflictDraft(null);
     setClient(blankClient); setClientEditing(null); setBill(blankBill()); setBillEditing(null);
     if (!uid) return;
     const account = uid;
@@ -92,7 +93,8 @@ export const GestaoCobrancas = () => {
       if (activeAccountRef.current !== account) return false;
       if (error) throw error;
       if (!nextRevision || Number(nextRevision) <= 0) {
-        setFailure('Outro dispositivo alterou o caderno. Recarregue a página para obter a versão mais recente. O servidor preservou os dados.');
+        setConflictDraft({ account, snapshot: next });
+        setFailure('Outro dispositivo alterou o caderno. Baixe suas alterações não salvas antes de recarregar. O servidor preservou os dados.');
         toast.error('Conflito de sincronização. Nenhum dado foi sobrescrito.');
         return false;
       }
@@ -154,15 +156,22 @@ export const GestaoCobrancas = () => {
   const removeBill = async (c: CobrancaRegistro) => {
     if (window.confirm('Excluir esta cobrança e seu histórico?') && await persist({ ...current, cobrancas: current.cobrancas.filter(x => x.id !== c.id) })) toast.success('Cobrança removida.');
   };
-  const exportBackup = () => {
-    if (blocked) return;
+  const downloadSnapshot = (snapshot: CobrancaDados, filename: string) => {
     try {
-      const url = URL.createObjectURL(new Blob([JSON.stringify(current, null, 2)], { type: 'application/json' }));
-      const a = document.createElement('a'); a.href = url; a.download = 'sajtem-cobrancas-' + hojeLocal() + '.json';
+      const url = URL.createObjectURL(new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' }));
+      const a = document.createElement('a'); a.href = url; a.download = filename;
       document.body.appendChild(a);
       try { a.click(); } finally { a.remove(); window.setTimeout(() => URL.revokeObjectURL(url), 60_000); }
-      toast.info('Backup criado. Guarde-o em local privado.');
+      toast.info('Arquivo preparado. Guarde-o em local privado.');
     } catch { toast.error('Não foi possível exportar o backup.'); }
+  };
+  const exportBackup = () => {
+    if (blocked) return;
+    downloadSnapshot(current, 'sajtem-cobrancas-' + hojeLocal() + '.json');
+  };
+  const exportConflict = () => {
+    if (!uid || conflictDraft?.account !== uid || owner !== uid) return;
+    downloadSnapshot(conflictDraft.snapshot, 'sajtem-cobrancas-alteracoes-nao-salvas-' + hojeLocal() + '.json');
   };
   const importBackup = async (e: ChangeEvent<HTMLInputElement>) => {
     const requestedAccount = uid;
@@ -207,7 +216,7 @@ export const GestaoCobrancas = () => {
         <Card><CardContent className="p-4 text-sm"><b>Sincronização:</b> clientes e cobranças são guardados na sua conta e sincronizam entre aparelhos após carregar novamente. O navegador mantém uma cópia local para backup; faça exportações regularmente. Nunca compartilhe esses arquivos com terceiros. Pagamentos são confirmados manualmente, sem Pix automático.</CardContent></Card>
         {authLoading || (uid && owner !== uid) ? <p role="status">Carregando...</p> : !user ?
           <Card><CardContent className="space-y-3 p-6"><p>Entre na sua conta para usar o caderno. O gerador de mensagens funciona sem login.</p><Button onClick={() => setAuthOpen(true)}>Entrar</Button><AuthDialog open={authOpen} onOpenChange={setAuthOpen} defaultTab="login"/></CardContent></Card> :
-          failure ? <Card><CardContent role="alert" className="space-y-3 p-5 text-destructive"><p>{failure} Nenhum registro será sobrescrito até corrigir o problema. Preserve uma cópia dos dados do navegador.</p><Button type="button" variant="outline" onClick={() => window.location.reload()}>Recarregar caderno</Button></CardContent></Card> :
+          failure ? <Card><CardContent role="alert" className="space-y-3 p-5 text-destructive"><p>{failure} Nenhum registro será sobrescrito até corrigir o problema. Preserve uma cópia dos dados do navegador.</p><div className="flex flex-wrap gap-2">{conflictDraft?.account === uid && <Button type="button" variant="outline" onClick={exportConflict}><Download className="mr-2 h-4 w-4"/>Baixar alterações não salvas</Button>}<Button type="button" variant="outline" onClick={() => window.location.reload()}>Recarregar caderno</Button></div></CardContent></Card> :
           <>
             {legacy && <Card><CardContent className="space-y-2 p-4"><p className="text-sm">Encontramos dados antigos deste aparelho. Eles não foram enviados automaticamente à sua conta.</p><Button type="button" variant="outline" disabled={blocked} onClick={() => void importLocal()}>Importar dados locais para minha conta</Button></CardContent></Card>}
             <div className="grid gap-3 sm:grid-cols-3">{[['A receber',pendingAmount],['Vencidas',overdueAmount],['Pagas',paidAmount]].map(([label,value]) => <Card key={String(label)}><CardContent className="p-5"><p className="text-sm text-muted-foreground">{label}</p><b className="text-2xl">{formatCobrancaMoney(Number(value))}</b></CardContent></Card>)}</div>
