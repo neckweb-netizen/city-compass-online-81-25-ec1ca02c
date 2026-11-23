@@ -235,7 +235,7 @@ export const useControleFinanceiroStorage = () => {
     next: FinanceState,
     mutate: (accountId: string) => Promise<{ error: { message: string } | null }>,
   ) => {
-    if (accountOperationRef.current) return operationBlocked();
+    if (accountOperationRef.current || authLoading || loading || stateAccountId !== (user?.id ?? null)) return operationBlocked();
     if (!user) {
       persistLocal(next);
       return { synced: false as const, reason: 'not_authenticated' as const };
@@ -276,7 +276,7 @@ export const useControleFinanceiroStorage = () => {
       accountOperationRef.current = false;
       if (activeUserIdRef.current === accountId) setSyncing(false);
     }
-  }, [authLoading, loading, persistLocal, user]);
+  }, [authLoading, loading, persistLocal, stateAccountId, user]);
 
   const saveTransaction = useCallback(async (transaction: FinanceTransaction) => {
     const next: FinanceState = {
@@ -313,7 +313,7 @@ export const useControleFinanceiroStorage = () => {
   }, [runFinanceMutation, state]);
 
   const replaceAll = useCallback(async (next: FinanceState) => {
-    if (restoreInProgressRef.current || accountOperationRef.current) {
+    if (restoreInProgressRef.current || accountOperationRef.current || authLoading || loading || stateAccountId !== (user?.id ?? null)) {
       return { synced: false, reason: 'remote_error' as const, error: { message: 'Já existe uma restauração em andamento.' } };
     }
     if (!user) {
@@ -334,7 +334,7 @@ export const useControleFinanceiroStorage = () => {
         p_settings: next.settings,
       });
       if (error) {
-        setSyncError(error.message);
+        if (activeUserIdRef.current === requestedUserId) setSyncError(error.message);
         return { synced: false, reason: 'remote_error' as const, error };
       }
 
@@ -348,14 +348,14 @@ export const useControleFinanceiroStorage = () => {
       return { synced: true as const };
     } catch (cause) {
       const error = { message: cause instanceof Error ? cause.message : 'Falha ao restaurar backup financeiro.' };
-      setSyncError(error.message);
+      if (activeUserIdRef.current === requestedUserId) setSyncError(error.message);
       return { synced: false, reason: 'remote_error' as const, error };
     } finally {
       restoreInProgressRef.current = false;
       accountOperationRef.current = false;
       if (activeUserIdRef.current === requestedUserId) setSyncing(false);
     }
-  }, [persistLocal, user]);
+  }, [authLoading, loading, persistLocal, stateAccountId, user]);
 
   const importLocalToAccount = useCallback(async () => {
     if (!user) return { synced: false, reason: 'not_authenticated' as const };
@@ -366,7 +366,7 @@ export const useControleFinanceiroStorage = () => {
   }, [hasLocalDataToImport, replaceAll, user]);
 
   const clearAll = useCallback(async () => {
-    if (accountOperationRef.current) return operationBlocked();
+    if (accountOperationRef.current || authLoading || loading || stateAccountId !== (user?.id ?? null)) return operationBlocked();
     if (!user) {
       persistLocal(EMPTY_FINANCE_STATE);
       try {
@@ -403,7 +403,7 @@ export const useControleFinanceiroStorage = () => {
       return { synced: true as const };
     } catch (cause) {
       const error = { message: cause instanceof Error ? cause.message : 'Falha ao apagar dados financeiros.' };
-      setSyncError(error.message);
+      if (activeUserIdRef.current === requestedUserId) setSyncError(error.message);
       return { synced: false, reason: 'remote_error' as const, error };
     } finally {
       accountOperationRef.current = false;
