@@ -33,3 +33,16 @@ test('rural submissions block double clicks and tool catalog does not overpromis
   assert.match(form, /submittingRef\.current = false/);
   assert.match(catalog, /algumas guardam dados no seu dispositivo, enquanto outras exigem login/);
 });
+
+
+test('active catalog keeps tool cards in place and describes actual billing capabilities', () => {
+  const catalog = read('src/pages/FerramentasCatalog.tsx');
+  assert.match(catalog, /Gestão de Cobranças — Mensagens/);
+  assert.match(catalog, /não mantém cadastro de clientes nem histórico de dívidas/);
+  assert.match(catalog, /requiresLogin\.has\(item\.id\) \? 'Login para criar' : 'Acesso livre'/);
+  assert.match(catalog, /getSafeNavigationUrl\(b\.link_destino\)/);
+  assert.match(catalog, /return safeUrl \?/);
+  for (const tool of ['gerador-rifa','gerador-cobranca','criador-curriculo','gestao-cobrancas','cardapio-digital']) {
+    assert.match(catalog, new RegExp("id: '"+tool+"'"));
+  }
+});
