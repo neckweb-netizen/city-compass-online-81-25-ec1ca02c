@@ -158,6 +158,8 @@ const CicloMenstrual = () => {
   const [logs, setLogs] = useState<Record<string, DailyLog>>({});
   const [loaded, setLoaded] = useState(false);
   const [storageError, setStorageError] = useState(false);
+  const [storageReadFailed, setStorageReadFailed] = useState(false);
+  const [saveRetry, setSaveRetry] = useState(0);
   const [activeTab, setActiveTab] = useState('visao-geral');
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -191,6 +193,7 @@ const CicloMenstrual = () => {
     } catch (error) {
       console.error('Erro ao carregar dados do ciclo menstrual:', error);
       setStorageError(true);
+      setStorageReadFailed(true);
       // Não sobrescreva dados antigos que não puderam ser lidos.
       return;
     } finally {
@@ -199,7 +202,7 @@ const CicloMenstrual = () => {
   }, []);
 
   useEffect(() => {
-    if (!loaded || storageError) return;
+    if (!loaded || storageReadFailed) return;
 
     const payload: StoredData = { settings, periods, logs };
     try {
@@ -209,7 +212,7 @@ const CicloMenstrual = () => {
       console.error('Erro ao salvar dados do ciclo menstrual:', error);
       setStorageError(true);
     }
-  }, [loaded, storageError, settings, periods, logs]);
+  }, [loaded, storageReadFailed, saveRetry, settings, periods, logs]);
 
   const sortedPeriods = useMemo(
     () => [...periods].sort((a, b) => a.startDate.localeCompare(b.startDate)),
@@ -460,6 +463,11 @@ const CicloMenstrual = () => {
         {storageError && (
           <div role="alert" className="rounded-2xl border border-amber-400/60 bg-amber-50 p-4 text-sm text-amber-950 dark:bg-amber-950/30 dark:text-amber-100">
             O navegador não conseguiu acessar ou salvar os dados do ciclo neste aparelho. As alterações podem não estar protegidas. Faça uma cópia pela opção de exportação antes de sair desta página.
+            {!storageReadFailed && (
+              <Button type="button" variant="outline" className="ml-2 mt-2" onClick={() => setSaveRetry((current) => current + 1)}>
+                Tentar salvar novamente
+              </Button>
+            )}
           </div>
         )}
 
