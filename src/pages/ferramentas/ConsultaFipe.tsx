@@ -95,6 +95,10 @@ export const ConsultaFipe = () => {
     setYearId('');
     setModels([]);
     setYears([]);
+    setBrands([]);
+    setReferences([]);
+    setReference('');
+    setUsage(null);
     try {
       const [refs, dailyUsage] = await Promise.all([
         queryFipe<Reference[]>({ action: 'references' }),
@@ -103,6 +107,7 @@ export const ConsultaFipe = () => {
       if (requestSequence.current !== sequence) return;
       setUsage(dailyUsage);
       const latestReference = refs[0]?.code ?? '';
+      if (!latestReference) throw new Error('Não há referências FIPE disponíveis no momento. Tente novamente.');
       setReferences(refs.slice(0, 24));
       setReference(latestReference);
       const brandList = await queryFipe<Option[]>({ action: 'brands', vehicleType, reference: latestReference });
@@ -132,6 +137,7 @@ export const ConsultaFipe = () => {
     setYearId('');
     setModels([]);
     setYears([]);
+    setBrands([]);
     setResult(null);
     setLoading('brands');
     try {
@@ -234,7 +240,7 @@ export const ConsultaFipe = () => {
           <Badge className={usage?.remaining === 0
             ? 'border-red-500/20 bg-red-500/10 px-3 py-1 text-red-600 dark:text-red-300'
             : 'border-sky-500/20 bg-sky-500/10 px-3 py-1 text-sky-600 dark:text-sky-300'}>
-            {usage ? `${usage.remaining} de ${usage.limit} consultas restantes hoje` : 'Consulta atualizada'}
+            {usage ? `${usage.remaining} de ${usage.limit} consultas restantes hoje` : 'Limite de consultas não confirmado'}
           </Badge>
         </div>
 
@@ -316,7 +322,7 @@ export const ConsultaFipe = () => {
             )}
 
             <div className="flex flex-col gap-3 sm:flex-row">
-              <Button onClick={consult} disabled={isBusy || !yearId || usage?.remaining === 0} className="h-11 flex-1 gap-2 bg-sky-600 hover:bg-sky-700">
+              <Button onClick={consult} disabled={isBusy || !yearId || !usage?.remaining} className="h-11 flex-1 gap-2 bg-sky-600 hover:bg-sky-700">
                 {loading === 'details' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                 Consultar valor FIPE
               </Button>
@@ -327,7 +333,7 @@ export const ConsultaFipe = () => {
 
             {usage?.remaining === 0 && (
               <p className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-center text-sm font-medium text-amber-700 dark:text-amber-300">
-                Você já utilizou suas 2 consultas de hoje. O limite será renovado amanhã.
+                Você já utilizou suas {usage.limit} consultas de hoje. O limite será renovado no próximo período diário.
               </p>
             )}
           </CardContent>
