@@ -1,0 +1,28 @@
+name: Digital menu regression
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/pages/ferramentas/CardapioDigital.tsx'
+      - 'src/pages/CardapioPublico.tsx'
+      - 'src/hooks/useCardapioDigital.ts'
+      - 'src/features/cardapio/**'
+      - 'src/lib/parseBrazilianNumber.ts'
+      - 'scripts/cardapio-regression.test.mjs'
+      - '.github/workflows/cardapio-regression.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: node --test scripts/cardapio-regression.test.mjs
+      - run: npm run typecheck
