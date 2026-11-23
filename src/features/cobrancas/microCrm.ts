@@ -14,6 +14,12 @@ export const cobrancasStorageKey = (userId: string) => 'sajtem:microcrm:v1:' + u
 export const cobrancasSyncCacheKey = (userId: string) => 'sajtem:microcrm:sync:v1:' + userId;
 // Registra apenas o backup que o usuário já autorizou importar, sem apagar o original.
 export const cobrancasImportedLegacyKey = (userId: string) => 'sajtem:microcrm:imported:v1:' + userId;
+// A impressão digital evita duplicar informações pessoais em outra chave do navegador.
+export const legacyBackupFingerprint = async (snapshot: CobrancaDados): Promise<string> => {
+  const bytes = new TextEncoder().encode(JSON.stringify(snapshot));
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+};
 
 export const formatCobrancaMoney = (centavos: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(centavos / 100);
