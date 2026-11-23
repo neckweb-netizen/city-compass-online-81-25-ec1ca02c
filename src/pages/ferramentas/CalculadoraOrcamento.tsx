@@ -10,7 +10,8 @@ import { toast } from 'sonner';
 import { ToolBanner } from '@/components/ferramentas/ToolBanner';
 import { parseBrazilianNumber } from '@/lib/parseBrazilianNumber';
 
-const numeroNaoNegativo = (value: string) => parseBrazilianNumber(value) ?? 0;
+const numeroNaoNegativo = (value: string) => parseBrazilianNumber(value);
+const validoNaoNegativo = (value: number | null): value is number => value !== null && value >= 0;
 
 export const CalculadoraOrcamento = () => {
   const navigate = useNavigate();
@@ -28,30 +29,45 @@ export const CalculadoraOrcamento = () => {
   const [margemLucroProjeto, setMargemLucroProjeto] = useState('20');
 
   // CÁLCULOS DO VALOR/HORA
-  const pretensao = numeroNaoNegativo(pretensaoMensal);
-  const horasPorDia = numeroNaoNegativo(horasDia);
-  const diasPorMes = numeroNaoNegativo(diasMes);
-  const custos = numeroNaoNegativo(custosFixos);
-  const impostos = numeroNaoNegativo(impostosPorcentagem);
+  const pretensaoLida = numeroNaoNegativo(pretensaoMensal);
+  const horasDiaLidas = numeroNaoNegativo(horasDia);
+  const diasMesLidos = numeroNaoNegativo(diasMes);
+  const custosLidos = numeroNaoNegativo(custosFixos);
+  const impostosLidos = numeroNaoNegativo(impostosPorcentagem);
+  const hrsProjetoLidas = numeroNaoNegativo(horasProjeto);
+  const extrasProjetoLidos = numeroNaoNegativo(custosExtrasProjeto);
+  const margemProjetoLida = numeroNaoNegativo(margemLucroProjeto);
+  const entradasValidas =
+    [pretensaoLida, custosLidos, extrasProjetoLidos].every(validoNaoNegativo) &&
+    horasDiaLidas !== null && horasDiaLidas > 0 && horasDiaLidas <= 24 &&
+    diasMesLidos !== null && diasMesLidos > 0 && diasMesLidos <= 31 &&
+    hrsProjetoLidas !== null && hrsProjetoLidas > 0 &&
+    impostosLidos !== null && impostosLidos >= 0 && impostosLidos < 100 &&
+    margemProjetoLida !== null && margemProjetoLida >= 0 && margemProjetoLida <= 1000;
+  const pretensao = pretensaoLida ?? 0;
+  const horasPorDia = horasDiaLidas ?? 0;
+  const diasPorMes = diasMesLidos ?? 0;
+  const custos = custosLidos ?? 0;
+  const impostos = impostosLidos ?? 0;
 
   const totalHorasMes = horasPorDia * diasPorMes;
   const custoTotalMensal = pretensao + custos;
   
   // VALOR DA HORA LÍQUIDO E BRUTO (COM IMPOSTOS)
   const valorHoraBase = totalHorasMes > 0 ? custoTotalMensal / totalHorasMes : 0;
-  const impostoValido = impostos < 100;
+  const impostoValido = impostosLidos !== null && impostosLidos >= 0 && impostosLidos < 100;
   const fatorImposto = impostoValido ? 1 - (impostos / 100) : 0;
-  const valorHoraRecomendado = fatorImposto > 0 ? valorHoraBase / fatorImposto : 0;
+  const valorHoraRecomendado = entradasValidas && fatorImposto > 0 ? valorHoraBase / fatorImposto : 0;
 
   // CÁLCULOS DO PROJETO
-  const hrsProjeto = numeroNaoNegativo(horasProjeto);
-  const extrasProjeto = numeroNaoNegativo(custosExtrasProjeto);
-  const margemProjeto = numeroNaoNegativo(margemLucroProjeto);
+  const hrsProjeto = hrsProjetoLidas ?? 0;
+  const extrasProjeto = extrasProjetoLidos ?? 0;
+  const margemProjeto = margemProjetoLida ?? 0;
 
   const subtotalMaoDeObra = hrsProjeto * valorHoraRecomendado;
   const subtotalComExtras = subtotalMaoDeObra + extrasProjeto;
   const valorMargemLucro = subtotalComExtras * (margemProjeto / 100);
-  const precoTotalProjeto = subtotalComExtras + valorMargemLucro;
+  const precoTotalProjeto = entradasValidas ? subtotalComExtras + valorMargemLucro : 0;
 
   const handleLimpar = () => {
     setPretensaoMensal('3000');
@@ -113,7 +129,7 @@ export const CalculadoraOrcamento = () => {
             </div>
           </CardHeader>
           <CardContent className="pt-4 space-y-4">
-            {!impostoValido && <p role="alert" className="rounded-xl border border-destructive/30 p-3 text-sm text-destructive">A taxa de impostos precisa ser menor que 100% para calcular o preço recomendado.</p>}
+            {!entradasValidas && <p role="alert" className="rounded-xl border border-destructive/30 p-3 text-sm text-destructive">Revise os campos: use números válidos e não negativos, impostos de 0% a menos de 100%, margem de 0% a 1000%, horas por dia de 1 a 24 e dias por mês de 1 a 31. O orçamento só será calculado com dados válidos.</p>}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="pretensao-mensal" className="text-xs font-semibold">Pretensão Salarial Mensal (R$)</Label>
@@ -181,7 +197,7 @@ export const CalculadoraOrcamento = () => {
 
               <div className="text-center sm:text-right">
                 <strong className="text-3xl font-black text-purple-700 dark:text-purple-400 block">
-                  R$ {valorHoraRecomendado.toFixed(2)} /h
+                  {entradasValidas ? `R$ ${valorHoraRecomendado.toFixed(2)} /h` : '—'}
                 </strong>
                 <span className="text-[10px] text-muted-foreground block">
                   (Mínimo absoluto: R$ {valorHoraBase.toFixed(2)}/h)
@@ -272,7 +288,7 @@ export const CalculadoraOrcamento = () => {
                 </span>
 
                 <strong className="text-4xl font-black text-purple-700 dark:text-purple-400 block">
-                  R$ {precoTotalProjeto.toFixed(2)}
+                  {entradasValidas ? `R$ ${precoTotalProjeto.toFixed(2)}` : '—'}
                 </strong>
 
                 <p className="text-xs text-muted-foreground leading-relaxed pt-2 border-t">
