@@ -101,3 +101,15 @@ test('legacy records are never overwritten by synced cache data', () => {
   assert.match(page, /localStorage\.setItem\(cobrancasSyncCacheKey\(account\), JSON\.stringify\(next\)\)/);
   assert.doesNotMatch(page, /localStorage\.setItem\(cobrancasStorageKey\(account\)/);
 });
+
+
+test('CRM writes require owner-scoped versioned RPC, never direct authenticated table writes', () => {
+  const sql = read('supabase/migrations/20261123183000_crm_exclusive_versioned_writes.sql');
+  assert.match(sql, /security definer set search_path = ''/);
+  assert.match(sql, /v_user := \(select auth\.uid\(\)\)/);
+  assert.match(sql, /where user_id = v_user and revision = p_expected_revision/);
+  assert.match(sql, /on conflict\(user_id\) do nothing/);
+  assert.match(sql, /revoke insert, update, delete on public\.crm_cadernos from authenticated, anon, public/);
+  assert.match(sql, /revoke all on function public\.save_crm_caderno\(bigint,jsonb\) from public, anon/);
+  assert.match(sql, /grant execute on function public\.save_crm_caderno\(bigint,jsonb\) to authenticated/);
+});
