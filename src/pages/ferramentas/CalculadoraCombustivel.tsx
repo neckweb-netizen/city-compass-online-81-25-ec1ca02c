@@ -12,7 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { ToolBanner } from '@/components/ferramentas/ToolBanner';
 import { parseBrazilianNumber } from '@/lib/parseBrazilianNumber';
 
-const numberFrom = (value: string) => parseBrazilianNumber(value) ?? 0;
+const numberFrom = (value: string) => parseBrazilianNumber(value);
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const decimal = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 });
 
@@ -29,22 +29,32 @@ export default function CalculadoraCombustivel() {
   const [etanol, setEtanol] = useState('');
 
   const viagem = useMemo(() => {
-    const km = numberFrom(distancia) * (idaVolta ? 2 : 1);
-    const kmLitro = numberFrom(consumo);
-    const valorLitro = numberFrom(preco);
-    const litros = kmLitro > 0 ? km / kmLitro : 0;
-    const combustivelTotal = litros * valorLitro;
-    const total = combustivelTotal + numberFrom(pedagios);
-    const pessoas = Math.max(1, Math.floor(numberFrom(passageiros)));
-    return { km, litros, combustivelTotal, total, porPessoa: total / pessoas, valido: km > 0 && kmLitro > 0 && valorLitro > 0 && numberFrom(passageiros) >= 1 && numberFrom(passageiros) <= 20 };
+    const kmIda = numberFrom(distancia);
+    const rendimento = numberFrom(consumo);
+    const precoUnitario = numberFrom(preco);
+    const custosExtras = pedagios.trim() ? numberFrom(pedagios) : 0;
+    const pessoas = numberFrom(passageiros);
+    const valido = kmIda !== null && kmIda > 0 &&
+      rendimento !== null && rendimento > 0 &&
+      precoUnitario !== null && precoUnitario > 0 &&
+      custosExtras !== null && custosExtras >= 0 &&
+      pessoas !== null && Number.isInteger(pessoas) && pessoas >= 1 && pessoas <= 20;
+    const km = valido ? kmIda * (idaVolta ? 2 : 1) : 0;
+    const quantidade = valido ? km / rendimento : 0;
+    const combustivelTotal = valido ? quantidade * precoUnitario : 0;
+    const total = valido ? combustivelTotal + custosExtras : 0;
+    return { km, quantidade, combustivelTotal, total, porPessoa: valido ? total / pessoas : 0, valido };
   }, [consumo, distancia, idaVolta, passageiros, pedagios, preco]);
 
   const comparacao = useMemo(() => {
     const gas = numberFrom(gasolina);
     const eta = numberFrom(etanol);
-    const percentual = gas > 0 ? (eta / gas) * 100 : 0;
-    return { percentual, recomendado: percentual > 0 && percentual <= 70 ? 'Etanol' : 'Gasolina', valido: gas > 0 && eta > 0 };
+    const valido = gas !== null && gas > 0 && eta !== null && eta > 0;
+    const percentual = valido ? (eta / gas) * 100 : 0;
+    return { percentual, recomendado: percentual > 0 && percentual <= 70 ? 'Etanol' : 'Gasolina', valido };
   }, [etanol, gasolina]);
+  const unidadeCombustivel = combustivel === 'GNV' ? 'm³' : 'litros';
+  const rendimentoLabel = combustivel === 'GNV' ? 'Consumo médio (km/m³)' : 'Consumo médio (km/l)';
 
   return <div className="min-h-screen bg-muted/20 px-3 pb-24 pt-4 sm:px-6 sm:py-8">
     <div className="mx-auto max-w-5xl space-y-6">
@@ -60,17 +70,18 @@ export default function CalculadoraCombustivel() {
         <Card><CardHeader><CardTitle className="flex items-center gap-2"><MapPin className="h-5 w-5 text-amber-600" />Planejar viagem</CardTitle></CardHeader><CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2"><Label htmlFor="distancia">Distância de ida (km)</Label><Input id="distancia" inputMode="decimal" value={distancia} onChange={event => setDistancia(event.target.value)} placeholder="Ex.: 100" /></div>
-            <div className="space-y-2"><Label htmlFor="consumo">Consumo médio (km/l)</Label><Input id="consumo" inputMode="decimal" value={consumo} onChange={event => setConsumo(event.target.value)} placeholder="Ex.: 12" /></div>
+            <div className="space-y-2"><Label htmlFor="consumo">{rendimentoLabel}</Label><Input id="consumo" inputMode="decimal" value={consumo} onChange={event => setConsumo(event.target.value)} placeholder="Ex.: 12" /></div>
             <div className="space-y-2"><Label htmlFor="tipo-combustivel">Combustível</Label><Select value={combustivel} onValueChange={setCombustivel}><SelectTrigger id="tipo-combustivel" aria-label="Tipo de combustível"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Gasolina">Gasolina</SelectItem><SelectItem value="Etanol">Etanol</SelectItem><SelectItem value="Diesel">Diesel</SelectItem><SelectItem value="GNV">GNV</SelectItem></SelectContent></Select></div>
-            <div className="space-y-2"><Label htmlFor="preco">Preço do {combustivel.toLowerCase()}</Label><Input id="preco" inputMode="decimal" value={preco} onChange={event => setPreco(event.target.value)} placeholder="Ex.: 6,19" /></div>
-            <div className="space-y-2"><Label htmlFor="pedagios">Pedágios e outros custos</Label><Input id="pedagios" inputMode="decimal" value={pedagios} onChange={event => setPedagios(event.target.value)} placeholder="Opcional" /></div>
-            <div className="space-y-2"><Label htmlFor="passageiros">Pessoas dividindo</Label><Input id="passageiros" type="number" min="1" max="20" step="1" value={passageiros} onChange={event => setPassageiros(event.target.value)} /></div>
+            <div className="space-y-2"><Label htmlFor="preco">Preço do {combustivel.toLowerCase()} por {combustivel === 'GNV' ? 'm³' : 'litro'}</Label><Input id="preco" inputMode="decimal" value={preco} onChange={event => setPreco(event.target.value)} placeholder="Ex.: 6,19" /></div>
+            <div className="space-y-2"><Label htmlFor="pedagios">Pedágios e outros custos</Label><Input id="pedagios" inputMode="decimal" aria-invalid={Boolean(pedagios.trim()) && numberFrom(pedagios) === null} value={pedagios} onChange={event => setPedagios(event.target.value)} placeholder="Opcional" /></div>
+            <div className="space-y-2"><Label htmlFor="passageiros">Pessoas dividindo</Label><Input id="passageiros" type="number" min="1" max="20" step="1" aria-invalid={passageiros.trim().length > 0 && (numberFrom(passageiros) === null || !Number.isInteger(numberFrom(passageiros)) || (numberFrom(passageiros) ?? 0) < 1 || (numberFrom(passageiros) ?? 0) > 20)} value={passageiros} onChange={event => setPassageiros(event.target.value)} /></div>
           </div>
           <Label htmlFor="calcular-ida-volta" className="flex items-center justify-between gap-3 rounded-xl border p-3"><span><span className="block font-bold">Calcular ida e volta</span><span className="text-xs font-normal text-muted-foreground">Dobra automaticamente a distância informada</span></span><Switch id="calcular-ida-volta" checked={idaVolta} onCheckedChange={setIdaVolta} /></Label>
 
+          {!viagem.valido && [distancia, consumo, preco, pedagios].some(value => value.trim()) && <p role="alert" className="text-sm text-destructive">Confira os valores: distância, consumo e preço devem ser positivos; custos extras não podem ser negativos e o número de pessoas deve ser inteiro entre 1 e 20.</p>}
           {viagem.valido ? <div className="grid gap-3 rounded-2xl bg-amber-500/10 p-4 sm:grid-cols-2">
             <div><p className="text-xs text-muted-foreground">Distância calculada</p><p className="text-xl font-black">{decimal.format(viagem.km)} km</p></div>
-            <div><p className="text-xs text-muted-foreground">Combustível necessário</p><p className="text-xl font-black">{decimal.format(viagem.litros)} litros</p></div>
+            <div><p className="text-xs text-muted-foreground">Combustível necessário</p><p className="text-xl font-black">{decimal.format(viagem.quantidade)} {unidadeCombustivel}</p></div>
             <div><p className="text-xs text-muted-foreground">Gasto com combustível</p><p className="text-xl font-black">{currency.format(viagem.combustivelTotal)}</p></div>
             <div><p className="text-xs text-muted-foreground">Total da viagem</p><p className="text-xl font-black text-amber-700 dark:text-amber-400">{currency.format(viagem.total)}</p></div>
             <div className="sm:col-span-2"><p className="flex items-center gap-1 text-xs text-muted-foreground"><UsersRound className="h-3.5 w-3.5" />Valor por pessoa</p><p className="text-2xl font-black">{currency.format(viagem.porPessoa)}</p></div>
