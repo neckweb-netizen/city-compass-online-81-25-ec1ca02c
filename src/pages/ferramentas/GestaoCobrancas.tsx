@@ -30,6 +30,7 @@ export const GestaoCobrancas = () => {
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
   const [legacy, setLegacy] = useState<CobrancaDados | null>(null);
+  const [localStorageWarning, setLocalStorageWarning] = useState('');
   const [authOpen, setAuthOpen] = useState(false);
   const [client, setClient] = useState(blankClient);
   const [clientEditing, setClientEditing] = useState<string | null>(null);
@@ -39,17 +40,24 @@ export const GestaoCobrancas = () => {
   const [search, setSearch] = useState('');
   useEffect(() => {
     let cancelled = false;
-    setOwner(null); setData(EMPTY_COBRANCAS); setFailure(''); setLegacy(null); setRevision(0);
+    setOwner(null); setData(EMPTY_COBRANCAS); setFailure(''); setLegacy(null); setRevision(0); setLocalStorageWarning('');
     setClient(blankClient); setClientEditing(null); setBill(blankBill()); setBillEditing(null);
     if (!uid) return;
     const account = uid;
     const load = async () => {
       let backup: CobrancaDados | null = null;
       try {
-        const raw = localStorage.getItem(cobrancasStorageKey(account));
-        if (raw) {
-          backup = validarBackupCobrancas(JSON.parse(raw));
-          if (!backup) throw new Error('O histórico local está ilegível. Preserve o armazenamento antes de continuar.');
+        // Uma cópia local ilegível não deve impedir a leitura do caderno remoto.
+        // Preserve a chave antiga e não sobrescreva dados que não puderam ser lidos.
+        try {
+          const raw = localStorage.getItem(cobrancasStorageKey(account));
+          if (raw) {
+            backup = validarBackupCobrancas(JSON.parse(raw));
+            if (!backup) throw new Error('O backup local está ilegível.');
+          }
+        } catch {
+          if (!cancelled && activeAccountRef.current === account)
+            setLocalStorageWarning('A cópia deste aparelho não pôde ser lida. Ela será preservada sem alterações. Exporte o caderno remoto e verifique o armazenamento do navegador.');
         }
         const { data: row, error } = await supabase.from('crm_cadernos' as any)
           .select('dados, revision').eq('user_id', account).maybeSingle();
@@ -90,7 +98,7 @@ export const GestaoCobrancas = () => {
       }
       setRevision(Number(nextRevision)); setData(next);
       // Não substitua um backup legado ainda não importado; o usuário decide quando migrar.
-      if (!legacy || JSON.stringify(legacy) === JSON.stringify(next)) {
+      if (!localStorageWarning && (!legacy || JSON.stringify(legacy) === JSON.stringify(next))) {
         try { localStorage.setItem(cobrancasStorageKey(account), JSON.stringify(next)); } catch {
           toast.warning('Salvo na conta, mas a cópia local não pôde ser atualizada.');
         }
@@ -195,6 +203,7 @@ export const GestaoCobrancas = () => {
     <Tabs defaultValue="caderno"><TabsList className="mb-4 h-auto"><TabsTrigger value="caderno">Caderno</TabsTrigger><TabsTrigger value="gerador">Gerador de mensagens</TabsTrigger></TabsList>
       <TabsContent value="gerador"><GeradorCobranca bannerSecao="gestao_cobrancas"/></TabsContent>
       <TabsContent value="caderno" className="space-y-5"><ToolBanner secao="gestao_cobrancas"/>
+        {localStorageWarning && <Card><CardContent role="alert" className="p-4 text-sm text-amber-700 dark:text-amber-300">{localStorageWarning}</CardContent></Card>}
         <Card><CardContent className="p-4 text-sm"><b>Sincronização:</b> clientes e cobranças são guardados na sua conta e sincronizam entre aparelhos após carregar novamente. O navegador mantém uma cópia local para backup; faça exportações regularmente. Nunca compartilhe esses arquivos com terceiros. Pagamentos são confirmados manualmente, sem Pix automático.</CardContent></Card>
         {authLoading || (uid && owner !== uid) ? <p role="status">Carregando...</p> : !user ?
           <Card><CardContent className="space-y-3 p-6"><p>Entre na sua conta para usar o caderno. O gerador de mensagens funciona sem login.</p><Button onClick={() => setAuthOpen(true)}>Entrar</Button><AuthDialog open={authOpen} onOpenChange={setAuthOpen} defaultTab="login"/></CardContent></Card> :
