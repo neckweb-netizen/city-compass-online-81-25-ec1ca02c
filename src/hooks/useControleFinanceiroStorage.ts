@@ -113,6 +113,7 @@ export const useControleFinanceiroStorage = () => {
   const { user, loading: authLoading } = useAuth();
   const legacyLocalRef = useRef<FinanceState>(loadLocalState());
   const [state, setState] = useState<FinanceState>(legacyLocalRef.current);
+  const [stateAccountId, setStateAccountId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -124,6 +125,7 @@ export const useControleFinanceiroStorage = () => {
 
   const persistLocal = useCallback((next: FinanceState) => {
     setState(next);
+    setStateAccountId(user?.id ?? null);
     const storageKey = user ? userStorageKey(user.id) : FINANCE_STORAGE_KEY;
     try {
       localStorage.setItem(storageKey, JSON.stringify(next));
@@ -138,6 +140,7 @@ export const useControleFinanceiroStorage = () => {
     if (!user) {
       loadedUserRef.current = null;
       setState(loadLocalState(FINANCE_STORAGE_KEY));
+      setStateAccountId(null);
       setLoading(false);
       setSyncError(null);
       setHasLocalDataToImport(false);
@@ -157,6 +160,7 @@ export const useControleFinanceiroStorage = () => {
       // Sempre descarte o estado da conta anterior antes de qualquer operação remota.
       // Mesmo um cache vazio é um estado legítimo e não pode mostrar dados de outro usuário.
       setState(accountCache);
+      setStateAccountId(user.id);
 
       const [transactionsResponse, settingsResponse] = await Promise.all([
         (supabase as any)
@@ -415,11 +419,13 @@ export const useControleFinanceiroStorage = () => {
     return 'Sincronizado na conta';
   }, [authLoading, loading, syncError, syncing, user]);
 
+  const visibleState = stateAccountId === (user?.id ?? null) ? state : EMPTY_FINANCE_STATE;
+
   return {
-    state,
+    state: visibleState,
     user,
     authLoading,
-    loading,
+    loading: authLoading || loading || stateAccountId !== (user?.id ?? null),
     syncing,
     syncError,
     storageLabel,
