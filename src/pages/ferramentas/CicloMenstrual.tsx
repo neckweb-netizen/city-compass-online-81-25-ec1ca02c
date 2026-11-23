@@ -402,16 +402,24 @@ const CicloMenstrual = () => {
   };
 
   const exportData = () => {
-    const data: StoredData = { settings, periods, logs };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `ciclo-menstrual-${format(new Date(), 'yyyy-MM-dd')}.json`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    try {
+      const data: StoredData = { settings, periods, logs };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `ciclo-menstrual-${format(new Date(), 'yyyy-MM-dd')}.json`;
+      document.body.appendChild(anchor);
+      try {
+        anchor.click();
+      } finally {
+        anchor.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      }
+    } catch (error) {
+      console.error('Erro ao exportar dados do ciclo menstrual:', error);
+      toast({ title: 'Não foi possível preparar o backup', description: 'Tente novamente antes de sair desta página.', variant: 'destructive' });
+    }
   };
 
   const clearAllData = () => {
@@ -428,6 +436,8 @@ const CicloMenstrual = () => {
       toast({ title: 'Não foi possível apagar os dados', description: 'O navegador bloqueou a exclusão. Nenhum registro foi alterado.', variant: 'destructive' });
       return;
     }
+    setStorageReadFailed(false);
+    setStorageError(false);
     setSettings(DEFAULT_SETTINGS);
     setPeriods([]);
     setLogs({});
