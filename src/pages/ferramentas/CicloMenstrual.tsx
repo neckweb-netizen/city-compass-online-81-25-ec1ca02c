@@ -191,13 +191,15 @@ const CicloMenstrual = () => {
     } catch (error) {
       console.error('Erro ao carregar dados do ciclo menstrual:', error);
       setStorageError(true);
+      // Não sobrescreva dados antigos que não puderam ser lidos.
+      return;
     } finally {
       setLoaded(true);
     }
   }, []);
 
   useEffect(() => {
-    if (!loaded) return;
+    if (!loaded || storageError) return;
 
     const payload: StoredData = { settings, periods, logs };
     try {
@@ -207,7 +209,7 @@ const CicloMenstrual = () => {
       console.error('Erro ao salvar dados do ciclo menstrual:', error);
       setStorageError(true);
     }
-  }, [loaded, settings, periods, logs]);
+  }, [loaded, storageError, settings, periods, logs]);
 
   const sortedPeriods = useMemo(
     () => [...periods].sort((a, b) => a.startDate.localeCompare(b.startDate)),
