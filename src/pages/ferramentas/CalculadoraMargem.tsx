@@ -37,7 +37,9 @@ export const CalculadoraMargem = () => {
   const parseMoeda = (val: string) => parseBrazilianNumber(val) ?? 0;
   const formatarMoeda = (num: number) => num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  const custo = parseMoeda(custoProduto);
+  const custoInformado = custoProduto.trim() ? parseBrazilianNumber(custoProduto) : null;
+  const custoInvalido = custoProduto.trim().length > 0 && (custoInformado === null || custoInformado <= 0);
+  const custo = custoInformado ?? 0;
   const margemDesejada = margemLucroDesejada.trim() ? (parseBrazilianNumber(margemLucroDesejada) ?? -1) : 0;
   const descPix = descontoPixPercentual.trim() ? (parseBrazilianNumber(descontoPixPercentual) ?? -1) : 0;
 
@@ -69,6 +71,7 @@ export const CalculadoraMargem = () => {
 
   // CÁLCULO DO PREÇO À VISTA COM DESCONTO PIX
   const precoVendaPix = taxasValidas ? precoVendaIdeal * (1 - descPix / 100) : 0;
+  const descontoComPrejuizo = descPix > 0 && precoVendaPix < custo;
   const lucroLiquidoPix = precoVendaPix - custo;
 
   // TEXTO DE ORÇAMENTO/RESUMO
@@ -98,7 +101,7 @@ export const CalculadoraMargem = () => {
   const handleEnviarWhatsApp = () => {
     if (!taxasValidas || custo <= 0) return;
     const texto = encodeURIComponent(gerarTextoResumo());
-    window.open(`https://wa.me/?text=${texto}`, '_blank');
+    window.open(`https://wa.me/?text=${texto}`, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -160,6 +163,8 @@ export const CalculadoraMargem = () => {
                   <Input 
                     placeholder="Ex: 50,00" 
                     value={custoProduto} 
+                    aria-invalid={custoInvalido}
+                    inputMode="decimal"
                     onChange={e => setCustoProduto(e.target.value)} 
                     className="h-9 text-xs" 
                   />
@@ -233,6 +238,7 @@ export const CalculadoraMargem = () => {
 
           {/* PAINEL DE RESULTADOS & PREÇO RECOMENDADO */}
           <div className="space-y-4">
+            {custoInvalido && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">Informe um custo válido maior que zero, como 50,00.</p>}
             {!taxasValidas && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">Margem e taxa da maquininha devem ser válidas e somar menos de 100%. O desconto deve ficar entre 0% e 100%.</p>}
             <Card className="border-emerald-500/30 bg-emerald-500/5 shadow-lg">
               <CardContent className="p-6 space-y-4 text-center">
@@ -262,6 +268,7 @@ export const CalculadoraMargem = () => {
                     <span className="text-[10px] text-muted-foreground block mt-0.5">
                       Lucro Líquido no PIX: R$ {formatarMoeda(lucroLiquidoPix)}
                     </span>
+                    {descontoComPrejuizo && <span role="alert" className="mt-2 block text-xs font-bold text-destructive">Atenção: esse desconto coloca o preço abaixo do custo do produto.</span>}
                   </div>
                 )}
               </CardContent>
