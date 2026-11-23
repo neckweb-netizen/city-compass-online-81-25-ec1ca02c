@@ -96,8 +96,8 @@ export const GestaoCobrancas = () => {
     savingRef.current = true; setSaving(true);
     try {
       if (!validarBackupCobrancas(next)) throw new Error('Dados inválidos; nenhuma alteração enviada.');
-      const { data: nextRevision, error } = await supabase.rpc('save_crm_caderno' as any,
-        { p_expected_revision: revision, p_dados: next } as any);
+      const { data: nextRevision, error } = await supabase.rpc('save_crm_caderno_for_user' as any,
+        { p_expected_revision: revision, p_dados: next, p_expected_user: account } as any);
       if (activeAccountRef.current !== account) return false;
       if (error) throw error;
       if (!nextRevision || Number(nextRevision) <= 0) {
