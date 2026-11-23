@@ -99,8 +99,8 @@ const FerramentasCatalogInternal = () => {
     },
     {
       id: 'gestao-cobrancas',
-      titulo: 'Gestão de Cobranças — Mensagens',
-      descricao: 'Prepare mensagens de cobrança, confira valores e envie pelo WhatsApp. Esta ferramenta não mantém cadastro de clientes nem histórico de dívidas.',
+      titulo: 'Caderno de Cobranças & Micro CRM',
+      descricao: 'Cadastre clientes e cobranças, acompanhe vencimentos e pagamentos manuais e envie lembretes pelo WhatsApp. Dados neste aparelho, com backup JSON, sem sincronização entre dispositivos.',
       icone: NotebookPen,
       rota: '/ferramentas/gestao-cobrancas',
       categoria: 'Gestão',
