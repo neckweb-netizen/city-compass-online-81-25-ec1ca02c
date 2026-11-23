@@ -32,4 +32,10 @@ test('text reader registers and removes voiceschanged listener', () => {
   assert.match(page, /speechSynthesis\.addEventListener\('voiceschanged', carregarVozes\)/);
   assert.match(page, /speechSynthesis\.removeEventListener\('voiceschanged', carregarVozes\)/);
   assert.doesNotMatch(page, /speechSynthesis\.onvoiceschanged\s*=/);
+  assert.match(page, /const generationRef = useRef\(0\)/);
+  assert.match(page, /generationRef\.current \+= 1/);
+  assert.match(page, /if \(generation !== generationRef\.current\) return/);
+  assert.match(page, /utterance\.lang = 'pt-BR'/);
+  assert.match(page, /event\.error !== 'canceled' && event\.error !== 'interrupted'/);
+  assert.match(page, /if \(lendo \|\| pausado\) handlePararLeitura\(\)/);
 });
