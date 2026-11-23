@@ -199,9 +199,9 @@ export const useControleFinanceiroStorage = () => {
         persistLocal(remoteState);
         setHasLocalDataToImport(false);
       } else if (localHasData) {
-        // Não migra automaticamente dados sensíveis do aparelho para uma conta.
-        // O usuário escolhe explicitamente fazer a importação.
-        persistLocal(legacyLocalRef.current);
+        // Dados antigos sem proprietário identificado nunca entram no cache da conta.
+        // Apenas a confirmação explícita pode enviá-los ao servidor.
+        persistLocal(remoteState);
         setHasLocalDataToImport(true);
       } else {
         persistLocal(remoteState);
@@ -355,10 +355,11 @@ export const useControleFinanceiroStorage = () => {
 
   const importLocalToAccount = useCallback(async () => {
     if (!user) return { synced: false, reason: 'not_authenticated' as const };
-    const result = await replaceAll(state);
+    if (!hasLocalDataToImport) return operationBlocked();
+    const result = await replaceAll(legacyLocalRef.current);
     if (result.synced) setHasLocalDataToImport(false);
     return result;
-  }, [replaceAll, state, user]);
+  }, [hasLocalDataToImport, replaceAll, user]);
 
   const clearAll = useCallback(async () => {
     if (accountOperationRef.current) return operationBlocked();
