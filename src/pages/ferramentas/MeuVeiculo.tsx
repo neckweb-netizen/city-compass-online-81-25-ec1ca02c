@@ -21,7 +21,11 @@ import {
   useMeuVeiculoStorage,
 } from '@/hooks/useMeuVeiculoStorage';
 
-const todayKey = () => new Date().toISOString().slice(0, 10);
+const todayKey = () => {
+  const now = new Date();
+  const localDate = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
+  return localDate.toISOString().slice(0, 10);
+};
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const num = (value: string) => parseBrazilianNumber(value) ?? 0;
 
