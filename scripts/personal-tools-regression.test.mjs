@@ -106,3 +106,11 @@ test('finance data is hidden immediately when session owner changes', () => {
   assert.match(storage, /state: visibleState/);
   assert.match(storage, /loading: authLoading \|\| loading \|\| stateAccountId !== \(user\?\.id \?\? null\)/);
 });
+
+
+test('finance mutations, restore and deletion wait for current account to finish loading', () => {
+  const hook = read('src/hooks/useControleFinanceiroStorage.ts');
+  assert.ok((hook.match(/accountOperationRef\.current \|\| authLoading \|\| loading \|\| stateAccountId !== \(user\?\.id \?\? null\)/g) || []).length >= 2);
+  assert.match(hook, /restoreInProgressRef\.current \|\| accountOperationRef\.current \|\| authLoading \|\| loading \|\| stateAccountId !== \(user\?\.id \?\? null\)/);
+  assert.match(hook, /if \(activeUserIdRef\.current === requestedUserId\) setSyncError\(error\.message\)/);
+});
