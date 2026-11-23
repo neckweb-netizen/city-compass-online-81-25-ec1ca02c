@@ -60,3 +60,20 @@ test('micro CRM waits for server confirmation and imports legacy data only after
   assert.match(page, /&& await persist\(/);
   assert.match(schema, /function validarBackupCobrancas\(input: unknown\)/);
 });
+
+
+test('unreadable local CRM backups do not block remote data or get overwritten', () => {
+  const page = read('src/pages/ferramentas/GestaoCobrancas.tsx');
+  assert.match(page, /setLocalStorageWarning\('A cópia deste aparelho não pôde ser lida/);
+  assert.match(page, /const \{ data: row, error \} = await supabase\.from\('crm_cadernos' as any\)/);
+  assert.match(page, /if \(!localStorageWarning && \(!legacy \|\| JSON\.stringify\(legacy\) === JSON\.stringify\(next\)\)\)/);
+  assert.match(page, /role="alert"/);
+});
+
+test('CRM allows explicit reload after version conflicts and across devices', () => {
+  const page = read('src/pages/ferramentas/GestaoCobrancas.tsx');
+  assert.match(page, /Recarregar caderno/);
+  assert.match(page, /Atualizar dados de outros aparelhos/);
+  assert.match(page, /window\.location\.reload\(\)/);
+  assert.match(page, /if \(activeAccountRef\.current !== account\) return false/);
+});
