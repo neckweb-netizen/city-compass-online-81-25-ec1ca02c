@@ -87,3 +87,12 @@ test('financial forms stay open after server errors and confirm success after pe
   assert.match(page, /setIsSettingsOpen\(false\);/);
   assert.match(page, /if \(syncing \|\| financeLoading\) return/);
 });
+
+
+test('legacy finance data never becomes account cache before explicit import', () => {
+  const storage = read('src/hooks/useControleFinanceiroStorage.ts');
+  assert.match(storage, /else if \(localHasData\) \{[\s\S]*?persistLocal\(remoteState\);\s*setHasLocalDataToImport\(true\);/);
+  assert.doesNotMatch(storage, /persistLocal\(legacyLocalRef\.current\)/);
+  assert.match(storage, /const result = await replaceAll\(legacyLocalRef\.current\)/);
+  assert.match(storage, /if \(!hasLocalDataToImport\) return operationBlocked\(\)/);
+});
