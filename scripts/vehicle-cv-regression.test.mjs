@@ -73,3 +73,14 @@ test('legacy vehicle recovery requires confirmation and preserves old backup', (
   assert.doesNotMatch(sql, /\bdelete from public\./);
   assert.doesNotMatch(sql, /on conflict \(id\) do update/);
 });
+
+test('vehicle date defaults use the local calendar day, not UTC', () => {
+  const page = read('src/pages/ferramentas/MeuVeiculo.tsx');
+  assert.match(page, /getTimezoneOffset\(\) \* 60_000/);
+  assert.match(page, /localDate\.toISOString\(\)\.slice\(0, 10\)/);
+});
+
+test('vehicle CI also watches changes to the atomic fuel migration', () => {
+  const workflow = read('.github/workflows/vehicle-cv-regression.yml');
+  assert.match(workflow, /supabase\/migrations\/\*atomic_vehicle_fuel\*/);
+});
