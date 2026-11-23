@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent, type ChangeEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Check, Download, MessageCircle, Pencil, Plus, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
@@ -20,6 +20,8 @@ export const GestaoCobrancas = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const uid = user?.id ?? null;
+  const activeAccountRef = useRef(uid);
+  activeAccountRef.current = uid;
   const [owner, setOwner] = useState<string | null>(null);
   const [data, setData] = useState<CobrancaDados>(EMPTY_COBRANCAS);
   const [failure, setFailure] = useState('');
@@ -105,11 +107,14 @@ export const GestaoCobrancas = () => {
   const importBackup = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; e.target.value = '';
     if (!file || blocked) return;
+    const requestedAccount = uid;
     if (file.size > 2_000_000) return toast.error('Backup acima do limite de 2 MB.');
     try {
       const parsed = validarBackupCobrancas(JSON.parse(await file.text()));
+      if (activeAccountRef.current !== requestedAccount) return;
       if (!parsed) return toast.error('Arquivo de backup inválido.');
       if (!window.confirm('Substituir TODOS os clientes e cobranças locais? Exporte uma cópia antes de continuar.')) return;
+      if (activeAccountRef.current !== requestedAccount) return;
       if (persist(parsed)) { setClient(blankClient); setBill(blankBill()); setClientEditing(null); setBillEditing(null); toast.success('Backup restaurado.'); }
     } catch { toast.error('Não foi possível ler o backup.'); }
   };
