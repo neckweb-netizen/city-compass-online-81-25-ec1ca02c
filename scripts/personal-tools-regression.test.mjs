@@ -96,3 +96,13 @@ test('legacy finance data never becomes account cache before explicit import', (
   assert.match(storage, /const result = await replaceAll\(legacyLocalRef\.current\)/);
   assert.match(storage, /if \(!hasLocalDataToImport\) return operationBlocked\(\)/);
 });
+
+
+test('finance data is hidden immediately when session owner changes', () => {
+  const storage = read('src/hooks/useControleFinanceiroStorage.ts');
+  assert.match(storage, /const \[stateAccountId, setStateAccountId\] = useState<string \| null>\(null\)/);
+  assert.match(storage, /setState\(accountCache\);\s*setStateAccountId\(user\.id\)/);
+  assert.match(storage, /const visibleState = stateAccountId === \(user\?\.id \?\? null\) \? state : EMPTY_FINANCE_STATE/);
+  assert.match(storage, /state: visibleState/);
+  assert.match(storage, /loading: authLoading \|\| loading \|\| stateAccountId !== \(user\?\.id \?\? null\)/);
+});
