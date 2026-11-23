@@ -16,7 +16,10 @@ test('FIPE requests discard outdated responses across vehicle, reference, brand 
 
 test('sales calculator treats bank fees as illustrative and validates Brazilian costs and discounts', () => {
   const page = read('src/pages/ferramentas/CalculadoraMargem.tsx');
-  assert.match(page, /parseBrazilianNumber\(val\) \?\? 0/);
+  assert.match(page, /const custoInformado = custoProduto\.trim\(\) \? parseBrazilianNumber\(custoProduto\) : null/);
+  assert.match(page, /custoInvalido = custoProduto\.trim\(\)\.length > 0/);
+  assert.match(page, /descontoComPrejuizo = descPix > 0 && precoVendaPix < custo/);
+  assert.match(page, /window\.open\(`https:\/\/wa\.me\/\?text=\$\{texto\}`, '_blank', 'noopener,noreferrer'\)/);
   assert.match(page, /descontoPixPercentual\.trim\(\) \? \(parseBrazilianNumber\(descontoPixPercentual\) \?\? -1\) : 0/);
   assert.match(page, /descPix >= 0 && descPix <= 100/);
   assert.match(page, /taxas exibidas são apenas exemplos/);
