@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import type { CardapioItem } from '@/features/cardapio/types';
 import { slugifyCardapio } from '@/features/cardapio/types';
+import { parseBrazilianNumber } from '@/lib/parseBrazilianNumber';
 import { useAuth } from '@/hooks/useAuth';
 import { useCardapioPlanUsage, useMyCardapios } from '@/hooks/useCardapioDigital';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,7 +26,7 @@ const NEW_CARDAPIO = 'novo';
 const emptyMenu = { nome: '', slug: '', descricao: '', logo_url: '', capa_url: '', whatsapp: '', endereco: '', instagram: '', cor_primaria: '#7c3aed', aceita_pedidos: true, ativo: true };
 const emptyItem = { nome: '', categoria: 'Pratos principais', descricao: '', preco: '', imagem_url: '', disponivel: true, destaque: false };
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
-const parseMoney = (value: string) => Number(value.replace(',', '.')) || 0;
+const parseMoney = (value: string) => parseBrazilianNumber(value);
 
 export default function CardapioDigital() {
   const navigate = useNavigate();
@@ -39,6 +40,13 @@ export default function CardapioDigital() {
   const [menuForm, setMenuForm] = useState(emptyMenu);
   const [itemForm, setItemForm] = useState(emptyItem);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSelectedCardapioId(null);
+    setMenuForm(emptyMenu);
+    setItemForm(emptyItem);
+    setEditingItemId(null);
+  }, [user?.id]);
 
   useEffect(() => {
     if (!menusQuery.isSuccess || selectedCardapioId) return;
@@ -89,13 +97,16 @@ export default function CardapioDigital() {
 
   const saveMenu = async (event?: { preventDefault(): void }) => {
     event?.preventDefault();
+    if (saving || authLoading || menusQuery.isLoading || planQuery.isLoading) return;
     if (!user) return setAuthOpen(true);
+    if (menusQuery.isError || planQuery.isError) return toast.error('Não foi possível verificar seus cardápios e limites. Atualize a página.');
     if (!cardapio && !canCreate) return startNewCardapio();
     const slug = slugifyCardapio(menuForm.slug || menuForm.nome);
     if (menuForm.nome.trim().length < 2) return toast.error('Informe o nome do estabelecimento.');
     if (slug.length < 3) return toast.error('Crie um endereço com pelo menos 3 caracteres.');
 
     setSaving(true);
+    try {
     const payload = {
       user_id: user.id,
       nome: menuForm.nome.trim(),
@@ -111,9 +122,8 @@ export default function CardapioDigital() {
       ativo: menuForm.ativo,
     };
     const result = cardapio
-      ? await supabase.from('cardapios' as any).update(payload).eq('id', cardapio.id).select('id').single()
+      ? await supabase.from('cardapios' as any).update(payload).eq('id', cardapio.id).eq('user_id', user.id).select('id').single()
       : await supabase.from('cardapios' as any).insert(payload).select('id').single();
-    setSaving(false);
 
     if (result.error) {
       if (result.error.code === '23505') return toast.error('Esse endereço já está em uso. Escolha outro.');
@@ -129,34 +139,49 @@ export default function CardapioDigital() {
     await Promise.all([menusQuery.refetch(), planQuery.refetch()]);
     if (savedId) setSelectedCardapioId(savedId);
     toast.success(cardapio ? 'Cardápio atualizado.' : 'Cardápio criado com sucesso.');
+    } catch (error) {
+      console.error('Erro ao salvar cardápio:', error);
+      toast.error('Falha de conexão ao salvar o cardápio. Tente novamente.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const saveItem = async (event: FormEvent) => {
     event.preventDefault();
-    if (!cardapio) return toast.error('Salve primeiro os dados do estabelecimento.');
+    if (saving || authLoading || menusQuery.isLoading || menusQuery.isError) return;
+    if (!user || !cardapio || cardapio.user_id !== user.id) return toast.error('Selecione um cardápio da sua conta.');
     if (itemForm.nome.trim().length < 2) return toast.error('Informe o nome do item.');
+    const parsedPrice = parseMoney(itemForm.preco);
+    if (parsedPrice === null || parsedPrice < 0) return toast.error('Informe um preço válido, sem valor negativo.');
     const wasEditing = Boolean(editingItemId);
     const payload = {
       cardapio_id: cardapio.id,
       nome: itemForm.nome.trim(),
       categoria: itemForm.categoria.trim() || 'Geral',
       descricao: itemForm.descricao.trim() || null,
-      preco: parseMoney(itemForm.preco),
+      preco: parsedPrice,
       imagem_url: itemForm.imagem_url || null,
       disponivel: itemForm.disponivel,
       destaque: itemForm.destaque,
       ordem: editingItemId ? items.find(item => item.id === editingItemId)?.ordem ?? 1 : items.length + 1,
     };
     setSaving(true);
+    try {
     const result = editingItemId
-      ? await supabase.from('cardapio_itens' as any).update(payload).eq('id', editingItemId)
+      ? await supabase.from('cardapio_itens' as any).update(payload).eq('id', editingItemId).eq('cardapio_id', cardapio.id)
       : await supabase.from('cardapio_itens' as any).insert(payload);
-    setSaving(false);
     if (result.error) return toast.error('Não foi possível salvar o item.');
     setEditingItemId(null);
     setItemForm(emptyItem);
     await menusQuery.refetch();
     toast.success(wasEditing ? 'Item atualizado.' : 'Item adicionado.');
+    } catch (error) {
+      console.error('Erro ao salvar item do cardápio:', error);
+      toast.error('Falha de conexão ao salvar o item. Tente novamente.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const editItem = (item: CardapioItem) => {
@@ -166,16 +191,29 @@ export default function CardapioDigital() {
   };
 
   const deleteItem = async (item: CardapioItem) => {
+    if (!user || !cardapio || cardapio.user_id !== user.id || saving) return;
     if (!window.confirm(`Excluir “${item.nome}” do cardápio?`)) return;
-    const { error } = await supabase.from('cardapio_itens' as any).delete().eq('id', item.id);
-    if (error) return toast.error('Não foi possível excluir o item.');
-    await menusQuery.refetch();
-    toast.success('Item excluído.');
+    setSaving(true);
+    try {
+      const { error } = await supabase.from('cardapio_itens' as any).delete().eq('id', item.id).eq('cardapio_id', cardapio.id);
+      if (error) return toast.error('Não foi possível excluir o item.');
+      await menusQuery.refetch();
+      toast.success('Item excluído.');
+    } catch (error) {
+      console.error('Erro ao excluir item do cardápio:', error);
+      toast.error('Falha de conexão ao excluir o item.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const copyLink = async () => {
-    await navigator.clipboard.writeText(publicUrl);
-    toast.success('Link do cardápio copiado.');
+    try {
+      await navigator.clipboard.writeText(publicUrl);
+      toast.success('Link do cardápio copiado.');
+    } catch {
+      toast.error('Não foi possível copiar o link. Copie-o manualmente na aba Publicar.');
+    }
   };
 
   if (authLoading) return <Loading />;
@@ -183,6 +221,7 @@ export default function CardapioDigital() {
   if (!user) return <div className="min-h-screen bg-gradient-to-b from-violet-950 via-slate-950 to-background px-4 py-12 text-white"><div className="mx-auto max-w-4xl text-center"><div className="mx-auto grid h-20 w-20 place-items-center rounded-3xl bg-white/10"><UtensilsCrossed className="h-10 w-10 text-violet-300" /></div><Badge className="mt-6 bg-violet-500/20 text-violet-200">Ferramenta gratuita</Badge><h1 className="mt-4 text-4xl font-black sm:text-6xl">Seu cardápio digital, bonito e pronto para vender</h1><p className="mx-auto mt-5 max-w-2xl text-base text-slate-300 sm:text-lg">Crie seu perfil, publique produtos, receba pedidos pelo WhatsApp e compartilhe um único link com seus clientes.</p><div className="mt-8 flex flex-wrap justify-center gap-3"><Button size="lg" onClick={() => setAuthOpen(true)} className="bg-violet-600 hover:bg-violet-700"><Store className="mr-2 h-5 w-5" />Entrar para criar</Button><Button size="lg" variant="outline" onClick={() => navigate('/ferramentas')} className="border-white/30 bg-white/5 text-white hover:bg-white/10 hover:text-white"><ArrowLeft className="mr-2 h-5 w-5" />Ver ferramentas</Button></div></div><AuthDialog open={authOpen} onOpenChange={setAuthOpen} defaultTab="login" /></div>;
 
   if (menusQuery.isLoading || planQuery.isLoading || !selectedCardapioId) return <Loading />;
+  if (menusQuery.isError || planQuery.isError) return <div className="mx-auto max-w-lg p-6"><Alert variant="destructive"><AlertTitle>Não foi possível carregar seus cardápios</AlertTitle><AlertDescription>Verifique a conexão e tente novamente.</AlertDescription></Alert><Button className="mt-4" onClick={() => { void menusQuery.refetch(); void planQuery.refetch(); }}>Tentar novamente</Button></div>;
 
   return <div className="min-h-screen bg-muted/20 px-3 pb-24 pt-4 sm:px-6 sm:py-8"><div className="mx-auto max-w-6xl space-y-6">
     <div className="flex flex-wrap items-center justify-between gap-3"><Button variant="ghost" onClick={() => navigate('/ferramentas')}><ArrowLeft className="mr-2 h-4 w-4" />Ferramentas</Button>{cardapio && <div className="flex gap-2"><Button variant="outline" onClick={() => void copyLink()}><Copy className="mr-2 h-4 w-4" />Copiar link</Button><Button asChild style={{ backgroundColor: cardapio.cor_primaria }}><Link to={`/cardapio/${cardapio.slug}`} target="_blank"><ExternalLink className="mr-2 h-4 w-4" />Ver publicado</Link></Button></div>}</div>
