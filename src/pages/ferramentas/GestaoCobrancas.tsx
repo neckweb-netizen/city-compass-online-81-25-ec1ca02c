@@ -89,10 +89,13 @@ export const GestaoCobrancas = () => {
         return false;
       }
       setRevision(Number(nextRevision)); setData(next);
-      try { localStorage.setItem(cobrancasStorageKey(account), JSON.stringify(next)); } catch {
-        toast.warning('Salvo na conta, mas a cópia local não pôde ser atualizada.');
+      // Não substitua um backup legado ainda não importado; o usuário decide quando migrar.
+      if (!legacy || JSON.stringify(legacy) === JSON.stringify(next)) {
+        try { localStorage.setItem(cobrancasStorageKey(account), JSON.stringify(next)); } catch {
+          toast.warning('Salvo na conta, mas a cópia local não pôde ser atualizada.');
+        }
+        setLegacy(null);
       }
-      setLegacy(null);
       return true;
     } catch (error) {
       if (activeAccountRef.current === account)
