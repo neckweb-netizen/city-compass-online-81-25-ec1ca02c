@@ -12,6 +12,8 @@ export const EMPTY_COBRANCAS: CobrancaDados = { versao: 1, clientes: [], cobranc
 export const cobrancasStorageKey = (userId: string) => 'sajtem:microcrm:v1:' + userId;
 // A cópia de sincronização não deve sobrescrever a chave histórica de backups locais.
 export const cobrancasSyncCacheKey = (userId: string) => 'sajtem:microcrm:sync:v1:' + userId;
+// Registra apenas o backup que o usuário já autorizou importar, sem apagar o original.
+export const cobrancasImportedLegacyKey = (userId: string) => 'sajtem:microcrm:imported:v1:' + userId;
 
 export const formatCobrancaMoney = (centavos: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(centavos / 100);
