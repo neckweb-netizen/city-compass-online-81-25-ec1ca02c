@@ -36,21 +36,25 @@ const BannersFerramentas = () => {
 
   return (
     <div className="w-full space-y-3">
-      {banners.map((b) => (
-        <a
-          key={b.id}
-          href={getSafeNavigationUrl(b.link_destino) ?? undefined}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block w-full rounded-2xl overflow-hidden shadow-sm border border-border/60 hover:opacity-95 transition-opacity"
-        >
+      {banners.map((b) => {
+        const safeUrl = getSafeNavigationUrl(b.link_destino);
+        const image = (
           <img
             src={b.imagem_url || b.imagem}
-            alt={b.titulo || "Banner de Anúncio"}
+            alt={b.titulo || 'Banner de anúncio'}
+            loading="lazy"
             className="w-full h-auto max-h-[160px] sm:max-h-[220px] object-cover"
           />
-        </a>
-      ))}
+        );
+        const className = 'block w-full rounded-2xl overflow-hidden shadow-sm border border-border/60 hover:opacity-95 transition-opacity';
+        return safeUrl ? (
+          <a key={b.id} href={safeUrl} target="_blank" rel="noopener noreferrer" className={className}>
+            {image}
+          </a>
+        ) : (
+          <div key={b.id} className={className}>{image}</div>
+        );
+      })}
     </div>
   );
 };
@@ -66,7 +70,7 @@ const FerramentasCatalogInternal = () => {
     {
       id: 'gerador-rifa',
       titulo: 'Gerador & Caderno de Rifas',
-      descricao: 'Crie rifas personalizadas, controle pagamentos de números e compartilhe o link público com compradores.',
+      descricao: 'Entre na sua conta para criar rifas, controlar números e compartilhar o link público com compradores.',
       icone: Ticket,
       rota: '/ferramentas/gerador-rifa',
       categoria: 'Sorteios',
@@ -95,8 +99,8 @@ const FerramentasCatalogInternal = () => {
     },
     {
       id: 'gestao-cobrancas',
-      titulo: 'Caderno de Cobranças & Micro CRM',
-      descricao: 'Gerencie clientes, controle quem te deve, valores a receber, datas de vencimento e histórico completo de cobranças.',
+      titulo: 'Gestão de Cobranças — Mensagens',
+      descricao: 'Prepare mensagens de cobrança, confira valores e envie pelo WhatsApp. Esta ferramenta não mantém cadastro de clientes nem histórico de dívidas.',
       icone: NotebookPen,
       rota: '/ferramentas/gestao-cobrancas',
       categoria: 'Gestão',
@@ -156,7 +160,7 @@ const FerramentasCatalogInternal = () => {
     {
       id: 'controle-financeiro',
       titulo: 'Controle Financeiro Pessoal',
-      descricao: 'Organize receitas, despesas, contas a vencer, calendário financeiro, orçamento e metas com dados privados no aparelho.',
+      descricao: 'Organize receitas, despesas, calendário financeiro, orçamento e metas. Com login, os dados são sincronizados na sua conta; registros locais antigos exigem importação autorizada.',
       icone: WalletCards,
       rota: '/ferramentas/controle-financeiro',
       categoria: 'Financeiro',
@@ -206,7 +210,7 @@ const FerramentasCatalogInternal = () => {
     {
       id: 'calculadora-combustivel',
       titulo: 'Combustível e Custo da Viagem',
-      descricao: 'Calcule litros, custo total, divisão entre passageiros e compare gasolina com etanol.',
+      descricao: 'Calcule combustível em litros ou m³ (GNV), custo total, divisão entre passageiros e compare gasolina com etanol.',
       icone: Fuel,
       rota: '/ferramentas/calculadora-combustivel',
       categoria: 'Veículos',
@@ -236,6 +240,7 @@ const FerramentasCatalogInternal = () => {
   ];
 
   const categoriasUnicas = ['Todas', ...Array.from(new Set(ferramentas.map(f => f.categoria)))];
+  const requiresLogin = new Set(['gerador-rifa']);
 
   const categoriaVisual: Record<string, { icone: typeof Grid; cor: string; fundo: string }> = {
     Todas: { icone: Grid, cor: 'text-violet-600 dark:text-violet-300', fundo: 'bg-violet-100 dark:bg-violet-950/50' },
@@ -410,7 +415,7 @@ const FerramentasCatalogInternal = () => {
                             {item.categoria}
                           </Badge>
                           <Badge className="bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold flex items-center gap-1">
-                            <Globe className="w-3 h-3" /> Público
+                            <Globe className="w-3 h-3" /> {requiresLogin.has(item.id) ? 'Login para criar' : 'Acesso livre'}
                           </Badge>
                         </div>
                       </div>
