@@ -215,7 +215,11 @@ export const useControleFinanceiroStorage = () => {
       setLoading(false);
     };
 
-    loadRemote();
+    void loadRemote().catch((cause) => {
+      if (cancelled || activeUserIdRef.current !== user.id) return;
+      setSyncError(cause instanceof Error ? cause.message : 'Falha de conexão ao carregar dados financeiros.');
+      setLoading(false);
+    });
 
     return () => {
       cancelled = true;
