@@ -24,3 +24,15 @@ test('cycle diary permits retry after a failed write without dismissing unreadab
   assert.match(page, /setSaveRetry\(\(current\) => current \+ 1\)/);
   assert.match(page, /!storageReadFailed && \(/);
 });
+
+
+test('explicit deletion unlocks the read-failure guard only after removing stored data', () => {
+  assert.match(page, /try \{\s*localStorage\.removeItem\(STORAGE_KEY\)/);
+  assert.match(page, /setStorageReadFailed\(false\);\s*setStorageError\(false\);\s*setSettings\(DEFAULT_SETTINGS\)/);
+});
+
+test('backup export handles errors and always releases its temporary link', () => {
+  assert.match(page, /try \{\s*const data: StoredData = \{ settings, periods, logs \}/);
+  assert.match(page, /finally \{\s*anchor\.remove\(\)/);
+  assert.match(page, /Não foi possível preparar o backup/);
+});
