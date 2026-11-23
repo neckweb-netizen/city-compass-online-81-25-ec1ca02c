@@ -126,3 +126,15 @@ test('CRM RPC binds writes to the same account from which the operation started'
   assert.match(sql, /revoke all on function public\.save_crm_caderno_for_user\(bigint,jsonb,uuid\) from public,anon/);
   assert.match(revoke, /revoke execute on function public\.save_crm_caderno\(bigint,jsonb\) from authenticated/);
 });
+
+
+test('imported legacy backup is recognized without copying personal data or reimporting', () => {
+  const page = read('src/pages/ferramentas/GestaoCobrancas.tsx');
+  const model = read('src/features/cobrancas/microCrm.ts');
+  assert.match(model, /export const cobrancasImportedLegacyKey/);
+  assert.match(model, /crypto\.subtle\.digest\('SHA-256', bytes\)/);
+  assert.match(page, /importedFingerprint === await legacyBackupFingerprint\(backup\)/);
+  assert.match(page, /backup && !alreadyImported &&/);
+  assert.match(page, /localStorage\.setItem\(cobrancasImportedLegacyKey\(uid!\), fingerprint\)/);
+  assert.doesNotMatch(page, /localStorage\.setItem\(cobrancasStorageKey\(account\)/);
+});
