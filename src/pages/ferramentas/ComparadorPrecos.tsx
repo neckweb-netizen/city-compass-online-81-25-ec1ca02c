@@ -12,7 +12,7 @@ import { parseBrazilianNumber } from '@/lib/parseBrazilianNumber';
 
 type Product = { name: string; price: string; quantity: string };
 const initialProducts: Product[] = [{ name: 'Produto A', price: '', quantity: '' }, { name: 'Produto B', price: '', quantity: '' }, { name: 'Produto C', price: '', quantity: '' }];
-const numberFrom = (value: string) => parseBrazilianNumber(value) ?? 0;
+const numberFrom = (value: string) => parseBrazilianNumber(value);
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 4 });
 
 export default function ComparadorPrecos() {
@@ -23,10 +23,12 @@ export default function ComparadorPrecos() {
   const results = useMemo(() => products.map((product, index) => {
     const price = numberFrom(product.price);
     const quantity = numberFrom(product.quantity);
-    return { ...product, index, unitPrice: quantity > 0 ? price / quantity : 0, valid: price > 0 && quantity > 0 };
+    const valid = price !== null && price > 0 && quantity !== null && quantity > 0;
+    return { ...product, index, unitPrice: valid ? price / quantity : 0, valid };
   }), [products]);
   const validResults = results.filter(item => item.valid);
   const bestPrice = validResults.length > 1 ? Math.min(...validResults.map(item => item.unitPrice)) : 0;
+  const bestItems = validResults.length > 1 ? validResults.filter(item => Math.abs(item.unitPrice - bestPrice) <= 1e-9) : [];
 
   const updateProduct = (index: number, field: keyof Product, value: string) => {
     setProducts(current => current.map((product, productIndex) => productIndex === index ? { ...product, [field]: value } : product));
@@ -41,15 +43,15 @@ export default function ComparadorPrecos() {
       <Card><CardHeader><div className="flex flex-wrap items-end justify-between gap-3"><div><CardTitle>Informe até três produtos</CardTitle><p className="mt-1 text-sm text-muted-foreground">Use a mesma unidade de medida em todos.</p></div><div className="w-40 space-y-1"><Label htmlFor="unidade-comparacao">Unidade</Label><Select value={unit} onValueChange={setUnit}><SelectTrigger id="unidade-comparacao" aria-label="Unidade de medida dos produtos"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="g">gramas (g)</SelectItem><SelectItem value="kg">quilos (kg)</SelectItem><SelectItem value="ml">mililitros (ml)</SelectItem><SelectItem value="l">litros (l)</SelectItem><SelectItem value="un.">unidades</SelectItem><SelectItem value="m">metros (m)</SelectItem></SelectContent></Select></div></div></CardHeader><CardContent>
         <div className="grid gap-4 md:grid-cols-3">{products.map((product, index) => {
           const result = results[index];
-          const isBest = result.valid && bestPrice > 0 && result.unitPrice === bestPrice;
+          const isBest = result.valid && bestItems.some(item => item.index === index);
           return <div key={index} className={`rounded-2xl border p-4 transition ${isBest ? 'border-emerald-500 bg-emerald-500/10 ring-2 ring-emerald-500/15' : 'bg-card'}`}>
             <div className="mb-3 flex items-center justify-between gap-2"><Badge variant="secondary">Opção {index + 1}</Badge>{isBest && <Badge className="bg-emerald-600"><CheckCircle2 className="mr-1 h-3 w-3" />Melhor preço</Badge>}</div>
-            <div className="space-y-3"><div className="space-y-1"><Label htmlFor={`name-${index}`}>Nome</Label><Input id={`name-${index}`} value={product.name} onChange={event => updateProduct(index, 'name', event.target.value)} /></div><div className="space-y-1"><Label htmlFor={`price-${index}`}>Preço total</Label><Input id={`price-${index}`} inputMode="decimal" aria-invalid={Boolean(product.price.trim()) && !result.valid && numberFrom(product.price) <= 0} value={product.price} onChange={event => updateProduct(index, 'price', event.target.value)} placeholder="Ex.: 12,90" /></div><div className="space-y-1"><Label htmlFor={`quantity-${index}`}>Quantidade ({unit})</Label><Input id={`quantity-${index}`} inputMode="decimal" aria-invalid={Boolean(product.quantity.trim()) && numberFrom(product.quantity) <= 0} value={product.quantity} onChange={event => updateProduct(index, 'quantity', event.target.value)} placeholder="Ex.: 500" /></div></div>
+            <div className="space-y-3"><div className="space-y-1"><Label htmlFor={`name-${index}`}>Nome</Label><Input id={`name-${index}`} value={product.name} onChange={event => updateProduct(index, 'name', event.target.value)} /></div><div className="space-y-1"><Label htmlFor={`price-${index}`}>Preço total</Label><Input id={`price-${index}`} inputMode="decimal" aria-invalid={Boolean(product.price.trim()) && !result.valid && (numberFrom(product.price) ?? 0) <= 0} value={product.price} onChange={event => updateProduct(index, 'price', event.target.value)} placeholder="Ex.: 12,90" /></div><div className="space-y-1"><Label htmlFor={`quantity-${index}`}>Quantidade ({unit})</Label><Input id={`quantity-${index}`} inputMode="decimal" aria-invalid={Boolean(product.quantity.trim()) && (numberFrom(product.quantity) ?? 0) <= 0} value={product.quantity} onChange={event => updateProduct(index, 'quantity', event.target.value)} placeholder="Ex.: 500" /></div></div>
             <div className="mt-4 rounded-xl bg-muted p-3 text-center"><p className="text-xs text-muted-foreground">Preço por {unit}</p><p className="text-xl font-black">{result.valid ? currency.format(result.unitPrice) : '—'}</p></div>
           </div>;
         })}</div>
         {validResults.length < 2 && <div className="mt-5 rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground"><BadgeDollarSign className="mx-auto mb-2 h-6 w-6" />Preencha pelo menos duas opções para identificar o melhor preço.</div>}
-        {validResults.length > 1 && <div className="mt-5 rounded-2xl bg-emerald-500/10 p-5 text-center"><p className="text-sm text-muted-foreground">A opção mais econômica é</p><p className="mt-1 text-2xl font-black text-emerald-700 dark:text-emerald-400">{validResults.find(item => item.unitPrice === bestPrice)?.name || 'menor preço'}</p><p className="text-sm">{currency.format(bestPrice)} por {unit}</p></div>}
+        {validResults.length > 1 && <div className="mt-5 rounded-2xl bg-emerald-500/10 p-5 text-center"><p className="text-sm text-muted-foreground">{bestItems.length > 1 ? 'As opções mais econômicas são' : 'A opção mais econômica é'}</p><p className="mt-1 text-2xl font-black text-emerald-700 dark:text-emerald-400">{bestItems.map(item => item.name || `Opção ${item.index + 1}`).join(' e ')}</p><p className="text-sm">{currency.format(bestPrice)} por {unit}</p></div>}
       </CardContent></Card>
     </div>
   </div>;
