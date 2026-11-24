@@ -173,3 +173,19 @@ test('public event detail reports fetch errors and validates ticket destination'
   assert.match(page, /if \(!inicio \|\| !fim\) return/);
   assert.match(page, /document\.title = previousTitle/);
 });
+
+
+test('public coupon listing only displays currently valid offers from approved active companies', () => {
+  const page = source('src/components/coupons/CouponsContent.tsx');
+  assert.match(page, /empresas!inner\(nome, id, cidade_id, ativo, status_aprovacao\)/);
+  assert.match(page, /\.eq\('empresas\.ativo', true\)/);
+  assert.match(page, /\.eq\('empresas\.status_aprovacao', 'aprovado'\)/);
+  assert.match(page, /\.lte\('data_inicio', new Date\(\)\.toISOString\(\)\)/);
+  assert.match(page, /\.gte\('data_fim', new Date\(\)\.toISOString\(\)\)/);
+  assert.match(page, /\.eq\('empresas\.cidade_id', cidadePadrao!\.id\)/);
+  assert.match(page, /enabled: !!cidadePadrao\?\.id/);
+  assert.match(page, /if \(isError \|\| cidadeError\) return/);
+  assert.match(page, /if \(!cidadePadrao\?\.id\) return/);
+  assert.match(page, /await navigator\.clipboard\.writeText\(codigo\)/);
+  assert.match(page, /Não foi possível copiar/);
+});
