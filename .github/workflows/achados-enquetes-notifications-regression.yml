@@ -14,6 +14,7 @@ on:
       - 'src/components/notifications/**'
       - 'scripts/notifications-module.test.mjs'
       - 'scripts/achados-enquetes-regression.test.mjs'
+      - 'scripts/lost-found-module.test.mjs'
       - '.github/workflows/achados-enquetes-notifications-regression.yml'
   workflow_dispatch:
 permissions:
@@ -29,5 +30,5 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci --ignore-scripts
-      - run: node --test scripts/achados-enquetes-regression.test.mjs scripts/notifications-module.test.mjs
+      - run: node --test scripts/achados-enquetes-regression.test.mjs scripts/lost-found-module.test.mjs scripts/notifications-module.test.mjs
       - run: npm run typecheck
