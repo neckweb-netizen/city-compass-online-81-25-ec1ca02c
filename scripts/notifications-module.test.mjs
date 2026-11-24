@@ -115,3 +115,21 @@ test('notification mutations use the original authenticated account, not current
   assert.match(hook, /markAllAsReadMutation\.mutate\(user\.id\)/);
   assert.match(hook, /archiveMutation\.mutate\(\{ notificationId, account: user\.id \}\)/);
 });
+
+
+test('push foreground messages ignore stale account and disabled preferences', () => {
+  const push = source('src/contexts/PushNotificationsContext.tsx');
+  assert.match(push, /if \(!user\?\.id \|\| !supported \|\| !preferencesReady \|\| !preferences\.push_enabled\) return/);
+  assert.match(push, /const subscribingUser = user\.id/);
+  assert.match(push, /if \(!active \|\| currentUserRef\.current !== subscribingUser\) return/);
+  assert.match(push, /\[user\?\.id, supported, preferencesReady, preferences\.push_enabled\]/);
+});
+
+test('push enable and disable operations cannot mutate the next account UI', () => {
+  const push = source('src/contexts/PushNotificationsContext.tsx');
+  assert.match(push, /Sua conta mudou durante a ativação/);
+  assert.match(push, /Sua conta mudou durante a desativação/);
+  assert.match(push, /if \(currentUserRef\.current !== requestedUser\) return/);
+  assert.match(push, /if \(currentUserRef\.current === requestedUser\) setLoading\(false\)/);
+  assert.match(push, /if \(!user\?\.id\) throw new Error\('Faça login para desativar/);
+});
