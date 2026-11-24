@@ -93,6 +93,7 @@ export const PushNotificationsProvider = ({ children }: { children: ReactNode })
     setEnabled(false);
     setPreferences(defaultPreferences);
     setPushStateReady(false);
+    setLoading(false);
     setError(null);
     let active = true;
     (supabase as any)
