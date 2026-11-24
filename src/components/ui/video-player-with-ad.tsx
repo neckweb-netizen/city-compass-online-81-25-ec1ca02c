@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { X, Play, Volume2, VolumeX } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
@@ -44,9 +44,14 @@ export const VideoPlayerWithAd = ({ videoUrl, videoTitle, className }: VideoPlay
     },
   });
 
-  const selectedBanner = banners && banners.length > 0 
-    ? banners[Math.floor(Math.random() * banners.length)]
-    : null;
+  // Escolha estável por vídeo: renders do contador não devem trocar o banner
+  // nem reiniciar os cinco segundos do anúncio continuamente.
+  const selectedBanner = useMemo(() => {
+    if (!banners?.length) return null;
+    let hash = 0;
+    for (let i = 0; i < videoUrl.length; i += 1) hash = (hash * 31 + videoUrl.charCodeAt(i)) | 0;
+    return banners[(hash >>> 0) % banners.length];
+  }, [banners, videoUrl]);
 
   useEffect(() => {
     if (isPlaying && selectedBanner) {
@@ -68,6 +73,14 @@ export const VideoPlayerWithAd = ({ videoUrl, videoTitle, className }: VideoPlay
       return () => clearInterval(countdownInterval);
     }
   }, [isPlaying, selectedBanner]);
+
+  useEffect(() => {
+    // Um componente reutilizado para outra publicação não pode manter o vídeo/anúncio anterior.
+    setIsPlaying(false);
+    setShowAd(false);
+    setAdCountdown(5);
+    setCanSkip(false);
+  }, [videoUrl]);
 
   const handlePlay = () => {
     if (!isSafeCanalMediaUrl(videoUrl) || !isVideoUrl(videoUrl)) return;
@@ -135,15 +148,9 @@ export const VideoPlayerWithAd = ({ videoUrl, videoTitle, className }: VideoPlay
                       loop
                       playsInline
                       className="w-full h-full object-cover rounded-xl"
-                      onError={(e) => {
-                        console.error('Erro ao carregar vídeo do banner:', e);
-                        // Fallback para imagem se o vídeo não carregar
-                        const videoElement = e.target as HTMLVideoElement;
-                        const img = document.createElement('img');
-                        img.src = selectedBanner.imagem_url;
-                        img.className = 'w-full h-full object-cover rounded-xl';
-                        img.alt = 'Banner publicitário';
-                        videoElement.parentNode?.replaceChild(img, videoElement);
+                      onError={() => {
+                        // Vídeo indisponível: não inserir imagem via DOM com a mesma URL de vídeo.
+                        setShowAd(false);
                       }}
                     />
                   )}
