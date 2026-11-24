@@ -4,6 +4,8 @@ on:
     branches: [main]
     paths:
       - 'src/components/empresa/EmpresaCuponsList.tsx'
+      - 'src/components/eventos/EventosContent.tsx'
+      - 'src/components/eventos/EventoDetailContent.tsx'
       - 'src/components/empresa/EmpresaEventosList.tsx'
       - 'src/components/forms/CupomFormModal.tsx'
       - 'src/components/forms/EventoFormModal.tsx'
