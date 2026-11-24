@@ -4,6 +4,7 @@ import { X, Play, Volume2, VolumeX } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { navigateToSafeUrl } from '@/lib/safeNavigation';
+import { getYoutubeVideoId, isCanalVideoUrl, isSafeCanalMediaUrl } from '@/lib/canalMedia';
 
 interface VideoPlayerWithAdProps {
   videoUrl: string;
@@ -69,6 +70,7 @@ export const VideoPlayerWithAd = ({ videoUrl, videoTitle, className }: VideoPlay
   }, [isPlaying, selectedBanner]);
 
   const handlePlay = () => {
+    if (!isSafeCanalMediaUrl(videoUrl) || !isVideoUrl(videoUrl)) return;
     setIsPlaying(true);
   };
 
@@ -91,40 +93,16 @@ export const VideoPlayerWithAd = ({ videoUrl, videoTitle, className }: VideoPlay
     }
   };
 
-  const isYouTubeUrl = (url: string) => {
-    return url.includes('youtube.com') || url.includes('youtu.be');
-  };
-
+  const isYouTubeUrl = (url: string) => Boolean(getYoutubeVideoId(url));
   const getYouTubeEmbedUrl = (url: string) => {
-    if (url.includes('/embed/')) {
-      return url;
-    }
-    
-    if (url.includes('youtu.be/')) {
-      const videoId = url.split('youtu.be/')[1].split('?')[0];
-      return `https://www.youtube.com/embed/${videoId}?autoplay=1`;
-    }
-    
-    if (url.includes('youtube.com/watch')) {
-      const urlParams = new URLSearchParams(url.split('?')[1]);
-      const videoId = urlParams.get('v');
-      if (videoId) {
-        return `https://www.youtube.com/embed/${videoId}?autoplay=1`;
-      }
-    }
-    
-    return url;
+    const id = getYoutubeVideoId(url);
+    return id ? 'https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1' : null;
   };
-
-  const isVideoUrl = (url: string) => {
-    const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv', '.m4v'];
-    return videoExtensions.some(ext => url.toLowerCase().includes(ext)) || 
-           isYouTubeUrl(url) ||
-           url.includes('blob:') ||
-           url.includes('data:video/');
-  };
-
+  const isVideoUrl = (url: string) => isCanalVideoUrl(url);
+  
   const isAdVideo = selectedBanner?.tipo_midia === 'video' && selectedBanner?.imagem_url && isVideoUrl(selectedBanner.imagem_url);
+
+  const safeVideoUrl = isSafeCanalMediaUrl(videoUrl) && isVideoUrl(videoUrl) ? videoUrl : null;
 
   return (
     <div className={`relative w-full aspect-video rounded-xl overflow-hidden bg-black ${className}`}>
@@ -142,7 +120,7 @@ export const VideoPlayerWithAd = ({ videoUrl, videoTitle, className }: VideoPlay
                 <div className="w-full h-full relative rounded-xl overflow-hidden">
                   {isYouTubeUrl(selectedBanner.imagem_url) ? (
                     <iframe
-                      src={getYouTubeEmbedUrl(selectedBanner.imagem_url) + '&autoplay=1&mute=1&loop=1'}
+                      src={getYouTubeEmbedUrl(selectedBanner.imagem_url) + '&mute=1&loop=1'}
                       className="w-full h-full rounded-xl"
                       style={{ objectFit: 'cover' }}
                       allowFullScreen
@@ -225,6 +203,8 @@ export const VideoPlayerWithAd = ({ videoUrl, videoTitle, className }: VideoPlay
           />
           <Button
             onClick={handlePlay}
+            disabled={!safeVideoUrl}
+            aria-label={safeVideoUrl ? `Reproduzir ${videoTitle}` : 'Vídeo indisponível'}
             className="absolute z-10 w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-white/90 hover:bg-white text-black hover:scale-110 transition-all duration-300"
             size="icon"
           >
@@ -238,10 +218,10 @@ export const VideoPlayerWithAd = ({ videoUrl, videoTitle, className }: VideoPlay
         </div>
       ) : !showAd ? (
         <div className="w-full h-full relative">
-          {isYouTubeUrl(videoUrl) ? (
+          {safeVideoUrl && isYouTubeUrl(safeVideoUrl) ? (
             <iframe
               ref={videoRef as React.RefObject<HTMLIFrameElement>}
-              src={getYouTubeEmbedUrl(videoUrl)}
+              src={safeVideoUrl ? getYouTubeEmbedUrl(safeVideoUrl) ?? undefined : undefined}
               className="w-full h-full"
               allowFullScreen
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -251,7 +231,7 @@ export const VideoPlayerWithAd = ({ videoUrl, videoTitle, className }: VideoPlay
             <>
               <video
                 ref={videoRef as React.RefObject<HTMLVideoElement>}
-                src={videoUrl}
+                src={safeVideoUrl ?? undefined}
                 controls
                 autoPlay
                 muted={isMuted}
