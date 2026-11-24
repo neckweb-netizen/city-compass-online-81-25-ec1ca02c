@@ -39,7 +39,11 @@ test('active catalog keeps tool cards in place and describes actual billing capa
   const catalog = read('src/pages/FerramentasCatalog.tsx');
   assert.match(catalog, /Caderno de Cobranças & Micro CRM/);
   assert.match(catalog, /Com login, os registros sincronizam entre dispositivos pelo Supabase/);
-  assert.match(catalog, /requiresLogin\.has\(item\.id\) \? 'Login para criar' : 'Acesso livre'/);
+  assert.match(catalog, /requiresLogin\.has\(item\.id\) \? 'Login necessário' : 'Acesso livre'/);
+  assert.match(catalog, /LockKeyhole className=/);
+  for (const protectedId of ['gerador-cobranca','criador-curriculo','gestao-cobrancas','calculadora-orcamento','leitor-voz','consulta-fipe','cardapio-digital']) {
+    assert.match(catalog, new RegExp("'"+protectedId+"'"));
+  }
   assert.match(catalog, /getSafeNavigationUrl\(b\.link_destino\)/);
   assert.match(catalog, /return safeUrl \?/);
   for (const tool of ['gerador-rifa','gerador-cobranca','criador-curriculo','gestao-cobrancas','cardapio-digital']) {
