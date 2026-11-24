@@ -4,7 +4,7 @@ import { X, Play, Volume2, VolumeX } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { navigateToSafeUrl } from '@/lib/safeNavigation';
-import { getYoutubeVideoId, isCanalVideoUrl, isSafeCanalMediaUrl } from '@/lib/canalMedia';
+import { getYoutubeVideoId, isCanalImageUrl, isCanalVideoUrl, isSafeCanalMediaUrl } from '@/lib/canalMedia';
 
 interface VideoPlayerWithAdProps {
   videoUrl: string;
@@ -47,10 +47,15 @@ export const VideoPlayerWithAd = ({ videoUrl, videoTitle, className }: VideoPlay
   // Escolha estável por vídeo: renders do contador não devem trocar o banner
   // nem reiniciar os cinco segundos do anúncio continuamente.
   const selectedBanner = useMemo(() => {
-    if (!banners?.length) return null;
+    const validBanners = (banners ?? []).filter((banner: Banner) =>
+      banner.tipo_midia === 'video'
+        ? isCanalVideoUrl(banner.imagem_url)
+        : isCanalImageUrl(banner.imagem_url)
+    );
+    if (validBanners.length === 0) return null;
     let hash = 0;
     for (let i = 0; i < videoUrl.length; i += 1) hash = (hash * 31 + videoUrl.charCodeAt(i)) | 0;
-    return banners[(hash >>> 0) % banners.length];
+    return validBanners[(hash >>> 0) % validBanners.length];
   }, [banners, videoUrl]);
 
   useEffect(() => {
@@ -162,6 +167,7 @@ export const VideoPlayerWithAd = ({ videoUrl, videoTitle, className }: VideoPlay
                   <img
                     src={selectedBanner.imagem_url}
                     alt="Banner publicitário"
+                    onError={() => setShowAd(false)}
                     className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500 rounded-xl"
                     style={{ aspectRatio: '16/9' }}
                   />
