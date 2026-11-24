@@ -122,22 +122,29 @@ export const PushNotificationsProvider = ({ children }: { children: ReactNode })
   }, [user?.id]);
 
   useEffect(() => {
-    if (!user?.id || !supported || Notification.permission !== 'granted' || !preferences.push_enabled) return;
+    if (!user?.id || !supportReady || !preferencesReady || !supported ||
+        permission !== 'granted' || !preferences.push_enabled) return;
+    const account = user.id;
     let active = true;
-    loadFirebaseMessaging().then(({ syncFirebasePushIfGranted }) => syncFirebasePushIfGranted())
-      .then((fid) => { if (active) setEnabled(Boolean(fid)); })
+    loadFirebaseMessaging().then(({ syncFirebasePushIfGranted }) => {
+      if (!active || currentUserRef.current !== account) return null;
+      return syncFirebasePushIfGranted();
+    })
+      .then((fid) => { if (active && currentUserRef.current === account) setEnabled(Boolean(fid)); })
       .catch((syncError) => {
-        if (active) setError(syncError instanceof Error ? syncError.message : 'Falha ao sincronizar notificações.');
+        if (active && currentUserRef.current === account)
+          setError(syncError instanceof Error ? syncError.message : 'Falha ao sincronizar notificações.');
       })
-      .finally(() => { if (active) setPushStateReady(true); });
+      .finally(() => { if (active && currentUserRef.current === account) setPushStateReady(true); });
     return () => { active = false; };
-  }, [user?.id, supported, preferences.push_enabled]);
+  }, [user?.id, supported, supportReady, preferencesReady, permission, preferences.push_enabled]);
 
   useEffect(() => {
     setPushStateReady(false);
     if (!user?.id || !supportReady || !preferencesReady) return;
 
     if (!supported || permission !== 'granted' || !preferences.push_enabled) {
+      setEnabled(false);
       setPushStateReady(true);
       return;
     }
