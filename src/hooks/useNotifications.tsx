@@ -132,7 +132,7 @@ export const useNotifications = ({ detailsEnabled = true }: { detailsEnabled?: b
         .eq('user_id', account)
         .eq('read', false)
         .is('archived_at', null)
-        .or(\`expires_at.is.null,expires_at.gt.\${new Date().toISOString()}\`)
+        .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
         .select('id')
         .maybeSingle();
       if (error) throw error;
@@ -153,7 +153,7 @@ export const useNotifications = ({ detailsEnabled = true }: { detailsEnabled?: b
         .eq('user_id', account)
         .eq('read', false)
         .is('archived_at', null)
-        .or(\`expires_at.is.null,expires_at.gt.\${new Date().toISOString()}\`);
+        .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`);
       if (error) throw error;
       return account;
     },
@@ -175,7 +175,7 @@ export const useNotifications = ({ detailsEnabled = true }: { detailsEnabled?: b
         .eq('id', notificationId)
         .eq('user_id', account)
         .is('archived_at', null)
-        .or(\`expires_at.is.null,expires_at.gt.\${new Date().toISOString()}\`)
+        .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
         .select('id')
         .maybeSingle();
       if (error) throw error;
