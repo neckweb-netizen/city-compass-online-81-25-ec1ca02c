@@ -40,15 +40,22 @@ export const LatestCoupons = ({ cidadeId }: LatestCouponsProps) => {
         query = query.eq('empresas.cidade_id', cidadeId);
       }
 
-      // Primeiro aplique o limite de utilização, depois escolha os três destaques.
-      const { data, error } = await query.limit(100);
-
-      if (error) {
-        console.error('Erro ao buscar cupons:', error);
-        throw error;
+      // Paginar até encontrar 3 ofertas disponíveis: cupons esgotados não
+      // podem ocupar o limite da consulta e esconder ofertas válidas mais antigas.
+      const destaques: Awaited<ReturnType<typeof query.range>>['data'] = [];
+      const pageSize = 50;
+      let start = 0;
+      while (destaques.length < 3) {
+        const { data, error } = await query.range(start, start + pageSize - 1);
+        if (error) {
+          console.error('Erro ao buscar cupons:', error);
+          throw error;
+        }
+        destaques.push(...(data || []).filter(cupom => isCouponAvailable(cupom)));
+        if (!data || data.length < pageSize) break;
+        start += pageSize;
       }
-      
-return (data || []).filter(cupom => isCouponAvailable(cupom)).slice(0, 3);
+      return destaques.slice(0, 3);
     }
   });
 
