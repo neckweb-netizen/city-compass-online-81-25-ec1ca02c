@@ -41,3 +41,14 @@ test('radio listing separates network errors from empty results and supplies ret
   assert.match(source, /onClick=\{\(\) => void refetch\(\)\}/);
   assert.match(source, /getSafeRadioStreamUrl\(station\.link_radio\)/);
 });
+
+
+test('buffering can be cancelled and stale playback events never restart audio', () => {
+  const source = read('src/components/ui/radio-player.tsx');
+  assert.match(source, /if \(isPlaying \|\| isLoading \|\| !audio\.paused\)/);
+  assert.match(source, /disabled=\{!safeUrl\}/);
+  assert.match(source, /stopRequestedRef\.current = true/);
+  assert.match(source, /if \(stopRequestedRef\.current\) \{ audioRef\.current\?\.pause\(\); return; \}/);
+  assert.match(source, /if \(requestId\.current !== request\) return/);
+  assert.doesNotMatch(source, /if \(requestId\.current !== request\) \{\s*audio\.pause\(\)/);
+});
