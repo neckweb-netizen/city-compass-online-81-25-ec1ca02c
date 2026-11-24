@@ -97,7 +97,8 @@ const CanalInformativoItemComponent = ({ item }: { item: CanalInformativoItem })
       console.error('Erro ao criar URL curta:', error);
     }
     
-    return null;
+    // Um erro do encurtador não deve impedir o compartilhamento da publicação.
+    return originalUrl;
   }, [shortUrl, item.id, createShortUrl]);
 
   const handleLinkClick = () => {
@@ -168,8 +169,9 @@ const CanalInformativoItemComponent = ({ item }: { item: CanalInformativoItem })
           url: shareUrl,
         });
       } catch (error) {
-        console.log('Erro ao compartilhar:', error);
-        handleCopyLink();
+        // Cancelar o compartilhamento nativo não deve copiar algo inesperadamente.
+        if (error instanceof Error && error.name === 'AbortError') return;
+        await handleCopyLink();
       }
     } else {
       handleCopyLink();
@@ -199,14 +201,14 @@ const CanalInformativoItemComponent = ({ item }: { item: CanalInformativoItem })
     shareText += `🔗 ${shareUrl}`;
     
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
-    window.open(whatsappUrl, '_blank');
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
   };
 
   const handleShareToFacebook = async () => {
     const shareUrl = await getShareUrl();
     if (!shareUrl) return;
     const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
-    window.open(facebookUrl, '_blank');
+    window.open(facebookUrl, '_blank', 'noopener,noreferrer');
   };
 
   const handleDownloadImage = async () => {
