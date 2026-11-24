@@ -17,6 +17,7 @@ export const RadioPlayer: React.FC<RadioPlayerProps> = ({ radioUrl, stationName,
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const playerId = useRef(crypto.randomUUID());
   const requestId = useRef(0);
+  const stopRequestedRef = useRef(true);
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState([80]);
   const [isMuted, setIsMuted] = useState(false);
@@ -26,6 +27,7 @@ export const RadioPlayer: React.FC<RadioPlayerProps> = ({ radioUrl, stationName,
 
   const pauseAudio = () => {
     requestId.current += 1;
+    stopRequestedRef.current = true;
     audioRef.current?.pause();
     setIsPlaying(false);
     setIsLoading(false);
@@ -53,6 +55,7 @@ export const RadioPlayer: React.FC<RadioPlayerProps> = ({ radioUrl, stationName,
     const onOtherStationPlaying = (event: Event) => {
       if ((event as CustomEvent<string>).detail !== playerId.current) {
         requestId.current += 1;
+        stopRequestedRef.current = true;
         audioRef.current?.pause();
         setIsPlaying(false);
         setIsLoading(false);
@@ -62,6 +65,7 @@ export const RadioPlayer: React.FC<RadioPlayerProps> = ({ radioUrl, stationName,
     return () => {
       window.removeEventListener(RADIO_PLAY_EVENT, onOtherStationPlaying);
       requestId.current += 1;
+      stopRequestedRef.current = true;
       audioRef.current?.pause();
     };
   }, []);
@@ -69,6 +73,7 @@ export const RadioPlayer: React.FC<RadioPlayerProps> = ({ radioUrl, stationName,
   useEffect(() => {
     // Quando a fonte da rádio mudar, não continuar tocando um stream antigo.
     requestId.current += 1;
+    stopRequestedRef.current = true;
     const audio = audioRef.current;
     if (audio) {
       audio.pause();
@@ -83,7 +88,7 @@ export const RadioPlayer: React.FC<RadioPlayerProps> = ({ radioUrl, stationName,
   const togglePlay = async () => {
     const audio = audioRef.current;
     if (!audio) return;
-    if (isPlaying || !audio.paused) {
+    if (isPlaying || isLoading || !audio.paused) {
       pauseAudio();
       return;
     }
@@ -96,6 +101,7 @@ export const RadioPlayer: React.FC<RadioPlayerProps> = ({ radioUrl, stationName,
       return;
     }
     const request = ++requestId.current;
+    stopRequestedRef.current = false;
     setError(null);
     setIsLoading(true);
     try {
@@ -110,6 +116,7 @@ export const RadioPlayer: React.FC<RadioPlayerProps> = ({ radioUrl, stationName,
       setIsPlaying(true);
     } catch {
       if (requestId.current !== request) return;
+      stopRequestedRef.current = true;
       setIsPlaying(false);
       setError('Não foi possível reproduzir esta rádio. Verifique a transmissão e tente novamente.');
     } finally {
@@ -130,12 +137,20 @@ export const RadioPlayer: React.FC<RadioPlayerProps> = ({ radioUrl, stationName,
           ref={audioRef}
           preload="none"
           aria-label={`Transmissão de ${stationName}`}
-          onPlay={() => { setIsPlaying(true); setIsLoading(false); }}
+          onPlay={() => {
+            if (stopRequestedRef.current) { audioRef.current?.pause(); return; }
+            setIsPlaying(true); setIsLoading(false);
+          }}
           onPause={() => { setIsPlaying(false); setIsLoading(false); }}
-          onWaiting={() => setIsLoading(true)}
-          onPlaying={() => { setIsPlaying(true); setIsLoading(false); setError(null); }}
+          onWaiting={() => { if (!stopRequestedRef.current) setIsLoading(true); }}
+          onPlaying={() => {
+            if (stopRequestedRef.current) { audioRef.current?.pause(); return; }
+            setIsPlaying(true); setIsLoading(false); setError(null);
+          }}
           onEnded={() => { setIsPlaying(false); setIsLoading(false); }}
           onError={() => {
+            if (stopRequestedRef.current) return;
+            stopRequestedRef.current = true;
             setIsPlaying(false);
             setIsLoading(false);
             setError('Não foi possível carregar a transmissão. Confira a conexão ou tente novamente.');
@@ -146,8 +161,8 @@ export const RadioPlayer: React.FC<RadioPlayerProps> = ({ radioUrl, stationName,
         <div className="flex justify-center items-center gap-4">
           <Button
             type="button" onClick={() => void togglePlay()}
-            disabled={isLoading || !safeUrl}
-            aria-label={isPlaying ? `Pausar ${stationName}` : `Reproduzir ${stationName}`}
+            disabled={!safeUrl}
+            aria-label={isPlaying || isLoading ? `Cancelar ou pausar ${stationName}` : `Reproduzir ${stationName}`}
             size="lg"
             className="w-16 h-16 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 transition-all duration-300 hover:scale-105"
           >
