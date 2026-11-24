@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -44,6 +44,8 @@ const PushNotificationsContext = createContext<PushNotificationsContextValue | n
 
 export const PushNotificationsProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
+  const currentUserRef = useRef<string | null>(user?.id ?? null);
+  currentUserRef.current = user?.id ?? null;
   const [supported, setSupported] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>('default');
   const [enabled, setEnabled] = useState(false);
@@ -169,10 +171,13 @@ export const PushNotificationsProvider = ({ children }: { children: ReactNode })
 
   const savePreferences = useCallback(async (values: Partial<NotificationPreferences>) => {
     if (!user?.id) throw new Error('Faça login para alterar as preferências.');
+    const requestedUser = user.id;
+    if (currentUserRef.current !== requestedUser) throw new Error('Sua conta mudou. Atualize a página e tente novamente.');
     const next = { ...preferences, ...values };
     const { error: saveError } = await (supabase as any)
       .from('notification_preferences')
-      .upsert({ user_id: user.id, ...next }, { onConflict: 'user_id' });
+      .upsert({ user_id: requestedUser, ...next }, { onConflict: 'user_id' });
+    if (currentUserRef.current !== requestedUser) throw new Error('A conta mudou durante a atualização. Confira suas preferências na nova conta.');
     if (saveError) throw saveError;
     setPreferences(next);
   }, [preferences, user?.id]);
