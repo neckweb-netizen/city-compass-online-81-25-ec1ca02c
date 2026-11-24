@@ -49,6 +49,7 @@ const AchadosPerdidos = () => {
   // Captura a sessão do usuário logado no sistema
   useEffect(() => {
     let active = true;
+    let receivedAuthEvent = false;
     const syncUser = (id: string | null) => {
       if (!active) return;
       if (activeUserRef.current !== id) {
@@ -59,11 +60,12 @@ const AchadosPerdidos = () => {
       setUsuarioLogadoId(id);
     };
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      receivedAuthEvent = true;
       syncUser(session?.user?.id ?? null);
     });
     void supabase.auth.getSession().then(({ data: { session } }) => {
-      if (active && !activeUserRef.current) syncUser(session?.user?.id ?? null);
-    }).catch(() => { if (active) syncUser(null); });
+      if (active && !receivedAuthEvent) syncUser(session?.user?.id ?? null);
+    }).catch(() => { if (active && !receivedAuthEvent) syncUser(null); });
     return () => { active = false; subscription.unsubscribe(); };
   }, []);
 
@@ -127,10 +129,25 @@ const AchadosPerdidos = () => {
     if (!isModalAberto) return;
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !submittingRef.current) setIsModalAberto(false);
+      if (event.key === "Escape" && !submittingRef.current) {
+        event.preventDefault();
+        setIsModalAberto(false);
+      }
+      if (event.key !== "Tab" || !modalRef.current) return;
+      const controls = Array.from(modalRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href]'
+      ));
+      if (!controls.length) return;
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === modalRef.current)) {
+        event.preventDefault(); last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault(); first.focus();
+      }
     };
     document.addEventListener("keydown", handleKeyDown);
-    modalRef.current?.focus();
+    modalRef.current?.querySelector<HTMLElement>('button:not([disabled])')?.focus();
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
       (openButtonRef.current ?? previousFocus)?.focus();
@@ -140,8 +157,9 @@ const AchadosPerdidos = () => {
   const handleCadastrarItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (submittingRef.current) return;
+    const submittingAccount = activeUserRef.current;
     const whatsapp = getJobApplicationHref("whatsapp", contatoTelefone);
-    if (titulo.trim().length < 3 || titulo.trim().length > 160 || descricao.trim().length < 10 || descricao.trim().length > 4000 || localFato.trim().length < 2 || contatoNome.trim().length < 2 || !whatsapp) {
+    if (titulo.trim().length < 3 || titulo.trim().length > 160 || descricao.trim().length < 10 || descricao.trim().length > 4000 || localFato.trim().length < 2 || localFato.trim().length > 160 || contatoNome.trim().length < 2 || contatoNome.trim().length > 120 || contatoTelefone.trim().length > 25 || !whatsapp) {
       toast({
         title: "Campos obrigatórios",
         description: "Informe título, descrição, local, nome e WhatsApp válidos para publicar a ocorrência.",
@@ -163,11 +181,12 @@ const AchadosPerdidos = () => {
           contato_nome: contatoNome.trim(),
           contato_telefone: contatoTelefone.trim(),
           status: "pendente",
-          usuario_id: usuarioLogadoId, // Vincula o post ao usuário se ele estiver logado
+          usuario_id: submittingAccount, // Vincula o post à conta que iniciou o cadastro
         },
       ]);
 
       if (error) throw error;
+      if (activeUserRef.current !== submittingAccount) return;
 
       toast({
         title: "Enviado com sucesso!",
@@ -182,6 +201,7 @@ const AchadosPerdidos = () => {
       setIsModalAberto(false);
       buscarItens();
     } catch (error: any) {
+      if (activeUserRef.current !== submittingAccount) return;
       toast({
         title: "Erro ao cadastrar",
         description: error.message || "Ocorreu um erro inesperado na conexão.",
@@ -207,7 +227,7 @@ const AchadosPerdidos = () => {
         .from("achados_perdidos" as any)
         .update({ status: "resolvido" } as any)
         .eq("id", itemId)
-        .eq("usuario_id", usuarioLogadoId)
+        .eq("usuario_id", account)
         .eq("status", "aprovado")
         .select("id")
         .maybeSingle();
