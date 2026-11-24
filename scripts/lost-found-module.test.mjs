@@ -26,7 +26,7 @@ test('public lost-found page validates contacts and confirms status changes', ()
   assert.match(page, /getJobApplicationHref\("whatsapp", contatoTelefone\)/);
   assert.match(page, /getJobApplicationHref\("whatsapp", item\.contato_telefone\)/);
   assert.match(page, /submittingRef\.current/);
-  assert.match(page, /\.eq\("usuario_id", usuarioLogadoId\)/);
+  assert.match(page, /\.eq\("usuario_id", account\)/);
   assert.match(page, /\.eq\("status", "aprovado"\)/);
   assert.match(page, /if \(!updated\) throw new Error/);
   assert.match(page, /loadError/);
@@ -41,4 +41,21 @@ test('moderation confirms changes and handles errors safely', () => {
   assert.match(page, /setProcessingId/);
   assert.match(page, /getJobApplicationHref\("whatsapp", item\.contato_telefone/);
   assert.match(page, /loadError/);
+});
+
+
+test('public lost-and-found prevents stale account data and locks keyboard focus inside form', () => {
+  const page = source('src/pages/AchadosPerdidos.tsx');
+  assert.match(page, /fetchSequence\.current \+= 1;\s*setItens\(\[\]\)/);
+  assert.match(page, /receivedAuthEvent = true/);
+  assert.match(page, /if \(active && !receivedAuthEvent\) syncUser/);
+  assert.match(page, /if \(activeUserRef\.current !== submittingAccount\) return/);
+  assert.match(page, /usuario_id: submittingAccount/);
+  assert.match(page, /event\.key === "Escape"/);
+  assert.match(page, /event\.key !== "Tab"/);
+  assert.match(page, /modalRef\.current\.querySelectorAll<HTMLElement>/);
+  assert.match(page, /role="dialog" aria-modal="true"/);
+  for (const limit of ['maxLength={160}', 'maxLength={4000}', 'maxLength={120}', 'maxLength={25}']) {
+    assert.ok(page.includes(limit), limit);
+  }
 });
