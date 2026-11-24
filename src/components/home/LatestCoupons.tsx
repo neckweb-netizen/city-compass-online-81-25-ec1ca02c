@@ -42,10 +42,11 @@ export const LatestCoupons = ({ cidadeId }: LatestCouponsProps) => {
 
       // Paginar até encontrar 3 ofertas disponíveis: cupons esgotados não
       // podem ocupar o limite da consulta e esconder ofertas válidas mais antigas.
-      const destaques: Awaited<ReturnType<typeof query.range>>['data'] = [];
+      const destaques: NonNullable<Awaited<ReturnType<typeof query.range>>['data']> = [];
       const pageSize = 50;
       let start = 0;
-      while (destaques.length < 3) {
+      // Limite de 10 páginas para evitar consultas sem fim em bases muito grandes.
+      while (destaques.length < 3 && start < 500) {
         const { data, error } = await query.range(start, start + pageSize - 1);
         if (error) {
           console.error('Erro ao buscar cupons:', error);
