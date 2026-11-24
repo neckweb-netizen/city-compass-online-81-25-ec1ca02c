@@ -189,3 +189,16 @@ test('public coupon listing only displays currently valid offers from approved a
   assert.match(page, /await navigator\.clipboard\.writeText\(codigo\)/);
   assert.match(page, /Não foi possível copiar/);
 });
+
+
+test('public coupon cards hide exhausted offers without confusing copying with redemption', () => {
+  const catalog = source('src/components/coupons/CouponsContent.tsx');
+  const home = source('src/components/home/LatestCoupons.tsx');
+  const helper = source('src/lib/couponAvailability.ts');
+  assert.match(catalog, /filter\(cupom => isCouponAvailable\(cupom\)\)/);
+  assert.match(home, /filter\(cupom => isCouponAvailable\(cupom\)\)\.slice\(0, 3\)/);
+  assert.match(catalog, /Copiar um código não registra resgate/);
+  assert.match(helper, /used < total/);
+  assert.doesNotMatch(catalog, /rpc\('usar_cupom'/);
+  assert.doesNotMatch(home, /rpc\('usar_cupom'/);
+});
