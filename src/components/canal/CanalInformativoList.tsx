@@ -7,8 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ShareButton } from '@/components/ui/share-button';
 import { ExternalLink, Image, Video, FileText, Trophy, Share2, Copy, Download } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { useShortUrls } from '@/hooks/useShortUrls';
 import { VideoPlayerWithAd } from '@/components/ui/video-player-with-ad';
