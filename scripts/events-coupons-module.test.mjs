@@ -196,9 +196,23 @@ test('public coupon cards hide exhausted offers without confusing copying with r
   const home = source('src/components/home/LatestCoupons.tsx');
   const helper = source('src/lib/couponAvailability.ts');
   assert.match(catalog, /filter\(cupom => isCouponAvailable\(cupom\)\)/);
-  assert.match(home, /filter\(cupom => isCouponAvailable\(cupom\)\)\.slice\(0, 3\)/);
+  assert.match(home, /destaques\.push\(\.\.\.\(data \|\| \[\]\)\.filter\(cupom => isCouponAvailable\(cupom\)\)\)/);
+  assert.match(home, /while \(destaques\.length < 3 && start < 500\)/);
+  assert.match(home, /query\.range\(start, start \+ pageSize - 1\)/);
+  assert.match(home, /return destaques\.slice\(0, 3\)/);
   assert.match(catalog, /Copiar um código não registra resgate/);
   assert.match(helper, /used < total/);
   assert.doesNotMatch(catalog, /rpc\('usar_cupom'/);
   assert.doesNotMatch(home, /rpc\('usar_cupom'/);
+});
+
+
+test('coupon availability validates dates and quota before showing any copy button', () => {
+  const helper = source('src/lib/couponAvailability.ts');
+  assert.match(helper, /Number\.isFinite\(start\)/);
+  assert.match(helper, /Number\.isFinite\(end\)/);
+  assert.match(helper, /start > now \|\| end < now/);
+  assert.match(helper, /coupon\.quantidade_total === null/);
+  assert.match(helper, /Number\.isFinite\(total\) && total > 0/);
+  assert.match(helper, /Number\.isFinite\(used\) && used >= 0 && used < total/);
 });
