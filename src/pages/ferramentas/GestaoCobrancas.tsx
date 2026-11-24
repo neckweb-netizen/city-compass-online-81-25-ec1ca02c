@@ -129,18 +129,25 @@ export const GestaoCobrancas = () => {
     }
   };
   const importLocal = async () => {
-    if (!legacy || blocked) return;
+    if (!legacy || blocked || !uid) return;
+    const importAccount = uid;
     if (!window.confirm('Importar este backup local para sua conta? Isso substituirá o caderno atualmente sincronizado. Faça backup da versão remota antes de continuar.')) return;
+    if (activeAccountRef.current !== importAccount) return;
     const snapshot = legacy;
     if (await persist(snapshot)) {
+      // A importação já foi confirmada pelo servidor: nunca ofereça uma segunda
+      // importação nesta sessão por uma falha ao salvar a marca no navegador.
+      if (activeAccountRef.current !== importAccount) return;
+      setLegacy(null);
       try {
         const fingerprint = await legacyBackupFingerprint(snapshot);
-        if (activeAccountRef.current === uid)
-          localStorage.setItem(cobrancasImportedLegacyKey(uid!), fingerprint);
+        if (activeAccountRef.current !== importAccount) return;
+        localStorage.setItem(cobrancasImportedLegacyKey(importAccount), fingerprint);
       } catch {
-        toast.warning('Histórico sincronizado, mas a marca de importação não pôde ser gravada neste navegador.');
+        if (activeAccountRef.current !== importAccount) return;
+        toast.warning('Histórico sincronizado. A marca de importação não pôde ser gravada: o backup antigo pode reaparecer após recarregar.');
       }
-      if (activeAccountRef.current === uid) toast.success('Histórico deste aparelho sincronizado.');
+      if (activeAccountRef.current === importAccount) toast.success('Histórico deste aparelho sincronizado.');
     }
   };
   const saveClient = async (e: FormEvent) => {
