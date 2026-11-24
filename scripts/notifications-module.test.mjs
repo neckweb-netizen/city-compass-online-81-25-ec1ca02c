@@ -38,7 +38,10 @@ test('notification page, header and foreground toast share safe navigation', () 
 test('notification actions preserve user scoping and communicate failure', () => {
   const hook = source('src/hooks/useNotifications.tsx');
   const page = source('src/pages/Notifications.tsx');
-  assert.match(hook, /\.eq\('user_id', user\.id\)/);
+  assert.match(hook, /\.eq\('user_id', account\)/);
+  assert.match(hook, /await verifyAccount\(account\)/);
+  assert.match(hook, /supabase\.auth\.getUser\(\)/);
+  assert.match(hook, /if \(activeAccountRef\.current !== account\) return/);
   assert.match(hook, /markAllAsReadMutation\.isPending/);
   assert.match(page, /isProcessing/);
   assert.match(page, /Tentar novamente/);
@@ -92,4 +95,23 @@ test('asynchronous notification preferences never update state after account swi
   assert.match(push, /const requestedUser = user\.id/);
   assert.match(push, /currentUserRef\.current !== requestedUser/);
   assert.match(push, /user_id: requestedUser/);
+});
+
+
+test('notification realtime subscription remains stable while loading older pages', () => {
+  const hook = source('src/hooks/useNotifications.tsx');
+  assert.match(hook, /\}, \[inAppEnabled, queryClient, user\?\.id\]\)/);
+  assert.doesNotMatch(hook, /\}, \[inAppEnabled, queryClient, queryKey, user\?\.id\]\)/);
+  assert.match(hook, /invalidateQueries\(\{ queryKey: \['notifications', user\.id\] \}\)/);
+  assert.match(hook, /invalidateQueries\(\{ queryKey: \['notifications', account\] \}\)/);
+});
+
+test('notification mutations use the original authenticated account, not current UI account', () => {
+  const hook = source('src/hooks/useNotifications.tsx');
+  assert.match(hook, /type ScopedNotification = \{ notificationId: string; account: string \}/);
+  assert.match(hook, /await verifyAccount\(account\)/);
+  assert.match(hook, /sessionUser\?\.id !== account/);
+  assert.match(hook, /markAsReadMutation\.mutate\(\{ notificationId, account: user\.id \}\)/);
+  assert.match(hook, /markAllAsReadMutation\.mutate\(user\.id\)/);
+  assert.match(hook, /archiveMutation\.mutate\(\{ notificationId, account: user\.id \}\)/);
 });
