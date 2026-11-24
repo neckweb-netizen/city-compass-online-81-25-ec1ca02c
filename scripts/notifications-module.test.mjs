@@ -71,3 +71,25 @@ test('notification preference load failures never opt in to push by default', ()
   assert.match(push, /setPreferences\(\{ \.\.\.defaultPreferences, in_app_enabled: false, push_enabled: false \}\)/);
   assert.match(push, /\.catch\(\(\) => \{\s*if \(!active\) return;/);
 });
+
+
+test('notifications can load beyond fifty and keep count scoped to active unarchived notices', () => {
+  const hook = source('src/hooks/useNotifications.tsx');
+  const page = source('src/pages/Notifications.tsx');
+  assert.match(hook, /setPageSize\(previous => previous \+ 50\)/);
+  assert.match(hook, /\.limit\(pageSize \+ 1\)/);
+  assert.match(hook, /loaded\.slice\(0, pageSize\)/);
+  assert.match(hook, /loaded\.length > pageSize/);
+  assert.match(hook, /setPageSize\(50\)/);
+  assert.match(page, /Carregar mais notificações/);
+  assert.match(page, /hasMore &&/);
+  assert.match(hook, /\.or\(`expires_at\.is\.null,expires_at\.gt\.\$\{new Date\(\)\.toISOString\(\)\}`\)/);
+});
+
+test('asynchronous notification preferences never update state after account switch', () => {
+  const push = source('src/contexts/PushNotificationsContext.tsx');
+  assert.match(push, /currentUserRef\.current = user\?\.id \?\? null/);
+  assert.match(push, /const requestedUser = user\.id/);
+  assert.match(push, /currentUserRef\.current !== requestedUser/);
+  assert.match(push, /user_id: requestedUser/);
+});
