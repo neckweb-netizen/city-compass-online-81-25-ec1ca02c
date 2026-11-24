@@ -61,3 +61,13 @@ test('media player constructs safe embeds and supports a direct share fallback',
   assert.match(list, /error\.name === 'AbortError'/);
   assert.match(list, /noopener,noreferrer/);
 });
+
+
+test('video advertisement does not change on countdown renders or retain state across posts', () => {
+  const player = source('src/components/ui/video-player-with-ad.tsx');
+  assert.match(player, /const selectedBanner = useMemo\(\(\) => \{/);
+  assert.match(player, /\[banners, videoUrl\]/);
+  assert.doesNotMatch(player, /Math\.random\(\)/);
+  assert.match(player, /setIsPlaying\(false\);\s*setShowAd\(false\);\s*setAdCountdown\(5\);\s*setCanSkip\(false\)/);
+  assert.doesNotMatch(player, /videoElement\.parentNode\?\.replaceChild\(/);
+});
