@@ -85,6 +85,8 @@ export const PushNotificationsProvider = ({ children }: { children: ReactNode })
       setPreferences(defaultPreferences);
       setPreferencesReady(false);
       setPushStateReady(false);
+      setLoading(false);
+      setError(null);
       return;
     }
     setPreferencesReady(false);
@@ -149,10 +151,12 @@ export const PushNotificationsProvider = ({ children }: { children: ReactNode })
   }, [enabled, permission, preferences.push_enabled, preferencesReady, supportReady, supported, user?.id]);
 
   useEffect(() => {
-    if (!user?.id || !supported) return;
+    if (!user?.id || !supported || !preferencesReady || !preferences.push_enabled) return;
+    const subscribingUser = user.id;
     let active = true;
     let unsubscribe: (() => void) | undefined;
     loadFirebaseMessaging().then(({ subscribeToForegroundMessages }) => subscribeToForegroundMessages((payload) => {
+      if (!active || currentUserRef.current !== subscribingUser) return;
       if (!shouldShowNotificationToast(payload.data?.notification_id)) return;
       const title = payload.notification?.title || payload.data?.title || 'Nova notificação';
       const description = payload.notification?.body || payload.data?.body;
@@ -167,7 +171,7 @@ export const PushNotificationsProvider = ({ children }: { children: ReactNode })
       else cleanup();
     }).catch(() => undefined);
     return () => { active = false; unsubscribe?.(); };
-  }, [user?.id, supported]);
+  }, [user?.id, supported, preferencesReady, preferences.push_enabled]);
 
   const savePreferences = useCallback(async (values: Partial<NotificationPreferences>) => {
     if (!user?.id) throw new Error('Faça login para alterar as preferências.');
@@ -184,42 +188,55 @@ export const PushNotificationsProvider = ({ children }: { children: ReactNode })
 
   const enable = useCallback(async () => {
     if (!user?.id) throw new Error('Faça login para ativar as notificações.');
+    const requestedUser = user.id;
+    if (currentUserRef.current !== requestedUser) throw new Error('Sua conta mudou.');
     setLoading(true);
     setError(null);
     try {
       const { enableFirebasePush } = await loadFirebaseMessaging();
       await enableFirebasePush();
+      if (currentUserRef.current !== requestedUser) throw new Error('Sua conta mudou durante a ativação.');
       await savePreferences({ push_enabled: true });
+      if (currentUserRef.current !== requestedUser) return;
       setPermission(Notification.permission);
       setEnabled(true);
       toast.success('Notificações ativadas neste dispositivo.');
     } catch (enableError) {
-      const message = enableError instanceof Error ? enableError.message : 'Não foi possível ativar as notificações.';
-      setError(message);
-      setPermission('Notification' in window ? Notification.permission : 'unsupported');
+      if (currentUserRef.current === requestedUser) {
+        const message = enableError instanceof Error ? enableError.message : 'Não foi possível ativar as notificações.';
+        setError(message);
+        setPermission('Notification' in window ? Notification.permission : 'unsupported');
+      }
       throw enableError;
     } finally {
-      setLoading(false);
+      if (currentUserRef.current === requestedUser) setLoading(false);
     }
   }, [savePreferences, user?.id]);
 
   const disable = useCallback(async () => {
+    if (!user?.id) throw new Error('Faça login para desativar as notificações.');
+    const requestedUser = user.id;
+    if (currentUserRef.current !== requestedUser) throw new Error('Sua conta mudou.');
     setLoading(true);
     setError(null);
     try {
       const { getStoredFirebaseFid, disableFirebasePush } = await loadFirebaseMessaging();
       if (getStoredFirebaseFid()) await disableFirebasePush();
+      if (currentUserRef.current !== requestedUser) throw new Error('Sua conta mudou durante a desativação.');
       await savePreferences({ push_enabled: false });
+      if (currentUserRef.current !== requestedUser) return;
       setEnabled(false);
       toast.success('Notificações desativadas neste dispositivo.');
     } catch (disableError) {
-      const message = disableError instanceof Error ? disableError.message : 'Não foi possível desativar as notificações.';
-      setError(message);
+      if (currentUserRef.current === requestedUser) {
+        const message = disableError instanceof Error ? disableError.message : 'Não foi possível desativar as notificações.';
+        setError(message);
+      }
       throw disableError;
     } finally {
-      setLoading(false);
+      if (currentUserRef.current === requestedUser) setLoading(false);
     }
-  }, [savePreferences]);
+  }, [savePreferences, user?.id]);
 
   const value = useMemo(() => ({
     supported,
