@@ -28,6 +28,9 @@ const AchadosPerdidos = () => {
   const [resolvendoId, setResolvendoId] = useState<string | null>(null);
   const submittingRef = useRef(false);
   const fetchSequence = useRef(0);
+  const activeUserRef = useRef<string | null>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const openButtonRef = useRef<HTMLButtonElement>(null);
   const [filtroTipo, setFiltroTipo] = useState<string>("todos"); // "todos" | "perdido" | "encontrado" | "meus"
   const [busca, setBusca] = useState<string>("");
   const [isModalAberto, setIsModalAberto] = useState(false);
@@ -45,20 +48,23 @@ const AchadosPerdidos = () => {
 
   // Captura a sessão do usuário logado no sistema
   useEffect(() => {
-    const obterUsuario = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setUsuarioLogadoId(session.user.id);
+    let active = true;
+    const syncUser = (id: string | null) => {
+      if (!active) return;
+      if (activeUserRef.current !== id) {
+        fetchSequence.current += 1;
+        setItens([]);
       }
+      activeUserRef.current = id;
+      setUsuarioLogadoId(id);
     };
-
-    obterUsuario();
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUsuarioLogadoId(session?.user?.id || null);
+      syncUser(session?.user?.id ?? null);
     });
-
-    return () => subscription.unsubscribe();
+    void supabase.auth.getSession().then(({ data: { session } }) => {
+      if (active && !activeUserRef.current) syncUser(session?.user?.id ?? null);
+    }).catch(() => { if (active) syncUser(null); });
+    return () => { active = false; subscription.unsubscribe(); };
   }, []);
 
   // Nunca trate "Minhas Postagens" como lista pública após o logout.
@@ -116,6 +122,20 @@ const AchadosPerdidos = () => {
     void buscarItens();
     return () => { fetchSequence.current += 1; };
   }, [filtroTipo, usuarioLogadoId]);
+
+  useEffect(() => {
+    if (!isModalAberto) return;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !submittingRef.current) setIsModalAberto(false);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    modalRef.current?.focus();
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      (openButtonRef.current ?? previousFocus)?.focus();
+    };
+  }, [isModalAberto]);
 
   const handleCadastrarItem = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -175,9 +195,14 @@ const AchadosPerdidos = () => {
 
   // Função para marcar o item como resolvido diretamente pela tela
   const handleMarcarComoResolvido = async (itemId: string) => {
-    if (resolvendoId) return;
+    if (resolvendoId || !usuarioLogadoId || activeUserRef.current !== usuarioLogadoId) return;
     setResolvendoId(itemId);
+    const account = usuarioLogadoId;
     try {
+      const { data: { user }, error: sessionError } = await supabase.auth.getUser();
+      if (sessionError || user?.id !== account || activeUserRef.current !== account) {
+        throw new Error("Sua sessão mudou. Entre novamente para atualizar esta ocorrência.");
+      }
       const { data: updated, error } = await supabase
         .from("achados_perdidos" as any)
         .update({ status: "resolvido" } as any)
@@ -187,6 +212,7 @@ const AchadosPerdidos = () => {
         .select("id")
         .maybeSingle();
 
+      if (activeUserRef.current !== account) return;
       if (error) throw error;
       if (!updated) throw new Error("Ocorrência já resolvida, inexistente ou sem permissão.");
 
@@ -197,6 +223,7 @@ const AchadosPerdidos = () => {
 
       buscarItens();
     } catch (error: any) {
+      if (activeUserRef.current !== account) return;
       toast({
         title: "Erro ao atualizar",
         description: error.message || "Não foi possível alterar o status do item.",
@@ -241,6 +268,8 @@ const AchadosPerdidos = () => {
             </p>
             
             <button
+              ref={openButtonRef}
+              type="button"
               onClick={() => setIsModalAberto(true)}
               className="mt-6 inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 via-purple-500 to-indigo-500 text-white font-extrabold px-6 py-3.5 rounded-xl hover:opacity-95 shadow-lg shadow-purple-600/20 active:scale-[0.98] transition-all text-sm group"
             >
@@ -416,7 +445,7 @@ const AchadosPerdidos = () => {
         {/* Modal de cadastro premium */}
         {isModalAberto && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-            <div role="dialog" aria-modal="true" aria-label="Notificar ocorrência" className="bg-[#150F22] border border-purple-900/50 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl shadow-purple-950/50 animate-in fade-in zoom-in-95 duration-150 text-white">
+            <div ref={modalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Notificar ocorrência" className="bg-[#150F22] border border-purple-900/50 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl shadow-purple-950/50 animate-in fade-in zoom-in-95 duration-150 text-white">
               <div className="bg-[#0F0A19] border-b border-purple-950/80 px-5 py-4 flex justify-between items-center">
                 <div className="flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-purple-400" />
@@ -463,6 +492,8 @@ const AchadosPerdidos = () => {
                   <input
                     type="text"
                     required
+                    minLength={3}
+                    maxLength={160}
                     placeholder="Ex: Chave de carro Fiat, Cachorro Poodle branco..."
                     value={titulo}
                     onChange={(e) => setTitulo(e.target.value)}
@@ -491,6 +522,8 @@ const AchadosPerdidos = () => {
                     <input
                       type="text"
                       required
+                      minLength={2}
+                      maxLength={160}
                       placeholder="Ex: No São Benedito / Centro"
                       value={localFato}
                       onChange={(e) => setLocalFato(e.target.value)}
@@ -504,6 +537,8 @@ const AchadosPerdidos = () => {
                   <textarea
                     rows={3}
                     required
+                    minLength={10}
+                    maxLength={4000}
                     placeholder="Descreva características marcantes, cores ou marcas do objeto ou animal encontrado..."
                     value={descricao}
                     onChange={(e) => setDescricao(e.target.value)}
@@ -517,6 +552,8 @@ const AchadosPerdidos = () => {
                     <input
                       type="text"
                       required
+                      minLength={2}
+                      maxLength={120}
                       placeholder="Quem responderá"
                       value={contatoNome}
                       onChange={(e) => setContatoNome(e.target.value)}
@@ -526,7 +563,10 @@ const AchadosPerdidos = () => {
                   <div>
                     <label className="block text-xs font-black uppercase tracking-widest text-purple-300 mb-1.5">WhatsApp para Contato</label>
                     <input
-                      type="text"
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      maxLength={25}
                       required
                       placeholder="Ex: 75999999999"
                       value={contatoTelefone}
