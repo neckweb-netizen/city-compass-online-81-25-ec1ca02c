@@ -71,3 +71,14 @@ test('video advertisement does not change on countdown renders or retain state a
   assert.match(player, /setIsPlaying\(false\);\s*setShowAd\(false\);\s*setAdCountdown\(5\);\s*setCanSkip\(false\)/);
   assert.doesNotMatch(player, /videoElement\.parentNode\?\.replaceChild\(/);
 });
+
+
+test('ads with invalid media are excluded and failed banners never trap video playback', () => {
+  const player = source('src/components/ui/video-player-with-ad.tsx');
+  assert.match(player, /const validBanners = \(banners \?\? \[\]\)\.filter/);
+  assert.match(player, /banner\.tipo_midia === 'video'/);
+  assert.match(player, /isCanalVideoUrl\(banner\.imagem_url\)/);
+  assert.match(player, /isCanalImageUrl\(banner\.imagem_url\)/);
+  assert.match(player, /validBanners\[\(hash >>> 0\) % validBanners\.length\]/);
+  assert.match(player, /onError=\{\(\) => setShowAd\(false\)\}/);
+});
