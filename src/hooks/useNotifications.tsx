@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -37,7 +37,9 @@ export const useNotifications = ({ detailsEnabled = true }: { detailsEnabled?: b
   const { user } = useAuth();
   const { preferences, preferencesReady } = usePushNotifications();
   const queryClient = useQueryClient();
-  const queryKey = useMemo(() => ['notifications', user?.id] as const, [user?.id]);
+  const [pageSize, setPageSize] = useState(50);
+  useEffect(() => { setPageSize(50); }, [user?.id]);
+  const queryKey = useMemo(() => ['notifications', user?.id, pageSize] as const, [user?.id, pageSize]);
   const inAppEnabled = preferencesReady && preferences.in_app_enabled;
 
   const notificationsQuery = useQuery({
@@ -51,7 +53,7 @@ export const useNotifications = ({ detailsEnabled = true }: { detailsEnabled?: b
         .is('archived_at', null)
         .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
         .order('created_at', { ascending: false })
-        .limit(50);
+        .limit(pageSize + 1);
       if (error) throw error;
       return (data || []) as AppNotification[];
     },
@@ -132,7 +134,8 @@ export const useNotifications = ({ detailsEnabled = true }: { detailsEnabled?: b
         .update({ read: true, read_at: new Date().toISOString() })
         .eq('user_id', user.id)
         .eq('read', false)
-        .is('archived_at', null);
+        .is('archived_at', null)
+        .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`);
       if (error) throw error;
     },
     onSuccess: () => { invalidate(); toast.success('Todas as notificações foram marcadas como lidas.'); },
@@ -156,9 +159,13 @@ export const useNotifications = ({ detailsEnabled = true }: { detailsEnabled?: b
     onError: () => toast.error('Não foi possível arquivar a notificação.'),
   });
 
-  const notifications = inAppEnabled && detailsEnabled ? notificationsQuery.data || [] : [];
+  const loaded = notificationsQuery.data || [];
+  const notifications = inAppEnabled && detailsEnabled ? loaded.slice(0, pageSize) : [];
+  const hasMore = inAppEnabled && detailsEnabled && loaded.length > pageSize;
   return {
     notifications,
+    hasMore,
+    loadMore: () => setPageSize(previous => previous + 50),
     unreadNotifications: notifications.filter(item => !item.read),
     totalUnread: inAppEnabled ? unreadCountQuery.data || 0 : 0,
     loading: !preferencesReady || (inAppEnabled && ((detailsEnabled && notificationsQuery.isLoading) || unreadCountQuery.isLoading)),
