@@ -283,6 +283,7 @@ export const useCanalInformativo = () => {
   return {
     items: canalQuery.data || [],
     loading: canalQuery.isLoading,
+    error: canalQuery.error,
     createItem: createMutation.mutate,
     createItemAsync: createMutation.mutateAsync,
     updateItem: updateMutation.mutate,
