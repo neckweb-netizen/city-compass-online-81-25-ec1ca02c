@@ -135,6 +135,16 @@ test('imported legacy backup is recognized without copying personal data or reim
   assert.match(model, /crypto\.subtle\.digest\('SHA-256', bytes\)/);
   assert.match(page, /importedFingerprint === await legacyBackupFingerprint\(backup\)/);
   assert.match(page, /backup && !alreadyImported &&/);
-  assert.match(page, /localStorage\.setItem\(cobrancasImportedLegacyKey\(uid!\), fingerprint\)/);
+  assert.match(page, /localStorage\.setItem\(cobrancasImportedLegacyKey\(importAccount\), fingerprint\)/);
   assert.doesNotMatch(page, /localStorage\.setItem\(cobrancasStorageKey\(account\)/);
+});
+
+
+test('successful import never reappears in the current session, even when local metadata fails', () => {
+  const page = read('src/pages/ferramentas/GestaoCobrancas.tsx');
+  assert.match(page, /const importAccount = uid/);
+  assert.match(page, /if \(activeAccountRef\.current !== importAccount\) return/);
+  assert.match(page, /if \(await persist\(snapshot\)\) \{/);
+  assert.match(page, /setLegacy\(null\);\s*try \{\s*const fingerprint = await legacyBackupFingerprint\(snapshot\)/);
+  assert.match(page, /backup antigo pode reaparecer após recarregar/);
 });
