@@ -148,3 +148,28 @@ test('coupon and event plan checks target the selected business, not the first a
   assert.match(events, /checkingLimit/);
   assert.match(quick, /codigo: data\.codigo\.trim\(\)\.toUpperCase\(\)/);
 });
+
+
+test('public event cards and filters support keyboard navigation and undefined city', () => {
+  const page = source('src/components/eventos/EventosContent.tsx');
+  assert.match(page, /if \(!cidadePadrao\?\.id\) return/);
+  assert.match(page, /role="link"/);
+  assert.match(page, /tabIndex=\{0\}/);
+  assert.match(page, /event\.key === 'Enter' \|\| event\.key === ' '/);
+  assert.match(page, /aria-label="Filtrar categoria"/);
+  assert.match(page, /aria-label="Filtrar período"/);
+  assert.match(page, /aria-label="Filtrar preço"/);
+  assert.match(page, /loading="lazy"/);
+});
+
+test('public event detail reports fetch errors and validates ticket destination', () => {
+  const page = source('src/components/eventos/EventoDetailContent.tsx');
+  assert.match(page, /isError, refetch/);
+  assert.match(page, /if \(isError\) return/);
+  assert.match(page, /onClick=\{\(\) => void refetch\(\)\}/);
+  assert.match(page, /getSafeNavigationUrl\(evento\?\.link_ingressos\)/);
+  assert.match(page, /\{ingressoUrl && <Button asChild>/);
+  assert.match(page, /if \(!eventoId\) return/);
+  assert.match(page, /if \(!inicio \|\| !fim\) return/);
+  assert.match(page, /document\.title = previousTitle/);
+});
