@@ -19,7 +19,7 @@ import {
   Accessibility,
   Target
 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { getSafeNavigationUrl } from '@/lib/safeNavigation';
 import { EventoGuestList } from './EventoGuestList';
 import { EventoRating } from './EventoRating';
 
@@ -29,9 +29,8 @@ interface EventoDetailContentProps {
 
 export const EventoDetailContent = ({ eventoId }: EventoDetailContentProps) => {
   const navigate = useNavigate();
-  const { toast } = useToast();
 
-  const { data: evento, isLoading } = useQuery({
+  const { data: evento, isLoading, isError, refetch } = useQuery({
     queryKey: ['evento-detail', eventoId],
     queryFn: async () => {
       if (!eventoId) throw new Error('ID do evento é obrigatório');
@@ -55,6 +54,8 @@ export const EventoDetailContent = ({ eventoId }: EventoDetailContentProps) => {
     enabled: !!eventoId,
   });
 
+  const ingressoUrl = getSafeNavigationUrl(evento?.link_ingressos);
+
   const { data: relacionados = [] } = useQuery({
     queryKey: ['eventos-relacionados', evento?.id, evento?.categoria_id],
     queryFn: async () => {
@@ -67,6 +68,7 @@ export const EventoDetailContent = ({ eventoId }: EventoDetailContentProps) => {
 
   useEffect(() => {
     if (!evento) return;
+    const previousTitle = document.title;
     document.title = `${evento.titulo} | Saj Tem`;
     const atualizarMeta = (property: string, content: string) => {
       let tag = document.querySelector(`meta[property="${property}"]`) as HTMLMetaElement | null;
@@ -77,7 +79,7 @@ export const EventoDetailContent = ({ eventoId }: EventoDetailContentProps) => {
     atualizarMeta('og:description', evento.descricao || `Confira este evento no Saj Tem`);
     atualizarMeta('og:url', window.location.href);
     if (evento.imagem_banner) atualizarMeta('og:image', evento.imagem_banner);
-    return () => { document.title = 'Saj Tem'; };
+    return () => { document.title = previousTitle; };
   }, [evento]);
 
 
@@ -101,8 +103,15 @@ export const EventoDetailContent = ({ eventoId }: EventoDetailContentProps) => {
 
   const adicionarAgenda = () => {
     if (!evento) return;
-    const limpar = (valor: string) => new Date(valor).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
-    const params = new URLSearchParams({ action: 'TEMPLATE', text: evento.titulo, dates: `${limpar(evento.data_inicio)}/${limpar(evento.data_fim || evento.data_inicio)}`, details: evento.descricao || '', location: [evento.local, evento.endereco].filter(Boolean).join(' - ') });
+    const limpar = (valor: string) => {
+      const parsed = new Date(valor);
+      if (Number.isNaN(parsed.getTime())) return null;
+      return parsed.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+    };
+    const inicio = limpar(evento.data_inicio);
+    const fim = limpar(evento.data_fim || evento.data_inicio);
+    if (!inicio || !fim) return;
+    const params = new URLSearchParams({ action: 'TEMPLATE', text: evento.titulo, dates: `${inicio}/${fim}`, details: evento.descricao || '', location: [evento.local, evento.endereco].filter(Boolean).join(' - ') });
     window.open(`https://calendar.google.com/calendar/render?${params.toString()}`, '_blank', 'noopener,noreferrer');
   };
 
@@ -115,6 +124,15 @@ export const EventoDetailContent = ({ eventoId }: EventoDetailContentProps) => {
       </div>
     );
   }
+
+  if (isError) return (
+    <div role="alert" className="container mx-auto space-y-4 px-4 py-12 text-center">
+      <h1 className="text-xl font-semibold">Não foi possível carregar os detalhes do evento.</h1>
+      <p className="text-muted-foreground">Verifique a conexão e tente novamente.</p>
+      <Button type="button" variant="outline" onClick={() => void refetch()}>Tentar novamente</Button>
+      <Button type="button" variant="ghost" onClick={() => navigate('/eventos')}>Voltar para Eventos</Button>
+    </div>
+  );
 
   if (!evento) {
     return (
@@ -316,7 +334,7 @@ export const EventoDetailContent = ({ eventoId }: EventoDetailContentProps) => {
             <EventoGuestList evento={evento} />
             <div className="rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-800">
               <div className="mb-4 flex items-center gap-3"><div className="rounded-xl bg-amber-500/10 p-2"><Ticket className="h-5 w-5 text-amber-600" /></div><div><p className="font-bold">{evento.gratuito ? 'Entrada gratuita' : `A partir de ${Number(evento.preco || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`}</p>{evento.preco_descricao && <p className="text-xs text-muted-foreground">{evento.preco_descricao}</p>}</div></div>
-              <div className="grid gap-2"><Button onClick={adicionarAgenda} variant="outline"><CalendarPlus className="mr-2 h-4 w-4" />Adicionar ao Google Agenda</Button>{evento.link_ingressos && <Button asChild><a href={evento.link_ingressos} target="_blank" rel="noopener noreferrer"><Ticket className="mr-2 h-4 w-4" />Garantir ingresso</a></Button>}</div>
+              <div className="grid gap-2"><Button onClick={adicionarAgenda} variant="outline"><CalendarPlus className="mr-2 h-4 w-4" />Adicionar ao Google Agenda</Button>{ingressoUrl && <Button asChild><a href={ingressoUrl} target="_blank" rel="noopener noreferrer"><Ticket className="mr-2 h-4 w-4" />Garantir ingresso</a></Button>}</div>
             </div>
             {/* Date Card */}
             <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl p-6 border-0 sticky top-6">
