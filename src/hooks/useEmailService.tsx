@@ -96,11 +96,11 @@ export const useEmailService = () => {
         throw new Error('O servidor não confirmou o envio da mensagem.');
       }
 
-      toast.success('Mensagem enviada com sucesso! Entraremos em contato em breve.');
+      // O ContactForm exibe o resultado inline; evite uma segunda notificação.
       return result;
     } catch (error: any) {
       console.error('Erro ao enviar email de contato:', error);
-      toast.error('Erro ao enviar mensagem. Tente novamente.');
+      // A UI preserva os campos e informa a falha sem notificações duplicadas.
       throw error;
     }
   };
