@@ -1,6 +1,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { isCouponAvailable } from '@/lib/couponAvailability';
 import { NeonCard } from '@/components/ui/neon-card';
 import { CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -32,8 +33,8 @@ export const CouponsContent = () => {
 
       if (error) throw error;
       
-      // Filtrar por cidade se disponível
-      return data || [];
+      // Excluir ofertas esgotadas sem executar nenhum resgate.
+      return (data || []).filter(cupom => isCouponAvailable(cupom));
     },
     enabled: !!cidadePadrao?.id
   });
@@ -87,6 +88,8 @@ export const CouponsContent = () => {
           Aproveite as melhores promoções da cidade
         </p>
       </div>
+
+      <p className="text-xs text-muted-foreground">Copiar um código não registra resgate nem garante disponibilidade na loja.</p>
 
       {cupons && cupons.length > 0 ? (
         <div className="space-y-3 sm:space-y-4">
