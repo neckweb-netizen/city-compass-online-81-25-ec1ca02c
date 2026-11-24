@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ShareButton } from '@/components/ui/share-button';
 import { ExternalLink, Image, Video, FileText, Trophy, Share2, Copy, Download } from 'lucide-react';
-import { formatDistanceToNow, format } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { useShortUrls } from '@/hooks/useShortUrls';
@@ -21,7 +21,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import html2canvas from 'html2canvas';
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
+import { isCanalVideoUrl, isCanalImageUrl } from '@/lib/canalMedia';
 import { getSafeNavigationUrl, isSameOriginNavigation } from '@/lib/safeNavigation';
 
 const getTypeIcon = (tipo: string) => {
@@ -65,48 +66,12 @@ const getTypeLabel = (tipo: string) => {
   }
 };
 
-const getYouTubeEmbedUrl = (url: string) => {
-  console.log('Processing YouTube URL:', url);
-  
-  if (url.includes('/embed/')) {
-    return url;
-  }
-  
-  if (url.includes('youtu.be/')) {
-    const videoId = url.split('youtu.be/')[1].split('?')[0];
-    return `https://www.youtube.com/embed/${videoId}`;
-  }
-  
-  if (url.includes('youtube.com/watch')) {
-    const urlParams = new URLSearchParams(url.split('?')[1]);
-    const videoId = urlParams.get('v');
-    if (videoId) {
-      return `https://www.youtube.com/embed/${videoId}`;
-    }
-  }
-  
-  return url;
-};
-
-const isYouTubeUrl = (url: string) => {
-  return url.includes('youtube.com') || url.includes('youtu.be');
-};
-
-const isVideoUrl = (url: string) => {
-  const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi'];
-  return videoExtensions.some(ext => url.toLowerCase().includes(ext)) || isYouTubeUrl(url);
-};
-
-const isImageUrl = (url: string) => {
-  const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'];
-  return imageExtensions.some(ext => url.toLowerCase().includes(ext));
-};
-
 const formatBrazilDateTime = (dateString: string) => {
   const date = new Date(dateString);
-  // Ajustar para o fuso horário do Brasil (UTC-3)
-  const brazilDate = new Date(date.getTime() - (3 * 60 * 60 * 1000));
-  return format(brazilDate, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+  if (Number.isNaN(date.getTime())) return 'Data indisponível';
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Bahia',
+  }).format(date);
 };
 
 const CanalInformativoItemComponent = ({ item }: { item: CanalInformativoItem }) => {
@@ -115,11 +80,6 @@ const CanalInformativoItemComponent = ({ item }: { item: CanalInformativoItem })
   const sorteioRef = useRef<HTMLDivElement>(null);
   const [shortUrl, setShortUrl] = useState<string | null>(null);
   
-  console.log('Renderizando item do canal:', item);
-  
-  if (item.tipo_conteudo === 'resultado_sorteio') {
-    console.log('Item é resultado de sorteio:', item.resultado_sorteio);
-  }
 
   const getShareUrl = useCallback(async () => {
     if (shortUrl) return shortUrl;
@@ -300,8 +260,8 @@ const CanalInformativoItemComponent = ({ item }: { item: CanalInformativoItem })
     }
   };
 
-  const isVideo = item.url_midia ? isVideoUrl(item.url_midia) : false;
-  const isImage = item.url_midia ? isImageUrl(item.url_midia) : false;
+  const isVideo = item.url_midia ? isCanalVideoUrl(item.url_midia) : false;
+  const isImage = item.url_midia ? isCanalImageUrl(item.url_midia) : false;
 
   return (
     <div className="tiktok-card tiktok-hover rounded-2xl overflow-hidden relative" id={`post-${item.id}`}>
@@ -438,7 +398,7 @@ const CanalInformativoItemComponent = ({ item }: { item: CanalInformativoItem })
         )}
 
         {/* External Link */}
-        {item.link_externo && (
+        {getSafeNavigationUrl(item.link_externo) && (
           <div className="mt-4">
             <Button 
               onClick={handleLinkClick}
@@ -539,11 +499,21 @@ const CanalInformativoItemComponent = ({ item }: { item: CanalInformativoItem })
   );
 };
 
-export const CanalInformativoList = () => {
-  const { items, loading } = useCanalInformativo();
+export const CanalInformativoList = ({ highlightPostId }: { highlightPostId?: string | null }) => {
+  const { items, loading, error, refetch } = useCanalInformativo();
 
-  console.log('Canal Informativo - Total de items:', items.length);
-  console.log('Canal Informativo - Items completos:', items);
+  useEffect(() => {
+    if (loading || !highlightPostId || !items.some(item => item.id === highlightPostId)) return;
+    const el = document.getElementById('post-' + highlightPostId);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('ring-2', 'ring-primary');
+    const timeout = window.setTimeout(() => el.classList.remove('ring-2', 'ring-primary'), 3000);
+    return () => {
+      window.clearTimeout(timeout);
+      el.classList.remove('ring-2', 'ring-primary');
+    };
+  }, [highlightPostId, items, loading]);
 
   if (loading) {
     return (
@@ -567,6 +537,14 @@ export const CanalInformativoList = () => {
       </div>
     );
   }
+
+  if (error) return (
+    <div role="alert" className="mx-auto max-w-lg space-y-3 rounded-2xl border p-6 text-center">
+      <h2 className="font-semibold">Não foi possível carregar as publicações.</h2>
+      <p className="text-sm text-muted-foreground">Verifique sua conexão e tente novamente.</p>
+      <Button type="button" variant="outline" onClick={() => { void refetch(); }}>Tentar novamente</Button>
+    </div>
+  );
 
   if (items.length === 0) {
     return (
