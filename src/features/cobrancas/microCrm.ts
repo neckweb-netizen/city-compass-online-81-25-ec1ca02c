@@ -69,7 +69,7 @@ export function validarBackupCobrancas(input: unknown): CobrancaDados | null {
     cobrancas.push({
       id: c.id, clienteId: String(c.clienteId), descricao: c.descricao,
       valorCentavos: Number(c.valorCentavos), vencimento: c.vencimento,
-      status: c.status, criadoEm: c.criadoEm, pagoEm: c.pagoEm,
+      status: c.status, criadoEm: c.criadoEm, pagoEm: c.pagoEm === null ? null : String(c.pagoEm),
     });
   }
   return { versao: 1, clientes, cobrancas };
