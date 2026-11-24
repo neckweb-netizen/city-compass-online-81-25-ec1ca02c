@@ -27,7 +27,11 @@ test('poll home explains login and prevents rapid duplicate votes', () => {
   const page = source('src/components/home/EnqueteSection.tsx');
   assert.match(page, /if \(!user\) \{ setAuthOpen\(true\); return; \}/);
   assert.match(page, /votingRef\.current = true/);
-  assert.match(page, /onSettled: \(\) => \{ votingRef\.current = false; \}/);
+  assert.match(page, /finally \{\s*votingRef\.current = false;/);
+  assert.match(page, /await votarEnquete\.mutateAsync\(\{ enqueteId: pollId, opcoes: choices \}\)/);
+  assert.match(page, /currentAccountRef\.current === account && currentPollRef\.current === pollId/);
+  assert.match(page, /new Set\(selectedOpcoes\)\.size !== selectedOpcoes\.length/);
+  assert.match(page, /previous\.includes\(opcaoIndex\) \? previous/);
   assert.match(page, /<AuthDialog open=\{authOpen\}/);
   assert.match(page, /refetchActive/);
   assert.match(page, /setSelectedOpcoes\(\[\]\)/);
