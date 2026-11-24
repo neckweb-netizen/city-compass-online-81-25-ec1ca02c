@@ -8,7 +8,10 @@ test('redirects validate codes, same-origin destinations and reject short-url cy
   const source = read('src/pages/ShortUrlRedirect.tsx');
   assert.match(source, /\^\[A-Za-z0-9_-\]\{3,32\}\$/);
   assert.match(source, /destination\.origin !== window\.location\.origin/);
-  assert.match(source, /destination\.pathname === '\/s'/);
+  assert.match(source, /decodeURIComponent\(destination\.pathname\)/);
+  assert.match(source, /\^\\\/s\(\?:\\\/\|\$\)\/i\.test\(decodedPath\)/);
+  assert.match(source, /\['P0002', 'PGRST116'\]\.includes\(error\.code\)/);
+  assert.match(source, /setAttempt\(value => value \+ 1\)/);
   assert.match(source, /window\.location\.replace\(destination\.toString\(\)\)/);
   assert.match(source, /return \(\) => \{ active = false; \}/);
 });
