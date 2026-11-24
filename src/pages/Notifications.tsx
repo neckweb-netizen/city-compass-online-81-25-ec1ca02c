@@ -21,7 +21,7 @@ const categoryIcons = {
 
 export default function NotificationsPage() {
   const navigate = useNavigate();
-  const { notifications, totalUnread, loading, error, markAsRead, markAllAsRead, archive, refetch, isProcessing } = useNotifications();
+  const { notifications, totalUnread, loading, error, markAsRead, markAllAsRead, archive, refetch, isProcessing, hasMore, loadMore } = useNotifications();
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const visible = filter === 'unread' ? notifications.filter(item => !item.read) : notifications;
 
@@ -104,6 +104,9 @@ export default function NotificationsPage() {
             );
           })}
         </div>
+      )}
+      {!loading && !error && hasMore && (
+        <div className="text-center"><Button type="button" variant="outline" onClick={loadMore}>Carregar mais notificações</Button></div>
       )}
     </div>
   );
