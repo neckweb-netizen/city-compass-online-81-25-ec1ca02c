@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 export default function ShortUrlRedirect() {
   const { shortCode } = useParams();
   const [errorMessage, setErrorMessage] = useState('');
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -22,7 +23,12 @@ export default function ShortUrlRedirect() {
           p_short_code: shortCode,
         });
 
-        if (error) throw error;
+        if (error) {
+          if (active && ['P0002', 'PGRST116'].includes(error.code))
+            setErrorMessage('Este link não foi encontrado ou expirou.');
+          else throw error;
+          return;
+        }
         if (!data) {
           if (active) setErrorMessage('Este link não foi encontrado ou não está mais disponível.');
           return;
@@ -39,7 +45,11 @@ export default function ShortUrlRedirect() {
         }
 
         // Não redirecionar para outro encurtador: evita ciclos e cadeias de links.
-        if (/^\/s\//i.test(destination.pathname) || destination.pathname === '/s') {
+        // Rejeitar também segmentos codificados para evitar redirecionamentos em cadeia.
+        let decodedPath: string;
+        try { decodedPath = decodeURIComponent(destination.pathname); }
+        catch { if (active) setErrorMessage('O destino deste link não é permitido.'); return; }
+        if (/^\/s(?:\/|$)/i.test(decodedPath) || /^\/s(?:\/|$)/i.test(destination.pathname)) {
           if (active) setErrorMessage('O destino deste link não é permitido.');
           return;
         }
@@ -51,7 +61,7 @@ export default function ShortUrlRedirect() {
 
     void redirectToOriginalUrl();
     return () => { active = false; };
-  }, [shortCode]);
+  }, [shortCode, attempt]);
 
   return (
     <main className="flex min-h-[70dvh] items-center justify-center px-4 py-12">
@@ -60,7 +70,8 @@ export default function ShortUrlRedirect() {
           <div role="alert">
             <h1 className="text-xl font-bold">Não foi possível abrir o link</h1>
             <p className="mt-3 text-sm text-muted-foreground">{errorMessage}</p>
-            <Button asChild className="mt-6 min-h-11 w-full">
+            <Button type="button" variant="outline" className="mt-4 min-h-11 w-full" onClick={() => setAttempt(value => value + 1)}>Tentar novamente</Button>
+            <Button asChild className="mt-3 min-h-11 w-full">
               <Link to="/">Voltar para o início</Link>
             </Button>
           </div>
