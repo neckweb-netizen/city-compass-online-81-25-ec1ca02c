@@ -1,11 +1,13 @@
 
-import { Radio } from 'lucide-react';
+import { Radio, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { getSafeRadioStreamUrl } from '@/lib/radioStream';
 import { RadioPlayer } from '@/components/ui/radio-player';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function Radios() {
-  const { data: radioStations, isLoading } = useQuery({
+  const { data: radioStations, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['radio-stations'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -53,12 +55,18 @@ export default function Radios() {
           </p>
         </div>
 
-        {radioStations && radioStations.length > 0 ? (
+        {isError ? (
+          <div role="alert" className="mx-auto max-w-lg rounded-2xl border bg-card p-6 text-center space-y-3">
+            <h2 className="font-semibold text-foreground">Não foi possível carregar as rádios</h2>
+            <p className="text-sm text-muted-foreground">Confira sua conexão e tente novamente.</p>
+            <Button type="button" variant="outline" disabled={isFetching} onClick={() => void refetch()}><RefreshCw className="mr-2 h-4 w-4" />Tentar novamente</Button>
+          </div>
+        ) : radioStations && radioStations.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {radioStations.map((station) => (
               <div key={station.id} className="space-y-3">
                 <RadioPlayer 
-                  radioUrl={station.link_radio || ''}
+                  radioUrl={getSafeRadioStreamUrl(station.link_radio) || ''}
                   stationName={station.nome}
                 />
                 <div className="text-center px-4">
