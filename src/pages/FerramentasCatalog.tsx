@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, Sparkles, DollarSign, FileText, NotebookPen, Search, ShieldCheck, Globe, Calculator, Percent, FileSpreadsheet, Volume2, Grid, Ticket, CarFront, HeartPulse, WalletCards, Baby, Pill, ChevronLeft, ChevronRight, Fuel, Scale, UtensilsCrossed } from 'lucide-react';
+import { ArrowRight, Sparkles, DollarSign, FileText, NotebookPen, Search, ShieldCheck, Globe, Calculator, Percent, FileSpreadsheet, Volume2, Grid, Ticket, CarFront, HeartPulse, WalletCards, Baby, Pill, ChevronLeft, ChevronRight, Fuel, Scale, UtensilsCrossed, LockKeyhole } from 'lucide-react';
 
 // COMPONENTE DE BANNER DINÂMICO PARA FERRAMENTAS
 const BannersFerramentas = () => {
@@ -240,7 +240,14 @@ const FerramentasCatalogInternal = () => {
   ];
 
   const categoriasUnicas = ['Todas', ...Array.from(new Set(ferramentas.map(f => f.categoria)))];
-  const requiresLogin = new Set(['gerador-rifa']);
+  // Deve espelhar as rotas ProtectedRoute em App.tsx.
+  // As ferramentas públicas podem pedir login apenas para funções específicas.
+  const requiresLogin = new Set([
+    'gerador-rifa', 'gerador-cobranca', 'criador-curriculo', 'gestao-cobrancas',
+    'calculadora-orcamento', 'calculadora-margem', 'simulador-rescisao',
+    'leitor-voz', 'acompanhamento-gestacional', 'medicamentos', 'meu-veiculo',
+    'consulta-fipe', 'cardapio-digital',
+  ]);
 
   const categoriaVisual: Record<string, { icone: typeof Grid; cor: string; fundo: string }> = {
     Todas: { icone: Grid, cor: 'text-violet-600 dark:text-violet-300', fundo: 'bg-violet-100 dark:bg-violet-950/50' },
@@ -414,8 +421,9 @@ const FerramentasCatalogInternal = () => {
                           <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wider">
                             {item.categoria}
                           </Badge>
-                          <Badge className="bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold flex items-center gap-1">
-                            <Globe className="w-3 h-3" /> {requiresLogin.has(item.id) ? 'Login para criar' : 'Acesso livre'}
+                          <Badge className={`text-[10px] font-bold flex items-center gap-1 ${requiresLogin.has(item.id) ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300' : 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'}`}>
+                            {requiresLogin.has(item.id) ? <LockKeyhole className="w-3 h-3" /> : <Globe className="w-3 h-3" />}
+                            {requiresLogin.has(item.id) ? 'Login necessário' : 'Acesso livre'}
                           </Badge>
                         </div>
                       </div>
