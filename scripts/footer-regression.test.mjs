@@ -10,10 +10,11 @@ test('rodapé mostra Deivid sem a assinatura antiga', () => {
   assert.doesNotMatch(footer, /David Jorge|footer-crown-gold/);
 });
 
-test('rodapé utiliza o vídeo original da coroa com reprodução silenciosa', () => {
-  assert.match(footer, /<video[\s\S]*?autoPlay[\s\S]*?loop[\s\S]*?muted[\s\S]*?playsInline/);
-  assert.match(footer, /src="data:video\/webm;base64,[A-Za-z0-9+/=]+"/);
-  assert.match(footer, /aria-label="Coroa dourada original girando"/);
+test('rodapé exibe a coroa original em arquivo público e anima sem vídeo embutido', () => {
+  assert.match(footer, /src="\/deivid-crown\.png"/);
+  assert.match(footer, /deivid-crown-spin_2s_linear_infinite/);
+  assert.match(footer, /@keyframes deivid-crown-spin/);
+  assert.doesNotMatch(footer, /data:video\/webm;base64,/);
 });
 
 test('rodapé preserva navegação de privacidade, termos e tutorial', () => {
