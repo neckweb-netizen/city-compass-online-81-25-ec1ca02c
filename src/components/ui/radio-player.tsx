@@ -118,7 +118,7 @@ export const RadioPlayer: React.FC<RadioPlayerProps> = ({ radioUrl, stationName,
   };
 
   return (
-    <Card className={\`w-full max-w-md mx-auto bg-gradient-to-br from-red-500 to-red-700 text-white shadow-2xl \${className}\`}>
+    <Card className={`w-full max-w-md mx-auto bg-gradient-to-br from-red-500 to-red-700 text-white shadow-2xl ${className}`}>
       <CardHeader className="text-center pb-4">
         <CardTitle className="flex items-center justify-center gap-2 text-xl font-bold text-white">
           <Radio className="w-6 h-6 text-white" />
@@ -129,7 +129,7 @@ export const RadioPlayer: React.FC<RadioPlayerProps> = ({ radioUrl, stationName,
         <audio
           ref={audioRef}
           preload="none"
-          aria-label={\`Transmissão de \${stationName}\`}
+          aria-label={`Transmissão de ${stationName}`}
           onPlay={() => { setIsPlaying(true); setIsLoading(false); }}
           onPause={() => { setIsPlaying(false); setIsLoading(false); }}
           onWaiting={() => setIsLoading(true)}
@@ -147,7 +147,7 @@ export const RadioPlayer: React.FC<RadioPlayerProps> = ({ radioUrl, stationName,
           <Button
             type="button" onClick={() => void togglePlay()}
             disabled={isLoading || !safeUrl}
-            aria-label={isPlaying ? \`Pausar \${stationName}\` : \`Reproduzir \${stationName}\`}
+            aria-label={isPlaying ? `Pausar ${stationName}` : `Reproduzir ${stationName}`}
             size="lg"
             className="w-16 h-16 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 transition-all duration-300 hover:scale-105"
           >
@@ -157,7 +157,7 @@ export const RadioPlayer: React.FC<RadioPlayerProps> = ({ radioUrl, stationName,
           <Button
             type="button" onClick={stopAudio}
             disabled={!isPlaying && !isLoading}
-            aria-label={\`Parar \${stationName}\`}
+            aria-label={`Parar ${stationName}`}
             size="lg"
             className="w-12 h-12 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 transition-all duration-300 hover:scale-105"
           >
@@ -169,14 +169,14 @@ export const RadioPlayer: React.FC<RadioPlayerProps> = ({ radioUrl, stationName,
             <span className="text-sm font-medium text-white opacity-90">Volume</span>
             <Button
               type="button" onClick={() => setIsMuted(value => !value)}
-              aria-label={isMuted ? \`Ativar som de \${stationName}\` : \`Silenciar \${stationName}\`}
+              aria-label={isMuted ? `Ativar som de ${stationName}` : `Silenciar ${stationName}`}
               variant="ghost" size="sm" className="text-white hover:bg-white/20 h-8 w-8 p-0"
             >
               {isMuted ? <VolumeX className="w-4 h-4 text-white" /> : <Volume2 className="w-4 h-4 text-white" />}
             </Button>
           </div>
           <Slider value={volume} onValueChange={setVolume} max={100} step={1} aria-label="Volume da rádio" />
-          <div className="text-xs text-center text-white opacity-75">{isMuted ? 'Mudo' : \`\${volume[0]}%\`}</div>
+          <div className="text-xs text-center text-white opacity-75">{isMuted ? 'Mudo' : `${volume[0]}%`}</div>
         </div>
         <div role="status" aria-live="polite" className="text-center text-sm text-white/80">
           {isLoading ? 'Carregando...' : isPlaying ? 'Reproduzindo ao vivo' : 'Pausado'}
