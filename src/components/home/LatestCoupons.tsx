@@ -1,6 +1,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { isCouponAvailable } from '@/lib/couponAvailability';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { NeonCard } from '@/components/ui/neon-card';
 import { Badge } from '@/components/ui/badge';
@@ -39,14 +40,15 @@ export const LatestCoupons = ({ cidadeId }: LatestCouponsProps) => {
         query = query.eq('empresas.cidade_id', cidadeId);
       }
 
-      const { data, error } = await query.limit(3);
+      // Primeiro aplique o limite de utilização, depois escolha os três destaques.
+      const { data, error } = await query.limit(100);
 
       if (error) {
         console.error('Erro ao buscar cupons:', error);
         throw error;
       }
       
-return data;
+return (data || []).filter(cupom => isCouponAvailable(cupom)).slice(0, 3);
     }
   });
 
