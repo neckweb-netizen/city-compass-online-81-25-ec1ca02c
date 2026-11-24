@@ -23,3 +23,21 @@ test('UI confirms delivery provider acceptance rather than HTTP-only success', (
   const hook = read('src/hooks/useEmailService.tsx');
   assert.match(hook, /result\.success !== true \|\| !result\.id/);
 });
+
+
+test('contact form shows optional phone validation and respects input limits', () => {
+  const form = read('src/components/contact/ContactForm.tsx');
+  assert.match(form, /aria-describedby=\{errors\.telefone \? 'erro-telefone' : undefined\}/);
+  assert.match(form, /id="erro-telefone" role="alert"/);
+  for (const max of ['maxLength={100}', 'maxLength={254}', 'maxLength={30}', 'maxLength={150}', 'maxLength={5000}']) {
+    assert.ok(form.includes(max), 'Missing input limit: ' + max);
+  }
+});
+test('contact submission only has inline success and failure messages', () => {
+  const hook = read('src/hooks/useEmailService.tsx');
+  const contactFn = hook.slice(hook.indexOf('const sendContactEmail ='), hook.indexOf('return {', hook.indexOf('const sendContactEmail =')));
+  assert.doesNotMatch(contactFn, /toast\.(success|error)\(/);
+  const form = read('src/components/contact/ContactForm.tsx');
+  assert.match(form, /submissionStatus === 'success'/);
+  assert.match(form, /submissionStatus === 'error'/);
+});
