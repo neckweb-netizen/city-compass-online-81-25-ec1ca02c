@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -35,6 +35,8 @@ const notificationColumns = [
 
 export const useNotifications = ({ detailsEnabled = true }: { detailsEnabled?: boolean } = {}) => {
   const { user } = useAuth();
+  const activeAccountRef = useRef<string | null>(user?.id ?? null);
+  activeAccountRef.current = user?.id ?? null;
   const { preferences, preferencesReady } = usePushNotifications();
   const queryClient = useQueryClient();
   const [pageSize, setPageSize] = useState(50);
@@ -86,7 +88,8 @@ export const useNotifications = ({ detailsEnabled = true }: { detailsEnabled?: b
       .on('postgres_changes', {
         event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}`,
       }, (payload) => {
-        void queryClient.invalidateQueries({ queryKey });
+        if (activeAccountRef.current !== user.id) return;
+        void queryClient.invalidateQueries({ queryKey: ['notifications', user.id] });
         void queryClient.invalidateQueries({ queryKey: ['notifications-unread-count', user.id] });
         if (payload.eventType === 'INSERT') {
           const item = payload.new as AppNotification;
@@ -102,61 +105,87 @@ export const useNotifications = ({ detailsEnabled = true }: { detailsEnabled?: b
       })
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
-  }, [inAppEnabled, queryClient, queryKey, user?.id]);
+  }, [inAppEnabled, queryClient, user?.id]);
 
-  const invalidate = () => {
-    void queryClient.invalidateQueries({ queryKey });
-    void queryClient.invalidateQueries({ queryKey: ['notifications-unread-count', user?.id] });
+  // Cada atualização é vinculada à conta de origem, inclusive após um await.
+  const verifyAccount = async (account: string) => {
+    if (activeAccountRef.current !== account) throw new Error('Sua conta mudou. Atualize e tente novamente.');
+    const { data: { user: sessionUser }, error } = await supabase.auth.getUser();
+    if (error || sessionUser?.id !== account || activeAccountRef.current !== account)
+      throw new Error('Sua sessão mudou. Nenhuma atualização foi iniciada.');
   };
 
+  const invalidateForAccount = (account: string) => {
+    if (activeAccountRef.current !== account) return;
+    void queryClient.invalidateQueries({ queryKey: ['notifications', account] });
+    void queryClient.invalidateQueries({ queryKey: ['notifications-unread-count', account] });
+  };
+
+  type ScopedNotification = { notificationId: string; account: string };
+
   const markAsReadMutation = useMutation({
-    mutationFn: async (notificationId: string) => {
-      if (!user?.id) throw new Error('Usuário não autenticado');
+    mutationFn: async ({ notificationId, account }: ScopedNotification) => {
+      await verifyAccount(account);
       const { data: updated, error } = await (supabase as any).from('notifications')
         .update({ read: true, read_at: new Date().toISOString() })
         .eq('id', notificationId)
-        .eq('user_id', user.id)
+        .eq('user_id', account)
         .eq('read', false)
         .is('archived_at', null)
+        .or(\`expires_at.is.null,expires_at.gt.\${new Date().toISOString()}\`)
         .select('id')
         .maybeSingle();
       if (error) throw error;
       if (!updated) throw new Error('Notificação já lida ou indisponível.');
+      return account;
     },
-    onSuccess: invalidate,
-    onError: () => toast.error('Não foi possível marcar a notificação como lida.'),
+    onSuccess: account => invalidateForAccount(account),
+    onError: (_error, variables) => {
+      if (activeAccountRef.current === variables.account) toast.error('Não foi possível marcar a notificação como lida.');
+    },
   });
 
   const markAllAsReadMutation = useMutation({
-    mutationFn: async () => {
-      if (!user?.id) throw new Error('Usuário não autenticado');
+    mutationFn: async (account: string) => {
+      await verifyAccount(account);
       const { error } = await (supabase as any).from('notifications')
         .update({ read: true, read_at: new Date().toISOString() })
-        .eq('user_id', user.id)
+        .eq('user_id', account)
         .eq('read', false)
         .is('archived_at', null)
-        .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`);
+        .or(\`expires_at.is.null,expires_at.gt.\${new Date().toISOString()}\`);
       if (error) throw error;
+      return account;
     },
-    onSuccess: () => { invalidate(); toast.success('Todas as notificações foram marcadas como lidas.'); },
-    onError: () => toast.error('Não foi possível atualizar as notificações.'),
+    onSuccess: account => {
+      if (activeAccountRef.current !== account) return;
+      invalidateForAccount(account);
+      toast.success('Todas as notificações foram marcadas como lidas.');
+    },
+    onError: (_error, account) => {
+      if (activeAccountRef.current === account) toast.error('Não foi possível atualizar as notificações.');
+    },
   });
 
   const archiveMutation = useMutation({
-    mutationFn: async (notificationId: string) => {
-      if (!user?.id) throw new Error('Usuário não autenticado');
+    mutationFn: async ({ notificationId, account }: ScopedNotification) => {
+      await verifyAccount(account);
       const { data: updated, error } = await (supabase as any).from('notifications')
         .update({ archived_at: new Date().toISOString() })
         .eq('id', notificationId)
-        .eq('user_id', user.id)
+        .eq('user_id', account)
         .is('archived_at', null)
+        .or(\`expires_at.is.null,expires_at.gt.\${new Date().toISOString()}\`)
         .select('id')
         .maybeSingle();
       if (error) throw error;
       if (!updated) throw new Error('Notificação já arquivada ou indisponível.');
+      return account;
     },
-    onSuccess: invalidate,
-    onError: () => toast.error('Não foi possível arquivar a notificação.'),
+    onSuccess: account => invalidateForAccount(account),
+    onError: (_error, variables) => {
+      if (activeAccountRef.current === variables.account) toast.error('Não foi possível arquivar a notificação.');
+    },
   });
 
   const loaded = notificationsQuery.data || [];
@@ -172,9 +201,18 @@ export const useNotifications = ({ detailsEnabled = true }: { detailsEnabled?: b
     error: notificationsQuery.error || unreadCountQuery.error,
     isMutating: markAsReadMutation.isPending || markAllAsReadMutation.isPending || archiveMutation.isPending,
     isProcessing: markAsReadMutation.isPending || markAllAsReadMutation.isPending || archiveMutation.isPending,
-    markAsRead: markAsReadMutation.mutate,
-    markAllAsRead: markAllAsReadMutation.mutate,
-    archive: archiveMutation.mutate,
+    markAsRead: (notificationId: string) => {
+      if (!user?.id || activeAccountRef.current !== user.id) return;
+      markAsReadMutation.mutate({ notificationId, account: user.id });
+    },
+    markAllAsRead: () => {
+      if (!user?.id || activeAccountRef.current !== user.id) return;
+      markAllAsReadMutation.mutate(user.id);
+    },
+    archive: (notificationId: string) => {
+      if (!user?.id || activeAccountRef.current !== user.id) return;
+      archiveMutation.mutate({ notificationId, account: user.id });
+    },
     refetch: notificationsQuery.refetch,
   };
 };
