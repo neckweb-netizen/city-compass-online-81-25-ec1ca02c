@@ -17,6 +17,10 @@ export const EnqueteSection = () => {
   const [jaVotou, setJaVotou] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const votingRef = useRef(false);
+  const currentAccountRef = useRef(user?.id ?? null);
+  const currentPollRef = useRef(enqueteAtiva?.id ?? null);
+  currentAccountRef.current = user?.id ?? null;
+  currentPollRef.current = enqueteAtiva?.id ?? null;
 
   useEffect(() => {
     setSelectedOpcoes([]);
@@ -34,28 +38,31 @@ export const EnqueteSection = () => {
   );
   if (!enqueteAtiva) return null;
 
-  const handleVote = () => {
+  const handleVote = async () => {
     if (selectedOpcoes.length === 0 || votingRef.current || votarEnquete.isPending) return;
     if (!user) { setAuthOpen(true); return; }
+    if (!enqueteAtiva || selectedOpcoes.some(index => !Number.isInteger(index) || index < 0 || index >= enqueteAtiva.opcoes.length) ||
+        (!enqueteAtiva.multipla_escolha && selectedOpcoes.length !== 1) ||
+        new Set(selectedOpcoes).size !== selectedOpcoes.length) return;
+    const account = user.id;
+    const pollId = enqueteAtiva.id;
+    const choices = [...selectedOpcoes];
     votingRef.current = true;
-    votarEnquete.mutate(
-      { enqueteId: enqueteAtiva.id, opcoes: selectedOpcoes },
-      {
-        onSuccess: () => {
-          setJaVotou(true);
-        },
-        onSettled: () => { votingRef.current = false; }
-      }
-    );
+    try {
+      await votarEnquete.mutateAsync({ enqueteId: pollId, opcoes: choices });
+      if (currentAccountRef.current === account && currentPollRef.current === pollId) setJaVotou(true);
+    } catch {
+      // O hook informa a falha e preserva a seleção para uma nova tentativa.
+    } finally {
+      votingRef.current = false;
+    }
   };
 
   const handleOptionChange = (opcaoIndex: number, checked: boolean) => {
     if (enqueteAtiva.multipla_escolha) {
-      if (checked) {
-        setSelectedOpcoes([...selectedOpcoes, opcaoIndex]);
-      } else {
-        setSelectedOpcoes(selectedOpcoes.filter(o => o !== opcaoIndex));
-      }
+      setSelectedOpcoes(previous => checked
+        ? previous.includes(opcaoIndex) ? previous : [...previous, opcaoIndex]
+        : previous.filter(index => index !== opcaoIndex));
     } else {
       setSelectedOpcoes(checked ? [opcaoIndex] : []);
     }
@@ -114,8 +121,8 @@ export const EnqueteSection = () => {
                     <Checkbox
                       id={`opcao-${index}`}
                       checked={selectedOpcoes.includes(index)}
-                      onCheckedChange={(checked) => 
-                        handleOptionChange(index, checked as boolean)
+                      onCheckedChange={(checked) =>
+                        handleOptionChange(index, checked === true)
                       }
                       className="border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
                     />
@@ -157,8 +164,8 @@ export const EnqueteSection = () => {
             )}
 
             <Button 
-              onClick={handleVote}
-              disabled={selectedOpcoes.length === 0 || votarEnquete.isPending}
+              onClick={() => { void handleVote(); }}
+              disabled={selectedOpcoes.length === 0 || votarEnquete.isPending || votingRef.current}
               className="w-full font-bold py-3 shadow-sm"
             >
               {votarEnquete.isPending ? 'Votando...' : user ? 'Votar Agora' : 'Entrar para votar'}
