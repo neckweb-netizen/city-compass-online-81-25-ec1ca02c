@@ -133,3 +133,13 @@ test('push enable and disable operations cannot mutate the next account UI', () 
   assert.match(push, /if \(currentUserRef\.current === requestedUser\) setLoading\(false\)/);
   assert.match(push, /if \(!user\?\.id\) throw new Error\('Faça login para desativar/);
 });
+
+
+test('automatic push registration requires loaded account preferences and confirmed support', () => {
+  const push = source('src/contexts/PushNotificationsContext.tsx');
+  assert.match(push, /if \(!user\?\.id \|\| !supportReady \|\| !preferencesReady \|\| !supported \|\|/);
+  assert.match(push, /permission !== 'granted' \|\| !preferences\.push_enabled\) return/);
+  assert.match(push, /if \(!active \|\| currentUserRef\.current !== account\) return null/);
+  assert.match(push, /\[user\?\.id, supported, supportReady, preferencesReady, permission, preferences\.push_enabled\]/);
+  assert.match(push, /setEnabled\(false\);\s*setPushStateReady\(true\)/);
+});
