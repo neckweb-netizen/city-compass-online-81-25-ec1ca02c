@@ -3,30 +3,11 @@ import { CanalInformativoList } from '@/components/canal/CanalInformativoList';
 import { MessageCircle, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useEffect } from 'react';
 
 const CanalInformativo = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const postId = searchParams.get('post');
-
-  // Se houver um post específico na URL, rolar para ele
-  useEffect(() => {
-    if (postId) {
-      // Aguardar um pouco para a página carregar completamente
-      setTimeout(() => {
-        const element = document.getElementById(`post-${postId}`);
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          // Destacar temporariamente o post
-          element.classList.add('ring-2', 'ring-primary', 'ring-opacity-50');
-          setTimeout(() => {
-            element.classList.remove('ring-2', 'ring-primary', 'ring-opacity-50');
-          }, 3000);
-        }
-      }, 500);
-    }
-  }, [postId]);
 
   return (
     <div className="dark min-h-screen bg-gradient-to-br from-background via-background to-muted/30">
@@ -62,7 +43,7 @@ const CanalInformativo = () => {
 
       {/* Content Area with Modern Scroll */}
       <div className="w-full px-4 py-6 modern-scroll content-fade">
-        <CanalInformativoList />
+        <CanalInformativoList highlightPostId={postId} />
       </div>
 
       {/* Ambient Background Effect */}
