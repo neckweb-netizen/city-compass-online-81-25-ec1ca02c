@@ -115,6 +115,13 @@ export const EventoDetailContent = ({ eventoId }: EventoDetailContentProps) => {
     window.open(`https://calendar.google.com/calendar/render?${params.toString()}`, '_blank', 'noopener,noreferrer');
   };
 
+  if (!eventoId) return (
+    <div role="alert" className="container mx-auto space-y-3 px-4 py-12 text-center">
+      <h1 className="text-xl font-semibold">Endereço do evento inválido.</h1>
+      <Button type="button" onClick={() => navigate('/eventos')}>Voltar para Eventos</Button>
+    </div>
+  );
+
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
