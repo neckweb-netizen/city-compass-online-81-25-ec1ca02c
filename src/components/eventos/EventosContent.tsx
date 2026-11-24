@@ -84,6 +84,14 @@ export const EventosContent = () => {
     </div>
   );
 
+  if (!cidadePadrao?.id) return (
+    <div role="status" className="container mx-auto space-y-3 px-4 py-12 text-center">
+      <p className="font-semibold">Nenhuma cidade selecionada para consultar os eventos.</p>
+      <p className="text-sm text-muted-foreground">Escolha uma cidade no portal e tente novamente.</p>
+      <Button type="button" variant="outline" onClick={() => void refetchCidade()}>Atualizar cidade</Button>
+    </div>
+  );
+
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Hero Section */}
@@ -103,7 +111,7 @@ export const EventosContent = () => {
               </div>
               <div className="flex items-center gap-1">
                 <Users className="w-4 h-4" />
-                <span>Atualizado hoje</span>
+                <span>Programação disponível</span>
               </div>
             </div>
           </div>
@@ -117,10 +125,10 @@ export const EventosContent = () => {
       <div className="mb-8 rounded-2xl border bg-card p-4 shadow-sm">
         <div className="mb-3 flex items-center gap-2 font-semibold"><SlidersHorizontal className="h-4 w-4 text-primary" />Encontre o evento ideal</div>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={busca} onChange={(e) => setBusca(e.target.value)} className="pl-9" aria-label="Buscar eventos por título" placeholder="Buscar evento..." /></div>
-          <Select value={categoria} onValueChange={setCategoria}><SelectTrigger><SelectValue placeholder="Categoria" /></SelectTrigger><SelectContent><SelectItem value="todas">Todas as categorias</SelectItem>{categorias.map((item) => <SelectItem key={item.id} value={item.id}>{item.nome}</SelectItem>)}</SelectContent></Select>
-          <Select value={periodo} onValueChange={setPeriodo}><SelectTrigger><SelectValue placeholder="Quando" /></SelectTrigger><SelectContent><SelectItem value="proximos">Próximos eventos</SelectItem><SelectItem value="hoje">Hoje</SelectItem><SelectItem value="semana">Próximos 7 dias</SelectItem><SelectItem value="mes">Próximos 30 dias</SelectItem></SelectContent></Select>
-          <Select value={preco} onValueChange={setPreco}><SelectTrigger><SelectValue placeholder="Preço" /></SelectTrigger><SelectContent><SelectItem value="todos">Gratuitos e pagos</SelectItem><SelectItem value="gratuitos">Somente gratuitos</SelectItem><SelectItem value="pagos">Somente pagos</SelectItem></SelectContent></Select>
+          <div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={busca} maxLength={120} onChange={(e) => setBusca(e.target.value)} className="pl-9" aria-label="Buscar eventos por título" placeholder="Buscar evento..." /></div>
+          <Select value={categoria} onValueChange={setCategoria}><SelectTrigger aria-label="Filtrar categoria"><SelectValue placeholder="Categoria" /></SelectTrigger><SelectContent><SelectItem value="todas">Todas as categorias</SelectItem>{categorias.map((item) => <SelectItem key={item.id} value={item.id}>{item.nome}</SelectItem>)}</SelectContent></Select>
+          <Select value={periodo} onValueChange={setPeriodo}><SelectTrigger aria-label="Filtrar período"><SelectValue placeholder="Quando" /></SelectTrigger><SelectContent><SelectItem value="proximos">Próximos eventos</SelectItem><SelectItem value="hoje">Hoje</SelectItem><SelectItem value="semana">Próximos 7 dias</SelectItem><SelectItem value="mes">Próximos 30 dias</SelectItem></SelectContent></Select>
+          <Select value={preco} onValueChange={setPreco}><SelectTrigger aria-label="Filtrar preço"><SelectValue placeholder="Preço" /></SelectTrigger><SelectContent><SelectItem value="todos">Gratuitos e pagos</SelectItem><SelectItem value="gratuitos">Somente gratuitos</SelectItem><SelectItem value="pagos">Somente pagos</SelectItem></SelectContent></Select>
         </div>
       </div>
 
@@ -129,14 +137,26 @@ export const EventosContent = () => {
         {eventos?.map((evento) => (
           <Card 
             key={evento.id} 
-            className="group overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer"
+            className="group overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            role="link"
+            tabIndex={0}
+            aria-label={`Ver detalhes de ${evento.titulo}`}
             onClick={() => navigate(`/evento/${evento.id}`)}
+            onKeyDown={(event) => {
+              if (event.target !== event.currentTarget) return;
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                navigate(`/evento/${evento.id}`);
+              }
+            }}
           >
             {evento.imagem_banner && (
               <div className="aspect-video overflow-hidden">
                 <img
                   src={evento.imagem_banner}
                   alt={evento.titulo}
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
               </div>
