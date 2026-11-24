@@ -55,7 +55,7 @@ test('micro CRM waits for server confirmation and imports legacy data only after
   assert.match(page, /if \(error\) throw error/);
   assert.match(page, /setLegacy\(backup\)/);
   assert.match(page, /if \(!window\.confirm\('Importar este backup local/);
-  assert.match(page, /if \(await persist\(legacy\)\)/);
+  assert.match(page, /if \(await persist\(snapshot\)\)/);
   assert.match(page, /if \(activeAccountRef\.current !== requestedAccount\) return/);
   assert.match(page, /&& await persist\(/);
   assert.match(schema, /function validarBackupCobrancas\(input: unknown\)/);
