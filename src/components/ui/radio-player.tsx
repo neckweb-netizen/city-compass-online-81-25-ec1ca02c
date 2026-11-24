@@ -109,10 +109,7 @@ export const RadioPlayer: React.FC<RadioPlayerProps> = ({ radioUrl, stationName,
       // A troca é enviada antes de iniciar a reprodução, evitando dois streams ativos.
       window.dispatchEvent(new CustomEvent(RADIO_PLAY_EVENT, { detail: playerId.current }));
       await audio.play();
-      if (requestId.current !== request) {
-        audio.pause();
-        return;
-      }
+      if (requestId.current !== request) return;
       setIsPlaying(true);
     } catch {
       if (requestId.current !== request) return;
