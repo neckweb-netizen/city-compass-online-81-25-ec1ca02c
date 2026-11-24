@@ -80,6 +80,7 @@ export const ContactForm = () => {
               <Input
                 id="nome"
                 autoComplete="name"
+                maxLength={100}
                 aria-invalid={Boolean(errors.nome)}
                 aria-describedby={errors.nome ? 'erro-nome' : undefined}
                 placeholder="Seu nome completo"
@@ -100,6 +101,7 @@ export const ContactForm = () => {
                 id="email"
                 type="email"
                 autoComplete="email"
+                maxLength={254}
                 aria-invalid={Boolean(errors.email)}
                 aria-describedby={errors.email ? 'erro-email' : undefined}
                 placeholder="seu@email.com"
@@ -123,15 +125,23 @@ export const ContactForm = () => {
                 type="tel"
                 autoComplete="tel"
                 inputMode="tel"
+                maxLength={30}
+                aria-invalid={Boolean(errors.telefone)}
+                aria-describedby={errors.telefone ? 'erro-telefone' : undefined}
                 placeholder="(75) 99999-9999"
                 {...register('telefone')}
+                className={errors.telefone ? 'border-destructive' : ''}
               />
+              {errors.telefone && (
+                <p id="erro-telefone" role="alert" className="text-sm text-destructive">{errors.telefone.message}</p>
+              )}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="assunto">Assunto *</Label>
               <Input
                 id="assunto"
+                maxLength={150}
                 aria-invalid={Boolean(errors.assunto)}
                 aria-describedby={errors.assunto ? 'erro-assunto' : undefined}
                 placeholder="Sobre o que você gostaria de falar?"
@@ -151,6 +161,7 @@ export const ContactForm = () => {
             </Label>
             <Textarea
               id="mensagem"
+              maxLength={5000}
               aria-invalid={Boolean(errors.mensagem)}
               aria-describedby={errors.mensagem ? 'erro-mensagem' : undefined}
               placeholder="Descreva sua dúvida, sugestão ou solicitação..."
