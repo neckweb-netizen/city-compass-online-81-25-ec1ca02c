@@ -1,5 +1,6 @@
 import { FormEvent, PointerEvent as ReactPointerEvent, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Bot, Loader2, Mic, Pencil, Send, Volume2, VolumeX, X } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -74,7 +75,11 @@ function initialPosition(): Point {
   return constrainPosition(fallback);
 }
 
+function viewportMobile() { return typeof window !== "undefined" && window.innerWidth < 1024; }
+
 export function AiAssistantChat({ initialOpen = false }: { initialOpen?: boolean }) {
+  const { user, profile } = useAuth();
+  const fixedAssistant = viewportMobile() && (!user || !['empresa', 'admin_geral', 'admin_cidade'].includes(profile?.tipo_conta ?? ''));
   const [available, setAvailable] = useState(false);
   const [open, setOpen] = useState(initialOpen);
   const [input, setInput] = useState('');
@@ -362,7 +367,7 @@ export function AiAssistantChat({ initialOpen = false }: { initialOpen?: boolean
   if (!available) return null;
   return <div aria-label="Assistente do Saj Tem">
     {open && <section
-      style={{ position: 'fixed', left: panelLeft, top: panelTop, width: panelWidth, height: panelHeight }}
+      style={{ position: 'fixed', left: fixedAssistant ? (viewport.width - panelWidth) / 2 : panelLeft, top: fixedAssistant ? Math.max(12, viewport.height - panelHeight - 112) : panelTop, width: panelWidth, height: panelHeight }}
       className="z-[71] flex max-h-[calc(100dvh-24px)] flex-col overflow-hidden rounded-2xl border border-primary/15 bg-card text-card-foreground shadow-2xl"
       aria-label="Conversa com o assistente"
     >
@@ -403,12 +408,12 @@ export function AiAssistantChat({ initialOpen = false }: { initialOpen?: boolean
       </form>
       <p className="px-3 pb-2 text-[11px] text-muted-foreground">Não envie dados sensíveis. Confirme informações importantes antes de tomar decisões.</p>
     </section>}
-    {!open && <span aria-hidden="true"
+    {!fixedAssistant && !open && <span aria-hidden="true"
       style={{ position: 'fixed', left: Math.max(8, Math.min(position.x + BUTTON_SIZE / 2 - 78, viewport.width - 164)), top: position.y >= 100 ? position.y - 27 : position.y + BUTTON_SIZE + 5, width: 156 }}
       className="pointer-events-none z-[72] whitespace-nowrap rounded-full border border-primary/20 bg-card/95 px-2 py-1 text-center text-[10px] font-medium leading-tight text-card-foreground shadow-sm">
       Arraste ou toque para abrir
     </span>}
-    <Button
+    {!fixedAssistant && <Button
       type="button"
       size="icon"
       style={{ position: 'fixed', left: position.x, top: position.y, touchAction: 'none' }}
@@ -427,6 +432,6 @@ export function AiAssistantChat({ initialOpen = false }: { initialOpen?: boolean
       title="Arraste para mover • Toque para conversar"
     >
       {open ? <X className="h-6 w-6" aria-hidden="true" /> : <Bot className="h-6 w-6" aria-hidden="true" />}
-    </Button>
+    </Button>}
   </div>;
 }
