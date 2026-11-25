@@ -85,7 +85,7 @@ const visitorSteps: TourStep[] = [
     description: 'Acesse calculadoras, simuladores, criador de currículo, consulta FIPE, leitor de voz e outros utilitários.',
     hint: 'O atalho fica sempre disponível na navegação principal.',
     icon: Wrench,
-    mobileTarget: '[data-tour="tools-nav"]',
+    mobileTarget: '[data-tour="home-section-ferramentas"], [data-tour="tools-nav"]',
     desktopTarget: '[data-tour="tools-nav"]',
   },
   {
@@ -112,6 +112,8 @@ const visitorSteps: TourStep[] = [
     description: 'Abra a área de locais pelo menu. Pesquise pelo nome ou explore as categorias para descobrir estabelecimentos e serviços de Santo Antônio de Jesus.',
     hint: 'Abra a ficha do estabelecimento para consultar as informações disponíveis antes de sair de casa.',
     icon: Building2,
+    mobileTarget: '[data-tour="home-section-categories"], a[href="/locais"]',
+    desktopTarget: '[data-tour="home-section-categories"], a[href="/locais"]',
   },
   {
     id: 'opportunities',
@@ -119,6 +121,8 @@ const visitorSteps: TourStep[] = [
     description: 'Use o menu para encontrar eventos e oportunidades de trabalho. Abra cada publicação para ler os detalhes e conferir os requisitos.',
     hint: 'Confira datas, prazos e informações de contato antes de participar ou enviar seus dados.',
     icon: Compass,
+    mobileTarget: '[data-tour="home-section-latest_job_coupons"], a[href="/oportunidades"]',
+    desktopTarget: '[data-tour="home-section-latest_job_coupons"], a[href="/oportunidades"]',
   },
   {
     id: 'community',
@@ -126,6 +130,8 @@ const visitorSteps: TourStep[] = [
     description: 'Conheça o Canal Informativo, o Voz do Povo e o Entre Nós pelo menu. Cada área tem uma finalidade diferente: acompanhar informações, compartilhar relatos ou interagir com a comunidade.',
     hint: 'Respeite as regras de convivência e evite divulgar dados pessoais em publicações.',
     icon: MessageCircle,
+    mobileTarget: '[data-tour="home-section-canal_informativo"], a[href="/canal-informativo"]',
+    desktopTarget: '[data-tour="home-section-canal_informativo"], a[href="/canal-informativo"]',
   },
   {
     id: 'assistant',
@@ -133,6 +139,8 @@ const visitorSteps: TourStep[] = [
     description: 'Use o assistente do portal para tirar dúvidas e pedir orientação sobre os recursos do Saj Tem. Explique o que você procura para receber uma resposta mais útil.',
     hint: 'Experimente perguntar: Como encontro oportunidades de trabalho na cidade?',
     icon: Sparkles,
+    mobileTarget: '[aria-label^="Abrir assistente de IA"], [data-tour="home-assistant"]',
+    desktopTarget: '[aria-label^="Abrir assistente de IA"], [data-tour="home-assistant"]',
   },
   {
     id: 'games',
@@ -140,6 +148,8 @@ const visitorSteps: TourStep[] = [
     description: 'Acesse Jogos ou Ferramentas pelo menu principal. Escolha um recurso e leia as instruções disponíveis antes de começar.',
     hint: 'Você pode voltar ao menu para explorar outras áreas quando quiser.',
     icon: Wrench,
+    mobileTarget: '[data-tour="home-section-jogos"], a[href="/jogos"]',
+    desktopTarget: '[data-tour="home-section-jogos"], a[href="/jogos"]',
   },
 
 ];
@@ -384,6 +394,8 @@ export const TourTutorial = ({ mode = 'visitor', initialStart = false }: TourTut
   useLayoutEffect(() => {
     if (!isOpen || showIntro) return;
     updatePosition();
+    const observer = new MutationObserver(() => updatePosition());
+    observer.observe(document.querySelector('main') ?? document.body, { childList: true, subtree: true });
     const handleViewportChange = () => {
       setIsMobile(window.innerWidth < 1024);
       updatePosition();
@@ -391,6 +403,7 @@ export const TourTutorial = ({ mode = 'visitor', initialStart = false }: TourTut
     window.addEventListener('resize', handleViewportChange);
     window.addEventListener('scroll', updatePosition, true);
     return () => {
+      observer.disconnect();
       window.removeEventListener('resize', handleViewportChange);
       window.removeEventListener('scroll', updatePosition, true);
     };
@@ -415,7 +428,7 @@ export const TourTutorial = ({ mode = 'visitor', initialStart = false }: TourTut
     const selector = getTargetSelector(step, isMobile);
     const element = findVisibleTarget(selector);
     if (isVisibleElement(element)) {
-      element.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+      element.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'auto' });
       window.requestAnimationFrame(updatePosition);
     }
   }, [availableSteps, currentStep, isMobile, isOpen, showIntro, updatePosition]);
