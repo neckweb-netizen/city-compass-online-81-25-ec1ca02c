@@ -10,7 +10,7 @@ const FooterCrown = () => {
     let start: number | undefined;
     const tick = (time: number) => {
       start ??= time;
-      setAngle(((time - start) % 3000) / 3000 * Math.PI * 2);
+      setAngle(((time - start) % 4500) / 4500 * Math.PI * 2);
       frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
@@ -67,13 +67,13 @@ export const Watermark: React.FC<WatermarkProps> = ({
     )}>
       <div className="container mx-auto px-4">
         <div className="text-center">
-          <div className="flex flex-wrap items-center justify-center gap-1 text-sm text-muted-foreground">
+          <div className="flex flex-col items-center justify-center gap-1 text-sm text-muted-foreground">
             <span>Desenvolvido por</span>
-            <span className="inline-flex items-center justify-center gap-1" aria-label="Desenvolvido por Deivid">
+            <span className="inline-flex flex-col items-center justify-center gap-0.5" aria-label="Desenvolvido por Deivid">
+              <FooterCrown />
               <span className="bg-gradient-to-b from-fuchsia-300 via-purple-500 to-violet-900 bg-clip-text text-sm font-semibold text-transparent">
                 Deivid
               </span>
-              <FooterCrown />
             </span>
           </div>
 
