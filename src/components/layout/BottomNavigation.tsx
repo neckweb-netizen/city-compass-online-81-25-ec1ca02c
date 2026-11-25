@@ -1,9 +1,12 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, MessageCircle, Plus, Wrench, Megaphone } from 'lucide-react';
+import { Home, MessageCircle, Plus, Bot, Wrench, Megaphone } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 
 export const BottomNavigation = () => {
   const location = useLocation();
+  const { user, profile } = useAuth();
+  const fixedAssistant = !user || !['empresa', 'admin_geral', 'admin_cidade'].includes(profile?.tipo_conta ?? '');
 
   // Mantenha os destinos e a ordem da navegação existente.
   const navItems = [
@@ -34,7 +37,7 @@ export const BottomNavigation = () => {
             return (
               <div key={item.rota} className="relative flex justify-center">
                 <div className="absolute -top-[2.375rem] flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-full border-[6px] border-background bg-background">
-                  <Link
+                  {fixedAssistant ? <button type="button" aria-label="Abrir assistente de IA" data-tour="home-assistant" onClick={() => window.dispatchEvent(new Event('sajtem:open-assistant'))} className="inline-flex h-[3.75rem] w-[3.75rem] items-center justify-center rounded-full border border-primary-foreground/20 bg-primary text-primary-foreground shadow-lg ring-1 ring-primary/15 focus-visible:ring-2"><Bot className="h-6 w-6" aria-hidden="true" /></button> : <Link
                     to={item.rota}
                     aria-label="Criar publicação"
                     aria-current={ativo ? 'page' : undefined}
@@ -43,9 +46,9 @@ export const BottomNavigation = () => {
                     className="inline-flex h-[3.75rem] w-[3.75rem] items-center justify-center rounded-full border border-primary-foreground/20 bg-primary p-0 text-primary-foreground shadow-[0_8px_20px_-6px_hsl(var(--primary)/0.65)] ring-1 ring-primary/15 transition-[transform,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 motion-safe:hover:-translate-y-0.5 motion-reduce:transform-none"
                   >
                     <IconComponent aria-hidden="true" className="!h-6 !w-6 stroke-[2.2]" />
-                  </Link>
+                  </Link>}
                 </div>
-                <span className="mt-9 text-[10px] font-semibold text-primary">Criar</span>
+                <span className="mt-9 text-[10px] font-semibold text-primary">{fixedAssistant ? "IA" : "Criar"}</span>
               </div>
             );
           }
