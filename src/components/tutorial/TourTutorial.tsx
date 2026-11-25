@@ -351,7 +351,7 @@ export const TourTutorial = ({ mode = 'visitor', initialStart = false }: TourTut
       top: highlightTop,
       left: highlightLeft,
       width: Math.min(rect.width + SPOTLIGHT_PADDING * 2, viewportWidth - highlightLeft - 4),
-      height: Math.min(rect.height + SPOTLIGHT_PADDING * 2, viewportHeight - highlightTop - 4, isMobile ? Math.max(40, viewportHeight - cardHeight - highlightTop - 32) : viewportHeight),
+      height: Math.min(rect.height + SPOTLIGHT_PADDING * 2, viewportHeight - highlightTop - 4, isMobile && !["publish", "account-publish"].includes(step.id) ? Math.max(40, viewportHeight - cardHeight - highlightTop - 32) : viewportHeight),
       borderRadius: Math.min(22, Math.max(12, Number.parseFloat(window.getComputedStyle(element).borderRadius) || 12) + 4),
     };
 
@@ -362,8 +362,10 @@ export const TourTutorial = ({ mode = 'visitor', initialStart = false }: TourTut
     if (isMobile) {
       left = (viewportWidth - cardWidth) / 2;
       const bottomTop = Math.max(12, viewportHeight - cardHeight - 12);
-      const above = rect.top - cardHeight - 16;
-      if (above >= 12 && rect.bottom > bottomTop) {
+      const above = paddedRect.top - cardHeight - 20;
+      if (['publish', 'account-publish'].includes(step.id)) {
+        top = Math.max(12, above);
+      } else if (above >= 12 && rect.bottom > bottomTop) {
         top = above;
       } else {
         top = bottomTop;
