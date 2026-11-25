@@ -20,7 +20,7 @@ export type LocalSearchItem = {
 const STOPWORDS = new Set([
   'a', 'as', 'o', 'os', 'de', 'da', 'das', 'do', 'dos', 'em', 'na', 'no', 'um', 'uma', 'eu', 'quero',
   'preciso', 'achar', 'encontrar', 'encontre', 'encontra', 'buscar', 'procuro', 'por', 'favor', 'tem', 'alguma', 'algum', 'que',
-  'aberto', 'aberta', 'abertos', 'abertas', 'funcionando', 'horario', 'com', 'agora', 'aqui', 'me', 'mostre', 'onde', 'estou', 'para', 'cidade', 'santo', 'antonio', 'jesus',
+  'ta', 'esta', 'aberto', 'aberta', 'abertos', 'abertas', 'funcionando', 'horario', 'com', 'agora', 'aqui', 'me', 'mostre', 'onde', 'estou', 'para', 'cidade', 'santo', 'antonio', 'jesus',
   'qual', 'quais', 'uma', 'uns', 'umas', 'pode', 'voce', 'gostaria', 'saber', 'sobre',
   'empresa', 'empresas', 'loja', 'lojas', 'local', 'locais', 'estabelecimento', 'estabelecimentos',
 ]);
@@ -138,6 +138,7 @@ export function detectIntents(query: string): SearchKind[] {
 export function shouldSearchCatalog(query: string, hasPriorResults = false): boolean {
   const normalized = normalizeText(query);
   if (!normalized) return false;
+  if (/\b(abert[oa]s?|fechad[oa]s?|funcionando|fecha|abre)\b/.test(normalized) && queryTokens(query).length > 0) return true;
   if (/\b(onde tem|onde ha|onde posso encontrar|onde posso ir|o que tem para fazer|abert[oa]s? agora)\b/.test(normalized)) return true;
   const aboutPlatform = /\b(saj tem|site|plataforma|aplicativo|app)\b/.test(normalized);
   const platformSubject = /\b(whatsapp|zap|telefone|numero|contato|email|instagram|facebook|dono|administrador|privado|privatizado)\b/.test(normalized);
