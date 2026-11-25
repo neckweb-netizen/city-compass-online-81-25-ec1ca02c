@@ -106,6 +106,42 @@ const visitorSteps: TourStep[] = [
     mobileTarget: '[data-tour="auth-button"]',
     desktopTarget: '[data-tour="auth-button"]',
   },
+  {
+    id: 'places',
+    title: 'Explore a cidade',
+    description: 'Abra a área de locais pelo menu. Pesquise pelo nome ou explore as categorias para descobrir estabelecimentos e serviços de Santo Antônio de Jesus.',
+    hint: 'Abra a ficha do estabelecimento para consultar as informações disponíveis antes de sair de casa.',
+    icon: Building2,
+  },
+  {
+    id: 'opportunities',
+    title: 'Eventos e oportunidades',
+    description: 'Use o menu para encontrar eventos e oportunidades de trabalho. Abra cada publicação para ler os detalhes e conferir os requisitos.',
+    hint: 'Confira datas, prazos e informações de contato antes de participar ou enviar seus dados.',
+    icon: Compass,
+  },
+  {
+    id: 'community',
+    title: 'Participe da comunidade',
+    description: 'Conheça o Canal Informativo, o Voz do Povo e o Entre Nós pelo menu. Cada área tem uma finalidade diferente: acompanhar informações, compartilhar relatos ou interagir com a comunidade.',
+    hint: 'Respeite as regras de convivência e evite divulgar dados pessoais em publicações.',
+    icon: MessageCircle,
+  },
+  {
+    id: 'assistant',
+    title: 'Conheça o assistente de IA',
+    description: 'Use o assistente do portal para tirar dúvidas e pedir orientação sobre os recursos do Saj Tem. Explique o que você procura para receber uma resposta mais útil.',
+    hint: 'Experimente perguntar: Como encontro oportunidades de trabalho na cidade?',
+    icon: Sparkles,
+  },
+  {
+    id: 'games',
+    title: 'Explore os jogos e utilitários',
+    description: 'Acesse Jogos ou Ferramentas pelo menu principal. Escolha um recurso e leia as instruções disponíveis antes de começar.',
+    hint: 'Você pode voltar ao menu para explorar outras áreas quando quiser.',
+    icon: Wrench,
+  },
+
 ];
 
 const accountSteps: TourStep[] = [
@@ -208,10 +244,7 @@ export const TourTutorial = ({ mode = 'visitor', initialStart = false }: TourTut
 
   const availableSteps = useMemo(() => {
     if (!isOpen) return [];
-    return tourSteps.filter((step) => {
-      const selector = getTargetSelector(step, isMobile);
-      return Boolean(findVisibleTarget(selector));
-    });
+    return tourSteps.filter((step) => step.id !== "account-dashboard" || Boolean(findVisibleTarget(getTargetSelector(step, isMobile))));
   }, [isMobile, isOpen, tourSteps]);
 
   const closeTour = useCallback((completed = true) => {
@@ -265,9 +298,9 @@ export const TourTutorial = ({ mode = 'visitor', initialStart = false }: TourTut
     dialogRef.current?.focus();
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') closeTour(true);
+      if (event.key === 'Escape') closeTour(false);
       if (!showIntro && event.key === 'ArrowRight') {
-        setCurrentStep((value) => Math.min(value + 1, availableSteps.length - 1));
+        setCurrentStep((value) => Math.min(value + 1, Math.max(0, availableSteps.length - 1)));
       }
       if (!showIntro && event.key === 'ArrowLeft') {
         setCurrentStep((value) => Math.max(value - 1, 0));
@@ -287,7 +320,9 @@ export const TourTutorial = ({ mode = 'visitor', initialStart = false }: TourTut
     const element = findVisibleTarget(selector);
     if (!isVisibleElement(element)) {
       setHighlight(null);
-      setTooltip(null);
+      const width = Math.min(360, window.innerWidth - 24);
+      const height = Math.min(dialogRef.current?.getBoundingClientRect().height || 320, window.innerHeight - 24);
+      setTooltip({ top: Math.max(12, (window.innerHeight - height) / 2), left: (window.innerWidth - width) / 2, width, arrow: "none" });
       return;
     }
 
@@ -416,10 +451,10 @@ export const TourTutorial = ({ mode = 'visitor', initialStart = false }: TourTut
             aria-modal="true"
             aria-labelledby="visitor-tour-title"
             tabIndex={-1}
-            className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-primary/20 bg-card shadow-2xl outline-none animate-in fade-in slide-in-from-bottom-5 duration-300 sm:zoom-in-95"
+            className="relative w-full max-w-md max-h-[calc(100dvh-24px)] overflow-y-auto rounded-[28px] border border-primary/20 bg-card shadow-2xl outline-none animate-in fade-in slide-in-from-bottom-5 duration-300 sm:zoom-in-95"
           >
             <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-primary/15 to-transparent" />
-            <button type="button" onClick={() => closeTour(true)} aria-label="Fechar tutorial" className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <button type="button" onClick={() => closeTour(false)} aria-label="Fechar tutorial" className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <X aria-hidden="true" className="h-5 w-5" />
             </button>
             <div className="relative p-6 pt-8 text-center sm:p-8">
@@ -431,7 +466,7 @@ export const TourTutorial = ({ mode = 'visitor', initialStart = false }: TourTut
               </div>
               <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">{isAccountTour ? 'Sua conta no Saj Tem' : 'Tour interativo'}</p>
               <h2 id="visitor-tour-title" className="mt-2 text-2xl font-black tracking-tight text-foreground sm:text-3xl">{isAccountTour ? `Olá, ${profile?.nome?.split(' ')[0] || 'bem-vindo'}!` : 'Bem-vindo ao Saj Tem'}</h2>
-              <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-muted-foreground">{isAccountTour ? 'Sua conta está pronta. Veja onde acompanhar suas atividades, notificações e recursos pessoais.' : 'Em menos de um minuto, vamos destacar os principais atalhos e mostrar exatamente onde você deve tocar.'}</p>
+              <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-muted-foreground">{isAccountTour ? 'Sua conta está pronta. Veja onde acompanhar suas atividades, notificações e recursos pessoais.' : 'Conheça os principais recursos do portal, com orientações práticas e destaques na tela sempre que o atalho estiver disponível.'}</p>
               <div className="mt-6 grid grid-cols-3 gap-2 rounded-2xl bg-muted/60 p-3 text-xs font-semibold text-muted-foreground">
                 <span>{availableSteps.length} etapas</span>
                 <span>Visual</span>
@@ -487,7 +522,7 @@ export const TourTutorial = ({ mode = 'visitor', initialStart = false }: TourTut
               aria-modal="true"
               aria-labelledby={`tour-step-${step.id}`}
               tabIndex={-1}
-              className="pointer-events-auto absolute rounded-2xl border border-primary/20 bg-card p-5 shadow-2xl outline-none transition-[top,left] duration-300"
+              className="pointer-events-auto absolute max-h-[calc(100dvh-24px)] overflow-y-auto rounded-2xl border border-primary/20 bg-card p-5 shadow-2xl outline-none transition-[top,left] duration-300"
               style={{ top: tooltip.top, left: tooltip.left, width: tooltip.width }}
             >
               <span
@@ -511,7 +546,7 @@ export const TourTutorial = ({ mode = 'visitor', initialStart = false }: TourTut
                       <h2 id={`tour-step-${step.id}`} className="mt-0.5 text-lg font-black leading-tight text-foreground">{step.title}</h2>
                     </div>
                   </div>
-                  <button type="button" onClick={() => closeTour(true)} aria-label="Fechar tutorial" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  <button type="button" onClick={() => closeTour(false)} aria-label="Fechar tutorial" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                     <X aria-hidden="true" className="h-4 w-4" />
                   </button>
                 </div>
