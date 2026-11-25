@@ -1,4 +1,4 @@
-import { FormEvent, PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react';
+import { FormEvent, PointerEvent as ReactPointerEvent, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Bot, Loader2, Mic, Pencil, Send, Volume2, VolumeX, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -219,7 +219,15 @@ export function AiAssistantChat({ initialOpen = false }: { initialOpen?: boolean
     return () => window.removeEventListener('sajtem:open-assistant', openAssistant);
   }, []);
 
-  useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }); }, [turns, busy]);
+  const lastTurn = turns[turns.length - 1];
+  useLayoutEffect(() => {
+    const container = scrollRef.current;
+    if (!open || !container || !lastTurn) return;
+    const target = container.querySelector<HTMLElement>(`[data-chat-turn="${lastTurn.id}"]`);
+    if (!target) return;
+    const top = target.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop - 12;
+    container.scrollTo({ top: Math.max(0, top), behavior: 'instant' });
+  }, [open, lastTurn?.id]);
 
   function speak(text: string) {
     if (!speechEnabled || !('speechSynthesis' in window)) return;
@@ -366,11 +374,11 @@ export function AiAssistantChat({ initialOpen = false }: { initialOpen?: boolean
         </Button>
         <Button variant="ghost" size="icon" aria-label="Fechar conversa" onClick={closeChat}><X className="h-4 w-4" /></Button>
       </header>
-      <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-3" aria-live="polite">
+      <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-3 [overflow-anchor:none]" aria-live="polite">
         {!turns.length && <p className="rounded-xl bg-muted p-3 text-sm">Olá! Pode conversar comigo normalmente. Eu respondo perguntas sobre o Saj Tem e só mostro empresas quando você pedir uma busca local.</p>}
-        {turns.map(turn => <div key={turn.id} className={turn.role === 'user' ? 'ml-8 rounded-xl bg-primary p-3 text-sm text-primary-foreground' : 'mr-4 rounded-xl bg-muted p-3 text-sm'}>
-          <p className="whitespace-pre-wrap break-words">{turn.text}</p>
-          {turn.role === 'user' && !busy && <button type="button" className="mt-2 inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-primary underline-offset-2 hover:bg-primary/10 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40" onClick={() => { setInput(turn.text); setEditingTurnId(turn.id); setError(''); }}><Pencil className="h-3 w-3" /> Editar e reenviar</button>}
+        {turns.map(turn => <div key={turn.id} data-chat-turn={turn.id} className={turn.role === 'user' ? 'ml-8 rounded-xl bg-primary p-3 text-sm text-primary-foreground' : 'rounded-xl text-sm'}>
+          <p className={turn.role === "assistant" ? "whitespace-pre-wrap break-words rounded-xl border border-primary/15 bg-primary/[0.08] p-3 leading-relaxed text-card-foreground" : "whitespace-pre-wrap break-words"}>{turn.text}</p>
+          {turn.role === 'user' && !busy && <button type="button" className="mt-2 inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-primary-foreground underline-offset-2 hover:bg-primary-foreground/10 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40" onClick={() => { setInput(turn.text); setEditingTurnId(turn.id); setError(''); }}><Pencil className="h-3 w-3" /> Editar e reenviar</button>}
           {turn.results?.map(result => <div key={result.id} className="mt-2 rounded-lg border bg-card p-3 text-card-foreground">
             <div className="flex items-start justify-between gap-2">
               <p className="font-semibold">{result.name}</p>
