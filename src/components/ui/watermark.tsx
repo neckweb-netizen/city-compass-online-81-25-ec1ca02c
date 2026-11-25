@@ -67,10 +67,10 @@ export const Watermark: React.FC<WatermarkProps> = ({
     )}>
       <div className="container mx-auto px-4">
         <div className="text-center">
-          <div className="flex flex-col items-center justify-center gap-1 text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-baseline justify-center gap-x-1 gap-y-0 pt-3 text-sm text-muted-foreground">
             <span>Desenvolvido por</span>
-            <span className="inline-flex flex-col items-center justify-center gap-0.5" aria-label="Desenvolvido por Deivid">
-              <FooterCrown />
+            <span className="relative inline-flex items-baseline" aria-label="Deivid">
+              <span aria-hidden="true" className="pointer-events-none absolute bottom-full left-1/2 flex -translate-x-1/2 translate-y-1"><FooterCrown /></span>
               <span className="bg-gradient-to-b from-fuchsia-300 via-purple-500 to-violet-900 bg-clip-text text-sm font-semibold text-transparent">
                 Deivid
               </span>
