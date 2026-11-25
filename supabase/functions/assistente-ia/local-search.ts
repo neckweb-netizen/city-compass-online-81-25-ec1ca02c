@@ -176,7 +176,7 @@ function tokenScore(token: string, words: string[]): number {
   return 0;
 }
 
-export function rankLocalItems(query: string, items: LocalSearchItem[], limit = 5): LocalSearchItem[] {
+export function rankLocalItems(query: string, items: LocalSearchItem[], limit = 5, commercialOrder?: ReadonlyMap<string, number>): LocalSearchItem[] {
   const normalizedQuery = normalizeText(query);
   const tokens = queryTokens(query);
   const intents = detectIntents(query);
@@ -210,7 +210,7 @@ export function rankLocalItems(query: string, items: LocalSearchItem[], limit = 
     ? relevant.filter(entry => intents.includes(entry.item.kind))
     : relevant;
   return intended
-    .sort((a, b) => b.score - a.score || (a.item.distanceKm ?? 9999) - (b.item.distanceKm ?? 9999) || a.index - b.index)
+    .sort((a, b) => (commercialOrder ? (commercialOrder.get(a.item.companyId || '') ?? 1000000) - (commercialOrder.get(b.item.companyId || '') ?? 1000000) : 0) || b.score - a.score || (a.item.distanceKm ?? 9999) - (b.item.distanceKm ?? 9999) || a.index - b.index)
     .slice(0, Math.max(1, Math.min(limit, 10))).map(entry => entry.item);
 }
 
