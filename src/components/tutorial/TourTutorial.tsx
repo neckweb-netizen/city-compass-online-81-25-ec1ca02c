@@ -254,8 +254,12 @@ export const TourTutorial = ({ mode = 'visitor', initialStart = false }: TourTut
 
   const availableSteps = useMemo(() => {
     if (!isOpen) return [];
-    return tourSteps.filter((step) => step.id !== "account-dashboard" || Boolean(findVisibleTarget(getTargetSelector(step, isMobile))));
-  }, [isMobile, isOpen, tourSteps]);
+    return tourSteps.filter((step) => {
+      if (step.id === "account" && (authLoading || userId)) return false;
+      if (step.id === "account-dashboard") return Boolean(findVisibleTarget(getTargetSelector(step, isMobile)));
+      return true;
+    });
+  }, [isMobile, isOpen, tourSteps, authLoading, userId]);
 
   const closeTour = useCallback((completed = true) => {
     setIsOpen(false);
