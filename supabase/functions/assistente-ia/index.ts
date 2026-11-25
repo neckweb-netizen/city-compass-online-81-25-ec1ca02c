@@ -96,8 +96,9 @@ function distanceKm(a: { latitude: number; longitude: number }, b: { latitude: n
 function requestedLocation(value: unknown): { latitude: number; longitude: number } | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const location = value as Record<string, unknown>;
-  const latitude = Number(location.latitude);
-  const longitude = Number(location.longitude);
+  if (typeof location.latitude !== "number" || typeof location.longitude !== "number") return null;
+  const latitude = location.latitude;
+  const longitude = location.longitude;
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) return null;
   return { latitude, longitude };
 }
@@ -382,7 +383,7 @@ Deno.serve(async (req: Request) => {
     const intents = detectIntents(message);
     const normalizedMessage = normalizeText(message);
     const location = requestedLocation(body.location);
-    const { data: eligible, error: eligibleError } = await db.rpc("ai_eligible_companies", { p_limit: 200 });
+    const { data: eligible, error: eligibleError } = await db.rpc("ai_eligible_companies", { p_limit: 1000 });
     if (eligibleError) throw new HttpError(503, "Busca indisponível");
     const allowedIds = (eligible || []).map((item: { company_id: string }) => item.company_id);
     const { data: companyRows, error: companyError } = allowedIds.length
@@ -497,6 +498,8 @@ Deno.serve(async (req: Request) => {
     }
     if (wants("tool")) items.push(...TOOL_ITEMS);
 
+    // Never reuse company results that are no longer eligible in this request.
+    priorResults = priorResults.filter(item => !item.companyId || companyById.has(item.companyId));
     const position = ordinalIndex(message);
     const asksCheapest = /\b(mais barato|mais barata|menor preco|menor valor)\b/.test(normalizedMessage);
     const asksNearest = /\b(mais perto|mais proximo|mais proxima)\b/.test(normalizedMessage);
