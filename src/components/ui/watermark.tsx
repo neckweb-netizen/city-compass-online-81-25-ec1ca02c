@@ -36,11 +36,11 @@ export const Watermark: React.FC<WatermarkProps> = ({
               <span className="bg-gradient-to-b from-fuchsia-300 via-purple-500 to-violet-900 bg-clip-text text-sm font-semibold text-transparent">
                 Deivid
               </span>
-              <span aria-hidden="true" className="inline-block text-sm leading-none origin-center motion-safe:animate-[footer-crown-spin_3s_ease-in-out_infinite]">👑</span>
+              <span aria-hidden="true" className="relative inline-grid h-4 w-4 shrink-0 place-items-center text-sm leading-none"><span className="absolute motion-safe:animate-[footer-crown-front_3s_linear_infinite]">👑</span><span className="absolute opacity-0 motion-safe:animate-[footer-crown-side_3s_linear_infinite]">👑</span></span>
             </span>
           </div>
 
-          <style>{`@keyframes footer-crown-spin { 0%, 100% { transform: perspective(80px) rotateY(0deg); } 25% { transform: perspective(80px) rotateY(38deg); } 75% { transform: perspective(80px) rotateY(-38deg); } }`}</style>
+          <style>{`@keyframes footer-crown-front { 0%, 50%, 100% { transform: scaleX(1); opacity: 1; } 25%, 75% { transform: scaleX(.78); opacity: 0; } } @keyframes footer-crown-side { 0%, 50%, 100% { transform: scaleX(.78); opacity: 0; } 25%, 75% { transform: scaleX(1); opacity: 1; } }`}</style>
           <nav aria-label="Informações e ajuda" className="mt-2 flex flex-wrap items-center justify-center gap-x-3 text-xs text-muted-foreground">
             {location.pathname === '/' && (
               <>
