@@ -289,6 +289,18 @@ Deno.serve(async (req: Request) => {
       if (!session || new Date(session.expires_at).getTime() <= Date.now() || session.context?.token_hash !== await sha256(incomingToken)) {
         throw new HttpError(403, "Sessão expirada. Inicie uma nova conversa.");
       }
+      // Claim the current session version atomically before processing a turn.
+      // A short lease recovers automatically if an Edge worker is interrupted.
+      const previousContext = session.context || {};
+      if (typeof previousContext.processing_until === "number" && previousContext.processing_until > Date.now()) {
+        throw new HttpError(409, "Aguarde a resposta anterior antes de enviar outra mensagem.");
+      }
+      const claimedContext = { ...previousContext, processing_until: Date.now() + 120000 };
+      const { data: claimed, error: claimError } = await db.from("ai_sessions")
+        .update({ context: claimedContext }).eq("id", incomingId)
+        .eq("context", JSON.stringify(previousContext)).select("id").maybeSingle();
+      if (claimError) throw new HttpError(503, "Não foi possível reservar a conversa");
+      if (!claimed) throw new HttpError(409, "Aguarde a resposta anterior antes de enviar outra mensagem.");
       sessionId = incomingId;
       sessionToken = incomingToken;
       priorResults = Array.isArray(session.context?.results)
