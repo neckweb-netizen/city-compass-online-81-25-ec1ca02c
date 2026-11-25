@@ -511,7 +511,21 @@ Deno.serve(async (req: Request) => {
       matches = [priorResults.filter(item => typeof item.distanceKm === "number").sort((a, b) => Number(a.distanceKm) - Number(b.distanceKm))[0]];
     } else if (contextualLocal) matches = priorResults.filter(item => item.companyId && companyById.has(item.companyId));
     else if (detailFollowUp && priorResults.length) matches = [priorResults[0]];
-    else matches = rankLocalItems(message, items, asksOpen ? 10 : 5);
+    else {
+      // The database already validates active entitlements and orders eligible companies.
+      // Keep explicit names and proximity searches relevance-first; apply commercial
+      // ordering only to category searches with relevant catalog matches.
+      const categorySearch = /\b(oficinas?|mecanicos?|farmacias?|pizzarias?|restaurantes?|barbearias?|dentistas?|mercados?|padarias?|hoteis?|eletricistas?|encanadores?)\b/.test(normalizedMessage);
+      const explicitName = companies.some(company => {
+        const name = normalizeText(company.nome);
+        return name.length >= 4 && normalizedMessage.includes(name);
+      });
+      matches = rankLocalItems(message, items, categorySearch && !explicitName && !isNearbyQuery(message) ? 10 : (asksOpen ? 10 : 5));
+      if (categorySearch && !explicitName && !isNearbyQuery(message)) {
+        matches.sort((a,b) => (orderById.get(a.companyId || "") ?? 1000) - (orderById.get(b.companyId || "") ?? 1000));
+      }
+      if (!asksOpen) matches = matches.slice(0,5);
+    }
     const statusFor = (item: LocalSearchItem) => openingStatus(companyById.get(item.companyId || item.id)?.horario_funcionamento);
     if (asksOpen) matches = matches.sort((a,b)=>Number(statusFor(b).startsWith("Aberto"))-Number(statusFor(a).startsWith("Aberto"))).slice(0,5);
 
