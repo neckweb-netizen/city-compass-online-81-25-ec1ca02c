@@ -310,7 +310,9 @@ Deno.serve(async (req: Request) => {
     let directArticleId: string | null = null;
     // The knowledge base also has priority for general questions that do not
     // look like catalogue searches. Do not route them to NVIDIA first.
-    if (!siteAnswer && !shouldSearchCatalog(message, priorResults.length > 0) && Deno.env.get('AI_R2_BUCKET')) {
+    const contextualLocal = priorResults.length > 0 && /^(?:e\s+)?(?:a que horas|que horas|qual (?:e |o )?horario|ate que horas|quando)\s*(?:ela |ele |eles |elas )?(?:abre[m]?|fecha[m]?|funciona[m]?)?[?!.\s]*$|^(?:e\s+)?(?:ela |ele |eles |elas )?(?:ta |esta )?(?:abert[oa]s?|fechad[oa]s?|funcionando)[?!.\s]*$|^(?:e\s+)?(?:o |a |qual o )?(?:telefone|whatsapp|endereco|preco)(?: dela| dele)?[?!.\s]*$/i.test(normalizeText(message));
+    if (contextualLocal) siteAnswer = null;
+    if (!siteAnswer && !contextualLocal && !shouldSearchCatalog(message, priorResults.length > 0) && Deno.env.get('AI_R2_BUCKET')) {
       try {
         const articles = (await readKnowledge()).articles;
         const found = findKnowledgeArticle(message, articles) ||
@@ -324,7 +326,7 @@ Deno.serve(async (req: Request) => {
       } catch { /* Keep the regular fallback available when R2 is offline. */ }
     }
     const followUp = isConversationFollowUp(message);
-    if (!siteAnswer && followUp && priorSiteFact && !shouldSearchCatalog(message, priorResults.length > 0)) {
+    if (!siteAnswer && followUp && priorSiteFact && !contextualLocal && !shouldSearchCatalog(message, priorResults.length > 0)) {
       siteAnswer = priorSiteFact;
     }
     if (siteAnswer) {
@@ -352,7 +354,7 @@ Deno.serve(async (req: Request) => {
       return jsonResponse(req, { sessionId, sessionToken, text: answerText, results: [], links: siteAnswer.links });
     }
 
-    if (!shouldSearchCatalog(message, priorResults.length > 0)) {
+    if (!contextualLocal && !shouldSearchCatalog(message, priorResults.length > 0)) {
       // Context is loaded only for a verified, existing session and a clear
       // continuation. Filter personal details and cap the external payload.
       let history: ConversationTurn[] = [];
@@ -507,9 +509,10 @@ Deno.serve(async (req: Request) => {
       matches = [priorResults.filter(item => typeof item.price === "number").sort((a, b) => Number(a.price) - Number(b.price))[0]];
     } else if (asksNearest && priorResults.some(item => typeof item.distanceKm === "number")) {
       matches = [priorResults.filter(item => typeof item.distanceKm === "number").sort((a, b) => Number(a.distanceKm) - Number(b.distanceKm))[0]];
-    } else if (detailFollowUp && priorResults.length) matches = [priorResults[0]];
+    } else if (contextualLocal) matches = priorResults.filter(item => item.companyId && companyById.has(item.companyId));
+    else if (detailFollowUp && priorResults.length) matches = [priorResults[0]];
     else matches = rankLocalItems(message, items, asksOpen ? 10 : 5);
-    const statusFor = (item: LocalSearchItem) => openingStatus(companyById.get(item.companyId || "")?.horario_funcionamento);
+    const statusFor = (item: LocalSearchItem) => openingStatus(companyById.get(item.companyId || item.id)?.horario_funcionamento);
     if (asksOpen) matches = matches.sort((a,b)=>Number(statusFor(b).startsWith("Aberto"))-Number(statusFor(a).startsWith("Aberto"))).slice(0,5);
 
     let knowledgeArticle: KnowledgeArticle | null = null;
