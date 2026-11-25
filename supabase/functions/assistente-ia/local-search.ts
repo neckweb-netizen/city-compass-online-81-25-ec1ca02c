@@ -20,12 +20,14 @@ export type LocalSearchItem = {
 const STOPWORDS = new Set([
   'a', 'as', 'o', 'os', 'de', 'da', 'das', 'do', 'dos', 'em', 'na', 'no', 'um', 'uma', 'eu', 'quero',
   'preciso', 'achar', 'encontrar', 'encontre', 'encontra', 'buscar', 'procuro', 'por', 'favor', 'tem', 'alguma', 'algum', 'que',
-  'com', 'agora', 'aqui', 'me', 'mostre', 'onde', 'estou', 'para', 'cidade', 'santo', 'antonio', 'jesus',
+  'aberto', 'aberta', 'abertos', 'abertas', 'funcionando', 'horario', 'com', 'agora', 'aqui', 'me', 'mostre', 'onde', 'estou', 'para', 'cidade', 'santo', 'antonio', 'jesus',
   'qual', 'quais', 'uma', 'uns', 'umas', 'pode', 'voce', 'gostaria', 'saber', 'sobre',
   'empresa', 'empresas', 'loja', 'lojas', 'local', 'locais', 'estabelecimento', 'estabelecimentos',
 ]);
 
 const SYNONYMS: Record<string, string[]> = {
+  oficina: ['mecanica', 'mecanico', 'automotiva', 'auto center'],
+  mecanico: ['oficina', 'mecanica', 'automotiva'],
   barbeiro: ['barbearia', 'cabelo', 'cabeleireiro'],
   barbearia: ['barbeiro', 'cabeleireiro'],
   assistencia: ['reparo', 'conserto', 'manutencao'],
@@ -128,6 +130,7 @@ export function queryTokens(query: string): string[] {
 
 export function detectIntents(query: string): SearchKind[] {
   const normalized = normalizeText(query);
+  if (/\b(oficinas?|mecanicos?|mecanica)\b/.test(normalized) && !/\b(curso|palestra|cultural|artesanato|workshop)\b/.test(normalized)) return ['company', 'service'];
   return (Object.entries(INTENT_TERMS) as [SearchKind, RegExp][])
     .filter(([, pattern]) => pattern.test(normalized)).map(([kind]) => kind);
 }
@@ -135,6 +138,7 @@ export function detectIntents(query: string): SearchKind[] {
 export function shouldSearchCatalog(query: string, hasPriorResults = false): boolean {
   const normalized = normalizeText(query);
   if (!normalized) return false;
+  if (/\b(onde tem|onde ha|onde posso encontrar|onde posso ir|o que tem para fazer|abert[oa]s? agora)\b/.test(normalized)) return true;
   const aboutPlatform = /\b(saj tem|site|plataforma|aplicativo|app)\b/.test(normalized);
   const platformSubject = /\b(whatsapp|zap|telefone|numero|contato|email|instagram|facebook|dono|administrador|privado|privatizado)\b/.test(normalized);
   if (aboutPlatform && platformSubject) return false;
@@ -153,7 +157,7 @@ export function shouldSearchCatalog(query: string, hasPriorResults = false): boo
   if (/^(?:consulta|consultar|abrir|acessar|usar)\s+(?:a\s+|o\s+)?(?:fipe|tabela fipe|calculadora|gerador|ferramenta)\b/.test(normalized)) return true;
   // Specific category/service names are useful local searches, while generic
   // subjects such as "produto" and "serviço" remain conversational.
-  if (/^(?:assistencia tecnica|barbeiro|barbearia|dentista|cortar cabelo|corte de cabelo|oficina mecanica|pizzaria|farmacia|eletricista|encanador|cabeleireiro)$/.test(normalized)) return true;
+  if (/^(?:assistencia tecnica|barbeiro|barbearia|dentista|cortar cabelo|corte de cabelo|oficinas?|oficina mecanica|mecanico|pizzaria|farmacia|eletricista|encanador|cabeleireiro)$/.test(normalized)) return true;
   // A single specific name (e.g. "Eluz") may identify a real registered
   // business. Let the catalog verify it instead of asking the model to guess.
   // Generic subjects and conversational replies should not trigger searches.
