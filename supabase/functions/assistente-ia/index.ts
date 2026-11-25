@@ -526,10 +526,8 @@ Deno.serve(async (req: Request) => {
         const name = normalizeText(company.nome);
         return name.length >= 4 && normalizedMessage.includes(name);
       });
-      matches = rankLocalItems(message, items, categorySearch && !explicitName && !isNearbyQuery(message) ? 10 : (asksOpen ? 10 : 5));
-      if (categorySearch && !explicitName && !isNearbyQuery(message)) {
-        matches.sort((a,b) => (orderById.get(a.companyId || "") ?? 1000) - (orderById.get(b.companyId || "") ?? 1000));
-      }
+      const commercial = categorySearch && !explicitName && !isNearbyQuery(message) && !asksCheapest && !asksNearest;
+      matches = rankLocalItems(message, items, asksOpen ? 10 : 5, commercial ? orderById : undefined);
       if (!asksOpen) matches = matches.slice(0,5);
     }
     const statusFor = (item: LocalSearchItem) => openingStatus(companyById.get(item.companyId || item.id)?.horario_funcionamento);
