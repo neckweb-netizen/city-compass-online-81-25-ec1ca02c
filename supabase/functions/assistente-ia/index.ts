@@ -102,6 +102,41 @@ function requestedLocation(value: unknown): { latitude: number; longitude: numbe
   return { latitude, longitude };
 }
 
+function openingStatus(value: unknown, now = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en-US", {timeZone:"America/Bahia",weekday:"short",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(now);
+  const day = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].indexOf(parts.find(p=>p.type==="weekday")?.value || "");
+  const minute = Number(parts.find(p=>p.type==="hour")?.value)*60+Number(parts.find(p=>p.type==="minute")?.value);
+  const keys = ["domingo","segunda","terca","quarta","quinta","sexta","sabado"];
+  if (!value || typeof value !== "object" || day < 0) return "Horário não informado";
+  const source = value as Record<string, any>;
+  const parse = (v: unknown) => { const m = /^(\d{2}):?(\d{2})$/.exec(String(v)); return m && Number(m[1])<24 && Number(m[2])<60 ? Number(m[1])*60+Number(m[2]) : null; };
+  const fmt = (n:number) => String(Math.floor(n/60)).padStart(2,"0")+":"+String(n%60).padStart(2,"0");
+  if (Array.isArray(source.periods) && source.periods.length) {
+    const current=day*1440+minute;
+    for(const p of source.periods) {
+      const a=parse(p?.open?.time), b=parse(p?.close?.time);
+      if(a===null || !Number.isInteger(p?.open?.day)) continue;
+      if(!p.close && p.open.day===0 && a===0) return "Aberto 24 horas (horário cadastrado)";
+      if(b===null || !Number.isInteger(p?.close?.day)) continue;
+      const start=p.open.day*1440+a; let end=p.close.day*1440+b;
+      if(end<start) end+=10080;
+      if([current,current+10080].some(t=>t>=start&&t<end)) return "Aberto pelo horário cadastrado até "+fmt(b);
+    }
+    return "Sem abertura prevista agora nos horários cadastrados";
+  }
+  const today=source[keys[day]], prev=source[keys[(day+6)%7]];
+  for(const [d,previous] of [[prev,true],[today,false]] as const) {
+    if(!d || (d.aberto??d.ativo)!==true) continue;
+    const a=parse(d.abertura), b=parse(d.fechamento);
+    if(a===null||b===null||a===b) continue;
+    if(previous ? b<a&&minute<b : minute>=a&&(b<a||minute<b)) return "Aberto pelo horário cadastrado até "+fmt(b);
+  }
+  if(!today) return "Horário não informado";
+  if((today.aberto??today.ativo)===false) return "Fechado hoje pelo horário cadastrado";
+  const a=parse(today.abertura), b=parse(today.fechamento);
+  return a!==null&&b!==null&&a!==b ? "Fechado agora; horário de hoje: "+fmt(a)+"–"+fmt(b) : "Horário não informado";
+}
+
 function resultSummary(matches: LocalSearchItem[]): string {
   if (!matches.length) return "";
   const labels: Record<SearchKind, string> = {
@@ -321,7 +356,7 @@ Deno.serve(async (req: Request) => {
       // Context is loaded only for a verified, existing session and a clear
       // continuation. Filter personal details and cap the external payload.
       let history: ConversationTurn[] = [];
-      if (followUp && incomingId) {
+      if (incomingId) {
         const { data: recent, error: recentError } = await db.from('ai_messages')
           .select('role,content').eq('session_id', sessionId)
           .order('created_at', { ascending: false }).limit(6);
@@ -463,6 +498,8 @@ Deno.serve(async (req: Request) => {
     const position = ordinalIndex(message);
     const asksCheapest = /\b(mais barato|mais barata|menor preco|menor valor)\b/.test(normalizedMessage);
     const asksNearest = /\b(mais perto|mais proximo|mais proxima)\b/.test(normalizedMessage);
+    const asksOpen = /\b(abert[oa]s?|funcionando agora)\b/.test(normalizedMessage);
+    const asksHours = /\b(horarios?|fecha|fechamento|abre|abertura|funciona)\b/.test(normalizedMessage);
     const detailFollowUp = /\b(onde fica|endereco|telefone|whatsapp|quanto custa|qual o preco|agendar|marcar)\b/.test(normalizedMessage);
     let matches: LocalSearchItem[] = [];
     if (position !== null && priorResults[position]) matches = [priorResults[position]];
@@ -471,7 +508,9 @@ Deno.serve(async (req: Request) => {
     } else if (asksNearest && priorResults.some(item => typeof item.distanceKm === "number")) {
       matches = [priorResults.filter(item => typeof item.distanceKm === "number").sort((a, b) => Number(a.distanceKm) - Number(b.distanceKm))[0]];
     } else if (detailFollowUp && priorResults.length) matches = [priorResults[0]];
-    else matches = rankLocalItems(message, items, 5);
+    else matches = rankLocalItems(message, items, asksOpen ? 10 : 5);
+    const statusFor = (item: LocalSearchItem) => openingStatus(companyById.get(item.companyId || "")?.horario_funcionamento);
+    if (asksOpen) matches = matches.sort((a,b)=>Number(statusFor(b).startsWith("Aberto"))-Number(statusFor(a).startsWith("Aberto"))).slice(0,5);
 
     let knowledgeArticle: KnowledgeArticle | null = null;
     let contextualArticle = false;
@@ -495,10 +534,15 @@ Deno.serve(async (req: Request) => {
       else if (/\b(telefone|whatsapp)\b/.test(normalizedMessage)) responseText = selected.phone ? `O contato informado para ${selected.name} é ${selected.phone}. Confirme os dados no perfil antes de chamar.` : `O contato não aparece neste resultado. Abra os detalhes para verificar os canais disponíveis.`;
       else if (/\b(agendar|marcar)\b/.test(normalizedMessage)) responseText = selected.bookable ? `${selected.name} aceita solicitação de agendamento pelo perfil. Escolha o serviço e um horário disponível.` : `Este resultado não informa agendamento online. Confirme diretamente na página de detalhes.`;
     }
+    if (matches.length && (asksOpen || asksHours || /\b(recomenda|recomende|melhor|opiniao)\b/.test(normalizedMessage))) {
+      const facts = matches.map(item => `${item.name}: ${item.address || "endereço não informado"}; ${statusFor(item)}${item.distanceKm != null ? `; ${item.distanceKm.toFixed(1)} km` : ""}`).join("\n");
+      responseText = `${asksOpen && !matches.some(item=>statusFor(item).startsWith("Aberto")) ? "Não encontrei opção com abertura confirmada pelo horário cadastrado. " : ""}${facts}\nConfirme diretamente com o estabelecimento, pois feriados e alterações podem afetar os horários.`;
+      if (!asksOpen && !asksHours) responseText = await answerWithNvidia(db, visitorHash, message, responseText.slice(0,2400)) || responseText;
+    }
     if (!responseText) {
       responseText = isNearbyQuery(message) && !location
         ? "Não consegui acessar sua localização. Permita a localização quando o navegador solicitar ou informe um bairro para eu pesquisar."
-        : await answerWithNvidia(db, visitorHash, message) || "Não encontrei uma correspondência no catálogo atual. Tente informar outro nome, categoria, bairro ou tipo de conteúdo.";
+        : "Não encontrei uma correspondência no catálogo atual do Saj Tem. Isso não significa que o serviço não exista na cidade. Você pode consultar a lista de locais ou pesquisar por outro nome.";
     }
     const { error: messagesError } = await db.from("ai_messages").insert([
       { session_id: sessionId, role: "user", content: message },
