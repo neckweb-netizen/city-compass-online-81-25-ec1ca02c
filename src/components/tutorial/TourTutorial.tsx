@@ -240,6 +240,7 @@ export const TourTutorial = ({ mode = 'visitor', initialStart = false }: TourTut
   const { user, profile, loading: authLoading } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
+  const [practicing, setPracticing] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [highlight, setHighlight] = useState<HighlightRect | null>(null);
   const [tooltip, setTooltip] = useState<TooltipPosition | null>(null);
@@ -263,6 +264,7 @@ export const TourTutorial = ({ mode = 'visitor', initialStart = false }: TourTut
 
   const closeTour = useCallback((completed = true) => {
     setIsOpen(false);
+    setPracticing(false);
     setShowIntro(true);
     setCurrentStep(0);
     setHighlight(null);
@@ -306,7 +308,7 @@ export const TourTutorial = ({ mode = 'visitor', initialStart = false }: TourTut
   }, [authLoading, hasProfile, location.pathname, mode, openTour, storageKey, userId]);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || practicing) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     dialogRef.current?.focus();
@@ -325,7 +327,7 @@ export const TourTutorial = ({ mode = 'visitor', initialStart = false }: TourTut
       document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [availableSteps.length, closeTour, isOpen, showIntro]);
+  }, [availableSteps.length, closeTour, isOpen, showIntro, practicing]);
 
   const updatePosition = useCallback(() => {
     if (!isOpen || showIntro || availableSteps.length === 0) return;
@@ -441,7 +443,36 @@ export const TourTutorial = ({ mode = 'visitor', initialStart = false }: TourTut
     }
   }, [availableSteps, currentStep, isMobile, isOpen, showIntro, updatePosition]);
 
+  useEffect(() => {
+    if (!isOpen || showIntro || practicing) return;
+    const handlePractice = (event: MouseEvent) => {
+      const step = availableSteps[currentStep];
+      if (!step || !(event.target instanceof Element)) return;
+      const target = findVisibleTarget(getTargetSelector(step, isMobile));
+      if (!target?.contains(event.target)) return;
+      const control = event.target.closest('button, a, input, select, textarea, [role="button"], [role="link"]');
+      if (!control || !target.contains(control)) return;
+      // Let the real control receive its click; release the tour overlay.
+      setPracticing(true);
+    };
+    document.addEventListener('click', handlePractice, true);
+    return () => document.removeEventListener('click', handlePractice, true);
+  }, [availableSteps, currentStep, isMobile, isOpen, showIntro, practicing]);
+
   if (!isOpen) return null;
+  if (practicing) return createPortal(
+    <div className="pointer-events-auto fixed bottom-24 left-1/2 z-[10000] flex w-max max-w-[calc(100vw-24px)] -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-xl border bg-card p-2 shadow-xl">
+      <span className="px-1 text-xs font-medium">Tutorial pausado para você explorar.</span>
+      <Button size="sm" onClick={() => {
+        setPracticing(false);
+        setHighlight(null);
+        setTooltip(null);
+        if (currentStep >= availableSteps.length - 1) closeTour(true);
+        else setCurrentStep(value => value + 1);
+      }}>Continuar tutorial</Button>
+      <Button size="icon" variant="ghost" aria-label="Encerrar tutorial" onClick={() => closeTour(false)}><X className="h-4 w-4" /></Button>
+    </div>, document.body
+  );
 
   const step = availableSteps[currentStep];
   const StepIcon = step?.icon ?? Compass;
@@ -578,6 +609,7 @@ export const TourTutorial = ({ mode = 'visitor', initialStart = false }: TourTut
                   <span>{step.hint}</span>
                 </div>
 
+                {highlight && <p className="mt-2 text-xs font-medium text-primary">Toque no elemento destacado para experimentar ou avance pelo botão Próximo.</p>}
                 <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden="true">
                   <div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${((currentStep + 1) / availableSteps.length) * 100}%` }} />
                 </div>
