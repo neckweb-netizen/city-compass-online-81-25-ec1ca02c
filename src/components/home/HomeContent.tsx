@@ -143,10 +143,12 @@ interface HomeContentProps {
 
 interface DeferredSectionProps {
   render: () => ReactNode;
+  sectionName: string;
 }
 
 const DeferredSection = ({
   render,
+  sectionName,
 }: DeferredSectionProps) => {
   const containerRef =
     useRef<HTMLDivElement | null>(null);
@@ -196,6 +198,7 @@ const DeferredSection = ({
   return (
     <div
       ref={containerRef}
+      data-tour={`home-section-${sectionName}`}
       // Reserve the approximate card height before IntersectionObserver
       // mounts the section, preventing a large page shift on mobile.
       className={shouldRender ? undefined : 'min-h-[220px]'}
@@ -306,7 +309,7 @@ export const HomeContent = ({
               )
             ) {
               return (
-                <div key={section.id}>
+                <div key={section.id} data-tour={`home-section-${section.section_name}`}>
                   {
                     extraSections[
                       section.section_name
@@ -345,7 +348,7 @@ export const HomeContent = ({
              */
             if (index < 4 || section.section_name === 'banner') {
               return (
-                <div key={section.id}>
+                <div key={section.id} data-tour={`home-section-${section.section_name}`}>
                   {renderSection()}
                 </div>
               );
@@ -354,6 +357,7 @@ export const HomeContent = ({
             return (
               <DeferredSection
                 key={section.id}
+                sectionName={section.section_name}
                 render={renderSection}
               />
             );
