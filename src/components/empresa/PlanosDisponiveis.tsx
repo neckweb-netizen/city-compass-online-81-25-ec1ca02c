@@ -208,6 +208,17 @@ export const PlanosDisponiveis = ({ empresaId }: PlanosDisponiveisProps) => {
                     <span className="font-medium">{plano.prioridade_destaque}</span>
                   </div>
                   
+                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium">Prioridade nas buscas da IA</span>
+                      <span className="shrink-0 font-semibold">{planoGratuito(plano) || !plano.prioridade_busca ? 'Sem prioridade' : 'Nível ' + plano.prioridade_busca}</span>
+                    </div>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                      {planoGratuito(plano) || !plano.prioridade_busca
+                        ? 'Sua empresa pode aparecer nas buscas relevantes, sem preferência comercial.'
+                        : 'Com o plano ativo e benefício validado, sua empresa tem preferência nas buscas relevantes por categoria do assistente SAJ TEM. Não garante a primeira posição.'}
+                    </p>
+                  </div>
                   <div className="flex items-center justify-between text-sm">
                     <span>Suporte Prioritário:</span>
                     <span className="font-medium">
