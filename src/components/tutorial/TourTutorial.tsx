@@ -342,16 +342,16 @@ export const TourTutorial = ({ mode = 'visitor', initialStart = false }: TourTut
     const cardWidth = Math.min(360, viewportWidth - 24);
     const estimatedCardHeight = isMobile ? 310 : 250;
     const measuredCardHeight = dialogRef.current?.getBoundingClientRect().height;
-    const cardHeight = measuredCardHeight && measuredCardHeight > 100
+    const cardHeight = Math.min(measuredCardHeight && measuredCardHeight > 100
       ? Math.ceil(measuredCardHeight)
-      : estimatedCardHeight;
+      : estimatedCardHeight, isMobile ? Math.floor(viewportHeight * 0.36) : viewportHeight - 32);
     const highlightTop = clamp(rect.top - SPOTLIGHT_PADDING, 4, viewportHeight - 8);
     const highlightLeft = clamp(rect.left - SPOTLIGHT_PADDING, 4, viewportWidth - 8);
     const paddedRect: HighlightRect = {
       top: highlightTop,
       left: highlightLeft,
       width: Math.min(rect.width + SPOTLIGHT_PADDING * 2, viewportWidth - highlightLeft - 4),
-      height: Math.min(rect.height + SPOTLIGHT_PADDING * 2, viewportHeight - highlightTop - 4),
+      height: Math.min(rect.height + SPOTLIGHT_PADDING * 2, viewportHeight - highlightTop - 4, isMobile ? Math.max(40, viewportHeight - cardHeight - highlightTop - 32) : viewportHeight),
       borderRadius: Math.min(22, Math.max(12, Number.parseFloat(window.getComputedStyle(element).borderRadius) || 12) + 4),
     };
 
@@ -361,14 +361,15 @@ export const TourTutorial = ({ mode = 'visitor', initialStart = false }: TourTut
 
     if (isMobile) {
       left = (viewportWidth - cardWidth) / 2;
-      const maxCardTop = Math.max(12, viewportHeight - cardHeight - 20);
-      if (rect.top > viewportHeight / 2) {
-        top = clamp(rect.top - cardHeight - 32, 12, maxCardTop);
-        arrow = 'bottom';
+      const bottomTop = Math.max(12, viewportHeight - cardHeight - 12);
+      const above = rect.top - cardHeight - 16;
+      if (above >= 12 && rect.bottom > bottomTop) {
+        top = above;
       } else {
-        top = clamp(rect.bottom + 24, 12, maxCardTop);
-        arrow = 'top';
+        top = bottomTop;
+        paddedRect.height = Math.max(0, Math.min(paddedRect.height, top - paddedRect.top - 8));
       }
+      arrow = 'none';
     } else if (rect.right + cardWidth + 24 <= viewportWidth) {
       left = rect.right + 20;
       top = clamp(rect.top + rect.height / 2 - cardHeight / 2, 16, Math.max(16, viewportHeight - cardHeight - 16));
@@ -428,7 +429,8 @@ export const TourTutorial = ({ mode = 'visitor', initialStart = false }: TourTut
     const selector = getTargetSelector(step, isMobile);
     const element = findVisibleTarget(selector);
     if (isVisibleElement(element)) {
-      element.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'auto' });
+      element.scrollIntoView({ block: isMobile ? 'start' : 'center', inline: 'nearest', behavior: 'auto' });
+      if (isMobile && element.getBoundingClientRect().top < 72 && element.getBoundingClientRect().height > 100 && window.scrollY > 0) window.scrollBy(0, -72);
       window.requestAnimationFrame(updatePosition);
     }
   }, [availableSteps, currentStep, isMobile, isOpen, showIntro, updatePosition]);
@@ -535,7 +537,7 @@ export const TourTutorial = ({ mode = 'visitor', initialStart = false }: TourTut
               aria-modal="true"
               aria-labelledby={`tour-step-${step.id}`}
               tabIndex={-1}
-              className="pointer-events-auto absolute max-h-[calc(100dvh-24px)] overflow-y-auto rounded-2xl border border-primary/20 bg-card p-5 shadow-2xl outline-none transition-[top,left] duration-300"
+              className="pointer-events-auto absolute max-h-[36dvh] overflow-y-auto rounded-2xl border border-primary/20 bg-card p-3 lg:max-h-[calc(100dvh-24px)] lg:p-5 shadow-2xl outline-none transition-[top,left] duration-300"
               style={{ top: tooltip.top, left: tooltip.left, width: tooltip.width }}
             >
               <span
@@ -549,7 +551,7 @@ export const TourTutorial = ({ mode = 'visitor', initialStart = false }: TourTut
               />
 
               <div className="relative">
-                <div className="mb-4 flex items-start justify-between gap-3">
+                <div className="mb-2 flex items-start justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-3">
                     <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                       <StepIcon aria-hidden="true" className="h-5 w-5" />
@@ -564,17 +566,17 @@ export const TourTutorial = ({ mode = 'visitor', initialStart = false }: TourTut
                   </button>
                 </div>
 
-                <p className="text-sm leading-6 text-muted-foreground">{step.description}</p>
-                <div className="mt-3 flex gap-2 rounded-xl bg-primary/5 p-3 text-xs leading-5 text-foreground">
+                <p className="text-xs leading-5 text-muted-foreground sm:text-sm">{step.description}</p>
+                <div className="mt-2 flex gap-2 rounded-xl bg-primary/5 p-2 text-xs leading-5 text-foreground">
                   <Sparkles aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                   <span>{step.hint}</span>
                 </div>
 
-                <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden="true">
                   <div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${((currentStep + 1) / availableSteps.length) * 100}%` }} />
                 </div>
 
-                <div className="mt-4 flex items-center justify-between gap-3">
+                <div className="sticky bottom-0 mt-2 flex items-center justify-between gap-3 bg-card py-1">
                   <Button type="button" variant="ghost" size="sm" onClick={() => setCurrentStep((value) => Math.max(0, value - 1))} disabled={currentStep === 0} className="h-10 rounded-xl px-3">
                     <ArrowLeft aria-hidden="true" className="mr-1.5 h-4 w-4" />
                     Voltar
