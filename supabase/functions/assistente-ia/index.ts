@@ -518,7 +518,10 @@ Deno.serve(async (req: Request) => {
       // The database already validates active entitlements and orders eligible companies.
       // Keep explicit names and proximity searches relevance-first; apply commercial
       // ordering only to category searches with relevant catalog matches.
-      const categorySearch = /\b(oficinas?|mecanicos?|farmacias?|pizzarias?|restaurantes?|barbearias?|dentistas?|mercados?|padarias?|hoteis?|eletricistas?|encanadores?)\b/.test(normalizedMessage);
+      const categorySearch = /\b(oficinas?|mecanicos?|farmacias?|pizzarias?|restaurantes?|barbearias?|dentistas?|mercados?|padarias?|hoteis?|eletricistas?|encanadores?)\b/.test(normalizedMessage) || [...categoryNames.values()].some(name => {
+        const category = normalizeText(name);
+        return category.length >= 4 && (` ${normalizedMessage} `).includes(` ${category} `);
+      });
       const explicitName = companies.some(company => {
         const name = normalizeText(company.nome);
         return name.length >= 4 && normalizedMessage.includes(name);
