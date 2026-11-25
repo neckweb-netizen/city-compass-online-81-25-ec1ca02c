@@ -535,8 +535,8 @@ Deno.serve(async (req: Request) => {
       else if (/\b(agendar|marcar)\b/.test(normalizedMessage)) responseText = selected.bookable ? `${selected.name} aceita solicitação de agendamento pelo perfil. Escolha o serviço e um horário disponível.` : `Este resultado não informa agendamento online. Confirme diretamente na página de detalhes.`;
     }
     if (matches.length && (asksOpen || asksHours || /\b(recomenda|recomende|melhor|opiniao)\b/.test(normalizedMessage))) {
-      const facts = matches.map(item => `${item.name}: ${item.address || "endereço não informado"}; ${statusFor(item)}${item.distanceKm != null ? `; ${item.distanceKm.toFixed(1)} km` : ""}`).join("\n");
-      responseText = `${asksOpen && !matches.some(item=>statusFor(item).startsWith("Aberto")) ? "Não encontrei opção com abertura confirmada pelo horário cadastrado. " : ""}${facts}\nConfirme diretamente com o estabelecimento, pois feriados e alterações podem afetar os horários.`;
+      const facts = matches.map(item => `• ${item.name}\n${statusFor(item)}${item.distanceKm != null ? ` · ${item.distanceKm.toFixed(1)} km` : ""}`).join("\n\n");
+      responseText = `${asksOpen ? (matches.some(item=>statusFor(item).startsWith("Aberto")) ? "Encontrei opções abertas pelo horário cadastrado.\n\n" : matches.every(item=>statusFor(item).startsWith("Fechado")) ? "Os estabelecimentos encontrados estão fechados agora.\n\n" : "Não consegui confirmar uma opção aberta agora.\n\n") : ""}${facts}\n\nHorários cadastrados podem sofrer alterações.`;
       if (!asksOpen && !asksHours) responseText = await answerWithNvidia(db, visitorHash, message, responseText.slice(0,2400)) || responseText;
     }
     if (!responseText) {
