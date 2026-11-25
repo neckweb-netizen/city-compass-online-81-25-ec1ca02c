@@ -36,11 +36,11 @@ export const Watermark: React.FC<WatermarkProps> = ({
               <span className="bg-gradient-to-b from-fuchsia-300 via-purple-500 to-violet-900 bg-clip-text text-sm font-semibold text-transparent">
                 Deivid
               </span>
-              <span aria-hidden="true" className="inline-block text-sm leading-none motion-safe:animate-[footer-crown-spin_3s_linear_infinite]">👑</span>
+              <span aria-hidden="true" className="inline-block text-sm leading-none motion-safe:animate-[footer-crown-spin_3s_ease-in-out_infinite]">👑</span>
             </span>
           </div>
 
-          <style>{`@keyframes footer-crown-spin { 0% { transform: rotate(0deg) translateY(0); } 25% { transform: rotate(90deg) translateY(-1px); } 50% { transform: rotate(180deg) translateY(0); } 75% { transform: rotate(270deg) translateY(-1px); } 100% { transform: rotate(360deg) translateY(0); } }`}</style>
+          <style>{`@keyframes footer-crown-spin { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(90deg); } }`}</style>
           <nav aria-label="Informações e ajuda" className="mt-2 flex flex-wrap items-center justify-center gap-x-3 text-xs text-muted-foreground">
             {location.pathname === '/' && (
               <>
