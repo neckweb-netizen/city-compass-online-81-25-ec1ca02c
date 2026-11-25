@@ -403,6 +403,11 @@ export function AiAssistantChat({ initialOpen = false }: { initialOpen?: boolean
       </form>
       <p className="px-3 pb-2 text-[11px] text-muted-foreground">Não envie dados sensíveis. Confirme informações importantes antes de tomar decisões.</p>
     </section>}
+    {!open && <span aria-hidden="true"
+      style={{ position: 'fixed', left: Math.max(8, Math.min(position.x + BUTTON_SIZE / 2 - 78, viewport.width - 164)), top: position.y >= 100 ? position.y - 27 : position.y + BUTTON_SIZE + 5, width: 156 }}
+      className="pointer-events-none z-[72] whitespace-nowrap rounded-full border border-primary/20 bg-card/95 px-2 py-1 text-center text-[10px] font-medium leading-tight text-card-foreground shadow-sm">
+      Arraste ou toque para abrir
+    </span>}
     <Button
       type="button"
       size="icon"
