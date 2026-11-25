@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Bell,
+  Bot,
   Building2,
   Check,
   Compass,
@@ -248,7 +249,26 @@ export const TourTutorial = ({ mode = 'visitor', initialStart = false }: TourTut
   const dialogRef = useRef<HTMLDivElement>(null);
   const userId = user?.id;
   const hasProfile = Boolean(profile);
-  const tourSteps = mode === 'account' ? accountSteps : visitorSteps;
+  const canCreate = Boolean(user && ['empresa', 'admin_geral', 'admin_cidade'].includes(profile?.tipo_conta ?? ''));
+  const fixedAssistant = isMobile && !canCreate;
+  const tourSteps = useMemo(() => {
+    const source = mode === 'account' ? accountSteps : visitorSteps;
+    return source.filter(step => !(fixedAssistant && step.id === 'assistant') && !(!isMobile && step.id === 'account-publish' && canCreate)).map(step => {
+      if (step.id !== 'publish' && step.id !== 'account-publish') return step;
+      if (canCreate) return step;
+      return {
+        ...step,
+        title: 'Converse com o assistente de IA',
+        description: fixedAssistant
+          ? 'Toque no robô no centro do menu inferior para conversar com a IA do Saj Tem. Encontre empresas, serviços, horários e informações sobre a cidade e o portal.'
+          : 'Abra o assistente de IA para encontrar empresas, serviços, horários e informações sobre a cidade e o portal.',
+        hint: 'Experimente perguntar por uma oficina aberta ou pelo horário de uma loja. Você também pode usar o microfone.',
+        icon: Bot,
+        mobileTarget: '[data-tour="home-assistant"]',
+        desktopTarget: '[aria-label^="Abrir assistente de IA"]',
+      };
+    }).filter(step => !(mode === 'visitor' && !canCreate && !isMobile && step.id === 'assistant'));
+  }, [mode, canCreate, fixedAssistant, isMobile]);
   const storageKey = mode === 'account' && userId
     ? `${ACCOUNT_TOUR_STORAGE_PREFIX}:${userId}`
     : TOUR_STORAGE_KEY;
