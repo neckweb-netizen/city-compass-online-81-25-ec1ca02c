@@ -2,6 +2,43 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import { Link, useLocation } from 'react-router-dom';
 
+const FooterCrown = () => {
+  const [angle, setAngle] = React.useState(0);
+  React.useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let frame = 0;
+    let start: number | undefined;
+    const tick = (time: number) => {
+      start ??= time;
+      setAngle(((time - start) % 3000) / 3000 * Math.PI * 2);
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, []);
+  const point = (a: number, r: number, y: number) => [12 + Math.cos(a) * r, y + Math.sin(a) * r * .23];
+  const faces = Array.from({ length: 5 }, (_, i) => {
+    const mid = angle + i * Math.PI * 2 / 5;
+    const a = mid - Math.PI / 5, b = mid + Math.PI / 5;
+    const p = [point(a, 8, 18), point(b, 8, 18), point(b, 9, 10), point(mid, 10, 3), point(a, 9, 10)];
+    return { i, depth: Math.sin(mid), p, tip: p[3], jewel: point(mid, 8.2, 15) };
+  }).sort((a, b) => a.depth - b.depth);
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4 shrink-0 overflow-visible">
+      <ellipse cx="12" cy="18" rx="8" ry="2" fill="#9b590c" />
+      {faces.map(f => (
+        <g key={f.i}>
+          <polygon points={f.p.map(p => p.join(',')).join(' ')} fill={f.depth > 0 ? '#f9c746' : '#b87913'} stroke="#9b590c" strokeWidth=".45" strokeLinejoin="round" />
+          <circle cx={f.tip[0]} cy={f.tip[1]} r="1" fill="#ffe99a" stroke="#b87913" strokeWidth=".3" />
+          {f.depth > 0 && <circle cx={f.jewel[0]} cy={f.jewel[1]} r="1.1" fill={f.i % 2 ? '#d43c76' : '#39b7ba'} />}
+        </g>
+      ))}
+      <path d="M4 18 Q12 22 20 18 L20 20 Q12 24 4 20Z" fill="#e9a923" stroke="#9b590c" strokeWidth=".45" />
+      <path d="M5 19 Q12 22 19 19" fill="none" stroke="#fff0a1" strokeWidth=".6" />
+    </svg>
+  );
+};
+
 interface WatermarkProps {
   variant?: 'footer' | 'sidebar';
   className?: string;
@@ -36,11 +73,10 @@ export const Watermark: React.FC<WatermarkProps> = ({
               <span className="bg-gradient-to-b from-fuchsia-300 via-purple-500 to-violet-900 bg-clip-text text-sm font-semibold text-transparent">
                 Deivid
               </span>
-              <span aria-hidden="true" className="relative inline-grid h-4 w-4 shrink-0 place-items-center text-sm leading-none"><span className="absolute motion-safe:animate-[footer-crown-front_3s_linear_infinite]">👑</span><span className="absolute opacity-0 motion-safe:animate-[footer-crown-side_3s_linear_infinite]">👑</span></span>
+              <FooterCrown />
             </span>
           </div>
 
-          <style>{`@keyframes footer-crown-front { 0%, 50%, 100% { transform: scaleX(1); opacity: 1; } 25%, 75% { transform: scaleX(.78); opacity: 0; } } @keyframes footer-crown-side { 0%, 50%, 100% { transform: scaleX(.78); opacity: 0; } 25%, 75% { transform: scaleX(1); opacity: 1; } }`}</style>
           <nav aria-label="Informações e ajuda" className="mt-2 flex flex-wrap items-center justify-center gap-x-3 text-xs text-muted-foreground">
             {location.pathname === '/' && (
               <>
