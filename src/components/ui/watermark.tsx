@@ -3,37 +3,19 @@ import { cn } from '@/lib/utils';
 import { Link, useLocation } from 'react-router-dom';
 
 const FooterCrown = () => {
-  const [angle, setAngle] = React.useState(0);
-  React.useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    let frame = 0;
-    let start: number | undefined;
-    const tick = (time: number) => {
-      start ??= time;
-      setAngle(((time - start) % 4500) / 4500 * Math.PI * 2);
-      frame = requestAnimationFrame(tick);
-    };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, []);
-  const point = (a: number, r: number, y: number) => [12 + Math.cos(a) * r, y + Math.sin(a) * r * .23];
-  const faces = Array.from({ length: 5 }, (_, i) => {
-    const mid = angle + i * Math.PI * 2 / 5;
-    const a = mid - Math.PI / 5, b = mid + Math.PI / 5;
-    const p = [point(a, 8, 18), point(b, 8, 18), point(b, 9, 10), point(mid, 10, 3), point(a, 9, 10)];
-    return { i, depth: Math.sin(mid), p, tip: p[3], jewel: point(mid, 8.2, 15) };
-  }).sort((a, b) => a.depth - b.depth);
-  return (
+  const [failed, setFailed] = React.useState(false);
+  return failed ? <span aria-hidden="true" className="text-2xl leading-none">👑</span> : (
     <video
                 aria-label="Coroa dourada original girando"
                 autoPlay
                 loop
                 muted
                 playsInline
-                preload="metadata"
+                preload="auto"
+                onError={() => setFailed(true)}
                 width={72}
                 height={72}
-                className="h-16 w-16 shrink-0 object-contain sm:h-[72px] sm:w-[72px]"
+                className="h-9 w-9 shrink-0 object-contain"
                 src="data:video/webm;base64,GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQRChYECGFOAZwEAAAAAAAwMEU2bdLpNu4tTq4QVSalmU6yBoU27i1OrhBZUrmtTrIHWTbuMU6uEElTDZ1OsggEwTbuMU6uEHFO7a1Osggv27AEAAAAAAABZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVSalmsCrXsYMPQkBNgIxMYXZmNjEuNy4xMDNXQYxMYXZmNjEuNy4xMDNEiYhAksAAAAAAABZUrmvVrgEAAAAAAABM14EBc8WIpjNvlA5oErCcgQAitZyDZW5nhoVWX1ZQOIOBASPjg4QL68IA4KCwgSC6gSCagQJTwIEBVbCQVbqBAVWxgQVVu4EBVbmBARJUw2dBRXNz9GPAgGfIm0WjkUNPTVBBVElCTEVfQlJBTkRTRIeEcXQgIGfIlUWji01BSk9SX0JSQU5ERIeEcXQgIGfInEWjjU1JTk9SX1ZFUlNJT05Eh4k1MzcxOTkzNjBnyJlFo4dFTkNPREVSRIeMTGF2ZjYxLjcuMTAzc3NAymPAi2PFiKYzb5QOaBKwZ8iRRaOKQUxQSEFfTU9ERUSHgTFnyKtFo4xIQU5ETEVSX05BTUVEh5lBcHBsZSBWaWRlbyBNZWRpYSBIYW5kbGVyZ8iTRaOJVkVORE9SX0lERIeEYXBwbGfImUWjiFRJTUVDT0RFRIeLMDA6MDA6MDI6MDBnyKFFo4dFTkNPREVSRIeUTGF2YzYxLjE5LjEwMSBsaWJ2cHhnyKFFo4hEVVJBVElPTkSHkzAwOjAwOjAxLjIwMDAwMDAwMAAfQ7Z1SXXngQCjQviBAACAEBQAnQEqIAAgAABHCIWFiJmEiAICizP8QGoF9c+YR/Mv7MLcB/gP4OXhmaIIReOx5gL0WfPPx2/le8V/2b8q+AD+pP9m/gPCA/pF1gPoA/rt6Tv7GfAh+w37XfAD+tNyB5DX1JyQnz38MM+j+In5GZaX+SuoxflBrwP8B9oHv2fuH3JexH2v9wH+Mf0L/S/l93IPQB/Un20HzMNudC2K3vXoWrPJlHNs/4D+/5iX//2PH/2XOW/6CP/uerlJ9u7BkIHOv2fn/9onk/xB4f4ue6tiDo5jDP//+cwJX5P5/zsf9Bfb/7qBrv//X2ux8QH/0PP4WNFcf7zq///A+4VfNDL+vNqbPhfrTEjR/kvB9irGhTrMZOJQgrnKgF9c/5tQDI/DT4c9C1/hrQ7vWkV7qPY3yOldr979fCzbQNfWIf/7zZAc+kOiSltO9aClWMPIhuOTpKtS8wfKsSTjQc+iS9bs2IRrrvl768FFPcAglSo2/MO3ApB4DXGehEX64PssfhMqLf/htd1ClCl/C97zBYIK7S3wRym2ePIjUTTOR0j/fv8LZNavg4gtl0gVA/X2r9/+y786n9rvZZtnBG4bJryjWa4ZMRk+yaklC4c1NCV09vufZT3NtpBK/rgn863lwdlzB21Y/pjN7EudKZ/MLmwNQwue8fXnc1W53lt7anR4eClA95mYigjFgbBYOYTB+lsPGXfm//o+EjH0Gtho3cx2wSZqPq4zyya1Vb9fdV0i3APVIw+iTJv6DTfbU8ArnqrRXKOZXk2hDP4NrFX/8zetQzon/NwEIoG7V3K96ulWmcO5EbZZnqeTn2CRMMVGaHJ188/rXm7C/ATIDuy/cx2H8/+JPmMp2l+ibVdFjVUBBMB5BmgPeH4AO3IHv0Mi9pm5J/c5slygaB/FHsn98KL/9dWLlyN/to9QZ/PkBEPM6Re24kM6PHMNJ6q865b2ZL//2gQ2kgC4N2xTcAb6qkV8BMhPwPh1ZPAJb9Nrn0gAo0IXgQDIAPEKABEQMAAbcl/lf4zegbrX/J/xd/oGeTxX5hv9D0xrAH1Ov1b5gl7b+7+dx5AeZt/jf+b7Av5R+3fYV+gCNYm/vX5gKgdsDXHNwCIa9hd6CKZBLpaNsDwUgP7PQf9c/+t07/+UJyo7vr9H91n//Zj3eX9OtRrp2r6GZmzFeDYUvf3SObhWrcz56hen5UJRii7/awd+gAD8bnHN3rrPeOR/Pl/5A1ZF9MYii+GrIMf1UBrGIIafARDzfqsZL//kV939th/+DX/2FMKrdVo17nF1uTJmdhNzJxOXGIfTruRLlv/2bLGjhDYkcCiiIPZZRbudhXRAdANqeFD0Jpud96tt5zroJ/a9518d80mM7MvYx/5573Thz5RvpGb2cb0rrW37K2vRZgILC5Dz4UcN4D+IFo/sR7vRjycO3Vj8DV4xME6pys4IA/XhAlvFmqH3LJ6dRx11AO+0QuLtcpBiy4s56FQbs3f6sm/+npns6zXTgtHeMrr2Fd/Gzih+9b4wi1gCWGkGRcmWJe4aXOI5PjFaCTeP5d8WIcBNDy4L++9CfKn7QimnzX/1SO77Nq6n/r9vun/qncTu3Vyi/Iovs7i/DxcCwPZxOxbdr8z73eAM5dMRIcE4s6DQqZ+HssdtBmhMJEbaAiN7MfjGRwF8LNuPKzezLjZ9/jyuaP/9xdnxc8ldgVncY7rD6shCd3GWeAsAAKNBVoEBkABxAwAVEFAAG9KlQgpzHJVCRt21/vEqVx28D6Mg0aD+yvJ/j/0cyf+nP25wijdPju4/jUAfXGYZ+7neH84VHvcIvymwzanMVfJClmLc+x3RgNl9H+xNXE0SZgFLW0+h28aX+Xz/+q1xLjb/+i34q/07PeVf/9mSVrAGYyL1abX5i2L03PRn/11vrbFs7bK2XvLH/DWYZBnsVmsS2COqsXvyIOaRjzN5QWvJPJ5kf8I4bT2fnigYP8Pr+Eq3xeFp/3kxnHKn2dPrF2KdzmtaQvDf3d5U35bD89ZW/pXw7VbHOUyrD6KkBZABzZh/lTld26KJAW+HLzMavo82kkmq6Wu7v7U9TmAj9JY8kiWKyk9UhmHgu877KzlRopT//R94QUIQWLS16mjiV3uQ5NiocOMQBugamZBAAFpC9ODp698QCAcBO5naZ0cTQWL1c8QiCU+gAKNBB4ECWADxAQAfEGgAGAAwKBgv6H4yQhDkP2r/5jcmiuxQ/jR+Vl+Cn5pIvPDNoInoXuNGSep37+2YfwxRFEP9OiaUu7KGggksM+Z/1f9R9riSa3oljn9/853Bv/+2MvSyQXAp9bMDQNl+SBoxHjTfBlMLzwTiP22mfv7dT0WS87e2e0Fe4q4+fAbwgCTOU/1A+AQJk2GyHNaHpzzzl49d9J8r+pePootOCaHCf5Dt+O0YYyBeHSabov/4+2qjHG7V74vdsHIAFhNO//c1I5/Reqb3pX442ImkC4B5Zm2Fyp6rqbVnI9H7UhI31l9NFJDleAwjX9fIvPdmADBTj6Eag49DJwItSAAAo0D1gQMgABEDACMQeAAZWf99YFisfAPiAgV9QsV9XmgmEP3/bD6mqXxX95oZ/0vTACAm6CSPRYR3O9WLvpm3Z0/KqR+PoHUtynZm04K4UrVRdHtg3FSdhLbqXvxG//7Xn/kj5z1yaGFPBfVi8wWK0xKkG6RgEFb5t+Rizzh94eMUk1U7WvvQlwE3ir/CRo5JapHxgxun5yQvV1266Jb7H5R9JdfT34BzluC5+zuH6lgzlwqwnLou3mkehe+6ptlsQ+hheXRZYm91b1KvonlY1GvjvV6pT9WN6UAcejBETeXwgtR5ZQgYAZu0G3tIvksA6WG4wqHJQACjQP+BA+gAcQMAGhCEABl4z/QGekhXf4GBQR//Tatd7PWY09wA/rpV/QNy8nmdyyVegm8C4UmJs4l///OP8pLeBgs1WylfTqip7uCk45xeQhhUpqzrzBZs51/s/i3uN6KPeVf/kH0f4wK1ZPJikxvKCQqcOCkX3sltyGV6RYTdSRCjgg0YeKYCCfmFwrrEm3iWYk/Jxrye0d0YrNU30WvbZRbuTta+bu35cP69zCL32QAAIFhDyANZAywUiFJ4EbMxL28H6/OJ0cQYeVE8mCiYv/CAMM1xdbgMm9udiE4X5ysdDgqQYSQnAAWIAQTCudJP9eCwD98n+YfwxDZVNMCgAAAcU7trkbuPs4EAt4r3gQHxggJ78IED"
               />
   );
@@ -67,10 +49,10 @@ export const Watermark: React.FC<WatermarkProps> = ({
     )}>
       <div className="container mx-auto px-4">
         <div className="text-center">
-          <div className="flex flex-wrap items-baseline justify-center gap-x-1 gap-y-0 pt-3 text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-baseline justify-center gap-x-1 gap-y-0 pt-10 text-sm text-muted-foreground">
             <span>Desenvolvido por</span>
             <span className="relative inline-flex items-baseline" aria-label="Deivid">
-              <span aria-hidden="true" className="pointer-events-none absolute bottom-full left-1/2 flex -translate-x-1/2 translate-y-1"><FooterCrown /></span>
+              <span aria-hidden="true" className="pointer-events-none absolute bottom-full left-1/2 flex -translate-x-1/2 translate-y-1 z-10"><FooterCrown /></span>
               <span className="bg-gradient-to-b from-fuchsia-300 via-purple-500 to-violet-900 bg-clip-text text-sm font-semibold text-transparent">
                 Deivid
               </span>
