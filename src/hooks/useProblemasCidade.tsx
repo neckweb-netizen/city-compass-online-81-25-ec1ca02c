@@ -159,9 +159,10 @@ export const useProblemasCidade = (cidadeId?: string, filters?: {
 
   const incrementarVisualizacao = useMutation({
     mutationFn: async (problemaId: string) => {
-      await supabase.rpc('incrementar_visualizacao_problema', {
+      const { error } = await supabase.rpc('incrementar_visualizacao_problema', {
         problema_id_param: problemaId,
       });
+      if (error) throw error;
     },
   });
 
@@ -190,6 +191,8 @@ export const useProblemaDetalhes = (problemaId: string) => {
           usuario:usuarios(nome)
         `)
         .eq('id', problemaId)
+        .eq('ativo', true)
+        .eq('status_aprovacao', 'aprovado')
         .single();
 
       if (error) throw error;
@@ -212,23 +215,22 @@ export const useProblemaDetalhes = (problemaId: string) => {
 
       if (error) throw error;
 
-      // Buscar informações dos usuários manualmente
-      const comentariosComUsuarios = await Promise.all(
-        (data || []).map(async (comentario) => {
-          const { data: usuario } = await supabase
-            .from('user_public_profiles' as any)
-            .select('nome')
-            .eq('id', comentario.usuario_id)
-            .maybeSingle();
-
-          return {
-            ...comentario,
-            usuario,
-          };
-        })
-      );
-
-      return comentariosComUsuarios;
+      const ids = [...new Set((data || []).map(comentario => comentario.usuario_id))];
+      const profiles = new Map<string, { nome: string }>();
+      for (let i = 0; i < ids.length; i += 100) {
+        const { data: rows, error: profileError } = await supabase
+          .from('user_public_profiles' as any)
+          .select('id,nome')
+          .in('id', ids.slice(i, i + 100));
+        if (profileError) continue;
+        for (const row of (rows || []) as unknown as { id: string; nome: string }[]) {
+          profiles.set(row.id, { nome: row.nome });
+        }
+      }
+      return (data || []).map(comentario => ({
+        ...comentario,
+        usuario: profiles.get(comentario.usuario_id) ?? null,
+      }));
     },
     enabled: !!problemaId,
   });
