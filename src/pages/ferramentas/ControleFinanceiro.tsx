@@ -109,10 +109,14 @@ const uid = () => {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 };
 
+const money = (value: number) => Math.round(value * 100) / 100;
+const validDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) && toDateKey(parseDate(value)) === value;
 const safeNumber = (value: string) => {
-  const normalized = value.replace(/\./g, '').replace(',', '.').replace(/[^0-9.-]/g, '');
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? parsed : 0;
+  const input = value.trim();
+  if (!input) return 0;
+  if (!/^(?:\d+(?:[.,]\d{1,2})?|\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?)$/.test(input)) return NaN;
+  const parsed = Number(input.includes(',') ? input.replace(/\./g, '').replace(',', '.') : /^\d{1,3}(?:\.\d{3})+$/.test(input) ? input.replace(/\./g, '') : input);
+  return Number.isFinite(parsed) && parsed <= 999999999.99 ? money(parsed) : NaN;
 };
 
 const getCalendarDays = (date: Date) => {
@@ -198,18 +202,18 @@ export const ControleFinanceiro = () => {
 
   const paidIncome = monthTransactions
     .filter((item) => item.type === 'receita' && item.status === 'pago')
-    .reduce((sum, item) => sum + item.amount, 0);
+    .reduce((sum, item) => sum + Math.round(item.amount * 100), 0) / 100;
   const paidExpenses = monthTransactions
     .filter((item) => item.type === 'despesa' && item.status === 'pago')
-    .reduce((sum, item) => sum + item.amount, 0);
+    .reduce((sum, item) => sum + Math.round(item.amount * 100), 0) / 100;
   const pendingIncome = monthTransactions
     .filter((item) => item.type === 'receita' && item.status === 'pendente')
-    .reduce((sum, item) => sum + item.amount, 0);
+    .reduce((sum, item) => sum + Math.round(item.amount * 100), 0) / 100;
   const pendingExpenses = monthTransactions
     .filter((item) => item.type === 'despesa' && item.status === 'pendente')
-    .reduce((sum, item) => sum + item.amount, 0);
-  const balance = paidIncome - paidExpenses;
-  const projectedBalance = paidIncome + pendingIncome - paidExpenses - pendingExpenses;
+    .reduce((sum, item) => sum + Math.round(item.amount * 100), 0) / 100;
+  const balance = money(paidIncome - paidExpenses);
+  const projectedBalance = money(paidIncome + pendingIncome - paidExpenses - pendingExpenses);
   const budgetUsage = state.settings.monthlyBudget > 0
     ? Math.min(100, (paidExpenses / state.settings.monthlyBudget) * 100)
     : 0;
@@ -238,7 +242,7 @@ export const ControleFinanceiro = () => {
     const map = new Map<string, number>();
     monthTransactions
       .filter((item) => item.type === 'despesa' && item.status === 'pago')
-      .forEach((item) => map.set(item.category, (map.get(item.category) || 0) + item.amount));
+      .forEach((item) => map.set(item.category, money((map.get(item.category) || 0) + item.amount)));
     return Array.from(map.entries())
       .map(([category, amount]) => ({ category, amount }))
       .sort((a, b) => b.amount - a.amount);
@@ -249,14 +253,14 @@ export const ControleFinanceiro = () => {
       const date = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() - (5 - index), 1);
       const key = monthKeyFromDate(date);
       const entries = state.transactions.filter((item) => monthKeyFromString(item.date) === key && item.status === 'pago');
-      const income = entries.filter((item) => item.type === 'receita').reduce((sum, item) => sum + item.amount, 0);
-      const expenses = entries.filter((item) => item.type === 'despesa').reduce((sum, item) => sum + item.amount, 0);
+      const income = entries.filter((item) => item.type === 'receita').reduce((sum, item) => sum + Math.round(item.amount * 100), 0) / 100;
+      const expenses = entries.filter((item) => item.type === 'despesa').reduce((sum, item) => sum + Math.round(item.amount * 100), 0) / 100;
       return {
         key,
         label: date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''),
         income,
         expenses,
-        balance: income - expenses,
+        balance: money(income - expenses),
       };
     });
   }, [selectedMonth, state.transactions]);
@@ -317,11 +321,11 @@ export const ControleFinanceiro = () => {
       toast.error('Informe uma descrição para o lançamento.');
       return;
     }
-    if (amount <= 0) {
+    if (!Number.isFinite(amount) || amount <= 0) {
       toast.error('Informe um valor maior que zero.');
       return;
     }
-    if (!form.date) {
+    if (!validDate(form.date)) {
       toast.error('Informe a data do lançamento.');
       return;
     }
@@ -390,6 +394,7 @@ export const ControleFinanceiro = () => {
       savingsGoal: Math.max(0, safeNumber(settingsForm.savingsGoal)),
       emergencyFundGoal: Math.max(0, safeNumber(settingsForm.emergencyFundGoal)),
     };
+    if (Object.values(nextSettings).some(value => !Number.isFinite(value))) { toast.error('Informe valores monetários válidos.'); return; }
     void persistSettings(nextSettings).then((result) => {
       if (result.reason === 'remote_error') {
         toast.error('error' in result && result.error ? result.error.message : 'Falha ao sincronizar os dados.');
@@ -438,12 +443,16 @@ export const ControleFinanceiro = () => {
           return typeof item.id === 'string' && item.id.length > 0 &&
             (item.type === 'receita' || item.type === 'despesa') &&
             typeof item.title === 'string' && item.title.trim().length > 0 &&
-            typeof item.amount === 'number' && Number.isFinite(item.amount) && item.amount > 0 &&
+            typeof item.amount === 'number' && Number.isFinite(item.amount) && item.amount > 0 && item.amount <= 999999999.99 && Math.abs(item.amount - money(item.amount)) < 1e-8 &&
             typeof item.category === 'string' &&
-            typeof item.date === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(item.date) &&
+            typeof item.date === 'string' && validDate(item.date) &&
             (item.status === 'pago' || item.status === 'pendente') &&
             typeof item.recurring === 'boolean' &&
-            typeof item.createdAt === 'string';
+            typeof item.createdAt === 'string' && Number.isFinite(Date.parse(item.createdAt)) &&
+            (item.note === undefined || typeof item.note === 'string') &&
+            (item.notify === undefined || typeof item.notify === 'boolean') &&
+            (item.reminderDaysBefore === undefined || (Number.isInteger(item.reminderDaysBefore) && item.reminderDaysBefore >= 0 && item.reminderDaysBefore <= 30)) &&
+            (item.reminderTime === undefined || /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(item.reminderTime));
         };
         if (!candidate.transactions.every(validTransaction) ||
             new Set(candidate.transactions.map(item => item.id)).size !== candidate.transactions.length) {
@@ -459,7 +468,7 @@ export const ControleFinanceiro = () => {
         }
 
         const nextState: FinanceState = {
-          transactions: candidate.transactions,
+          transactions: candidate.transactions.map(item => ({ ...item, notify: Boolean(item.notify), reminderDaysBefore: item.reminderDaysBefore ?? 1, reminderTime: item.reminderTime || '09:00' })),
           settings: {
             monthlyBudget: settings.monthlyBudget as number,
             savingsGoal: settings.savingsGoal as number,
