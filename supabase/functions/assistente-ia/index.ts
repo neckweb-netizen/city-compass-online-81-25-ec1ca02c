@@ -162,6 +162,7 @@ async function answerWithNvidia(db: ReturnType<typeof createClient>, visitorHash
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders(req) });
+  let releaseLease: (() => Promise<void>) | undefined;
   try {
     if (req.method !== "POST") throw new HttpError(405, "Método não permitido");
     await verifyPublicKey(req);
@@ -278,6 +279,7 @@ Deno.serve(async (req: Request) => {
     const incomingId = typeof body.sessionId === "string" ? body.sessionId : "";
     const incomingToken = typeof body.sessionToken === "string" ? body.sessionToken : "";
     let sessionId = "";
+    let expectedContext: Record<string, unknown> = {};
     let sessionToken = "";
     let priorResults: LocalSearchItem[] = [];
     let priorArticleId = "";
@@ -295,12 +297,16 @@ Deno.serve(async (req: Request) => {
       if (typeof previousContext.processing_until === "number" && previousContext.processing_until > Date.now()) {
         throw new HttpError(409, "Aguarde a resposta anterior antes de enviar outra mensagem.");
       }
-      const claimedContext = { ...previousContext, processing_until: Date.now() + 120000 };
+      const claimedContext = { ...previousContext, processing_until: Date.now() + 120000, processing_owner: crypto.randomUUID() };
       const { data: claimed, error: claimError } = await db.from("ai_sessions")
         .update({ context: claimedContext }).eq("id", incomingId)
         .eq("context", JSON.stringify(previousContext)).select("id").maybeSingle();
       if (claimError) throw new HttpError(503, "Não foi possível reservar a conversa");
       if (!claimed) throw new HttpError(409, "Aguarde a resposta anterior antes de enviar outra mensagem.");
+      expectedContext = claimedContext;
+      releaseLease = async () => {
+        await db.from("ai_sessions").update({ context: previousContext }).eq("id", incomingId).eq("context", JSON.stringify(claimedContext));
+      };
       sessionId = incomingId;
       sessionToken = incomingToken;
       priorResults = Array.isArray(session.context?.results)
@@ -310,8 +316,9 @@ Deno.serve(async (req: Request) => {
       priorSiteFact = validSiteFact(session.context?.site_fact);
     } else {
       sessionToken = `${crypto.randomUUID()}${crypto.randomUUID()}`;
+      expectedContext = { token_hash: await sha256(sessionToken), result_ids: [] };
       const { data: session, error: sessionError } = await db.from("ai_sessions")
-        .insert({ context: { token_hash: await sha256(sessionToken), result_ids: [] } }).select("id").single();
+        .insert({ context: expectedContext }).select("id").single();
       if (sessionError || !session) throw new HttpError(503, "Não foi possível iniciar a conversa");
       sessionId = session.id;
     }
@@ -358,10 +365,11 @@ Deno.serve(async (req: Request) => {
         { session_id: sessionId, role: "assistant", content: answerText },
       ]);
       if (messagesError) throw new HttpError(503, "Não foi possível guardar a conversa");
-      const { error: contextError } = await db.from("ai_sessions")
+      const { data: savedContext, error: contextError } = await db.from("ai_sessions")
         .update({ context: { token_hash: await sha256(sessionToken), result_ids: [], article_id: directArticleId,
-          site_fact: mayEnrich ? { text: siteAnswer.text.slice(0, 2000), links: siteAnswer.links.slice(0, 3) } : null } }).eq("id", sessionId);
+          site_fact: mayEnrich ? { text: siteAnswer.text.slice(0, 2000), links: siteAnswer.links.slice(0, 3) } : null } }).eq("id", sessionId).eq("context", JSON.stringify(expectedContext)).select("id").maybeSingle();
       if (contextError) throw new HttpError(503, "Não foi possível atualizar a conversa");
+      if (!savedContext) throw new HttpError(409, "A conversa foi atualizada por outra solicitação.");
       const { error: eventError } = await db.from("ai_events").insert({ session_id: sessionId, event_type: "search" });
       if (eventError) throw new HttpError(503, "Não foi possível registrar a busca");
       return jsonResponse(req, { sessionId, sessionToken, text: answerText, results: [], links: siteAnswer.links });
@@ -384,9 +392,10 @@ Deno.serve(async (req: Request) => {
         { session_id: sessionId, role: "assistant", content: directAnswer.text },
       ]);
       if (messagesError) throw new HttpError(503, "Não foi possível guardar a conversa");
-      const { error: contextError } = await db.from("ai_sessions")
-        .update({ context: { token_hash: await sha256(sessionToken), result_ids: [], article_id: null } }).eq("id", sessionId);
+      const { data: savedContext, error: contextError } = await db.from("ai_sessions")
+        .update({ context: { token_hash: await sha256(sessionToken), result_ids: [], article_id: null } }).eq("id", sessionId).eq("context", JSON.stringify(expectedContext)).select("id").maybeSingle();
       if (contextError) throw new HttpError(503, "Não foi possível atualizar a conversa");
+      if (!savedContext) throw new HttpError(409, "A conversa foi atualizada por outra solicitação.");
       const { error: eventError } = await db.from("ai_events").insert({ session_id: sessionId, event_type: "no_result" });
       if (eventError) throw new HttpError(503, "Não foi possível registrar a conversa");
       return jsonResponse(req, { sessionId, sessionToken, text: directAnswer.text, results: [], links: [] });
@@ -587,9 +596,10 @@ Deno.serve(async (req: Request) => {
       address: item.address?.slice(0, 240) || null, url: item.url, companyId: item.companyId, companyName: item.companyName?.slice(0, 160),
       price: item.price ?? null, distanceKm: item.distanceKm ?? null, phone: item.phone?.slice(0, 40) || null, bookable: item.bookable === true,
     }));
-    const { error: contextError } = await db.from("ai_sessions")
-      .update({ context: { token_hash: await sha256(sessionToken), result_ids: matches.map(item => item.companyId).filter(Boolean), results: safeContextResults, article_id: knowledgeArticle?.id || null } }).eq("id", sessionId);
+    const { data: savedContext, error: contextError } = await db.from("ai_sessions")
+      .update({ context: { token_hash: await sha256(sessionToken), result_ids: matches.map(item => item.companyId).filter(Boolean), results: safeContextResults, article_id: knowledgeArticle?.id || null } }).eq("id", sessionId).eq("context", JSON.stringify(expectedContext)).select("id").maybeSingle();
     if (contextError) throw new HttpError(503, "Não foi possível atualizar a conversa");
+      if (!savedContext) throw new HttpError(409, "A conversa foi atualizada por outra solicitação.");
     const { error: searchEventError } = await db.from("ai_events").insert({ session_id: sessionId, event_type: matches.length || knowledgeArticle ? "search" : "no_result" });
     if (searchEventError) throw new HttpError(503, "Não foi possível registrar a busca");
     if (matches.length) {
@@ -606,5 +616,7 @@ Deno.serve(async (req: Request) => {
     return jsonResponse(req, { sessionId, sessionToken, text: responseText, results: matches.map(publicResult), links });
   } catch (error) {
     return errorResponse(req, error);
+  } finally {
+    if (releaseLease) { try { await releaseLease(); } catch { /* Lease expires automatically. */ } }
   }
 });
