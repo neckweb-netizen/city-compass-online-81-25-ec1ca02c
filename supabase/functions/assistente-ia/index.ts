@@ -366,7 +366,7 @@ Deno.serve(async (req: Request) => {
       if (contextError) throw new HttpError(503, "Não foi possível atualizar a conversa");
       if (!savedContext) throw new HttpError(409, "A conversa foi atualizada por outra solicitação.");
       const { error: eventError } = await db.from("ai_events").insert({ session_id: sessionId, event_type: "search" });
-      if (eventError) throw new HttpError(503, "Não foi possível registrar a busca");
+      if (eventError) console.warn("AI analytics write failed");
       return jsonResponse(req, { sessionId, sessionToken, text: answerText, results: [], links: siteAnswer.links });
     }
 
@@ -387,7 +387,7 @@ Deno.serve(async (req: Request) => {
       if (contextError) throw new HttpError(503, "Não foi possível atualizar a conversa");
       if (!savedContext) throw new HttpError(409, "A conversa foi atualizada por outra solicitação.");
       const { error: eventError } = await db.from("ai_events").insert({ session_id: sessionId, event_type: "no_result" });
-      if (eventError) throw new HttpError(503, "Não foi possível registrar a conversa");
+      if (eventError) console.warn("AI analytics write failed");
       return jsonResponse(req, { sessionId, sessionToken, text: directAnswer.text, results: [], links: [] });
     }
 
@@ -586,13 +586,13 @@ Deno.serve(async (req: Request) => {
     if (contextError) throw new HttpError(503, "Não foi possível atualizar a conversa");
       if (!savedContext) throw new HttpError(409, "A conversa foi atualizada por outra solicitação.");
     const { error: searchEventError } = await db.from("ai_events").insert({ session_id: sessionId, event_type: matches.length || knowledgeArticle ? "search" : "no_result" });
-    if (searchEventError) throw new HttpError(503, "Não foi possível registrar a busca");
+    if (searchEventError) console.warn("AI analytics write failed");
     if (matches.length) {
       const { error: impressionsError } = await db.from("ai_events").upsert(matches.map((item, index) => ({
         session_id: sessionId, company_id: item.companyId || null, event_type: "impression", result_position: index + 1,
         dedupe_key: `${sessionId}:${item.kind}:${item.id}:impression`,
       })), { onConflict: "dedupe_key", ignoreDuplicates: true });
-      if (impressionsError) throw new HttpError(503, "Não foi possível registrar os resultados");
+      if (impressionsError) console.warn("AI analytics write failed");
     }
     const links = matches.length ? [] : knowledgeArticle?.sourceUrl
       ? [{ label: "Ver fonte", url: knowledgeArticle.sourceUrl }]
