@@ -136,6 +136,8 @@ export const useControleFinanceiroStorage = () => {
 
   useEffect(() => {
     if (authLoading) return;
+    setSyncing(false);
+    setHasLocalDataToImport(false);
 
     if (!user) {
       loadedUserRef.current = null;
@@ -149,6 +151,7 @@ export const useControleFinanceiroStorage = () => {
 
     if (loadedUserRef.current === user.id) return;
     loadedUserRef.current = user.id;
+    legacyLocalRef.current = loadLocalState(FINANCE_STORAGE_KEY);
 
     let cancelled = false;
 
@@ -223,6 +226,7 @@ export const useControleFinanceiroStorage = () => {
 
     return () => {
       cancelled = true;
+      loadedUserRef.current = null;
     };
   }, [authLoading, persistLocal, user]);
 
@@ -365,7 +369,11 @@ export const useControleFinanceiroStorage = () => {
     if (!user) return { synced: false, reason: 'not_authenticated' as const };
     if (!hasLocalDataToImport) return operationBlocked();
     const result = await replaceAll(legacyLocalRef.current);
-    if (result.synced) setHasLocalDataToImport(false);
+    if (result.synced) {
+      legacyLocalRef.current = EMPTY_FINANCE_STATE;
+      try { localStorage.removeItem(FINANCE_STORAGE_KEY); } catch { /* storage unavailable */ }
+      setHasLocalDataToImport(false);
+    }
     return result;
   }, [hasLocalDataToImport, replaceAll, user]);
 
@@ -390,7 +398,7 @@ export const useControleFinanceiroStorage = () => {
     try {
       const { error } = await supabase.rpc('clear_finance_account_data' as any);
       if (error) {
-        setSyncError(error.message);
+        if (activeUserIdRef.current === requestedUserId) setSyncError(error.message);
         return { synced: false, reason: 'remote_error' as const, error };
       }
 
@@ -413,7 +421,7 @@ export const useControleFinanceiroStorage = () => {
       accountOperationRef.current = false;
       if (activeUserIdRef.current === requestedUserId) setSyncing(false);
     }
-  }, [persistLocal, user]);
+  }, [authLoading, loading, persistLocal, stateAccountId, user]);
 
   const storageLabel = useMemo(() => {
     if (authLoading || loading) return 'Carregando dados';
