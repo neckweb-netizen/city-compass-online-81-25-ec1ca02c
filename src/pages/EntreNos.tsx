@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { HeartHandshake, Plus, ShieldCheck, Sparkles, MessageCircle, Flag, Loader2, Send, EyeOff, Heart, Dumbbell, Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -34,8 +34,11 @@ export default function EntreNos() {
   const [reportingCommentId, setReportingCommentId] = useState<string | null>(null);
   const [revealed,setRevealed] = useState<Set<string>>(new Set()); const [openComments,setOpenComments] = useState<string|null>(null); const [commentText,setCommentText] = useState('');
 
+  const loadSequence = useRef(0);
+  const publishLock = useRef(false);
   const [loadError, setLoadError] = useState(false);
   const load = useCallback(async (showSpinner = true) => {
+    const sequence = ++loadSequence.current;
     if (showSpinner) setLoading(true);
     try {
       const p = await supabase.from('entre_nos_postagens' as any)
@@ -44,6 +47,7 @@ export default function EntreNos() {
         .order('destaque', { ascending: false })
         .order('criado_em', { ascending: false })
         .limit(60);
+      if (sequence !== loadSequence.current) return;
       if (p.error) throw new Error('Falha ao carregar publicações');
       const loadedPosts = (p.data || []) as unknown as Post[];
       const postIds = loadedPosts.map(post => post.id);
@@ -64,6 +68,7 @@ export default function EntreNos() {
             .eq('status', 'aprovado')
             .order('criado_em', { ascending: true }),
         ]);
+        if (sequence !== loadSequence.current) return;
         if (r.error || c.error) throw new Error('Falha ao carregar interações');
         setPosts(loadedPosts);
         setReactionRows((r.data || []) as unknown as Reaction[]);
@@ -71,21 +76,23 @@ export default function EntreNos() {
       }
       setLoadError(false);
     } catch {
+      if (sequence !== loadSequence.current) return;
       setLoadError(true);
       toast.error('Não foi possível carregar o Entre Nós.');
     } finally {
-      if (showSpinner) setLoading(false);
+      if (sequence === loadSequence.current) setLoading(false);
     }
   }, []);
-  useEffect(()=>{ load(); },[load]);
+  useEffect(()=>{ void load(); return () => { loadSequence.current += 1; }; },[load]);
 
   const counts = useMemo(()=>reactionRows.reduce<Record<string,Record<string,number>>>((a,r)=>{ a[r.postagem_id] ||= {}; a[r.postagem_id][r.tipo]=(a[r.postagem_id][r.tipo]||0)+1; return a; },{}),[reactionRows]);
   const requireUser = () => { if(!user){ setAuthOpen(true); return false; } return true; };
 
   const publish = async () => {
-    if(!requireUser()) return;
+    if(!requireUser() || publishLock.current) return;
     const numericAge=Number(age);
     if(!sex || !Number.isInteger(numericAge) || numericAge<13 || numericAge>100 || content.trim().length<20){ toast.error('Informe sexo, idade válida e ao menos 20 caracteres.'); return; }
+    publishLock.current = true;
     setSaving(true);
     try {
       const {error}=await supabase.from('entre_nos_postagens' as any).insert({usuario_id:user!.id,categoria:category,sexo:sex,idade:numericAge,conteudo:content.trim(),permitir_comentarios:allowComments,conteudo_sensivel:sensitive});
@@ -94,6 +101,7 @@ export default function EntreNos() {
     } catch {
       toast.error('Não foi possível enviar agora. Tente novamente.');
     } finally {
+      publishLock.current = false;
       setSaving(false);
     }
   };
@@ -181,7 +189,7 @@ export default function EntreNos() {
         <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-primary/20 blur-3xl" />
         <Badge className="mb-4 gap-1.5 rounded-full"><ShieldCheck className="h-3.5 w-3.5"/> Comunidade protegida</Badge>
         <h1 className="text-3xl font-black tracking-tight sm:text-4xl">Entre Nós</h1>
-        <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">Um espaço seguro para desabafar, acolher e trocar experiências. Seu nome nunca aparece; apenas sexo e idade acompanham o relato.</p>
+        <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">Um espaço seguro para desabafar, acolher e trocar experiências. Seu nome não é exibido no feed; sexo e idade acompanham o relato. Evite incluir informações que possam identificar você.</p>
         <div className="mt-5 flex flex-wrap gap-2 text-xs text-muted-foreground"><span className="rounded-full bg-background/70 px-3 py-2">✓ Sem apelidos</span><span className="rounded-full bg-background/70 px-3 py-2">✓ Moderação humana</span><span className="rounded-full bg-background/70 px-3 py-2">✓ Denúncia protegida</span></div>
       </div>
 
@@ -190,7 +198,7 @@ export default function EntreNos() {
         <Dialog open={composer} onOpenChange={(open) => { if (!open) setComposer(false); }}><Button type="button" className="h-11 rounded-full px-5" onClick={() => { if (requireUser()) setComposer(true); }}><Plus className="mr-2 h-4 w-4"/> Publicar</Button>
           <DialogContent className="max-h-[92dvh] overflow-y-auto rounded-t-[2rem] sm:max-w-xl sm:rounded-3xl">
             <DialogHeader><DialogTitle className="text-2xl">Compartilhe com segurança</DialogTitle></DialogHeader>
-            <div className="rounded-2xl bg-primary/10 p-3 text-sm"><EyeOff className="mr-2 inline h-4 w-4"/>Seu nome e sua conta permanecem ocultos. Sexo e idade serão exibidos junto ao relato.</div>
+            <div className="rounded-2xl bg-primary/10 p-3 text-sm"><EyeOff className="mr-2 inline h-4 w-4"/>Seu nome e sua conta não são exibidos publicamente. Sexo e idade serão exibidos junto ao relato. Não inclua dados pessoais no texto.</div>
             <div className="grid gap-4 sm:grid-cols-2"><div><Label>Sexo</Label><Select value={sex} onValueChange={setSex}><SelectTrigger className="mt-1.5 h-12"><SelectValue placeholder="Selecione"/></SelectTrigger><SelectContent><SelectItem value="masculino">Masculino</SelectItem><SelectItem value="feminino">Feminino</SelectItem><SelectItem value="nao_binario">Não binário</SelectItem></SelectContent></Select></div><div><Label htmlFor="age">Idade</Label><Input id="age" type="number" min={13} max={100} inputMode="numeric" value={age} onChange={e=>setAge(e.target.value)} className="mt-1.5 h-12" placeholder="Ex.: 28"/><p className="mt-1 text-[11px] text-muted-foreground">A idade informada aparecerá na publicação.</p></div></div>
             <div><Label>Assunto</Label><Select value={category} onValueChange={setCategory}><SelectTrigger className="mt-1.5 h-12"><SelectValue/></SelectTrigger><SelectContent>{Object.entries(categories).map(([v,l])=><SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent></Select></div>
             <div><div className="flex justify-between"><Label>Seu relato</Label><span className="text-xs text-muted-foreground">{content.length}/3000</span></div><Textarea value={content} onChange={e=>setContent(e.target.value.slice(0,3000))} className="mt-1.5 min-h-40 resize-none" placeholder="Escreva o que está sentindo..."/></div>
