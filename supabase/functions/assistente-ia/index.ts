@@ -360,14 +360,9 @@ Deno.serve(async (req: Request) => {
       const answerText = enrichedText && enrichedText.trim() !== siteAnswer.text.trim()
         ? enrichedText
         : contextualSite ? siteFollowUpFallback(siteAnswer.links) : siteAnswer.text;
-      const { error: messagesError } = await db.from("ai_messages").insert([
-        { session_id: sessionId, role: "user", content: message },
-        { session_id: sessionId, role: "assistant", content: answerText },
-      ]);
-      if (messagesError) throw new HttpError(503, "Não foi possível guardar a conversa");
-      const { data: savedContext, error: contextError } = await db.from("ai_sessions")
-        .update({ context: { token_hash: await sha256(sessionToken), result_ids: [], article_id: directArticleId,
-          site_fact: mayEnrich ? { text: siteAnswer.text.slice(0, 2000), links: siteAnswer.links.slice(0, 3) } : null } }).eq("id", sessionId).eq("context", JSON.stringify(expectedContext)).select("id").maybeSingle();
+      
+      const { data: savedContext, error: contextError } = await db.rpc("ai_commit_turn", { p_session_id: sessionId, p_expected: expectedContext, p_next: { token_hash: await sha256(sessionToken), result_ids: [], article_id: directArticleId,
+          site_fact: mayEnrich ? { text: siteAnswer.text.slice(0, 2000), links: siteAnswer.links.slice(0, 3) } : null }, p_message: message, p_answer: answerText });
       if (contextError) throw new HttpError(503, "Não foi possível atualizar a conversa");
       if (!savedContext) throw new HttpError(409, "A conversa foi atualizada por outra solicitação.");
       const { error: eventError } = await db.from("ai_events").insert({ session_id: sessionId, event_type: "search" });
@@ -387,13 +382,8 @@ Deno.serve(async (req: Request) => {
       }
       const modelAnswer = await answerWithNvidia(db, visitorHash, message, undefined, history);
       const directAnswer = modelAnswer ? { text: modelAnswer, links: [] } : conversationalFallback(message);
-      const { error: messagesError } = await db.from("ai_messages").insert([
-        { session_id: sessionId, role: "user", content: message },
-        { session_id: sessionId, role: "assistant", content: directAnswer.text },
-      ]);
-      if (messagesError) throw new HttpError(503, "Não foi possível guardar a conversa");
-      const { data: savedContext, error: contextError } = await db.from("ai_sessions")
-        .update({ context: { token_hash: await sha256(sessionToken), result_ids: [], article_id: null } }).eq("id", sessionId).eq("context", JSON.stringify(expectedContext)).select("id").maybeSingle();
+      
+      const { data: savedContext, error: contextError } = await db.rpc("ai_commit_turn", { p_session_id: sessionId, p_expected: expectedContext, p_next: { token_hash: await sha256(sessionToken), result_ids: [], article_id: null }, p_message: message, p_answer: directAnswer.text });
       if (contextError) throw new HttpError(503, "Não foi possível atualizar a conversa");
       if (!savedContext) throw new HttpError(409, "A conversa foi atualizada por outra solicitação.");
       const { error: eventError } = await db.from("ai_events").insert({ session_id: sessionId, event_type: "no_result" });
@@ -586,18 +576,13 @@ Deno.serve(async (req: Request) => {
         ? "Não consegui acessar sua localização. Permita a localização quando o navegador solicitar ou informe um bairro para eu pesquisar."
         : "Não encontrei uma correspondência no catálogo atual do Saj Tem. Isso não significa que o serviço não exista na cidade. Você pode consultar a lista de locais ou pesquisar por outro nome.";
     }
-    const { error: messagesError } = await db.from("ai_messages").insert([
-      { session_id: sessionId, role: "user", content: message },
-      { session_id: sessionId, role: "assistant", content: responseText },
-    ]);
-    if (messagesError) throw new HttpError(503, "Não foi possível guardar a conversa");
+    
     const safeContextResults = matches.map(item => ({
       id: item.id, kind: item.kind, name: item.name.slice(0, 160), description: item.description?.slice(0, 240) || null,
       address: item.address?.slice(0, 240) || null, url: item.url, companyId: item.companyId, companyName: item.companyName?.slice(0, 160),
       price: item.price ?? null, distanceKm: item.distanceKm ?? null, phone: item.phone?.slice(0, 40) || null, bookable: item.bookable === true,
     }));
-    const { data: savedContext, error: contextError } = await db.from("ai_sessions")
-      .update({ context: { token_hash: await sha256(sessionToken), result_ids: matches.map(item => item.companyId).filter(Boolean), results: safeContextResults, article_id: knowledgeArticle?.id || null } }).eq("id", sessionId).eq("context", JSON.stringify(expectedContext)).select("id").maybeSingle();
+    const { data: savedContext, error: contextError } = await db.rpc("ai_commit_turn", { p_session_id: sessionId, p_expected: expectedContext, p_next: { token_hash: await sha256(sessionToken), result_ids: matches.map(item => item.companyId).filter(Boolean), results: safeContextResults, article_id: knowledgeArticle?.id || null }, p_message: message, p_answer: responseText });
     if (contextError) throw new HttpError(503, "Não foi possível atualizar a conversa");
       if (!savedContext) throw new HttpError(409, "A conversa foi atualizada por outra solicitação.");
     const { error: searchEventError } = await db.from("ai_events").insert({ session_id: sessionId, event_type: matches.length || knowledgeArticle ? "search" : "no_result" });
