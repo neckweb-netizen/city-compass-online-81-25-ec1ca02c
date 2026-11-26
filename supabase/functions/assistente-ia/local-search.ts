@@ -210,7 +210,7 @@ export function rankLocalItems(query: string, items: LocalSearchItem[], limit = 
     ? relevant.filter(entry => intents.includes(entry.item.kind))
     : relevant;
   return intended
-    .sort((a, b) => (commercialOrder ? (commercialOrder.get(a.item.companyId || '') ?? 1000000) - (commercialOrder.get(b.item.companyId || '') ?? 1000000) : 0) || b.score - a.score || (a.item.distanceKm ?? 9999) - (b.item.distanceKm ?? 9999) || a.index - b.index)
+    .sort((a, b) => (commercialOrder ? (commercialOrder.get(a.item.companyId || '') ?? 0) - (commercialOrder.get(b.item.companyId || '') ?? 0) : 0) || b.score - a.score || (a.item.distanceKm ?? 9999) - (b.item.distanceKm ?? 9999) || a.index - b.index)
     .slice(0, Math.max(1, Math.min(limit, 10))).map(entry => entry.item);
 }
 
