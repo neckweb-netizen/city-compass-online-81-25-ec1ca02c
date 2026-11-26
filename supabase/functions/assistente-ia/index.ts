@@ -394,16 +394,16 @@ Deno.serve(async (req: Request) => {
     const intents = detectIntents(message);
     const normalizedMessage = normalizeText(message);
     const location = requestedLocation(body.location);
-    const { data: eligible, error: eligibleError } = await db.rpc("ai_eligible_companies", { p_limit: 1000 });
+    const { data: eligible, error: eligibleError } = await db.rpc("ai_ranked_companies", { p_limit: 1000 });
     if (eligibleError) throw new HttpError(503, "Busca indisponível");
     const allowedIds = (eligible || []).map((item: { company_id: string }) => item.company_id);
     const { data: companyRows, error: companyError } = allowedIds.length
       ? await db.from("empresas").select("id,nome,descricao,endereco,telefone,slug,categoria_id,localizacao,horario_funcionamento,agendamentos_ativo").in("id", allowedIds)
       : { data: [] as Company[], error: null };
     if (companyError) throw new HttpError(503, "Busca indisponível");
-    const orderById = new Map(allowedIds.map((id: string, index: number) => [id, index]));
+    const orderById = new Map<string, number>((eligible || []).map((item: { company_id: string; priority: number }) => [item.company_id, -Math.max(0, Number(item.priority) || 0)]));
     const companies = ((companyRows || []) as Company[])
-      .sort((a, b) => (orderById.get(a.id) ?? 1000) - (orderById.get(b.id) ?? 1000));
+      .sort((a, b) => (orderById.get(a.id) ?? 0) - (orderById.get(b.id) ?? 0));
     const companyById = new Map(companies.map(company => [company.id, company]));
     const categoryIds = [...new Set(companies.map(item => item.categoria_id).filter((id): id is string => Boolean(id)))];
     const { data: categoryRows, error: categoryError } = categoryIds.length
