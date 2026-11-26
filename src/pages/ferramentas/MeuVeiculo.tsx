@@ -52,16 +52,26 @@ const MeuVeiculo = () => {
   const ownReminders = lembretes.filter((l) => l.veiculoId === currentVehicleId);
 
   const metrics = useMemo(() => {
-    const totalFuel = ownFuel.reduce((sum, a) => sum + a.valorTotal, 0);
-    const totalMaintenance = ownMaintenance.reduce((sum, m) => sum + m.valor, 0);
-    const sorted = [...ownFuel].filter((a) => a.tanqueCompleto && a.litros > 0).sort((a, b) => a.quilometragem - b.quilometragem);
-    const consumptions: number[] = [];
-    for (let i = 1; i < sorted.length; i++) {
-      const distance = sorted[i].quilometragem - sorted[i - 1].quilometragem;
-      if (distance > 0) consumptions.push(distance / sorted[i].litros);
+    const totalFuel = ownFuel.reduce((sum, a) => sum + Math.round(a.valorTotal * 100), 0) / 100;
+    const totalMaintenance = ownMaintenance.reduce((sum, m) => sum + Math.round(m.valor * 100), 0) / 100;
+    const sorted = [...ownFuel].filter(a => a.litros > 0).sort((a, b) => a.quilometragem - b.quilometragem || a.data.localeCompare(b.data));
+    let baseline: number | null = null;
+    let intervalLiters = 0;
+    let totalDistance = 0;
+    let measuredLiters = 0;
+    for (const entry of sorted) {
+      if (baseline !== null) intervalLiters += entry.litros;
+      if (!entry.tanqueCompleto) continue;
+      if (baseline !== null && entry.quilometragem > baseline && intervalLiters > 0) {
+        totalDistance += entry.quilometragem - baseline;
+        measuredLiters += intervalLiters;
+      }
+      baseline = entry.quilometragem;
+      intervalLiters = 0;
     }
-    const avgKmL = consumptions.length ? consumptions.reduce((a, b) => a + b, 0) / consumptions.length : 0;
-    const literCost = ownFuel.reduce((s, a) => s + a.valorTotal, 0) / Math.max(ownFuel.reduce((s, a) => s + a.litros, 0), 1);
+    const avgKmL = measuredLiters > 0 ? totalDistance / measuredLiters : 0;
+    const totalLiters = ownFuel.reduce((sum, a) => sum + a.litros, 0);
+    const literCost = totalLiters > 0 ? totalFuel / totalLiters : 0;
     return { totalFuel, totalMaintenance, avgKmL, literCost };
   }, [ownFuel, ownMaintenance]);
 
