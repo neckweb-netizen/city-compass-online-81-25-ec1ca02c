@@ -2,18 +2,42 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import { Link, useLocation } from 'react-router-dom';
 
-const FooterCrown = () => (
-  <span aria-hidden="true" className="block h-[14px] w-[16px]" style={{ perspective: '70px' }}>
-    <style>{`@keyframes sajtem-crown-turn { 0%,100% { transform: rotateY(-45deg); } 50% { transform: rotateY(45deg); } } @media (prefers-reduced-motion: reduce) { .sajtem-crown-turn { animation: none !important; } }`}</style>
-    <svg className="sajtem-crown-turn block h-full w-full" style={{ animation: 'sajtem-crown-turn 4.5s ease-in-out infinite', transformOrigin: 'center' }} viewBox="0 0 24 20" fill="none">
-      <path d="M2 5 7 10 12 2 17 10 22 5 19 16H5L2 5Z" fill="#EAB308" stroke="#A16207" strokeWidth="1" strokeLinejoin="round"/>
-      <path d="M5 16H19V19H5Z" fill="#FACC15" stroke="#A16207" strokeWidth="1"/>
-      <path d="M7 13 12 5 17 13" stroke="#FEF08A" strokeWidth="1.3" strokeLinecap="round"/>
-      <circle cx="12" cy="13" r="1.5" fill="#B91C1C"/>
-      <circle cx="2" cy="4" r="1.5" fill="#FDE68A"/><circle cx="12" cy="2" r="1.5" fill="#FDE68A"/><circle cx="22" cy="4" r="1.5" fill="#FDE68A"/>
+const FooterCrown = () => {
+  const [angle, setAngle] = React.useState(0);
+  React.useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let frame = 0;
+    let start: number | undefined;
+    const tick = (time: number) => {
+      start ??= time;
+      setAngle(((time - start) % 4500) / 4500 * Math.PI * 2);
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, []);
+  const point = (a: number, r: number, y: number) => [12 + Math.cos(a) * r, y + Math.sin(a) * r * .23];
+  const faces = Array.from({ length: 5 }, (_, i) => {
+    const mid = angle + i * Math.PI * 2 / 5;
+    const a = mid - Math.PI / 5, b = mid + Math.PI / 5;
+    const p = [point(a, 8, 18), point(b, 8, 18), point(b, 9, 10), point(mid, 10, 3), point(a, 9, 10)];
+    return { i, depth: Math.sin(mid), p, tip: p[3], jewel: point(mid, 8.2, 15) };
+  }).sort((a, b) => a.depth - b.depth);
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4 shrink-0 overflow-visible">
+      <ellipse cx="12" cy="18" rx="8" ry="2" fill="#9b590c" />
+      {faces.map(f => (
+        <g key={f.i}>
+          <polygon points={f.p.map(p => p.join(',')).join(' ')} fill={f.depth > 0 ? '#f9c746' : '#b87913'} stroke="#9b590c" strokeWidth=".45" strokeLinejoin="round" />
+          <circle cx={f.tip[0]} cy={f.tip[1]} r="1" fill="#ffe99a" stroke="#b87913" strokeWidth=".3" />
+          {f.depth > 0 && <circle cx={f.jewel[0]} cy={f.jewel[1]} r="1.1" fill={f.i % 2 ? '#d43c76' : '#39b7ba'} />}
+        </g>
+      ))}
+      <path d="M4 18 Q12 22 20 18 L20 20 Q12 24 4 20Z" fill="#e9a923" stroke="#9b590c" strokeWidth=".45" />
+      <path d="M5 19 Q12 22 19 19" fill="none" stroke="#fff0a1" strokeWidth=".6" />
     </svg>
-  </span>
-);
+  );
+};
 
 interface WatermarkProps {
   variant?: 'footer' | 'sidebar';
@@ -43,10 +67,10 @@ export const Watermark: React.FC<WatermarkProps> = ({
     )}>
       <div className="container mx-auto px-4">
         <div className="text-center">
-          <div className="flex flex-wrap items-baseline justify-center gap-x-1 gap-y-0 pt-4 text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-baseline justify-center gap-x-1 gap-y-0 pt-3 text-sm text-muted-foreground">
             <span>Desenvolvido por</span>
             <span className="relative inline-flex items-baseline" aria-label="Deivid">
-              <span aria-hidden="true" className="pointer-events-none absolute bottom-full left-1/2 flex -translate-x-1/2 translate-y-0 z-10"><FooterCrown /></span>
+              <span aria-hidden="true" className="pointer-events-none absolute bottom-full left-1/2 flex -translate-x-1/2 translate-y-1"><FooterCrown /></span>
               <span className="bg-gradient-to-b from-fuchsia-300 via-purple-500 to-violet-900 bg-clip-text text-sm font-semibold text-transparent">
                 Deivid
               </span>
