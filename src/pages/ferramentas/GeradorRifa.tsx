@@ -1095,9 +1095,9 @@ export const GeradorRifa = () => {
                               ))}
                             </div>
 
-                            {numItem?.nome && (
+                            {podeGerenciarRifa && numItem?.nome && (
                               <span
-                                title={numItem.nome}
+                                data-private-buyer title={numItem.nome}
                                 className="mt-0.5 max-w-[34px] truncate rounded bg-background/90 px-0.5 text-right font-sans text-[6px] font-bold leading-none text-primary shadow-sm sm:max-w-[52px] sm:text-[8px]"
                               >
                                 {numItem.nome.split(' ')[0]}
