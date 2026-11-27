@@ -106,6 +106,8 @@ export const GeradorRifa = () => {
   const cartelaRef = useRef<HTMLDivElement | null>(null);
   const linksCurtosRef = useRef<Record<string, string>>({});
   const initSequenceRef = useRef(0);
+  const createLock = useRef(false);
+  const reservationLock = useRef(false);
 
   const inicializarRifas = async () => {
     const request = ++initSequenceRef.current;
@@ -278,6 +280,7 @@ export const GeradorRifa = () => {
 
   const handleCriarRifa = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (createLock.current) return;
 
     if (!titulo || !premio || !valorNumero || !dataSorteio || !horaSorteio) {
       toast.error('Preencha todos os campos obrigatórios');
@@ -290,6 +293,7 @@ export const GeradorRifa = () => {
     }
 
     try {
+      createLock.current = true;
       setSalvando(true);
       const { data: { session } } = await supabase.auth.getSession();
       const userId = session?.user?.id;
@@ -345,12 +349,13 @@ export const GeradorRifa = () => {
     } catch (err: any) {
       toast.error('Erro ao salvar rifa: ' + err.message);
     } finally {
+      createLock.current = false;
       setSalvando(false);
     }
   };
 
   const handleSalvarReserva = async (novoStatus: 'reservado' | 'pago') => {
-    if (!numeroSelecionado || !rifaAtiva?.id || salvandoReserva) return;
+    if (!numeroSelecionado || !rifaAtiva?.id || salvandoReserva || reservationLock.current) return;
     if (!nomeComprador.trim()) {
       toast.error('Informe o nome do comprador.');
       return;
@@ -361,6 +366,7 @@ export const GeradorRifa = () => {
     }
 
     try {
+      reservationLock.current = true;
       setSalvandoReserva(true);
       const { data, error } = await supabase.rpc('atualizar_numero_rifa' as any, {
         p_rifa_id: rifaAtiva.id,
@@ -405,18 +411,20 @@ export const GeradorRifa = () => {
         ? 'Este número acabou de ser reservado por outra pessoa. Escolha outro.'
         : message);
     } finally {
+      reservationLock.current = false;
       setSalvandoReserva(false);
     }
   };
 
   const handleLiberarNumero = async () => {
-    if (!numeroSelecionado || !rifaAtiva?.id) return;
+    if (!numeroSelecionado || !rifaAtiva?.id || reservationLock.current) return;
     if (!podeGerenciarRifa) {
       toast.error('Somente o criador da rifa ou um administrador pode liberar este número.');
       return;
     }
 
     try {
+      reservationLock.current = true;
       setSalvandoReserva(true);
       const { data, error } = await supabase.rpc('atualizar_numero_rifa' as any, {
         p_rifa_id: rifaAtiva.id,
@@ -450,6 +458,7 @@ export const GeradorRifa = () => {
     } catch (err: any) {
       toast.error('Erro ao liberar número: ' + err.message);
     } finally {
+      reservationLock.current = false;
       setSalvandoReserva(false);
     }
   };
@@ -556,6 +565,7 @@ export const GeradorRifa = () => {
 
       const cartelaClone = cartelaRef.current.cloneNode(true) as HTMLElement;
       cartelaClone.style.width = '100%';
+      cartelaClone.querySelectorAll('[data-private-buyer]').forEach(element => element.remove());
       const gradeNumerica = cartelaClone.querySelector<HTMLElement>('[data-raffle-number-grid]');
       if (gradeNumerica) {
         gradeNumerica.style.maxHeight = 'none';
@@ -1121,8 +1131,8 @@ export const GeradorRifa = () => {
                           className={`h-10 rounded-xl border text-xs sm:text-sm transition-all duration-150 flex flex-col items-center justify-center relative group ${estilos}`}
                         >
                           <span>{item.numero}</span>
-                          {item.nome && (
-                            <span className="text-[8px] truncate max-w-[90%] px-0.5 opacity-90 leading-tight">
+                          {podeGerenciarRifa && item.nome && (
+                            <span data-private-buyer className="text-[8px] truncate max-w-[90%] px-0.5 opacity-90 leading-tight">
                               {item.nome.split(' ')[0]}
                             </span>
                           )}
