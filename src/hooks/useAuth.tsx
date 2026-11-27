@@ -19,7 +19,8 @@ const useAuthState = () => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const initializedRef = useRef(false);
+  const authSequence = useRef(0);
+  const activeUserId = useRef<string | null>(null);
 
   const fetchProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
     try {
@@ -91,9 +92,9 @@ const useAuthState = () => {
     let isInitializing = false;
 
     const initializeAuth = async () => {
-      if (initializedRef.current || isInitializing) return;
+      if (isInitializing) return;
       isInitializing = true;
-      initializedRef.current = true;
+      const sequence = ++authSequence.current;
 
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -107,18 +108,19 @@ const useAuthState = () => {
           return;
         }
 
-        if (mounted) {
+        if (mounted && sequence === authSequence.current) {
+          activeUserId.current = session?.user.id ?? null;
           setUser(session?.user ?? null);
           
           if (session?.user) {
             const userProfile = await fetchProfile(session.user.id);
-            if (mounted) {
+            if (mounted && sequence === authSequence.current) {
               setProfile(userProfile);
               if (userProfile) redirectAfterInitialLoad(userProfile);
             }
           }
           
-          setLoading(false);
+          if (sequence === authSequence.current) setLoading(false);
         }
       } catch (error) {
         console.error('💥 Initialize error:', error);
@@ -137,8 +139,13 @@ const useAuthState = () => {
 
         if (event === 'INITIAL_SESSION') return;
 
+        const sequence = ++authSequence.current;
+        const nextId = session?.user.id ?? null;
+        if (activeUserId.current !== nextId) supabaseCache.clear();
+        activeUserId.current = nextId;
         setUser(session?.user ?? null);
         setProfile(null);
+        setLoading(Boolean(nextId));
         
         if (session?.user) {
           // Debounce profile fetching to avoid multiple rapid requests
@@ -149,7 +156,7 @@ const useAuthState = () => {
           fetchTimeoutRef.current = setTimeout(async () => {
             if (mounted) {
               const userProfile = await fetchProfile(session.user.id);
-              if (mounted) {
+              if (mounted && sequence === authSequence.current) {
                 setProfile(userProfile);
                 setLoading(false);
               }
@@ -165,6 +172,7 @@ const useAuthState = () => {
 
     return () => {
       mounted = false;
+      authSequence.current += 1;
       if (fetchTimeoutRef.current) {
         clearTimeout(fetchTimeoutRef.current);
       }
@@ -190,6 +198,9 @@ const useAuthState = () => {
       // Buscar perfil do usuário para redirecionamento apenas no login explícito
       if (data.user) {
         const userProfile = await fetchProfile(data.user.id);
+        if (activeUserId.current !== data.user.id) {
+          return { error: new Error('A sessão mudou durante o login. Tente novamente.') };
+        }
         if (!userProfile) {
           // Nunca manter uma sessão parcialmente autenticada após falha no perfil.
           await supabase.auth.signOut({ scope: 'local' });
@@ -200,6 +211,7 @@ const useAuthState = () => {
           return { error: new Error('Conta autenticada, mas não foi possível carregar seu perfil. Entre em contato com o suporte para recuperar seus dados.') };
         }
         setProfile(userProfile);
+        setLoading(false);
         redirectAfterLogin(userProfile, true); // true indica login explícito
       }
       
@@ -247,6 +259,9 @@ const useAuthState = () => {
       if (error) {
         console.error('❌ Sign out error:', error);
       } else {
+        authSequence.current += 1;
+        activeUserId.current = null;
+        setUser(null);
         setProfile(null);
         supabaseCache.clear();
         window.location.href = '/';
